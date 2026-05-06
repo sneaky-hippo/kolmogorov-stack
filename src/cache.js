@@ -9,7 +9,11 @@ const L1_CAP = 2048;
 const L1 = new Map();
 let l1Hits = 0, l1Misses = 0, l2Hits = 0;
 
-const CACHE_DIR = path.resolve('data', 'cache');
+// Same Vercel/Lambda fallback as src/store.js: deploy bundle is read-only,
+// only /tmp is writable. We never seed the cache from the bundle — the L2
+// cache rebuilds itself from L1 misses.
+const ON_SERVERLESS = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const CACHE_DIR = ON_SERVERLESS ? '/tmp/data/cache' : path.resolve('data', 'cache');
 fs.mkdirSync(CACHE_DIR, { recursive: true });
 
 export function cacheKey(version_id, input) {
