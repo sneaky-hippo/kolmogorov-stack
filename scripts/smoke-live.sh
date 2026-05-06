@@ -316,6 +316,41 @@ RCPTS_HTML=$(curl -s -o /dev/null -w "%{http_code}" "$URL/receipts")
 check "/receipts page 200" test "$RCPTS_HTML" = "200"
 
 echo ""
+echo "=== 19. Verified Inference + infra-thesis pages ==="
+HIW=$(curl -s -o /dev/null -w "%{http_code}" "$URL/how-it-works")
+check "/how-it-works page 200" test "$HIW" = "200"
+VER=$(curl -s -o /dev/null -w "%{http_code}" "$URL/verified")
+check "/verified page 200" test "$VER" = "200"
+ECO=$(curl -s -o /dev/null -w "%{http_code}" "$URL/economics")
+check "/economics page 200" test "$ECO" = "200"
+HIW_BODY=$(curl -s "$URL/how-it-works")
+check "/how-it-works has wrap pattern" has "$HIW_BODY" 'recipe.wrap'
+VER_BODY=$(curl -s "$URL/verified")
+check "/verified has the math formula" has "$VER_BODY" 'Generator-Verifier'
+check "/verified has live demo button" has "$VER_BODY" 'btn-run'
+ECO_BODY=$(curl -s "$URL/economics")
+check "/economics has hardware unlock" has "$ECO_BODY" 'ESP32'
+check "/economics references CDN analogue" has "$ECO_BODY" 'CDN'
+HOME_BODY=$(curl -s "$URL/")
+check "home has hardware-unlock thesis" has "$HOME_BODY" 'every device that has ever existed'
+check "home links to /verified" has "$HOME_BODY" 'href="/verified"'
+check "home links to /economics" has "$HOME_BODY" 'href="/economics"'
+
+# /v1/verified-inference contract
+VI_NO_TC=$(curl -sX POST "$URL/v1/verified-inference" -H 'Content-Type: application/json' -d '{}')
+check "/v1/verified-inference rejects empty body" has "$VI_NO_TC" 'test_cases array required'
+VI_K_CAP=$(curl -sX POST "$URL/v1/verified-inference" -H 'Content-Type: application/json' \
+  -d '{"prompt":"x","test_cases":[{"input":1,"expected":1}],"k":99}')
+check "/v1/verified-inference caps k at 64" has "$VI_K_CAP" 'k capped at 64'
+VI_NO_KEY=$(curl -sX POST "$URL/v1/verified-inference" -H 'Content-Type: application/json' \
+  -d '{"prompt":"x","test_cases":[{"input":1,"expected":1}],"k":2}')
+# Either 503 (no key locally) or 200 with verified=true/false (key present): both are acceptable contracts
+VI_OK=0
+echo "$VI_NO_KEY" | grep -q 'requires ANTHROPIC_API_KEY' && VI_OK=1
+echo "$VI_NO_KEY" | grep -q '"verified"' && VI_OK=1
+check "/v1/verified-inference responds correctly given key state" test "$VI_OK" = "1"
+
+echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"
 if [ $FAIL -gt 0 ]; then

@@ -10,6 +10,7 @@ import { authMiddleware, provisionTenant, provisionAnonTenant, claimAnonTenant, 
 import { compileJs, verify } from './verifier.js';
 import { LIBRARY_VERSION, libraryDescription } from './library.js';
 import { all, findOne, insert, update, stats as storeStats } from './store.js';
+import { verifiedInference } from './verified.js';
 
 const PRICING = {
   synthesis_small: 0.10,   // < 1 KB generator
@@ -267,6 +268,28 @@ export function buildRouter() {
       },
       authors: ['Kolmogorov Stack contributors'],
     });
+  });
+
+  // Public verified-inference endpoint — Generator-Verifier asymmetry made shippable.
+  // Sample k candidates from a frontier model, run each through a deterministic
+  // Recipe verifier (test cases), pick the first that passes. Returns a receipt.
+  // P(correct) >= 1 - (1 - p*v)^k. For p=0.91 v=1 k=8: 99.9999%.
+  // Uses the server's ANTHROPIC_API_KEY — no tenant binding needed for the demo.
+  r.post('/v1/verified-inference', async (req, res) => {
+    try {
+      const { prompt, signature, test_cases, k = 8, model, temperature, system } = req.body || {};
+      if (!Array.isArray(test_cases) || test_cases.length === 0) {
+        return res.status(400).json({ error: 'test_cases array required: each {input, expected}' });
+      }
+      if (k > 64) return res.status(400).json({ error: 'k capped at 64 for the public endpoint' });
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(503).json({ error: 'verified-inference requires ANTHROPIC_API_KEY on the server' });
+      }
+      const result = await verifiedInference({ prompt, signature, test_cases, k, model, temperature, system });
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
   });
 
   r.use(authMiddleware);

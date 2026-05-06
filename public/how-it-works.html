@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>How Recipe works — wrap, compile, verify, sign</title>
+  <meta name="description" content="Recipe in five lines: wrap your AI client, the router decides between deterministic recipe / verified inference / passthrough, every output ships with a cryptographic receipt." />
+  <meta property="og:title" content="How Recipe works" />
+  <meta property="og:description" content="Drop-in proxy. Three lanes. Signed receipts. Five lines, five minutes." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">how it works</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/how-it-works" class="active">How it works</a>
+      <a href="/verified">Verified Inference</a>
+      <a href="/economics">What it makes possible</a>
+      <a href="/docs">Install &amp; SDK</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Registry</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/spec">RS-1 spec</a>
+      <a href="/receipts">Receipts</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="footnote">
+      <strong>Memory · Skills · Specialists.</strong><br/>
+      Recipe is the Skills layer of <a href="https://remlabs.ai" style="color:var(--ink-mute);">REM Labs</a>.
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <div class="eyebrow"><span class="dot live"></span> Five lines · five minutes · drop-in for OpenAI &amp; Anthropic</div>
+      <h1>Wrap your client. <span class="grad">Done.</span></h1>
+      <p class="sub">
+        Recipe is a transparent proxy over your existing AI SDK. Same interface, smarter dispatch.
+        Every call lands in one of three lanes: a deterministic recipe (microseconds, free, signed),
+        Verified Inference (k-shot frontier sampling against a recipe verifier), or passthrough.
+        You don't browse a registry. You don't synthesize anything by hand. You ship.
+      </p>
+      <div class="actions">
+        <a class="btn accent lg" href="/docs#install">Install &rarr;</a>
+        <a class="btn ghost lg" href="/verified">The math behind Verified Inference</a>
+      </div>
+    </section>
+
+    <h2 class="h2" style="margin-top: 28px;">The wrap pattern</h2>
+    <div class="card">
+      <div class="row cols-2">
+        <div>
+          <p>One import. One wrap. Your existing SDK calls go through Recipe untouched.
+          Recipe inspects each call, decides its lane, and returns the same SDK shape your code already expects.</p>
+          <p style="margin-top: 10px;">If you remove the wrap, your code keeps working. There is nothing to migrate <em>away</em> from. That is the entire interface contract.</p>
+        </div>
+        <div>
+<pre class="terminal"><code><span class="dim">// Before</span>
+<span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="dim">'@anthropic-ai/sdk'</span>;
+<span class="kw">const</span> ai = <span class="kw">new</span> Anthropic();
+
+<span class="dim">// After — one line.</span>
+<span class="kw">import</span> { recipe } <span class="kw">from</span> <span class="dim">'@kolmogorov/recipe'</span>;
+<span class="kw">const</span> ai = recipe.wrap(<span class="kw">new</span> Anthropic());
+
+<span class="dim">// Use it normally — every call auto-routed.</span>
+<span class="kw">const</span> r = <span class="kw">await</span> ai.messages.create({
+  model: <span class="dim">'claude-opus-4-7'</span>,
+  messages: [{ role: <span class="dim">'user'</span>, content: prompt }],
+});</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">The three-lane router</h2>
+    <div class="card">
+      <p style="margin-bottom: 16px;">Every call goes through a tiny router that decides which lane to take. The decision takes &lt;100&nbsp;µs.</p>
+<pre class="terminal" style="overflow-x:auto;"><code><span class="dim">                            ┌─────────────────────────┐
+                            │   recipe.wrap(client)   │
+                            └────────────┬────────────┘
+                                         │
+                            ┌────────────▼────────────┐
+                            │   classify call shape   │
+                            └────────────┬────────────┘
+                                         │
+              ┌──────────────────────────┼──────────────────────────┐
+              │                          │                          │
+   small + structured?          verifiable hard task?         everything else
+              │                          │                          │
+              ▼                          ▼                          ▼
+        Lane 1: Recipe         Lane 2: Verified Inf       Lane 3: Passthrough
+        ────────────────       ─────────────────────      ──────────────────
+        cached recipe          k-shot frontier sample     forward to provider
+        OR synthesize          + recipe verifier          (no interception)
+        ────────────────       ─────────────────────      ──────────────────
+        35 µs · $0             ~600 ms · $k×opus          ~600 ms · $opus
+        deterministic          accuracy → 1               whatever it was
+        signed receipt         signed receipt             (still records receipt)</span></code></pre>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Lane 1 — Deterministic recipe</h2>
+    <div class="card">
+      <p>The call shape ("classify spam vs ham", "extract phone number", "language ID") is small and structured.
+      Recipe checks the registry; if a verified recipe exists for the call shape, it executes it directly &mdash;
+      no model call, microsecond response.</p>
+      <p style="margin-top: 10px;">If no recipe exists yet, Recipe synthesizes one in the background from the call's
+      examples, and starts using it immediately on the next equivalent call. The model call you just made
+      <em>becomes the labeled example</em> &mdash; you bootstrap your own recipe.</p>
+      <ul style="margin-top: 10px; line-height: 1.85;">
+        <li><strong>Latency</strong>: ~35&nbsp;µs (compiled JS function, one V8 invocation)</li>
+        <li><strong>Cost</strong>: $0 per call after one-time synthesis (~$0.10)</li>
+        <li><strong>Determinism</strong>: bit-exact same input &rArr; bit-exact same output, forever</li>
+        <li><strong>Receipt</strong>: HMAC-SHA256 over <code>{source_hash, input_hash, output_hash, runtime_version, time}</code></li>
+      </ul>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Lane 2 — Verified Inference</h2>
+    <div class="card">
+      <p>The call has a structured but non-trivial answer (code generation, math, structured extraction with checks).
+      A single shot from a frontier model is 91% reliable; that's not enough for production. Recipe samples
+      <em>k</em> candidates in parallel and runs each through a deterministic verifier &mdash;
+      the first one that passes is returned. P(success) = 1 − (1 − p·v)<sup>k</sup>.</p>
+      <p style="margin-top: 10px;">For Opus 4.7 on HumanEval (p≈0.91): k=4 → 99.99%. k=8 → 99.9999%. <strong>Same model. Bounded compute. Accuracy approaches 1.</strong></p>
+      <p style="margin-top: 10px;">The verifier is itself a recipe. Recipes verify recipes. The receipt binds the verifier's source hash to the chosen output's source hash &mdash; you can prove not just <em>what</em> ran, but <em>why it was accepted</em>.
+      <a href="/verified">See the proof &rarr;</a></p>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Lane 3 — Passthrough</h2>
+    <div class="card">
+      <p>The call is open-ended generation: "write a marketing email," "summarize this PDF," "draft a contract."
+      Recipe does not get in the way. The frontier model is the right tool. We forward the call untouched.</p>
+      <p style="margin-top: 10px;">A passthrough call still gets a receipt &mdash; the source_hash is null
+      (no deterministic source ran), but the input/output/timestamp/runtime are still attested.
+      You get a tamper-evident audit log of every AI interaction in your system, regardless of lane.</p>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Receipts on every output</h2>
+    <div class="card">
+      <p>Every lane returns a receipt: an HMAC-signed, canonical-JSON object that proves
+      <em>(this exact source) ran on (this exact input) and produced (this exact output) at (this exact time)</em>.
+      Anyone can verify offline. Forever. Without us.</p>
+<pre class="terminal" style="margin-top: 10px;"><code>{
+  <span class="kw">"spec"</span>:            <span class="dim">"rs-1"</span>,
+  <span class="kw">"source_hash"</span>:     <span class="dim">"8f3d…16hex"</span>,
+  <span class="kw">"input_hash"</span>:      <span class="dim">"sha256/64hex"</span>,
+  <span class="kw">"output_hash"</span>:     <span class="dim">"sha256/64hex"</span>,
+  <span class="kw">"version_id"</span>:      <span class="dim">"ver_xyz789"</span>,
+  <span class="kw">"runtime_version"</span>: <span class="dim">"0.3.0"</span>,
+  <span class="kw">"issued_at"</span>:       <span class="dim">"2026-05-06T17:42:11Z"</span>,
+  <span class="kw">"hmac"</span>:            <span class="dim">"f8a1…64hex"</span>
+}</code></pre>
+      <p style="margin-top: 12px;"><a href="/receipts">Try the verifier interactively &rarr;</a></p>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Self-host or hosted</h2>
+    <div class="row cols-2">
+      <div class="card">
+        <div class="label">Hosted</div>
+        <h3 style="margin: 6px 0 8px;">One npm install, no infra.</h3>
+        <p>Use <code>recipe.wrap(client)</code> against our hosted runtime. Free tier covers most projects.
+        Your usage data is tenant-isolated; signed receipts let you walk away with a complete audit trail at any time.</p>
+      </div>
+      <div class="card">
+        <div class="label">Self-host</div>
+        <h3 style="margin: 6px 0 8px;">Single Node binary, no dependencies.</h3>
+        <p>Clone the repo, run <code>node server.js</code>. The runtime is one process,
+        the verifier is open MIT-licensed, the spec is RS-1. Vendor neutrality is built in &mdash;
+        we provide a reference implementation, not a moat.</p>
+      </div>
+    </div>
+
+    <section class="bottom-cta" style="margin-top: 40px;">
+      <h2>Five minutes from here to first signed receipt.</h2>
+      <p>The wrap is a no-op until your first call. Try it on a side project. See your bill drop. See your latency drop. See the receipts arrive.</p>
+      <div class="actions" style="margin-top: 14px;">
+        <a class="btn accent lg" href="/docs#install">Install &rarr;</a>
+        <a class="btn ghost lg" href="/verified">Verified Inference math</a>
+        <a class="btn ghost lg" href="/economics">What free compute makes possible</a>
+      </div>
+    </section>
+
+  </main>
+</div>
+</body>
+</html>

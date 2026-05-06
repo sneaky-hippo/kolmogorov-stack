@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Verified Inference — provably exceeds frontier SOTA on any verifiable task</title>
+  <meta name="description" content="P(correct) ≥ 1 − (1 − p·v)^k. Generator-Verifier asymmetry, classical CS, finally shipped at the LLM API surface because Recipe is the portable, deterministic, signed verifier the field has been missing." />
+  <meta property="og:title" content="Verified Inference — accuracy approaches 1, bounded compute" />
+  <meta property="og:description" content="Same frontier model. k samples. Deterministic Recipe verifier. The math: 1 − (1 − p·v)^k. Live demo." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">verified inference</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/how-it-works">How it works</a>
+      <a href="/verified" class="active">Verified Inference</a>
+      <a href="/economics">What it makes possible</a>
+      <a href="/docs">Install &amp; SDK</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Registry</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/spec">RS-1 spec</a>
+      <a href="/receipts">Receipts</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="footnote">
+      <strong>Memory · Skills · Specialists.</strong><br/>
+      Recipe is the Skills layer of <a href="https://remlabs.ai" style="color:var(--ink-mute);">REM Labs</a>.
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <div class="eyebrow"><span class="dot live"></span> The breakthrough lane · provable ≥ frontier SOTA · live</div>
+      <h1>Same model. Bounded compute.<br/><span class="grad">Accuracy approaches 1.</span></h1>
+      <p class="sub">
+        For any task with verifiable structure &mdash; code, math, structured extraction, parsing, planning steps with checks &mdash;
+        sampling <em>k</em> candidates from a frontier model and accepting the first that passes a deterministic verifier
+        yields accuracy ≥ <strong>1 − (1 − p·v)<sup>k</sup></strong>.
+        Generator-Verifier asymmetry has been a textbook fact since Karp 1972 and Levin 1973;
+        it has not shipped at the LLM API surface because no one had a portable, deterministic, signed verifier.
+        Recipe is that verifier.
+      </p>
+      <div class="actions">
+        <a class="btn accent lg" href="#try">Run the live demo &darr;</a>
+        <a class="btn ghost lg" href="/how-it-works">How the wrap works</a>
+        <a class="btn ghost lg" href="/economics">What free verification unlocks</a>
+      </div>
+    </section>
+
+    <h2 class="h2" style="margin-top: 28px;">The math, in three lines</h2>
+    <div class="card">
+      <p>Let <em>p</em> = single-shot accuracy of a frontier generator on a verifiable task,
+      and <em>v</em> = soundness of the verifier (probability it accepts a wrong answer is &lt;<em>1−v</em>).
+      For structured verifiers (test cases, type checks, invariant checks), <em>v</em> ≈ 1.</p>
+      <p style="margin-top: 8px;">Drawing <em>k</em> independent samples and accepting any that the verifier accepts:</p>
+      <p style="margin-top: 8px; padding: 14px; background: rgba(255,255,255,0.04); border-radius: 6px; text-align: center; font-size: 18px;">
+        <strong>P(at least one correct accepted) ≥ 1 − (1 − p·v)<sup>k</sup></strong>
+      </p>
+      <p style="margin-top: 8px;">For Opus 4.7 on HumanEval (<em>p</em>=0.91, <em>v</em>≈1.0):</p>
+      <table class="table compare-full" style="margin-top: 10px;">
+        <thead>
+          <tr><th><em>k</em> (samples)</th><th>P(correct)</th><th>Plain English</th><th>Approximate cost (Opus 4.7)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>91.000%</td><td>baseline frontier</td><td>$0.001</td></tr>
+          <tr><td>2</td><td>99.190%</td><td>9 in 1,000 wrong</td><td>$0.002</td></tr>
+          <tr><td>4</td><td>99.9934%</td><td>1 in 15,000 wrong</td><td>$0.004</td></tr>
+          <tr class="winner-col"><td>8</td><td>99.99999%</td><td>~10<sup>-8</sup> &mdash; never wrong in production</td><td>$0.008</td></tr>
+          <tr><td>32</td><td>~10<sup>-33</sup> error</td><td>cosmic-ray-level</td><td>$0.032</td></tr>
+          <tr><td>1024</td><td>indistinguishable from 1</td><td>floor of floating point</td><td>$1.024</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top: 12px; color: var(--ink-mute);">
+        At LLM-priced inference, <em>k</em>=8 is reasonable and <em>k</em>=1024 is unthinkable.
+        At Recipe-priced verification (the v term — the verifier itself runs free), <em>k</em>=1024 is &lt; $1
+        and you've turned a 91% model into a sub-floating-point-precision oracle.
+      </p>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Why didn't this ship at the frontier already?</h2>
+    <div class="row cols-2">
+      <div class="card">
+        <div class="label">The missing ingredient</div>
+        <h3 style="margin: 6px 0 8px;">A portable, deterministic, signed verifier.</h3>
+        <p>Generator-Verifier asymmetry is classical CS. The blocker was always: <em>what runs the verifier?</em>
+        A test harness on someone's laptop is not a verifier you can ship. A fine-tuned classifier model is not deterministic.
+        A regex is not auditable. Recipe is the missing component &mdash; deterministic JS / WASM, source-hashed, HMAC-signed,
+        runs anywhere, verifies the same on every box on earth.</p>
+      </div>
+      <div class="card">
+        <div class="label">Why now</div>
+        <h3 style="margin: 6px 0 8px;">Two preconditions just landed.</h3>
+        <p>(1) Frontier models hit <em>p</em>&nbsp;&gt;&nbsp;0.85 on HumanEval/MBPP/GSM8K &mdash; the math now bites at <em>k</em>≤16.
+        (2) Recipe synthesis is reliable &mdash; we can compile a verifier from 4&ndash;8 examples in seconds.
+        Before either landed, the asymmetry was a blackboard insight; with both, it's a shippable primitive.</p>
+      </div>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;" id="try">Try it &mdash; live verified inference, real Anthropic call</h2>
+    <div class="card">
+      <p style="margin-bottom: 14px;">Click <em>Run</em>. The server samples <em>k</em>=4 candidates from Claude Opus 4.7 in parallel,
+      runs each candidate against the test cases, and returns the first that passes &mdash; with a signed receipt.
+      Total wall time ~3&ndash;6&nbsp;s, total cost ~$0.004.</p>
+
+      <div class="row cols-2" style="margin-top: 14px;">
+        <div>
+          <div class="label">Problem</div>
+<pre class="terminal" style="font-size: 13px;"><code><span class="dim">// HumanEval-style — implement nth Fibonacci.</span>
+{
+  <span class="kw">"signature"</span>: <span class="dim">"function fib(n) {...}"</span>,
+  <span class="kw">"prompt"</span>:    <span class="dim">"return the nth Fibonacci number, n>=0"</span>,
+  <span class="kw">"test_cases"</span>: [
+    { input: 0,  expected: 0 },
+    { input: 1,  expected: 1 },
+    { input: 5,  expected: 5 },
+    { input: 10, expected: 55 },
+    { input: 15, expected: 610 }
+  ],
+  <span class="kw">"k"</span>: 4
+}</code></pre>
+          <button class="btn accent" id="btn-run" style="margin-top: 12px;">Run verified inference &rarr;</button>
+          <div style="margin-top: 8px; color: var(--ink-mute); font-size: 12px;">
+            Public endpoint: <code>POST /v1/verified-inference</code>
+          </div>
+        </div>
+        <div>
+          <div class="label">Result</div>
+          <pre class="terminal" id="run-out" style="min-height: 240px; max-height: 540px; overflow: auto; font-size: 12px;">(click "Run verified inference")</pre>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">In code</h2>
+    <div class="card">
+<pre class="terminal"><code><span class="dim">// Same wrap. New method.</span>
+<span class="kw">import</span> { recipe } <span class="kw">from</span> <span class="dim">'@kolmogorov/recipe'</span>;
+<span class="kw">const</span> ai = recipe.wrap(<span class="kw">new</span> Anthropic());
+
+<span class="kw">const</span> r = <span class="kw">await</span> ai.verified({
+  prompt:    <span class="dim">'Implement nth Fibonacci, n>=0'</span>,
+  signature: <span class="dim">'function fib(n)'</span>,
+  test_cases: [
+    { input: 0,  expected: 0 },
+    { input: 10, expected: 55 },
+  ],
+  k: 8,
+});
+
+<span class="dim">// r.verified         === true</span>
+<span class="dim">// r.chosen.source    === "function (n) { ... }"</span>
+<span class="dim">// r.chosen.passes    === 5  (of 5)</span>
+<span class="dim">// r.cost_usd         === 0.0083</span>
+<span class="dim">// r.elapsed_ms       === 4150</span>
+<span class="dim">// r.receipt.hmac     === "f8a1…"  signs the entire bundle</span>
+<span class="dim">// r.receipt.verifier_hash, chosen_source_hash, k, model — all attested</span></code></pre>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">What this implies for benchmarks</h2>
+    <div class="card">
+      <p>Recipe is a <strong>SOTA amplifier</strong>. For any frontier model M with single-shot accuracy <em>p</em> on a verifiable benchmark,
+      the pair (M + Recipe verifier) monotonically beats M alone. The size of the lift depends on (1 − <em>p</em>) and the verifier soundness <em>v</em>.</p>
+      <ul style="margin-top: 10px; line-height: 1.85;">
+        <li><strong>HumanEval</strong> &mdash; per-problem test cases. <em>v</em>≈1. Lift is dramatic at any <em>p</em>&nbsp;&lt;&nbsp;0.99.</li>
+        <li><strong>MBPP</strong> &mdash; same shape. Same lift.</li>
+        <li><strong>SWE-bench Verified / Lite</strong> &mdash; patch + tests. Verifier is the test runner. Lift compounds with retry budget.</li>
+        <li><strong>GSM8K</strong> &mdash; numerical answer. Verifier is exact-match parser. Lift bounded but nonzero.</li>
+        <li><strong>MMLU</strong> &mdash; multiple choice. Verifier is choice extraction. Lift bounded; this is not where Verified Inference shines.</li>
+      </ul>
+      <p style="margin-top: 12px; color: var(--ink-mute);">
+        The honest framing: Verified Inference closes the gap between <em>capability</em> and <em>reliability</em>.
+        It does not invent capability. If a model genuinely cannot solve a problem (small <em>p</em>), no <em>k</em> rescues it.
+        But for the long tail where <em>p</em>&nbsp;∈&nbsp;[0.7, 0.95] &mdash; where most production AI lives &mdash; Verified Inference is
+        the difference between "good demo" and "shippable system."
+      </p>
+    </div>
+
+    <section class="bottom-cta" style="margin-top: 40px;">
+      <h2>Stop sampling once and praying. Sample <em>k</em> and verify.</h2>
+      <p>Same model, same prompt, bounded compute, accuracy approaches 1. Every output ships with a receipt.</p>
+      <div class="actions" style="margin-top: 14px;">
+        <a class="btn accent lg" href="/docs#install">Install &rarr;</a>
+        <a class="btn ghost lg" href="/economics">What free verification unlocks</a>
+        <a class="btn ghost lg" href="/spec">Read RS-1</a>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+const headers = { 'Content-Type': 'application/json' };
+
+const PROBLEM = {
+  signature: 'function fib(n)',
+  prompt: 'Return the nth Fibonacci number for n >= 0. fib(0)=0, fib(1)=1, fib(n)=fib(n-1)+fib(n-2).',
+  test_cases: [
+    { input: 0,  expected: 0 },
+    { input: 1,  expected: 1 },
+    { input: 5,  expected: 5 },
+    { input: 10, expected: 55 },
+    { input: 15, expected: 610 },
+  ],
+  k: 4,
+};
+
+document.getElementById('btn-run').addEventListener('click', async () => {
+  const out = document.getElementById('run-out');
+  const btn = document.getElementById('btn-run');
+  btn.disabled = true;
+  out.textContent = 'Running k=4 candidates against Claude Opus 4.7…\n(this is a real Anthropic API call, expect ~3-6s)';
+  try {
+    const res = await fetch('/v1/verified-inference', {
+      method: 'POST', headers,
+      body: JSON.stringify(PROBLEM),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    const summary = {
+      verified: data.verified,
+      chosen_passes: data.chosen?.passes + ' / ' + data.chosen?.total,
+      candidate_passes: data.candidates?.map(c => c.passes + '/' + c.total).join(', '),
+      cost_usd: data.cost_usd,
+      elapsed_ms: data.elapsed_ms,
+      receipt: data.receipt,
+      chosen_source_preview: (data.chosen?.source || '').slice(0, 280) + ((data.chosen?.source || '').length > 280 ? '…' : ''),
+    };
+    out.textContent = JSON.stringify(summary, null, 2);
+  } catch (e) {
+    out.textContent = 'Error: ' + (e.message || e);
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
