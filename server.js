@@ -30,7 +30,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 app.use('/', buildRouter());
 
 // SPA fallback for HTML routes — every public page maps to a static file under /public.
-for (const route of ['/dashboard', '/playground', '/docs', '/registry', '/signup', '/why', '/pricing', '/status', '/specialists', '/onboarding', '/account', '/optimize', '/audit', '/spec', '/receipts', '/how-it-works', '/verified', '/economics']) {
+for (const route of ['/dashboard', '/playground', '/docs', '/registry', '/signup', '/why', '/pricing', '/status', '/specialists', '/onboarding', '/account', '/optimize', '/audit', '/spec', '/receipts', '/how-it-works', '/verified', '/economics', '/device']) {
   app.get(route, (_req, res) => res.sendFile(path.join(__dirname, 'public', route.slice(1) + '.html')));
 }
 

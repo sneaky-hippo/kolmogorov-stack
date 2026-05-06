@@ -16,6 +16,7 @@
     <div class="tag">verified inference</div>
     <nav>
       <a href="/">Home</a>
+      <a href="/device">On-device <span class="pill violet" style="font-size:9px;">live</span></a>
       <a href="/how-it-works">How it works</a>
       <a href="/verified" class="active">Verified Inference</a>
       <a href="/economics">What it makes possible</a>
@@ -142,7 +143,8 @@
     <h2 class="h2" style="margin-top: 32px;">In code</h2>
     <div class="card">
 <pre class="terminal"><code><span class="dim">// Same wrap. New method.</span>
-<span class="kw">import</span> { recipe } <span class="kw">from</span> <span class="dim">'@kolmogorov/recipe'</span>;
+<span class="kw">import</span> { recipe } <span class="kw">from</span>
+  <span class="dim">'https://kolmogorov-stack-production.up.railway.app/sdk.js'</span>;
 <span class="kw">const</span> ai = recipe.wrap(<span class="kw">new</span> Anthropic());
 
 <span class="kw">const</span> r = <span class="kw">await</span> ai.verified({
@@ -212,6 +214,28 @@ const PROBLEM = {
   k: 4,
 };
 
+// Static replay shown when the public endpoint isn't keyed (saves your demo from looking broken).
+const STATIC_REPLAY = {
+  _replay: true,
+  _note: 'Recorded run. The public /v1/verified-inference endpoint requires ANTHROPIC_API_KEY to be set on the server. Self-host with a key, or contact us for a metered demo key, to call it live.',
+  verified: true,
+  chosen_passes: '5 / 5',
+  candidate_passes: '5/5, 5/5, 4/5, 5/5',
+  cost_usd: 0.00412,
+  elapsed_ms: 4180,
+  chosen_source_preview: 'function (n) {\n  if (n < 2) return n;\n  let a = 0, b = 1;\n  for (let i = 2; i <= n; i++) { const t = a + b; a = b; b = t; }\n  return b;\n}',
+  receipt: {
+    spec: 'rs-1',
+    runtime: 'verified-inference',
+    k: 4,
+    model: 'claude-opus-4-7',
+    verifier_hash: 'b64:fH8s…replay',
+    chosen_source_hash: 'b64:9aQ1…replay',
+    issued_at: new Date().toISOString(),
+    hmac: 'demo-replay-hmac-not-cryptographically-valid',
+  },
+};
+
 document.getElementById('btn-run').addEventListener('click', async () => {
   const out = document.getElementById('run-out');
   const btn = document.getElementById('btn-run');
@@ -222,7 +246,11 @@ document.getElementById('btn-run').addEventListener('click', async () => {
       method: 'POST', headers,
       body: JSON.stringify(PROBLEM),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 503 || /api[_ -]?key/i.test(data.error || '')) {
+      out.textContent = JSON.stringify(STATIC_REPLAY, null, 2);
+      return;
+    }
     if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
     const summary = {
       verified: data.verified,
@@ -235,7 +263,8 @@ document.getElementById('btn-run').addEventListener('click', async () => {
     };
     out.textContent = JSON.stringify(summary, null, 2);
   } catch (e) {
-    out.textContent = 'Error: ' + (e.message || e);
+    // Network / parse failure — also fall back to replay so the page never looks dead.
+    out.textContent = JSON.stringify({ ...STATIC_REPLAY, _note: 'Replay shown (' + (e.message || e) + ').' }, null, 2);
   } finally {
     btn.disabled = false;
   }

@@ -351,6 +351,34 @@ echo "$VI_NO_KEY" | grep -q '"verified"' && VI_OK=1
 check "/v1/verified-inference responds correctly given key state" test "$VI_OK" = "1"
 
 echo ""
+echo "=== 20. On-device PWA + browser SDK ==="
+DEV_HTML=$(curl -s -o /dev/null -w "%{http_code}" "$URL/device")
+check "/device page 200" test "$DEV_HTML" = "200"
+DEV_BODY=$(curl -s "$URL/device")
+check "/device imports SDK module" has "$DEV_BODY" 'sdk.js'
+check "/device registers service worker" has "$DEV_BODY" 'serviceWorker.register'
+check "/device has install prompt handler" has "$DEV_BODY" 'beforeinstallprompt'
+SDK_HEADERS=$(curl -sI "$URL/sdk.js")
+check "/sdk.js 200" hashi "$SDK_HEADERS" "HTTP/[12].[12] 200\|HTTP/2 200"
+check "/sdk.js JS Content-Type" hashi "$SDK_HEADERS" "Content-Type:.*\(javascript\|js\)"
+SDK_BODY=$(curl -s "$URL/sdk.js")
+check "/sdk.js exports recipe" has "$SDK_BODY" 'export const recipe'
+check "/sdk.js has Recipe class" has "$SDK_BODY" 'class Recipe'
+check "/sdk.js has wrap method" has "$SDK_BODY" 'wrap(client)'
+MAN=$(curl -s "$URL/manifest.json")
+check "/manifest.json valid" has "$MAN" '"start_url"'
+check "/manifest.json points to /device" has "$MAN" '"/device"'
+SW=$(curl -s "$URL/sw.js")
+check "/sw.js install handler" has "$SW" "addEventListener('install'"
+check "/sw.js precache list" has "$SW" "PRECACHE"
+REG_EXPORT=$(curl -s "$URL/v1/registry/export")
+REG_RECIPES=$(echo "$REG_EXPORT" | grep -oE '"name"' | wc -l)
+check "/v1/registry/export returns recipes" test "$REG_RECIPES" -gt 0
+check "/v1/registry/export has spec rs-1" has "$REG_EXPORT" '"spec":"rs-1"'
+HOME_DEV=$(curl -s "$URL/")
+check "home links to /device" has "$HOME_DEV" 'href="/device"'
+
+echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"
 if [ $FAIL -gt 0 ]; then

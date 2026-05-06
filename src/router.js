@@ -270,6 +270,49 @@ export function buildRouter() {
     });
   });
 
+  // Public registry export — the registry IS the model, downloaded not called.
+  // A device with this bundle can run every public recipe locally, offline,
+  // forever, for free. Returns a portable JSON envelope of all public recipes
+  // with their executable source. This is the on-device runtime payload.
+  r.get('/v1/registry/export', (_req, res) => {
+    const concepts = all('concepts').filter(c => c.visibility === 'public');
+    const versions = all('versions');
+    const recipes = [];
+    for (const c of concepts) {
+      const vs = versions.filter(v => v.concept_id === c.id).sort((a, b) =>
+        new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      if (!vs.length) continue;
+      const v = vs[0];
+      if (!v.source) continue;
+      recipes.push({
+        id: c.id,
+        name: c.name,
+        description: c.description || c.name,
+        tags: c.tags || [],
+        schema: c.schema || null,
+        source: v.source,
+        source_hash: v.evaluation?.source_hash || null,
+        version_id: v.id,
+        pass_rate_positive: v.evaluation?.pass_rate_positive ?? null,
+        latency_p50_us: v.evaluation?.latency_p50_us ?? null,
+        size_bytes: v.evaluation?.size_bytes ?? (v.source ? v.source.length : null),
+      });
+    }
+    const exported_at = new Date().toISOString();
+    const registry_hash = sha256(canonicalJson({ recipes, exported_at: '' })).slice(0, 16);
+    const total_bytes = recipes.reduce((s, r) => s + (r.size_bytes || 0), 0);
+    res.set('Cache-Control', 'public, max-age=120');
+    res.json({
+      spec: RECEIPT_VERSION,
+      exported_at,
+      runtime_version: LIBRARY_VERSION,
+      registry_hash,
+      recipes_n: recipes.length,
+      total_bytes,
+      recipes,
+    });
+  });
+
   // Public verified-inference endpoint — Generator-Verifier asymmetry made shippable.
   // Sample k candidates from a frontier model, run each through a deterministic
   // Recipe verifier (test cases), pick the first that passes. Returns a receipt.

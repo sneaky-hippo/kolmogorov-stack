@@ -16,6 +16,7 @@
     <div class="tag">v0.4 · infra</div>
     <nav>
       <a href="/" class="active">Home</a>
+      <a href="/device">On-device <span class="pill violet" style="font-size:9px;">live</span></a>
       <a href="/how-it-works">How it works</a>
       <a href="/verified">Verified Inference</a>
       <a href="/economics">What it makes possible</a>
@@ -54,18 +55,18 @@
       </p>
 
       <div class="actions">
-        <a class="btn accent lg" href="/docs#install">Install (one line) &rarr;</a>
+        <a class="btn accent lg" href="/device">Try it live on this device &rarr;</a>
         <a class="btn ghost lg" href="/verified">Verified Inference</a>
         <a class="btn ghost lg" href="/economics">What free compute unlocks</a>
         <a class="btn ghost lg" href="/how-it-works">How it works</a>
       </div>
 
       <div class="hero-meta">
-        <span><strong>npm i @kolmogorov/recipe</strong></span>
+        <span><strong>import { recipe } from '/sdk.js'</strong></span>
+        <span>&middot;</span>
+        <span>Runs on your device, offline</span>
         <span>&middot;</span>
         <span>Drop-in for OpenAI &amp; Anthropic</span>
-        <span>&middot;</span>
-        <span>Self-host or hosted</span>
         <span>&middot;</span>
         <span>RS-1 MIT spec</span>
       </div>
@@ -155,15 +156,20 @@
 <span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="dim">'@anthropic-ai/sdk'</span>;
 <span class="kw">const</span> ai = <span class="kw">new</span> Anthropic();
 
-<span class="dim">// After — one line.</span>
-<span class="kw">import</span> { recipe } <span class="kw">from</span> <span class="dim">'@kolmogorov/recipe'</span>;
+<span class="dim">// After — import direct from us. No npm install.</span>
+<span class="kw">import</span> { recipe } <span class="kw">from</span>
+  <span class="dim">'https://kolmogorov-stack-production.up.railway.app/sdk.js'</span>;
 <span class="kw">const</span> ai = recipe.wrap(<span class="kw">new</span> Anthropic());
 
 <span class="dim">// Use it normally. We auto-route every call.</span>
 <span class="kw">const</span> r = <span class="kw">await</span> ai.messages.create({
   model: <span class="dim">'claude-opus-4-7'</span>,
   messages: [{ role: <span class="dim">'user'</span>, content: <span class="dim">'Is this spam? "FREE $$$"'</span> }]
-});</code></pre>
+});
+
+<span class="dim">// Or call recipes directly — runs on this device, $0.</span>
+<span class="kw">await</span> recipe.load();
+<span class="kw">const</span> { output } = <span class="kw">await</span> recipe.run(<span class="dim">'is-spam'</span>, <span class="dim">'FREE $$$'</span>);</code></pre>
         </div>
       </div>
     </section>

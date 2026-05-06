@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Recipe — on-device. The registry is the model.</title>
+  <meta name="description" content="The full Recipe registry, running on your device. Type anything; every recipe classifies it locally, in microseconds, offline, free. Add to home screen for an offline AI app." />
+  <meta property="og:title" content="Recipe — running on this device, right now" />
+  <meta property="og:description" content="Frontier-grade structured behavior, decomposed into recipes, deployed to any device with 1 MB of storage. No GPU. No network. No bill." />
+  <meta name="theme-color" content="#0a0b0e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">on-device · live</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/device" class="active">On-device</a>
+      <a href="/how-it-works">How it works</a>
+      <a href="/verified">Verified Inference</a>
+      <a href="/economics">What it makes possible</a>
+      <a href="/docs">Install &amp; SDK</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Registry</a>
+      <a href="/spec">RS-1 spec</a>
+      <a href="/receipts">Receipts</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="footnote">
+      <strong>Memory · Skills · Specialists.</strong><br/>
+      Recipe is the Skills layer of <a href="https://remlabs.ai" style="color:var(--ink-mute);">REM Labs</a>.
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <div class="eyebrow"><span class="dot live"></span> running on <strong style="color:var(--ink);">this device</strong> · 0&nbsp;ms network · offline-capable</div>
+      <h1>The registry <span class="grad">is the model</span>.</h1>
+      <p class="sub">
+        You just downloaded the entire public Recipe registry to your phone.
+        Every recipe below runs locally, in microseconds, with no network call,
+        no GPU, no API bill.
+        Type anything &mdash; you'll watch frontier-decomposed structured behavior
+        execute on your device in real time.
+        Add to home screen and it works on a plane.
+      </p>
+    </section>
+
+    <!-- STATUS -->
+    <div class="dev-status" id="status">
+      <span><span class="lbl">Registry</span><span class="v" id="s-recipes">loading…</span></span>
+      <span><span class="lbl">Bundle size</span><span class="v" id="s-size">—</span></span>
+      <span><span class="lbl">Hash</span><span class="v mono" id="s-hash" style="font-size:11px;">—</span></span>
+      <span><span class="lbl">Offline-ready</span><span class="v" id="s-offline">checking…</span></span>
+      <span><span class="lbl">Network calls</span><span class="v ok" id="s-network">0</span></span>
+      <span><span class="lbl">Local runs</span><span class="v ok" id="s-runs">0</span></span>
+      <span><span class="lbl">$ saved (est.)</span><span class="v ok" id="s-saved">$0.000</span></span>
+    </div>
+
+    <!-- INPUT -->
+    <div class="card" style="margin-bottom: 14px;">
+      <div class="label">Type anything &mdash; every recipe in the registry runs as you type.</div>
+      <textarea id="dev-input" class="dev-input" placeholder="e.g. FREE $$$ click here unsubscribe&#10;or: Hi, is the meeting still at 3pm?&#10;or paste anything &mdash; an email, a message, a sentence."></textarea>
+      <div class="demo-row">
+        <button class="btn ghost" data-demo="FREE $$$ click here to unsubscribe NOW">Spam-y text</button>
+        <button class="btn ghost" data-demo="Hi! Are we still meeting tomorrow at 3pm to talk about the $400 invoice?">Calendar + money</button>
+        <button class="btn ghost" data-demo="¿Cómo estás? Espero que todo vaya bien con tu nuevo proyecto.">Spanish</button>
+        <button class="btn ghost" data-demo="My email is jane.doe@company.com and my phone is 415-555-0188.">PII (email + phone)</button>
+        <button class="btn ghost" data-demo="URGENT — server is down, please respond ASAP!!!">Urgent</button>
+        <button class="btn ghost" data-demo="Thanks so much for the help yesterday, really appreciated it.">Gratitude</button>
+        <button class="btn ghost" data-demo="">Clear</button>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="dev-results" id="dev-results">
+      <div class="dev-result" style="grid-template-columns:1fr;color:var(--ink-mute);">
+        Hydrating registry from <code>/v1/registry/export</code> &mdash; this happens once.
+      </div>
+    </div>
+
+    <!-- HOW THIS WORKS -->
+    <h2 class="h2" style="margin-top: 32px;">What just happened</h2>
+    <div class="row cols-3">
+      <div class="card">
+        <div class="label">Step 1 &middot; one fetch</div>
+        <h3 style="margin: 6px 0 8px;">Registry hydrated, then cached.</h3>
+        <p>Your browser fetched <code>/v1/registry/export</code> &mdash; a JSON envelope with every public recipe's source, hash, and metadata.
+        It's stored in <code>localStorage</code>. The next visit hits no network at all.</p>
+      </div>
+      <div class="card">
+        <div class="label">Step 2 &middot; compile in-process</div>
+        <h3 style="margin: 6px 0 8px;">Each source is turned into a function.</h3>
+        <p>For every recipe, the SDK does <code>new&nbsp;Function('return&nbsp;(' + source + ');')()</code>.
+        That gives you a real JS function, in your tab's process, deterministic, microsecond-fast.</p>
+      </div>
+      <div class="card">
+        <div class="label">Step 3 &middot; run them all</div>
+        <h3 style="margin: 6px 0 8px;">Every keystroke fires every recipe.</h3>
+        <p>As you type, all recipes run in parallel against your input.
+        The "fired" highlight means a positive classification &mdash; spam detected, urgency detected, language identified.
+        Latency is real, measured per call.</p>
+      </div>
+    </div>
+
+    <!-- THE THESIS, IN-CONTEXT -->
+    <section class="card glow" style="margin-top: 28px;">
+      <div class="row cols-2">
+        <div>
+          <div class="label">The thesis, demonstrated above</div>
+          <h3 style="margin: 6px 0 10px;">A trillion-parameter model is doing this for free in production today.</h3>
+          <p>Spam classification, language detection, intent recognition, PII extraction &mdash;
+          right now, every team building on LLMs pays $0.001/call to a frontier model for these.
+          Per call. Times every request. Times every product.</p>
+          <p style="margin-top: 10px;">
+            What you just watched on your phone &mdash; the entire registry running locally, in microseconds, with zero network &mdash;
+            is the same behavior, decomposed. <strong>The registry is the model.</strong>
+            Every recipe is a piece of frontier behavior that no longer needs a frontier model to execute.
+          </p>
+        </div>
+        <div>
+<pre class="terminal"><code><span class="dim">// What you just imported (or could):</span>
+<span class="kw">import</span> { recipe } <span class="kw">from</span>
+  <span class="dim">'https://kolmogorov-stack-production.up.railway.app/sdk.js'</span>;
+
+<span class="kw">await</span> recipe.load();
+<span class="kw">const</span> r = <span class="kw">await</span> recipe.run(<span class="dim">'is-spam'</span>, text);
+
+<span class="dim">// r.output         === true / false</span>
+<span class="dim">// r.latency_us     === 35</span>
+<span class="dim">// r.receipt        === { source_hash, input_hash, ... }</span>
+
+<span class="dim">// Same import in Deno, Bun, Cloudflare Workers,</span>
+<span class="dim">// any modern browser. No build step. No npm install.</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- INSTALL ON PHONE -->
+    <h2 class="h2" style="margin-top: 32px;" id="install">Install this as a phone app</h2>
+    <div class="card">
+      <p>This page is a Progressive Web App with a service worker and manifest.
+      Add it to your home screen and it becomes a real app icon &mdash; works completely offline.</p>
+      <ul style="line-height: 1.85; margin: 12px 0 0 18px;">
+        <li><strong>iPhone (Safari):</strong> tap the share icon &rarr; <em>Add to Home Screen</em></li>
+        <li><strong>Android (Chrome):</strong> tap the menu &rarr; <em>Install app</em> (or use the prompt that may appear)</li>
+        <li><strong>Desktop (Chrome / Edge):</strong> tap the install icon at the right of the address bar</li>
+      </ul>
+      <p style="margin-top: 12px; color: var(--ink-mute);">
+        After install, opening the app uses no network. The registry is on your device.
+        New recipes published to the registry sync silently in the background.
+      </p>
+    </div>
+
+    <section class="bottom-cta" style="margin-top: 36px;">
+      <h2>The biggest models on earth, on the smallest devices that can run a function.</h2>
+      <p>Cost reduction is the proof. The product is that the registry runs anywhere a function runs.</p>
+      <div class="actions" style="margin-top: 14px;">
+        <a class="btn accent lg" href="/economics">The math</a>
+        <a class="btn ghost lg" href="/how-it-works">How the wrap works</a>
+        <a class="btn ghost lg" href="/verified">Verified Inference</a>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script type="module">
+import { recipe } from '/sdk.js';
+
+const $ = (id) => document.getElementById(id);
+const inputEl = $('dev-input');
+const resultsEl = $('dev-results');
+const sRecipes = $('s-recipes');
+const sSize = $('s-size');
+const sHash = $('s-hash');
+const sOffline = $('s-offline');
+const sNetwork = $('s-network');
+const sRuns = $('s-runs');
+const sSaved = $('s-saved');
+
+// Per-call cost model: rough Opus 4.7 baseline for a single structured call.
+const COST_PER_CLOUD_CALL_USD = 0.001;
+
+let registry = null;
+let totalRuns = 0;
+let lastRunSig = '';
+
+function fmt(out) {
+  if (out === undefined) return 'undefined';
+  if (out === null) return 'null';
+  if (typeof out === 'boolean') return out ? 'true' : 'false';
+  if (typeof out === 'string') return out.length > 80 ? out.slice(0, 80) + '…' : out;
+  if (typeof out === 'number') return String(out);
+  try { const s = JSON.stringify(out); return s.length > 200 ? s.slice(0, 200) + '…' : s; }
+  catch { return String(out); }
+}
+
+function fired(out) {
+  if (out === null || out === undefined || out === false) return false;
+  if (typeof out === 'string' && (out === '' || out === 'no' || out === 'none')) return false;
+  if (Array.isArray(out)) return out.length > 0;
+  if (typeof out === 'object') return Object.keys(out).length > 0;
+  return !!out;
+}
+
+function renderEmpty(meta) {
+  resultsEl.innerHTML = '';
+  for (const r of meta) {
+    const el = document.createElement('div');
+    el.className = 'dev-result';
+    el.dataset.name = r.name;
+    el.innerHTML = `
+      <div>
+        <div class="name">${r.name}</div>
+        <div class="desc">${r.description || ''}</div>
+        <div class="out" style="margin-top:6px;color:var(--ink-faint);">(type to run)</div>
+      </div>
+      <div class="lat">—</div>
+    `;
+    resultsEl.appendChild(el);
+  }
+}
+
+async function runAll(text) {
+  const sig = text;
+  if (sig === lastRunSig) return;
+  lastRunSig = sig;
+  if (!text.trim()) {
+    for (const el of resultsEl.children) {
+      el.classList.remove('fired', 'errored');
+      const out = el.querySelector('.out');
+      const lat = el.querySelector('.lat');
+      if (out) { out.textContent = '(type to run)'; out.style.color = 'var(--ink-faint)'; }
+      if (lat) lat.textContent = '—';
+    }
+    return;
+  }
+  const t0 = performance.now();
+  for (const el of resultsEl.children) {
+    const name = el.dataset.name;
+    if (!name) continue;
+    let res;
+    try { res = await recipe.run(name, text); }
+    catch (e) { res = { error: String(e.message || e), latency_us: 0 }; }
+    totalRuns++;
+    const out = el.querySelector('.out');
+    const lat = el.querySelector('.lat');
+    if (res.error) {
+      el.classList.add('errored');
+      el.classList.remove('fired');
+      out.textContent = 'error: ' + res.error;
+      out.style.color = 'var(--bad)';
+      lat.textContent = 'err';
+    } else {
+      el.classList.remove('errored');
+      const did = fired(res.output);
+      el.classList.toggle('fired', did);
+      out.textContent = fmt(res.output);
+      out.style.color = did ? 'var(--ink)' : 'var(--ink-mute)';
+      lat.textContent = (res.latency_us || 0) + ' µs';
+    }
+  }
+  resultsEl.querySelectorAll('.dev-result.fired').forEach((el, i) => {
+    if (i === 0) resultsEl.prepend(el);
+  });
+  const wall = Math.round(performance.now() - t0);
+  sRuns.textContent = totalRuns.toLocaleString();
+  sSaved.textContent = '$' + (totalRuns * COST_PER_CLOUD_CALL_USD).toFixed(3);
+  // Network calls only count: registry hydration + service worker registration. Keep at 1 once loaded.
+}
+
+function debounce(fn, ms) {
+  let t; return function (...args) { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+const debouncedRun = debounce(() => runAll(inputEl.value), 120);
+inputEl.addEventListener('input', debouncedRun);
+
+document.querySelectorAll('[data-demo]').forEach((b) => {
+  b.addEventListener('click', () => { inputEl.value = b.dataset.demo; runAll(inputEl.value); inputEl.focus(); });
+});
+
+// Hydrate registry, then render result rows.
+(async () => {
+  try {
+    const env = await recipe.load();
+    registry = env;
+    sRecipes.textContent = recipe.list().length + ' recipes';
+    sSize.textContent = (env.total_bytes ? Math.round(env.total_bytes / 102.4) / 10 : Math.round(JSON.stringify(env).length / 102.4) / 10) + ' KB';
+    sHash.textContent = env.registry_hash || '—';
+    sNetwork.textContent = '1 (registry)';
+    renderEmpty(recipe.list());
+  } catch (e) {
+    document.getElementById('status').classList.add('bad');
+    sRecipes.textContent = 'failed';
+    sSize.textContent = '—';
+    sHash.textContent = String(e.message || e);
+    resultsEl.innerHTML = '<div class="dev-result errored" style="grid-template-columns:1fr;">Could not hydrate registry: ' + String(e.message || e) + '</div>';
+  }
+})();
+
+// Register service worker so the page works offline and installs as a PWA.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(
+    () => { sOffline.textContent = 'yes'; sOffline.classList.add('ok'); },
+    (err) => { sOffline.textContent = 'sw failed'; }
+  );
+} else {
+  sOffline.textContent = 'no SW';
+}
+
+// Listen for the PWA install prompt and surface a chip if available.
+let installPromptEvt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installPromptEvt = e;
+  const btn = document.createElement('button');
+  btn.className = 'btn accent';
+  btn.style.marginLeft = '8px';
+  btn.textContent = 'Install as app';
+  btn.onclick = async () => {
+    btn.disabled = true;
+    installPromptEvt.prompt();
+    const choice = await installPromptEvt.userChoice;
+    if (choice.outcome === 'accepted') btn.textContent = 'Installed ✓';
+    else { btn.disabled = false; btn.textContent = 'Install as app'; }
+  };
+  document.getElementById('status').appendChild(btn);
+});
+</script>
+</body>
+</html>
