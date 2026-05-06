@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Welcome — Recipe</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">WELCOME</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="footnote">
+      First time? You're in the right place.<br/><br/>
+      Skip to <a href="/playground">/playground</a> if you'd rather poke around on your own.
+    </div>
+  </aside>
+  <main class="main">
+    <h2>Welcome.</h2>
+    <p class="lead">Five steps. Two minutes. End state: a Recipe running in your terminal that you'll never have to call an LLM for again.</p>
+
+    <div class="card" style="margin-bottom:18px;">
+      <div class="label">Progress</div>
+      <div class="onboard-progress">
+        <div id="ob-bar" class="onboard-bar" style="width:0%"></div>
+      </div>
+      <div class="delta" id="ob-pct">0 of 5 done</div>
+    </div>
+
+    <ol class="onboard">
+      <li class="onboard-step" data-step="1">
+        <div class="onboard-step-h">
+          <span class="onboard-num">1</span>
+          <strong>Save your API key</strong>
+          <button class="btn-ghost onboard-skip" data-step="1">mark done</button>
+        </div>
+        <div class="onboard-body">
+          <p class="muted">If you signed up via /signup, your key is already in browser storage. Otherwise paste it here.</p>
+          <div class="toolbar">
+            <input type="text" id="ob-key" class="grow mono" placeholder="ks_..." />
+            <button class="btn primary" id="ob-save-key">Save key</button>
+          </div>
+          <p class="delta" id="ob-key-status"></p>
+        </div>
+      </li>
+
+      <li class="onboard-step" data-step="2">
+        <div class="onboard-step-h">
+          <span class="onboard-num">2</span>
+          <strong>Run a curated Recipe</strong>
+          <button class="btn-ghost onboard-skip" data-step="2">mark done</button>
+        </div>
+        <div class="onboard-body">
+          <p class="muted">No synthesis yet — just hit a public Recipe to feel the latency.</p>
+          <div class="toolbar">
+            <select id="ob-public-pick" class="grow mono">
+              <option value="is-spam">is-spam (boolean)</option>
+              <option value="classify-issue-type">classify-issue-type (enum)</option>
+              <option value="classify-language">classify-language (enum)</option>
+              <option value="extract-emails">extract-emails (array)</option>
+              <option value="is-question">is-question (boolean)</option>
+            </select>
+            <input type="text" id="ob-public-input" class="grow" placeholder="WIN free Bitcoin" value="WIN free Bitcoin" />
+            <button class="btn primary" id="ob-run-public">Run it</button>
+          </div>
+          <pre id="ob-public-out" style="margin-top:10px;display:none;"></pre>
+        </div>
+      </li>
+
+      <li class="onboard-step" data-step="3">
+        <div class="onboard-step-h">
+          <span class="onboard-num">3</span>
+          <strong>Synthesize your first Recipe</strong>
+          <button class="btn-ghost onboard-skip" data-step="3">mark done</button>
+        </div>
+        <div class="onboard-body">
+          <p class="muted">Paste 4 examples. Click. We'll mint a deterministic JS function in seconds.</p>
+          <textarea id="ob-examples" class="mono" rows="8" style="width:100%;">[
+  { "input": "I love this product",     "expected": "positive" },
+  { "input": "This is fantastic",       "expected": "positive" },
+  { "input": "absolute garbage",        "expected": "negative" },
+  { "input": "broke after one day",     "expected": "negative" }
+]</textarea>
+          <div class="toolbar" style="margin-top:8px;">
+            <input type="text" id="ob-name" class="grow mono" placeholder="recipe name (kebab-case)" value="my-sentiment" />
+            <button class="btn primary" id="ob-synthesize">Synthesize</button>
+          </div>
+          <pre id="ob-synth-out" style="margin-top:10px;display:none;"></pre>
+        </div>
+      </li>
+
+      <li class="onboard-step" data-step="4">
+        <div class="onboard-step-h">
+          <span class="onboard-num">4</span>
+          <strong>Use it from your code</strong>
+          <button class="btn-ghost onboard-skip" data-step="4">mark done</button>
+        </div>
+        <div class="onboard-body">
+          <p class="muted">Pick your stack. The key is already substituted in.</p>
+          <div class="onboard-tabs">
+            <button class="tab active" data-tab="curl">curl</button>
+            <button class="tab" data-tab="js">JS / TS</button>
+            <button class="tab" data-tab="py">Python</button>
+            <button class="tab" data-tab="mcp">Claude Code (MCP)</button>
+          </div>
+          <pre id="ob-snippet"></pre>
+        </div>
+      </li>
+
+      <li class="onboard-step" data-step="5">
+        <div class="onboard-step-h">
+          <span class="onboard-num">5</span>
+          <strong>You're done.</strong>
+          <button class="btn-ghost onboard-skip" data-step="5">mark done</button>
+        </div>
+        <div class="onboard-body">
+          <p class="muted">Two things people do next:</p>
+          <ul>
+            <li><a href="/registry">Browse the registry</a> — there's probably already a Recipe for what you need.</li>
+            <li><a href="/why#savings">Calculate your savings</a> — how much you'll cut from your AI bill.</li>
+            <li><a href="/specialists">Reserve a Specialist</a> — turn a Recipe into a fine-tuned local model (Day 60-120).</li>
+          </ul>
+        </div>
+      </li>
+    </ol>
+  </main>
+</div>
+
+<footer class="bridge">
+  <span>Memory · Skills · Specialists.</span>
+  <span>Recipes is the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+</footer>
+
+<script src="/app.js"></script>
+<script>
+(function () {
+  const STEP_KEY = 'recipe.onboard.steps';
+  function loadDone() { try { return JSON.parse(localStorage.getItem(STEP_KEY) || '[]'); } catch { return []; } }
+  function saveDone(arr) { localStorage.setItem(STEP_KEY, JSON.stringify(arr)); }
+  function markDone(step) {
+    const done = loadDone();
+    if (!done.includes(step)) { done.push(step); saveDone(done); }
+    paint();
+  }
+  function paint() {
+    const done = loadDone();
+    document.querySelectorAll('.onboard-step').forEach(li => {
+      const s = Number(li.dataset.step);
+      li.classList.toggle('done', done.includes(s));
+    });
+    const pct = Math.round((done.length / 5) * 100);
+    document.getElementById('ob-bar').style.width = pct + '%';
+    document.getElementById('ob-pct').textContent = `${done.length} of 5 done`;
+  }
+
+  document.querySelectorAll('.onboard-skip').forEach(b => {
+    b.addEventListener('click', () => markDone(Number(b.dataset.step)));
+  });
+
+  // --- Step 1: API key ---
+  const keyInput = document.getElementById('ob-key');
+  const keyStatus = document.getElementById('ob-key-status');
+  function existingKey() { return localStorage.getItem('apiKey') || localStorage.getItem('recipeApiKey') || ''; }
+  if (existingKey()) {
+    keyInput.value = existingKey().replace(/^(ks_)([\s\S]{4})[\s\S]+/, '$1$2…');
+    keyStatus.textContent = 'Key already saved in browser.';
+    markDone(1);
+  }
+  document.getElementById('ob-save-key').addEventListener('click', () => {
+    const k = keyInput.value.trim();
+    if (!/^ks_/.test(k)) { keyStatus.textContent = 'Keys start with ks_'; return; }
+    localStorage.setItem('apiKey', k);
+    localStorage.setItem('recipeApiKey', k);
+    keyStatus.textContent = 'Saved.';
+    markDone(1);
+  });
+
+  // --- Step 2: public run ---
+  document.getElementById('ob-run-public').addEventListener('click', async () => {
+    const out = document.getElementById('ob-public-out');
+    out.style.display = 'block';
+    out.textContent = 'Running...';
+    const name = document.getElementById('ob-public-pick').value;
+    const input = document.getElementById('ob-public-input').value;
+    try {
+      const r = await fetch('/v1/public/run', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, input }),
+      }).then(r => r.json());
+      out.textContent = JSON.stringify(r, null, 2);
+      if (!r.error) markDone(2);
+    } catch (e) { out.textContent = 'error: ' + e.message; }
+  });
+
+  // --- Step 3: synthesize ---
+  document.getElementById('ob-synthesize').addEventListener('click', async () => {
+    const out = document.getElementById('ob-synth-out');
+    out.style.display = 'block';
+    out.textContent = 'Synthesizing...';
+    const k = existingKey();
+    if (!k) { out.textContent = 'Save your key in step 1 first.'; return; }
+    let positives;
+    try { positives = JSON.parse(document.getElementById('ob-examples').value); }
+    catch (e) { out.textContent = 'Invalid JSON: ' + e.message; return; }
+    const name = document.getElementById('ob-name').value || 'my-recipe-' + Date.now();
+    try {
+      const r = await fetch('/v1/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + k },
+        body: JSON.stringify({ name, positives }),
+      }).then(r => r.json());
+      out.textContent = JSON.stringify(r, null, 2);
+      if (r.accepted) {
+        localStorage.setItem('recipe.lastConceptId', r.concept_id);
+        renderSnippet();
+        markDone(3);
+      }
+    } catch (e) { out.textContent = 'error: ' + e.message; }
+  });
+
+  // --- Step 4: snippets ---
+  function renderSnippet() {
+    const k = existingKey() || 'ks_YOUR_KEY';
+    const cid = localStorage.getItem('recipe.lastConceptId') || 'cpt_xxx';
+    const tab = document.querySelector('.onboard-tabs .tab.active')?.dataset.tab || 'curl';
+    const samples = {
+      curl: `curl -X POST ${location.origin}/v1/run \\
+  -H 'Authorization: Bearer ${k}' \\
+  -H 'Content-Type: application/json' \\
+  -d '{"concept_id":"${cid}","input":"new input"}'`,
+      js: `import RecipeClient from '@kolmogorov/recipe';
+const c = new RecipeClient({ apiKey: '${k}' });
+const out = await c.run({ recipe_id: '${cid}', input: 'new input' });
+console.log(out.output);`,
+      py: `from recipe import RecipeClient
+c = RecipeClient(api_key='${k}')
+out = c.run(recipe_id='${cid}', input='new input')
+print(out['output'])`,
+      mcp: `// .mcp.json
+{
+  "mcpServers": {
+    "recipe": {
+      "command": "recipe-mcp",
+      "env": { "RECIPE_API_KEY": "${k}" }
+    }
+  }
+}
+// then in Claude Code:
+mcp__recipe__run({ recipe: '${cid}', input: 'new input' })`,
+    };
+    document.getElementById('ob-snippet').textContent = samples[tab];
+  }
+  document.querySelectorAll('.onboard-tabs .tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.onboard-tabs .tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      renderSnippet();
+      markDone(4);
+    });
+  });
+  renderSnippet();
+
+  paint();
+})();
+</script>
+</body>
+</html>

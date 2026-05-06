@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>API &amp; SDKs — Recipe</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">API REFERENCE</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs" class="active">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="sidebar nav section-label" style="margin-top:24px;">On this page</div>
+    <div style="padding:0 10px;">
+      <a href="#five-min" class="muted" style="display:block; padding:4px 0; font-size:12px;">5-minute integration</a>
+      <a href="#auth" class="muted" style="display:block; padding:4px 0; font-size:12px;">Auth</a>
+      <a href="#show" class="muted" style="display:block; padding:4px 0; font-size:12px;">Show — synthesis</a>
+      <a href="#get" class="muted" style="display:block; padding:4px 0; font-size:12px;">Get — registry</a>
+      <a href="#run" class="muted" style="display:block; padding:4px 0; font-size:12px;">Run — runtime</a>
+      <a href="#sdks" class="muted" style="display:block; padding:4px 0; font-size:12px;">SDKs</a>
+      <a href="#errors" class="muted" style="display:block; padding:4px 0; font-size:12px;">Errors</a>
+    </div>
+  </aside>
+  <main class="main">
+    <h2>API &amp; SDKs</h2>
+    <p class="lead">21 endpoints. JSON in, JSON out. Three verbs: <strong>Show</strong> (paste examples), <strong>Get</strong> (find a recipe), <strong>Run</strong> (call it). The whole API surface fits on one screen of code &mdash; see the SDK at the bottom.</p>
+
+    <h3 id="five-min">5-minute integration</h3>
+    <pre><code># 1. install (or skip and use curl)
+npm install @kolmogorov/recipe        # Node
+pip install kolmogorov-recipe         # Python
+
+# 2. mint a free key (10k calls/month, no card)
+KS=$(curl -sX POST https://kolmogorov-stack-production.up.railway.app/v1/signup \
+  -H "Content-Type: application/json" -d '{"email":"you@company.com"}' \
+  | python -c "import sys,json;print(json.load(sys.stdin)['api_key'])")
+
+# 3. show it your examples (paste 4-8)
+curl -X POST https://kolmogorov-stack-production.up.railway.app/v1/synthesize \
+  -H "Authorization: Bearer $KS" -H "Content-Type: application/json" \
+  -d '{
+    "name": "classify-issue-type",
+    "output_spec": { "type": "enum", "values": ["bug","feature","question"] },
+    "positives": [
+      { "input": "deploy keeps crashing on startup", "expected": "bug" },
+      { "input": "would love an export to CSV",     "expected": "feature" },
+      { "input": "how do I rotate my API key?",     "expected": "question" }
+    ]
+  }'
+# &rarr; { accepted: true, concept_id: "cpt_…", quality_score: 1.0 }
+
+# 4. run it forever
+curl -X POST https://kolmogorov-stack-production.up.railway.app/v1/run \
+  -H "Authorization: Bearer $KS" -H "Content-Type: application/json" \
+  -d '{ "concept_id": "cpt_…", "input": "404 on /dashboard" }'
+# &rarr; { output: "bug", latency_us: 41, cache: null }</code></pre>
+
+    <h3 id="auth">Auth</h3>
+    <pre><code>Authorization: Bearer ks_…       # tenant key (mint via /v1/signup)
+X-API-Key: ks_…                  # alternative header
+Authorization: Bearer ks_admin_… # admin only — provisions tenants</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">POST /v1/signup <span class="pill">public</span></h4>
+    <p class="muted">Mint a tenant + key for free. 10,000 calls/month included. No card.</p>
+    <pre><code>{ "email": "you@company.com", "name": "acme" (optional) }
+&rarr; { "api_key": "ks_…", "tenant": { "id": "tenant_…", "plan": "free", "quota": 10000, "used": 0 } }</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">GET /v1/account</h4>
+    <p class="muted">Returns the calling tenant's plan, quota, used, remaining.</p>
+
+    <h4 class="mono" style="margin:18px 0 6px">POST /v1/account/rotate-key</h4>
+    <p class="muted">Rotate this tenant's key. Old key stops working immediately.</p>
+
+    <h3 id="show">Show &mdash; synthesis</h3>
+    <p class="muted">Paste examples, get back a tested recipe. <span class="faint">(legacy alias: <span class="mono">/v1/synthesize</span>; both names work.)</span></p>
+
+    <h4 class="mono" style="margin:18px 0 6px">POST /v1/synthesize</h4>
+    <p class="muted">Synthesize a recipe from positive and negative examples. Optionally publishes to your registry.</p>
+    <pre><code>{
+  "name": "classify-issue-type",
+  "tags": ["classifier","support"],
+  "visibility": "private" | "public",
+  "publish": true,
+  "output_spec": { "type": "enum", "values": ["bug","feature","question"] },
+  "positives": [ { "input": "...", "expected": ... }, ... ],
+  "negatives": [ { "input": "...", "expected_not": ... }, ... ],
+  "priors": { "hint": "free text", "max_size_bytes": 2048 }
+}
+
+&rarr; {
+  "accepted": true,
+  "concept_id": "cpt_…",
+  "version_id": "ver_…",
+  "quality_score": 0.94,
+  "pass_rate_positive": 1.0,
+  "reject_rate_negative": 1.0,
+  "latency_p50_us": 87,
+  "size_bytes": 412,
+  "source": "function generate(input, lib) { … }",
+  "source_hash": "…",
+  "strategy": "claude" | "pattern",
+  "test_trace": [ { kind, input, output, pass, latency_us } ],
+  "attempts_n": 1,
+  "duration_ms": 2114
+}</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">POST /v1/synthesize/stream</h4>
+    <p class="muted">SSE stream of synthesis events: <span class="mono">start</span>, <span class="mono">plan</span>, <span class="mono">strategy_begin</span>, <span class="mono">candidate</span>, <span class="mono">verified</span>, <span class="mono">accepted</span>, <span class="mono">published</span>, <span class="mono">done</span>.</p>
+    <pre><code>const res = await fetch('/v1/synthesize/stream', { method:'POST',
+  headers:{ Authorization:'Bearer '+key, 'Content-Type':'application/json' },
+  body: JSON.stringify({...}) });
+const reader = res.body.getReader();
+// parse "event: ...\ndata: {...}\n\n" frames</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">POST /v1/synthesize/batch</h4>
+    <p class="muted">Up to 25 recipes in one request. Sequential synthesis, single round-trip.</p>
+    <pre><code>{ "items": [ { "name": "...", "positives": [...], "output_spec": {...} }, ... ] }</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">POST /v1/verify</h4>
+    <p class="muted">Re-run a recipe's test trace without publishing.</p>
+    <pre><code>{ "source": "function generate(...){...}", "positives":[...], "negatives":[...] }</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">POST /v1/publish</h4>
+    <p class="muted">Publish a hand-edited recipe straight to the registry. Verifies in flight.</p>
+    <pre><code>{ "name": "my-recipe", "source": "function generate(input,lib){...}", "positives":[...], "negatives":[...], "tags":["..."] }</code></pre>
+
+    <h3 id="get">Get &mdash; registry</h3>
+
+    <h4 class="mono" style="margin:18px 0 6px">GET /v1/concepts<span class="faint"> ?tag=&amp;limit=</span></h4>
+    <p class="muted">List recipes owned by your tenant.</p>
+
+    <h4 class="mono" style="margin:18px 0 6px">GET /v1/concepts/:id</h4>
+    <p class="muted">Fetch a recipe and its versions.</p>
+
+    <h4 class="mono" style="margin:18px 0 6px">GET /v1/concepts/:id/stats</h4>
+    <p class="muted">Per-recipe usage: invocation count, latency p50/p95/p99, cache hit rate, error rate, last_invoked_at.</p>
+
+    <h4 class="mono" style="margin:18px 0 6px">DELETE /v1/concepts/:id</h4>
+
+    <h4 class="mono" style="margin:18px 0 6px">GET /v1/concepts/:id/lineage</h4>
+    <p class="muted">Upstream synthesizers and downstream dependents.</p>
+
+    <h4 class="mono" style="margin:18px 0 6px">POST /v1/search</h4>
+    <p class="muted">Semantic search by what the recipe does. Type "extract email addresses" &mdash; not the exact name.</p>
+    <pre><code>{ "query": "find recipes about extracting prices", "k": 10, "tag": "extractor" }
+&rarr; { "matches": [ { concept_id, name, score, version_id, ... }, ... ] }</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">GET /v1/public/concepts <span class="pill">public</span></h4>
+    <h4 class="mono" style="margin:18px 0 6px">GET /v1/public/concepts/:id <span class="pill">public</span></h4>
+    <h4 class="mono" style="margin:18px 0 6px">POST /v1/public/run <span class="pill">public</span></h4>
+    <p class="muted">Dispatch any public recipe. No auth needed. Convenient for embedded demos.</p>
+
+    <h3 id="run">Run &mdash; runtime</h3>
+
+    <h4 class="mono" style="margin:18px 0 6px">POST /v1/run</h4>
+    <p class="muted">Dispatch a single recipe (head version) or a specific version. Output is cached for identical input.</p>
+    <pre><code>{ "concept_id": "cpt_…",   "input": "any json", "use_cache": true }
+{ "version_id": "ver_…",   "input": "any json" }
+&rarr; { "output": ..., "latency_us": 87, "cache": null | "L1" | "L2", "version_id": "...", "concept": "..." }</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">POST /v1/compose</h4>
+    <p class="muted">Search top-K recipes by query, dispatch them in parallel, compose outputs with one of four strategies.</p>
+    <pre><code>{
+  "query": "classify intent",
+  "input": "where is my order",
+  "k": 5,
+  "strategy": "attention" | "voting" | "top1" | "sequential",
+  "tag": "classifier"
+}
+
+&rarr; {
+  "output": "question",
+  "dispatched": [ { name, concept_id, score, output, latency_us, cache }, ... ],
+  "strategy": "attention"
+}</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">GET /v1/telemetry</h4>
+    <p class="muted">Total invocations, average latency, p50/p95/p99, cache hit-rate, recent invocation log, sparkline.</p>
+
+    <h4 class="mono" style="margin:18px 0 6px">GET /v1/library</h4>
+    <p class="muted">The current built-in subroutine library &mdash; version + signatures.</p>
+
+    <h3 id="sdks">SDKs</h3>
+    <p class="muted">Pick your language. The TypeScript and Python clients are the supported ones; the Go and Java snippets below are minimal but production-shaped.</p>
+
+    <h4 class="mono" style="margin:18px 0 6px">Node / TypeScript</h4>
+    <pre><code>// npm install @kolmogorov/recipe
+import { Recipe } from '@kolmogorov/recipe';
+
+const r = new Recipe({ apiKey: process.env.KS_KEY });
+
+// teach once
+const recipe = await r.show('classify-issue-type', {
+  examples: [
+    { input: 'deploy keeps crashing', expected: 'bug' },
+    { input: 'love an export button',  expected: 'feature' },
+    { input: 'how do I rotate keys?',  expected: 'question' },
+  ],
+  shape: { type: 'enum', values: ['bug','feature','question'] },
+});
+
+// run forever
+console.log(await r.run(recipe.id, '404 on /dashboard'));  // 'bug'</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">Python</h4>
+    <pre><code># pip install kolmogorov-recipe
+from kolmogorov_recipe import Recipe
+
+r = Recipe(api_key=os.environ['KS_KEY'])
+
+recipe = r.show(
+  name='classify-issue-type',
+  examples=[
+    {'input': 'deploy crashes',   'expected': 'bug'},
+    {'input': 'export to csv',    'expected': 'feature'},
+    {'input': 'rotate key?',      'expected': 'question'},
+  ],
+  shape={'type': 'enum', 'values': ['bug','feature','question']},
+)
+
+print(r.run(recipe['concept_id'], '404 on /dashboard'))   # 'bug'</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">Go</h4>
+    <pre><code>// HTTP — no SDK needed
+req, _ := http.NewRequest("POST",
+  "https://kolmogorov-stack-production.up.railway.app/v1/run",
+  bytes.NewBufferString(`{"concept_id":"cpt_…","input":"404 on /dashboard"}`))
+req.Header.Set("Authorization", "Bearer "+os.Getenv("KS_KEY"))
+req.Header.Set("Content-Type", "application/json")
+res, _ := http.DefaultClient.Do(req)</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">Java</h4>
+    <pre><code>HttpRequest req = HttpRequest.newBuilder()
+  .uri(URI.create("https://kolmogorov-stack-production.up.railway.app/v1/run"))
+  .header("Authorization", "Bearer " + System.getenv("KS_KEY"))
+  .header("Content-Type", "application/json")
+  .POST(HttpRequest.BodyPublishers.ofString(
+    "{\"concept_id\":\"cpt_…\",\"input\":\"404 on /dashboard\"}"))
+  .build();</code></pre>
+
+    <h4 class="mono" style="margin:18px 0 6px">Claude Code MCP server</h4>
+    <p class="muted">Drop-in MCP server: <span class="mono">npx @kolmogorov/recipe-mcp</span>. Adds <span class="mono">recipe.show</span>, <span class="mono">recipe.run</span>, <span class="mono">recipe.search</span> to your Claude Code session.</p>
+    <pre><code># in your ~/.claude/mcp.json
+{
+  "mcpServers": {
+    "recipe": {
+      "command": "npx",
+      "args": ["-y","@kolmogorov/recipe-mcp"],
+      "env": { "KS_API_KEY": "ks_…" }
+    }
+  }
+}</code></pre>
+
+    <h3 id="errors">Errors</h3>
+    <table class="table">
+      <thead><tr><th>code</th><th>meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">400</td><td>missing required field, bad JSON, or recipe quality below gate</td></tr>
+        <tr><td class="mono">401</td><td>missing or invalid API key</td></tr>
+        <tr><td class="mono">403</td><td>tenant cannot read this recipe; admin-only endpoint hit by non-admin</td></tr>
+        <tr><td class="mono">404</td><td>recipe or version not found</td></tr>
+        <tr><td class="mono">429</td><td>rate limit (token bucket) or monthly quota exceeded &mdash; see <span class="mono">Retry-After</span></td></tr>
+        <tr><td class="mono">500</td><td>synthesis backend error</td></tr>
+      </tbody>
+    </table>
+
+    <p class="muted" style="font-size:12.5px;">
+      Pricing details: <a href="/pricing">/pricing</a>. Status / changelog: <a href="/status">/status</a>.
+    </p>
+
+    <footer class="page-footer">
+      <div class="left">
+        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+      </div>
+      <div class="right">
+        <a href="/why">Why</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/status">Status</a>
+      </div>
+    </footer>
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

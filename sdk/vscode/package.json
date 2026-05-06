@@ -1,0 +1,76 @@
+{
+  "name": "recipe-vscode",
+  "displayName": "Recipe — Show how once. Run forever.",
+  "description": "Replace repeat LLM-as-judge calls with deterministic Recipes. Selects an Anthropic/OpenAI call in your editor → mints a Recipe → swaps the call inline.",
+  "version": "0.1.0",
+  "publisher": "remlabs",
+  "license": "MIT",
+  "homepage": "https://kolmogorov-stack-production.up.railway.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/remlabs-ai/kolmogorov-stack.git",
+    "directory": "sdk/vscode"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["AI", "Other", "Programming Languages"],
+  "keywords": [
+    "recipe",
+    "llm",
+    "claude",
+    "openai",
+    "classifier",
+    "synthesis",
+    "agents"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:python"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "recipe.synthesizeFromSelection", "title": "Recipe: Synthesize from selection" },
+      { "command": "recipe.runRecipe",                "title": "Recipe: Run a recipe" },
+      { "command": "recipe.search",                   "title": "Recipe: Search the registry" },
+      { "command": "recipe.replaceLLMCall",           "title": "Recipe: Replace this LLM call with a recipe" },
+      { "command": "recipe.openConsole",              "title": "Recipe: Open Console" }
+    ],
+    "menus": {
+      "editor/context": [
+        { "command": "recipe.synthesizeFromSelection", "group": "1_modification", "when": "editorHasSelection" },
+        { "command": "recipe.replaceLLMCall",          "group": "1_modification", "when": "editorHasSelection" }
+      ]
+    },
+    "configuration": {
+      "title": "Recipe",
+      "properties": {
+        "recipe.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Recipe API key (ks_…). Get one at https://kolmogorov-stack-production.up.railway.app/signup"
+        },
+        "recipe.baseUrl": {
+          "type": "string",
+          "default": "https://kolmogorov-stack-production.up.railway.app",
+          "description": "Override Recipe API base URL"
+        },
+        "recipe.suggestReplacements": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inline CodeLens suggestions on detected LLM calls"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "echo 'no-op'",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0"
+  }
+}

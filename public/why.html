@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Why Recipe exists — Recipe</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">WHY THIS EXISTS</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/why" class="active">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <h2>Why Recipe exists</h2>
+    <p class="lead">Four questions. Honest answers. If the answer is "use something else," we say so.</p>
+
+    <h3>1. What does this <em>actually</em> replace?</h3>
+    <p>The repeat AI calls in your product where the answer is small and structured: <strong>yes/no</strong>, <strong>pick a category</strong>, <strong>extract these tokens</strong>.</p>
+    <table class="table compare">
+      <thead><tr><th>Today you might be using…</th><th>Recipe replaces it when…</th></tr></thead>
+      <tbody>
+        <tr><td>A Claude / GPT call to classify support tickets</td><td>You have ~10 examples and the answer is one of N labels.</td></tr>
+        <tr><td>A Cohere classify endpoint</td><td>Same — Recipe is 1000&times; cheaper and 100&times; faster.</td></tr>
+        <tr><td>A regex you're scared to touch</td><td>You'd rather have a small program with tests than 80 chars of cryptic regex.</td></tr>
+        <tr><td>A DistilBERT fine-tune for spam / NSFW / language ID</td><td>You want it deployed on the edge with no GPU and no model weights.</td></tr>
+        <tr><td>A custom OpenAI fine-tune</td><td>Your task is small enough that a 400-byte JS function is enough.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>2. When should you NOT use Recipe?</h3>
+    <p class="muted">We are not the answer to every problem. Use the right tool:</p>
+    <ul style="color:var(--ink-mute); line-height:1.7; padding-left:18px;">
+      <li><strong>Open-ended generation.</strong> "Write a marketing email" &mdash; not us, use Claude / GPT.</li>
+      <li><strong>Long-context reasoning.</strong> "Read this 80-page PDF and extract the contract clauses" &mdash; use a model with long context.</li>
+      <li><strong>Multi-step agent loops.</strong> Browse the web, plan, take actions &mdash; use Claude Code, OpenAI Assistants, or a real agent.</li>
+      <li><strong>Domain knowledge you don't have examples for.</strong> "Is this molecule toxic?" with no labeled data &mdash; you need a real classifier with real training.</li>
+      <li><strong>Recall over a corpus.</strong> "Find me prior conversations with this customer" &mdash; that's <a href="https://remlabs.ai" target="_blank" rel="noopener">Memory</a>, not Skills.</li>
+      <li><strong>Tasks where the right answer changes with world state.</strong> "Is this stock a buy?" &mdash; not a fixed recipe; that's an inference problem with fresh data.</li>
+    </ul>
+
+    <h3>3. How does it compare to fine-tuning?</h3>
+    <table class="table compare">
+      <thead><tr><th>&nbsp;</th><th>OpenAI fine-tune</th><th class="winner">Recipe</th></tr></thead>
+      <tbody>
+        <tr><td>Time to first answer</td><td>2&ndash;6 hours</td><td class="winner">~3 seconds</td></tr>
+        <tr><td>Examples needed</td><td>500&ndash;5,000</td><td class="winner">4&ndash;8</td></tr>
+        <tr><td>Setup cost</td><td>$30&ndash;$200</td><td class="winner">$0&ndash;$0.10</td></tr>
+        <tr><td>Per-call cost (1M)</td><td>$3,000&ndash;$10,000</td><td class="winner">$0.20</td></tr>
+        <tr><td>Determinism</td><td>same prompt &rarr; same answer (with temp=0)</td><td class="winner">absolutely (it's a function)</td></tr>
+        <tr><td>Edit-ability</td><td>retrain</td><td class="winner">edit 5 lines of JS, re-test</td></tr>
+        <tr><td>Runs offline</td><td class="meh">no</td><td class="winner">yes</td></tr>
+        <tr><td>Goes deep on the data</td><td class="winner">strong on subtle / fuzzy cases</td><td>only as good as a small program can be</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">If your task is fuzzy enough that a small program can't capture it, fine-tuning wins. If your task is small and structured, Recipe wins by 1&ndash;3 orders of magnitude on cost and latency.</p>
+
+    <h3>4. What's the ROI?</h3>
+    <p>Move the sliders. Numbers update live. (Defaults: Claude Sonnet 4.6 pricing, classification-style call.)</p>
+
+    <div class="card calc" id="roi-calc">
+      <div class="row cols-3">
+        <div>
+          <div class="label">Calls per month</div>
+          <input type="range" id="roi-calls" min="1000" max="10000000" step="1000" value="1000000" />
+          <div class="delta mono" id="roi-calls-text">1,000,000</div>
+        </div>
+        <div>
+          <div class="label">Avg input tokens</div>
+          <input type="range" id="roi-input" min="50" max="2000" step="10" value="200" />
+          <div class="delta mono" id="roi-input-text">200</div>
+        </div>
+        <div>
+          <div class="label">Avg output tokens</div>
+          <input type="range" id="roi-output" min="1" max="500" step="1" value="5" />
+          <div class="delta mono" id="roi-output-text">5</div>
+        </div>
+      </div>
+
+      <div class="row cols-3" style="margin-top:18px;">
+        <div class="calc-output">
+          <div class="label">Claude Sonnet 4.6 / month</div>
+          <div class="big mono" id="roi-claude">$675</div>
+          <div class="delta">$3 / M input · $15 / M output</div>
+        </div>
+        <div class="calc-output winner">
+          <div class="label">Recipe / month</div>
+          <div class="big mono" id="roi-recipe">$0.30</div>
+          <div class="delta">$0.20 / M calls + $0.10 setup</div>
+        </div>
+        <div class="calc-output">
+          <div class="label">You save / year</div>
+          <div class="big mono" id="roi-save">$8,096</div>
+          <div class="delta" id="roi-multiple">2,250&times; cheaper</div>
+        </div>
+      </div>
+
+      <div class="delta" style="margin-top:14px;">
+        Break-even is roughly <span class="mono" id="roi-breakeven">500</span> calls. After that, the meter effectively stops &mdash; running a recipe in our edge runtime costs fractional cents, and if you self-host the JS source you pay <em>nothing</em>.
+      </div>
+    </div>
+    <script>
+      (function () {
+        const $ = (id) => document.getElementById(id);
+        const fmt = (n) => Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+        const dollars = (n) => {
+          if (n < 0.01) return '$' + n.toFixed(4);
+          if (n < 1)    return '$' + n.toFixed(2);
+          return '$' + Math.round(n).toLocaleString();
+        };
+        function recompute() {
+          const calls  = +$('roi-calls').value;
+          const tIn    = +$('roi-input').value;
+          const tOut   = +$('roi-output').value;
+          const claude = (calls * tIn / 1e6) * 3.00 + (calls * tOut / 1e6) * 15.00;
+          const recipe = 0.10 + (calls / 1e6) * 0.20;
+          const save   = (claude - recipe) * 12;
+          const multi  = claude > 0 ? (claude / Math.max(0.0001, recipe)) : 0;
+          $('roi-calls-text').textContent  = fmt(calls);
+          $('roi-input-text').textContent  = fmt(tIn);
+          $('roi-output-text').textContent = fmt(tOut);
+          $('roi-claude').textContent  = dollars(claude);
+          $('roi-recipe').textContent  = dollars(recipe);
+          $('roi-save').textContent    = dollars(Math.max(0, save));
+          $('roi-multiple').textContent = (multi >= 1 ? Math.round(multi).toLocaleString() + '× cheaper' : 'roughly the same');
+          // Break-even: claude_per_call > recipe_per_call + (setup / calls)
+          // setup amortized; we approximate by setup / claude_per_call
+          const cpc = (tIn / 1e6) * 3.00 + (tOut / 1e6) * 15.00;
+          const breakEven = cpc > 0 ? Math.max(1, Math.ceil(0.10 / cpc)) : 1;
+          $('roi-breakeven').textContent = fmt(breakEven);
+        }
+        ['roi-calls', 'roi-input', 'roi-output'].forEach(id => $(id).addEventListener('input', recompute));
+        recompute();
+      })();
+    </script>
+
+    <h3>The 30-second pitch</h3>
+    <div class="card glow">
+      <div style="font-size:16px; line-height:1.6;">
+        Anywhere your product asks an AI the same tiny question over and over, you're paying ~$0.001 per call to a 70&nbsp;B-parameter model to answer something a 400-byte JS function would answer for free, in 35&nbsp;µs, with the same answer every time.
+        <br/><br/>
+        <strong>Recipe turns those tiny questions into tiny programs.</strong> Show it 4&ndash;8 examples. Get a verified function. Run it forever for free.
+      </div>
+    </div>
+
+    <p class="muted" style="margin-top:18px;">
+      Two paths if you're sold:
+    </p>
+    <div class="actions">
+      <a class="btn accent lg" href="/playground">Build your first recipe &rarr;</a>
+      <a class="btn ghost lg" href="/docs">5-min integration</a>
+    </div>
+
+    <footer class="page-footer">
+      <div class="left">
+        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+      </div>
+      <div class="right">
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/status">Status</a>
+      </div>
+    </footer>
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

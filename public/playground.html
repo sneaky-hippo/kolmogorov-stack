@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Playground — Recipe</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">PLAYGROUND</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/playground" class="active">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="sidebar nav section-label" style="margin-top:24px;">Starter recipes</div>
+    <div id="examples"></div>
+    <div class="footnote" style="margin-top:18px;">
+      <strong>Live mode</strong> streams every step as it happens. Edit the source and re-test it in place.
+    </div>
+  </aside>
+  <main class="main">
+    <h2>Build a recipe</h2>
+    <p class="lead">Paste examples on the left, paste counter-examples on the right. We pattern-match or have Claude write the program, then test it on every example before publishing.</p>
+
+    <div class="banner" id="roi-banner">
+      <span class="ico">$</span>
+      <span><strong>Replaces ~$3/month</strong> of Claude Sonnet 4.6 calls at 1,000 tickets/day &middot; runs in microseconds &middot; same input always gives the same answer.</span>
+    </div>
+
+    <div class="toolbar" style="margin-top:18px;">
+      <input type="text" id="name" class="grow" placeholder="recipe name (e.g. classify-issue-type)" />
+      <input type="text" id="tags" class="grow" placeholder="tags, comma, separated" />
+      <select id="visibility">
+        <option value="private">private</option>
+        <option value="public">public</option>
+      </select>
+    </div>
+
+    <div class="split">
+      <div>
+        <h3>Examples <span class="faint mono" style="font-size:11px;">(input &rarr; expected)</span></h3>
+        <textarea id="positives" rows="10" spellcheck="false">[
+  { "input": "the deploy keeps crashing on startup",   "expected": "bug" },
+  { "input": "would love an export to CSV button",     "expected": "feature" },
+  { "input": "how do I rotate my API key?",            "expected": "question" },
+  { "input": "404 on /dashboard since friday",         "expected": "bug" },
+  { "input": "can we get dark mode in settings",       "expected": "feature" },
+  { "input": "what plan do I need for SSO?",           "expected": "question" }
+]</textarea>
+      </div>
+      <div>
+        <h3>Counter-examples <span class="faint mono" style="font-size:11px;">(input &rarr; what it should NOT say)</span></h3>
+        <textarea id="negatives" rows="10" spellcheck="false">[
+  { "input": "press release for friday launch", "expected_not": "bug" }
+]</textarea>
+      </div>
+    </div>
+
+    <h3>Output shape</h3>
+    <textarea id="output_spec" rows="3" spellcheck="false">{ "type": "enum", "values": ["bug","feature","question"] }</textarea>
+
+    <div class="toolbar" style="margin-top:18px;">
+      <button class="btn accent" id="run">Build recipe &rarr;</button>
+      <button class="btn ghost" id="run-stream">Watch live</button>
+      <button class="btn ghost" id="clear">Clear</button>
+      <span class="grow"></span>
+      <span id="status" class="muted mono" style="font-size:12px;"></span>
+    </div>
+
+    <div id="event-log" class="event-log" style="display:none"></div>
+
+    <hr class="hairline" />
+
+    <h3>Result</h3>
+    <div class="row cols-3" id="result-cards" style="display:none">
+      <div class="card"><div class="label">Quality</div><div class="stat" id="r-quality">&mdash;</div><div class="delta" id="r-strategy"></div></div>
+      <div class="card"><div class="label">p50 latency</div><div class="stat" id="r-latency">&mdash;</div><div class="delta">microseconds per call</div></div>
+      <div class="card"><div class="label">Recipe size</div><div class="stat" id="r-size">&mdash;</div><div class="delta" id="r-hash"></div></div>
+    </div>
+
+    <h3 style="display:none" id="src-h">Recipe source <span class="faint mono" style="font-size:11px;">&mdash; readable, editable, re-testable</span></h3>
+    <textarea id="r-source" rows="14" style="display:none; font-family: var(--mono); font-size: 12.5px;"></textarea>
+    <div class="toolbar" id="src-actions" style="display:none; margin-top:8px;">
+      <button class="btn ghost" id="re-verify">Re-test</button>
+      <button class="btn ghost" id="publish-edited">Publish edited version</button>
+      <button class="btn ghost" id="copy-source">Copy</button>
+      <span class="grow"></span>
+      <span id="re-verify-status" class="muted mono" style="font-size:12px;"></span>
+    </div>
+
+    <h3 style="display:none" id="trace-h">Test trace</h3>
+    <table class="table" id="r-trace" style="display:none">
+      <thead><tr><th>kind</th><th>input</th><th>expected</th><th>got</th><th>result</th><th>µs</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h3 style="display:none" id="run-h">Try it on real input</h3>
+    <div id="run-box" style="display:none">
+      <div class="toolbar">
+        <input type="text" id="live-input" class="grow" placeholder="any input &mdash; classify it through your fresh recipe…" />
+        <button class="btn" id="live-run">Run &rarr;</button>
+      </div>
+      <div class="code-output" id="live-output">&mdash;</div>
+    </div>
+
+    <footer class="page-footer">
+      <div class="left">
+        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+      </div>
+      <div class="right">
+        <a href="/why">Why</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/status">Status</a>
+      </div>
+    </footer>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/app.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let lastConceptId = null, lastVersionId = null;
+KS.showKeyBanner('main.main').catch(() => {});
+
+const examples = [
+  { name: 'classify-issue-type', tags: 'classifier,support', visibility: 'public',
+    output_spec: '{ "type": "enum", "values": ["bug","feature","question"] }',
+    roi: 'replaces ~$3/mo at 1k tickets/day',
+    positives: '[\n  { "input": "the deploy keeps crashing on startup",   "expected": "bug" },\n  { "input": "would love an export to CSV button",     "expected": "feature" },\n  { "input": "how do I rotate my API key?",            "expected": "question" },\n  { "input": "404 on /dashboard since friday",         "expected": "bug" },\n  { "input": "can we get dark mode in settings",       "expected": "feature" },\n  { "input": "what plan do I need for SSO?",           "expected": "question" }\n]',
+    negatives: '[\n  { "input": "press release for friday launch", "expected_not": "bug" }\n]' },
+  { name: 'is-spam', tags: 'classifier,trust', visibility: 'public', output_spec: '{ "type": "boolean" }',
+    roi: 'replaces ~$2/mo at 1k mails/day',
+    positives: '[\n  { "input": "FREE viagra click here NOW",  "expected": true },\n  { "input": "Lunch tomorrow at noon?",     "expected": false },\n  { "input": "URGENT prize claim",          "expected": true },\n  { "input": "team retro Friday",           "expected": false }\n]',
+    negatives: '[\n  { "input": "PR review at 3pm", "expected_not": true }\n]' },
+  { name: 'detect-language', tags: 'classifier,language', visibility: 'public',
+    output_spec: '{ "type": "enum", "values": ["en","es","fr","de","other"] }',
+    roi: 'replaces ~$1/mo at 1k requests/day',
+    positives: '[\n  { "input": "hello world how are you",          "expected": "en" },\n  { "input": "hola mundo como estas",            "expected": "es" },\n  { "input": "bonjour comment allez vous",       "expected": "fr" },\n  { "input": "guten morgen wie gehts",           "expected": "de" },\n  { "input": "私は猫です",                        "expected": "other" }\n]',
+    negatives: '[]' },
+  { name: 'extract-emails', tags: 'extractor', visibility: 'public', output_spec: '{ "type": "string[]", "pattern": "email" }',
+    roi: 'replaces ~$2/mo at 1k inbound/day',
+    positives: '[\n  { "input": "ping me at rodney@remlabs.ai or hi@slop.gg",  "expected": ["rodney@remlabs.ai","hi@slop.gg"] },\n  { "input": "no email here",                              "expected": [] }\n]',
+    negatives: '[]' },
+  { name: 'extract-prices', tags: 'extractor,commerce', visibility: 'public', output_spec: '{ "type": "string[]", "pattern": "price" }',
+    roi: 'replaces ~$3/mo at 1k receipts/day',
+    positives: '[\n  { "input": "the shoes were $129.99 on sale",      "expected": ["$129.99"] },\n  { "input": "starts at 49 USD or 39 EUR",          "expected": ["49 USD","39 EUR"] }\n]',
+    negatives: '[]' },
+  { name: 'classify-toxicity', tags: 'classifier,trust,moderation', visibility: 'public', output_spec: '{ "type": "boolean" }',
+    roi: 'replaces ~$2/mo at 1k posts/day',
+    positives: '[\n  { "input": "you are stupid and worthless", "expected": true },\n  { "input": "shut up idiot",               "expected": true },\n  { "input": "thanks for the help today",   "expected": false },\n  { "input": "great work on the launch",    "expected": false }\n]',
+    negatives: '[]' },
+  { name: 'detect-refund-request', tags: 'classifier,support', visibility: 'public', output_spec: '{ "type": "boolean" }',
+    roi: 'replaces ~$2/mo at 1k tickets/day',
+    positives: '[\n  { "input": "I want my money back, this is broken",   "expected": true },\n  { "input": "please cancel and refund my order",      "expected": true },\n  { "input": "how do I update my shipping address",    "expected": false },\n  { "input": "thanks for the quick response",          "expected": false }\n]',
+    negatives: '[]' },
+];
+
+function loadExample(ex) {
+  $('name').value = ex.name;
+  $('tags').value = ex.tags;
+  $('visibility').value = ex.visibility;
+  $('output_spec').value = ex.output_spec;
+  $('positives').value = ex.positives;
+  $('negatives').value = ex.negatives;
+  if (ex.roi) {
+    document.querySelector('#roi-banner span:last-child').innerHTML = `<strong>${ex.roi}</strong> &middot; runs in microseconds &middot; same input always gives the same answer.`;
+  }
+}
+
+const exs = $('examples');
+for (const ex of examples) {
+  const a = document.createElement('a');
+  a.href = '#'; a.className = 'pill'; a.style.display = 'block'; a.style.margin = '4px 0'; a.textContent = ex.name;
+  a.onclick = (e) => { e.preventDefault(); loadExample(ex); };
+  exs.appendChild(a);
+}
+
+$('clear').onclick = () => {
+  $('name').value = ''; $('tags').value = ''; $('positives').value = '[]'; $('negatives').value = '[]'; $('output_spec').value = '{}';
+  for (const id of ['result-cards','src-h','r-source','src-actions','trace-h','r-trace','run-h','run-box','event-log']) $(id).style.display = 'none';
+  $('event-log').textContent = '';
+};
+
+function readBody() {
+  return {
+    name: $('name').value || ('recipe-' + Date.now()),
+    tags: $('tags').value.split(',').map(s => s.trim()).filter(Boolean),
+    visibility: $('visibility').value,
+    output_spec: JSON.parse($('output_spec').value || '{}'),
+    positives: JSON.parse($('positives').value || '[]'),
+    negatives: JSON.parse($('negatives').value || '[]'),
+    publish: true,
+  };
+}
+
+function paintResult(r) {
+  lastConceptId = r.concept_id; lastVersionId = r.version_id;
+  $('result-cards').style.display = '';
+  $('r-quality').textContent = (r.quality_score * 100).toFixed(1) + '%';
+  $('r-strategy').textContent = (r.strategy === 'claude' ? 'Claude wrote it' : 'pattern matched') + ' &middot; ' + r.attempts_n + ' attempt' + (r.attempts_n === 1 ? '' : 's');
+  $('r-latency').textContent = r.latency_p50_us + 'µs';
+  $('r-size').textContent = r.size_bytes + 'B';
+  $('r-hash').textContent = 'sha: ' + (r.source_hash || '').slice(0, 10);
+  $('src-h').style.display = ''; $('r-source').style.display = ''; $('src-actions').style.display = '';
+  $('r-source').value = r.source;
+  $('trace-h').style.display = ''; $('r-trace').style.display = '';
+  const tb = $('r-trace').querySelector('tbody');
+  tb.innerHTML = '';
+  for (const t of (r.test_trace || [])) {
+    const ok = t.pass ?? t.reject ?? false;
+    tb.innerHTML += `<tr><td>${t.kind}</td><td><span class="mono">${esc(t.input)}</span></td><td><span class="mono">${esc(t.expected)}</span></td><td><span class="mono">${esc(t.output)}</span></td><td>${ok ? '<span class="pill good">OK</span>' : '<span class="pill bad">FAIL</span>'}</td><td class="mono">${t.latency_us ?? '-'}</td></tr>`;
+  }
+  $('run-h').style.display = ''; $('run-box').style.display = '';
+  if (r.concept_id) $('status').innerHTML = `<span class="pill good">PUBLISHED</span> ${r.concept_id} &middot; ${r.version_id}`;
+}
+
+// Translate raw SSE event names to plain English for the watch-live view
+const PRETTY_EVENT = {
+  start: 'starting…',
+  plan: 'planning approach',
+  strategy_begin: 'trying',
+  candidate: 'draft program',
+  verified: 'tested',
+  accepted: 'passed all examples',
+  rejected: 'rejected — quality too low',
+  published: 'published to your registry',
+  done: 'done',
+  error: 'error',
+};
+
+$('run').onclick = async () => {
+  await KS.ensureKey();
+  $('run').disabled = true;
+  $('status').innerHTML = '<span class="spinner"></span> building your recipe…';
+  try {
+    const r = await KS.api('/v1/synthesize', { method: 'POST', body: JSON.stringify(readBody()) });
+    if (!r.accepted) {
+      $('status').innerHTML = '<span class="pill bad">REJECTED</span> ' + r.reason;
+      $('result-cards').style.display = 'none';
+      if (r.best_source) { $('src-h').style.display = ''; $('r-source').style.display = ''; $('src-actions').style.display = ''; $('r-source').value = r.best_source; }
+      return;
+    }
+    paintResult(r);
+  } catch (e) {
+    $('status').innerHTML = '<span class="pill bad">ERROR</span> ' + (e.message || e);
+  } finally {
+    $('run').disabled = false;
+  }
+};
+
+$('run-stream').onclick = async () => {
+  const key = await KS.ensureKey();
+  $('run-stream').disabled = true;
+  $('event-log').style.display = '';
+  $('event-log').textContent = '';
+  $('status').innerHTML = '<span class="spinner"></span> watching…';
+  const log = (line) => { $('event-log').textContent += line + '\n'; $('event-log').scrollTop = $('event-log').scrollHeight; };
+  try {
+    const res = await fetch('/v1/synthesize/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify(readBody()),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split(/\n\n/);
+      buf = parts.pop() || '';
+      for (const chunk of parts) {
+        const lines = chunk.split('\n');
+        const ev = lines.find(l => l.startsWith('event:'))?.slice(6).trim();
+        const dataLine = lines.find(l => l.startsWith('data:'))?.slice(5).trim();
+        if (!ev) continue;
+        let data = null;
+        try { data = JSON.parse(dataLine); } catch {}
+        const pretty = PRETTY_EVENT[ev] || ev;
+        log(`· ${pretty}${ev === 'candidate' && data?.size_bytes ? ` (${data.size_bytes} B)` : ''}${ev === 'verified' && data?.quality_score ? ` — quality ${(data.quality_score * 100).toFixed(0)}%` : ''}`);
+        if (ev === 'done' && data?.accepted) paintResult(data);
+        if (ev === 'done' && data && !data.accepted) {
+          $('status').innerHTML = '<span class="pill bad">REJECTED</span> ' + (data.reason || '');
+          if (data.best_source) { $('src-h').style.display = ''; $('r-source').style.display = ''; $('src-actions').style.display = ''; $('r-source').value = data.best_source; }
+        }
+      }
+    }
+  } catch (e) {
+    $('status').innerHTML = '<span class="pill bad">ERROR</span> ' + (e.message || e);
+  } finally {
+    $('run-stream').disabled = false;
+  }
+};
+
+$('re-verify').onclick = async () => {
+  const source = $('r-source').value;
+  $('re-verify-status').innerHTML = '<span class="spinner"></span> testing…';
+  try {
+    const positives = JSON.parse($('positives').value || '[]');
+    const negatives = JSON.parse($('negatives').value || '[]');
+    const r = await KS.api('/v1/verify', { method: 'POST', body: JSON.stringify({ source, positives, negatives }) });
+    $('re-verify-status').innerHTML = `quality <span class="mono">${(r.quality_score * 100).toFixed(1)}%</span> &middot; pass <span class="mono">${(r.pass_rate_positive * 100).toFixed(0)}%</span> &middot; p50 <span class="mono">${r.latency_p50_us}µs</span>`;
+    const tb = $('r-trace').querySelector('tbody');
+    tb.innerHTML = '';
+    for (const t of r.trace) {
+      const ok = t.pass ?? t.reject ?? false;
+      tb.innerHTML += `<tr><td>${t.kind}</td><td><span class="mono">${esc(t.input)}</span></td><td><span class="mono">${esc(t.expected)}</span></td><td><span class="mono">${esc(t.output)}</span></td><td>${ok ? '<span class="pill good">OK</span>' : '<span class="pill bad">FAIL</span>'}</td><td class="mono">${t.latency_us ?? '-'}</td></tr>`;
+    }
+  } catch (e) {
+    $('re-verify-status').innerHTML = '<span class="pill bad">ERROR</span> ' + (e.message || e);
+  }
+};
+
+$('publish-edited').onclick = async () => {
+  await KS.ensureKey();
+  const name = $('name').value || ('recipe-' + Date.now());
+  $('re-verify-status').innerHTML = '<span class="spinner"></span> publishing…';
+  try {
+    const r = await KS.api('/v1/publish', { method: 'POST', body: JSON.stringify({
+      source: $('r-source').value,
+      name, description: name,
+      tags: $('tags').value.split(',').map(s => s.trim()).filter(Boolean),
+      visibility: $('visibility').value,
+      output_spec: JSON.parse($('output_spec').value || '{}'),
+      positives: JSON.parse($('positives').value || '[]'),
+      negatives: JSON.parse($('negatives').value || '[]'),
+    })});
+    lastConceptId = r.concept_id; lastVersionId = r.version_id;
+    $('re-verify-status').innerHTML = `<span class="pill good">PUBLISHED</span> ${r.concept_id} &middot; ${r.version_id}`;
+  } catch (e) {
+    $('re-verify-status').innerHTML = '<span class="pill bad">ERROR</span> ' + (e.message || e);
+  }
+};
+
+$('copy-source').onclick = () => {
+  navigator.clipboard?.writeText($('r-source').value);
+  KS.toast('source copied');
+};
+
+$('live-run').onclick = async () => {
+  if (!lastConceptId) return;
+  const input = $('live-input').value;
+  $('live-output').textContent = 'running…';
+  try {
+    const r = await KS.api('/v1/run', { method: 'POST', body: JSON.stringify({ concept_id: lastConceptId, input }) });
+    $('live-output').textContent = JSON.stringify(r, null, 2);
+  } catch (e) {
+    $('live-output').textContent = 'error: ' + (e.message || e);
+  }
+};
+
+function esc(v) {
+  if (v === undefined) return '<span class="faint">undefined</span>';
+  if (typeof v === 'object') return escapeHtml(JSON.stringify(v));
+  return escapeHtml(String(v));
+}
+function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+</script>
+</body>
+</html>

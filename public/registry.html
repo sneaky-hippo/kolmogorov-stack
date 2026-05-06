@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Recipe registry — Recipe</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">RECIPES</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry" class="active">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="footnote">
+      Every recipe is versioned. Search by what it does &mdash; not by name.
+    </div>
+  </aside>
+  <main class="main">
+    <h2>Recipe registry</h2>
+    <p class="lead">Every recipe is a stable, versioned, content-addressed program. Search retrieves by meaning &mdash; type "extract email addresses," not the exact name. Click a recipe to see its source, run it, and check its lineage.</p>
+
+    <div class="toolbar">
+      <input type="search" id="q" class="grow" placeholder='try "classify support tickets" or "extract prices"…' />
+      <select id="tag"><option value="">all tags</option></select>
+      <button class="btn ghost" id="reload">Reload</button>
+    </div>
+
+    <table class="table">
+      <thead><tr><th>recipe</th><th>tags</th><th>versions</th><th>updated</th></tr></thead>
+      <tbody id="tbl"></tbody>
+    </table>
+
+    <div id="detail" style="display:none; margin-top:32px;">
+      <hr class="hairline" />
+      <h3 id="d-name"></h3>
+      <div id="d-meta-summary" class="row cols-3" style="margin-bottom:14px;"></div>
+
+      <details>
+        <summary>Engineering details (vector, hash, lineage)</summary>
+        <table class="kvtable" id="d-meta"></table>
+      </details>
+
+      <h3>Source</h3>
+      <pre id="d-source"></pre>
+
+      <h3>Run it</h3>
+      <div class="toolbar">
+        <input type="text" id="d-input" class="grow" placeholder="any input &mdash; classify it through this recipe…" />
+        <button class="btn accent" id="d-run">Run &rarr;</button>
+      </div>
+      <pre id="d-out">&mdash;</pre>
+    </div>
+
+    <footer class="page-footer">
+      <div class="left">
+        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+      </div>
+      <div class="right">
+        <a href="/why">Why</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/status">Status</a>
+      </div>
+    </footer>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/app.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let currentId = null;
+KS.showKeyBanner('main.main').catch(() => {});
+
+async function reload() {
+  await KS.ensureKey();
+  const q = $('q').value.trim();
+  const tag = $('tag').value;
+  let body;
+  if (q) body = await KS.api('/v1/search', { method: 'POST', body: JSON.stringify({ query: q, k: 50, tag: tag || undefined }) }).then(r => ({ concepts: r.matches.map(m => ({ id: m.concept_id, name: m.name, description: m.description, tags: m.tags, score: m.score, versions: 1, head_version: m.version_id, updated_at: '' })) }));
+  else body = await KS.api('/v1/concepts' + (tag ? ('?tag=' + encodeURIComponent(tag)) : ''));
+  const tags = new Set();
+  for (const c of body.concepts) for (const t of (c.tags || [])) tags.add(t);
+  const cur = $('tag').value;
+  $('tag').innerHTML = '<option value="">all tags</option>' + [...tags].sort().map(t => `<option value="${t}"${t===cur?' selected':''}>${t}</option>`).join('');
+  $('tbl').innerHTML = body.concepts.map(c => `<tr style="cursor:pointer" onclick="openConcept('${c.id}')"><td><strong>${c.name}</strong>${c.score!=null?` <span class="faint mono">· match ${c.score.toFixed(3)}</span>`:''}<div class="muted" style="font-size:12px">${c.description||''}</div></td><td>${(c.tags||[]).map(t=>`<span class="chip">${t}</span>`).join('')}</td><td class="mono">${c.versions}</td><td class="mono faint">${(c.updated_at||'').slice(0,19).replace('T',' ')}</td></tr>`).join('') || '<tr><td colspan="4" class="faint">no recipes yet — <a href="/playground">build the first one</a></td></tr>';
+}
+
+window.openConcept = async (id) => {
+  currentId = id;
+  const c = await KS.api('/v1/concepts/' + id);
+  const head = c.versions.find(v => v.id === c.head_version) || c.versions[c.versions.length - 1];
+  $('detail').style.display = '';
+  $('d-name').textContent = c.name;
+  const ev = head?.evaluation || {};
+  // Friendly summary cards
+  $('d-meta-summary').innerHTML = `
+    <div class="card"><div class="label">Quality</div><div class="stat">${ev.quality_score!=null?(ev.quality_score*100).toFixed(0)+'%':'—'}</div><div class="delta">${head?.semver || '—'}</div></div>
+    <div class="card"><div class="label">p50 latency</div><div class="stat">${ev.latency_p50_us ?? '—'}µs</div><div class="delta">${ev.size_bytes ?? '—'} B source</div></div>
+    <div class="card"><div class="label">Built by</div><div class="stat" style="font-size:18px;">${ev.strategy === 'claude' ? 'Claude' : ev.strategy === 'manual' ? 'manual' : 'pattern'}</div><div class="delta">${(c.tags||[]).slice(0,3).map(t=>`<span class="chip">${t}</span>`).join('') || ''}</div></div>
+  `;
+  $('d-meta').innerHTML = `
+    <tr><td>id</td><td class="mono">${c.id}</td></tr>
+    <tr><td>visibility</td><td class="mono">${c.visibility}</td></tr>
+    <tr><td>head version</td><td class="mono">${head?.semver} · ${head?.id}</td></tr>
+    <tr><td>quality score</td><td>${ev.quality_score!=null?`<span class="pill good">${(ev.quality_score*100).toFixed(1)}%</span>`:'—'}</td></tr>
+    <tr><td>p50 latency</td><td class="mono">${ev.latency_p50_us ?? '—'}µs</td></tr>
+    <tr><td>recipe size</td><td class="mono">${ev.size_bytes ?? '—'} B</td></tr>
+    <tr><td>strategy</td><td class="mono">${ev.strategy ?? '—'}</td></tr>
+    <tr><td>source hash</td><td class="mono">${ev.source_hash ?? '—'}</td></tr>
+    <tr><td>vector dim</td><td class="mono">${(c.vector_dim ?? '256')}-d (hidden — used for search)</td></tr>
+  `;
+  $('d-source').textContent = head?.source || '';
+  $('d-out').textContent = '—';
+  scrollTo(0, $('detail').offsetTop - 20);
+};
+
+$('d-run').onclick = async () => {
+  if (!currentId) return;
+  const input = $('d-input').value;
+  $('d-out').textContent = 'running…';
+  try { const r = await KS.api('/v1/run', { method: 'POST', body: JSON.stringify({ concept_id: currentId, input }) });
+    $('d-out').textContent = JSON.stringify(r, null, 2);
+  } catch (e) { $('d-out').textContent = 'error: ' + (e.message || e); }
+};
+
+$('reload').onclick = reload;
+$('q').addEventListener('input', () => clearTimeout(window.__rt) || (window.__rt = setTimeout(reload, 250)));
+$('tag').addEventListener('change', reload);
+reload();
+</script>
+</body>
+</html>

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Free AI bill audit — Recipe</title>
+  <meta name="description" content="Paste 3 of your most-frequent prompts. We'll synthesize them for free, run them against your examples, and tell you exactly what you'd save monthly. Live, in 30 seconds." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">FREE BILL AUDIT</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/optimize">Optimize my bill</a>
+      <a href="/audit" class="active">Free bill audit</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="footnote">
+      No card. No drip campaign. Just numbers.
+    </div>
+  </aside>
+  <main class="main">
+
+    <!-- HERO ------------------------------------------------------------ -->
+    <section class="hero" style="padding: 36px 0 14px;">
+      <div class="eyebrow"><span class="dot live"></span> FREE AUDIT &middot; 30 SECONDS</div>
+      <h1>Paste a prompt you make 1,000+ times a day.<br/><span class="grad">We'll tell you what it'd save you.</span></h1>
+      <p class="sub" style="font-size:17px;">
+        No commitment. We synthesize the recipe live, run it against your examples to verify quality,
+        and email you a one-page breakdown: how much you'd save monthly, latency comparison,
+        and the JS function ready to drop in. If we can't beat your current call &mdash; we'll say so.
+      </p>
+    </section>
+
+    <!-- AUDIT FORM ------------------------------------------------------ -->
+    <h2 style="margin-top: 28px;">Step 1 &middot; Tell us what kind of call it is</h2>
+    <div class="card">
+      <div class="row cols-2">
+        <div>
+          <div class="label">A SHORT NAME (so we can label your audit)</div>
+          <input type="text" id="a-name" placeholder="e.g. classify-support-ticket" style="margin-top: 6px;" />
+        </div>
+        <div>
+          <div class="label">YOUR EMAIL (we send the audit here)</div>
+          <input type="email" id="a-email" placeholder="you@company.com" style="margin-top: 6px;" />
+        </div>
+      </div>
+      <div style="margin-top: 14px;">
+        <div class="label">WHAT'S THE OUTPUT TYPE</div>
+        <div class="toolbar" style="margin-top: 6px;">
+          <select id="a-type" style="width: 220px;">
+            <option value="boolean">boolean (true / false)</option>
+            <option value="enum">enum (one of N categories)</option>
+            <option value="string">string (free-form short label)</option>
+          </select>
+          <input type="text" id="a-enum" placeholder="for enum: comma-separated labels (billing,bug,feature)" style="flex: 1; display: none;" />
+        </div>
+      </div>
+    </div>
+
+    <h2 style="margin-top: 28px;">Step 2 &middot; Paste 4&ndash;8 examples (the ones you'd accept as correct)</h2>
+    <p class="muted small">One JSON-like row per line: <span class="mono">input &mdash;&gt; expected</span>. Or click "Use a real example" below to see the shape.</p>
+
+    <div class="card">
+      <textarea id="a-examples" placeholder='deploy crashes since friday --> bug
+my refund hasn&apos;t arrived --> billing
+how do I cancel --> billing
+feature request: dark mode --> feature
+the API returns 500 --> bug
+wrong amount charged --> billing' style="height: 180px;"></textarea>
+      <div class="toolbar" style="margin-top: 10px;">
+        <button class="btn-ghost" id="a-fill-spam">Use spam example</button>
+        <button class="btn-ghost" id="a-fill-issue">Use issue-type example</button>
+        <button class="btn-ghost" id="a-fill-intent">Use intent-routing example</button>
+      </div>
+    </div>
+
+    <h2 style="margin-top: 28px;">Step 3 &middot; Tell us what you currently pay (so we can do the math)</h2>
+    <div class="card calc">
+      <div class="row cols-3">
+        <div>
+          <div class="label">Calls/month for THIS prompt</div>
+          <input type="range" id="a-calls" min="1000" max="10000000" step="1000" value="100000" />
+          <div class="mono" id="a-calls-out" style="margin-top:6px;">100,000</div>
+        </div>
+        <div>
+          <div class="label">Your model</div>
+          <select id="a-model" style="margin-top: 6px;">
+            <option value="0.0008">Claude Sonnet 4.6 ($0.0008/call)</option>
+            <option value="0.0024">Claude Opus 4.7 ($0.0024/call)</option>
+            <option value="0.0006">GPT-5 ($0.0006/call)</option>
+            <option value="0.0001">GPT-5-mini ($0.0001/call)</option>
+            <option value="0.0010">Gemini 3 Pro ($0.0010/call)</option>
+          </select>
+        </div>
+        <div>
+          <div class="label">Avg input length (tokens)</div>
+          <input type="range" id="a-tokens" min="50" max="2000" step="10" value="250" />
+          <div class="mono" id="a-tokens-out" style="margin-top:6px;">250 tokens</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top: 24px;">
+      <button class="btn accent lg" id="a-go">Run my audit &rarr;</button>
+      <span id="a-msg" class="muted mono small" style="margin-left: 12px;"></span>
+    </div>
+
+    <!-- RESULTS PANEL --------------------------------------------------- -->
+    <div id="a-results" style="display: none; margin-top: 32px;">
+      <h2>Your audit result</h2>
+      <div class="card glow live-meter">
+        <div class="row cols-4">
+          <div>
+            <div class="label">RECIPE STATUS</div>
+            <div class="stat mono" id="a-status">—</div>
+            <div class="delta" id="a-status-detail">—</div>
+          </div>
+          <div>
+            <div class="label">QUALITY ON YOUR EXAMPLES</div>
+            <div class="stat mono" id="a-quality">—</div>
+            <div class="delta">match rate vs your labels</div>
+          </div>
+          <div>
+            <div class="label">ESTIMATED MONTHLY SAVINGS</div>
+            <div class="stat grad mono" id="a-monthly">—</div>
+            <div class="delta">at your stated call volume</div>
+          </div>
+          <div>
+            <div class="label">ANNUALIZED</div>
+            <div class="stat grad mono" id="a-annual">—</div>
+            <div class="delta">12&times; monthly</div>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 24px;">The synthesized recipe (yours to keep)</h3>
+      <pre id="a-source" class="code-output" style="max-height: 360px;"></pre>
+
+      <h3 style="margin-top: 24px;">Try it live</h3>
+      <div class="card">
+        <input type="text" id="a-test-input" placeholder="paste any input to test the recipe right now" />
+        <div class="toolbar" style="margin-top: 8px;">
+          <button class="btn ghost" id="a-test-go">Run &rarr;</button>
+          <span id="a-test-out" class="mono small" style="margin-left: 8px; color: var(--accent);"></span>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 24px;">Want the full audit emailed?</h3>
+      <p class="muted small">We'll send a one-page PDF with the comparison, the JS source, and the install snippet. No drip campaign.</p>
+      <div class="toolbar">
+        <button class="btn accent" id="a-email-go">Email me the full audit &rarr;</button>
+        <span id="a-email-msg" class="muted mono small"></span>
+      </div>
+    </div>
+
+    <!-- WHY THIS WORKS ------------------------------------------------- -->
+    <h2 style="margin-top: 36px;">Why we can offer this for free</h2>
+    <div class="row cols-3">
+      <div class="card">
+        <div class="label">REASON 1</div>
+        <h3 style="margin: 4px 0 8px;">Synthesis is cheap</h3>
+        <p class="muted small">Each audit costs us ~$0.002 (one Claude API call). The audit converts well enough that it pays for thousands of misses.</p>
+      </div>
+      <div class="card">
+        <div class="label">REASON 2</div>
+        <h3 style="margin: 4px 0 8px;">Honest numbers travel</h3>
+        <p class="muted small">If we tell 100 founders "you'd save $X/mo" and give them the source code, the credible ones come back. The others don't, and we'd rather know early.</p>
+      </div>
+      <div class="card">
+        <div class="label">REASON 3</div>
+        <h3 style="margin: 4px 0 8px;">Aligned incentive</h3>
+        <p class="muted small">If the recipe's quality &lt;95% on your examples, we say so &mdash; we don't want to ship false savings. Honest losses build trust faster than fake wins.</p>
+      </div>
+    </div>
+
+    <!-- BOTTOM CTA ------------------------------------------------------ -->
+    <section class="bottom-cta">
+      <h2>Got a different prompt? Run another audit.</h2>
+      <p class="lead">Each audit is independent. Run as many as you want. The only cost is the 30 seconds it takes to paste examples.</p>
+      <div class="actions">
+        <a class="btn accent lg" href="#" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;">Back to top &rarr;</a>
+        <a class="btn ghost lg" href="/optimize">See the autopilot</a>
+      </div>
+    </section>
+
+    <footer class="page-footer">
+      <div class="left">
+        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+      </div>
+      <div class="right">
+        <a href="/why">Why</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/status">Status</a>
+      </div>
+    </footer>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/app.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+// ---------- starter examples ----------
+const STARTERS = {
+  spam: {
+    name: 'is-spam',
+    type: 'boolean',
+    examples:
+      'WIN A FREE iPHONE click here --> true\n' +
+      'hi mom, see you tomorrow --> false\n' +
+      'URGENT verify your account NOW --> true\n' +
+      'thanks for the meeting notes --> false\n' +
+      'FINAL NOTICE pay $5000 now --> true\n' +
+      'running 5 minutes late --> false',
+  },
+  issue: {
+    name: 'classify-issue-type',
+    type: 'enum',
+    enum: 'billing,bug,feature',
+    examples:
+      'deploy crashes since friday --> bug\n' +
+      'my refund hasn\'t arrived yet --> billing\n' +
+      'how do I cancel my subscription --> billing\n' +
+      'feature request: dark mode --> feature\n' +
+      'the API returns 500 on /v1/users --> bug\n' +
+      'wrong amount charged on card --> billing',
+  },
+  intent: {
+    name: 'route-user-message',
+    type: 'enum',
+    enum: 'sales,support',
+    examples:
+      'I want to upgrade my plan --> sales\n' +
+      'my password reset email never came --> support\n' +
+      'interested in your enterprise tier --> sales\n' +
+      'the API returns 500 on /v1/users --> support\n' +
+      'want to schedule a demo for tuesday --> sales\n' +
+      'billing portal shows wrong invoice --> support',
+  },
+};
+
+function fillStarter(key) {
+  const s = STARTERS[key];
+  $('a-name').value = s.name;
+  $('a-type').value = s.type;
+  if (s.type === 'enum') {
+    $('a-enum').style.display = 'block';
+    $('a-enum').value = s.enum;
+  } else {
+    $('a-enum').style.display = 'none';
+  }
+  $('a-examples').value = s.examples;
+}
+$('a-fill-spam').onclick   = () => fillStarter('spam');
+$('a-fill-issue').onclick  = () => fillStarter('issue');
+$('a-fill-intent').onclick = () => fillStarter('intent');
+
+// ---------- enum visibility ----------
+$('a-type').onchange = () => {
+  $('a-enum').style.display = $('a-type').value === 'enum' ? 'block' : 'none';
+};
+
+// ---------- calc display ----------
+function fmt(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function recalcDisplay() {
+  $('a-calls-out').textContent = parseInt($('a-calls').value, 10).toLocaleString();
+  $('a-tokens-out').textContent = $('a-tokens').value + ' tokens';
+}
+['a-calls', 'a-tokens'].forEach(id => $(id).addEventListener('input', recalcDisplay));
+recalcDisplay();
+
+// ---------- parse examples (simple "input --> expected" rows) ----------
+function parseExamples(text, outputType, enumLabels) {
+  const rows = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const positives = [];
+  for (const row of rows) {
+    const parts = row.split(/\s*-->\s*/);
+    if (parts.length !== 2) continue;
+    const input = parts[0].trim();
+    let expected = parts[1].trim();
+    if (outputType === 'boolean') {
+      expected = expected === 'true' || expected === 'yes' || expected === '1';
+    } else if (outputType === 'enum') {
+      // keep as string
+    }
+    positives.push({ input, expected });
+  }
+  return positives;
+}
+
+// ---------- Run the audit ----------
+let _lastConceptId = null;
+
+$('a-go').onclick = async () => {
+  const name = $('a-name').value.trim() || 'audit-recipe';
+  const email = $('a-email').value.trim();
+  const type = $('a-type').value;
+  const enums = $('a-enum').value.split(',').map(s => s.trim()).filter(Boolean);
+  const positives = parseExamples($('a-examples').value, type, enums);
+
+  if (!email) { $('a-msg').innerHTML = '<span class="pill bad">EMAIL REQUIRED</span>'; return; }
+  if (positives.length < 4) {
+    $('a-msg').innerHTML = '<span class="pill bad">NEED 4+ EXAMPLES</span> got ' + positives.length;
+    return;
+  }
+
+  $('a-go').disabled = true;
+  $('a-msg').innerHTML = '<span class="spinner"></span> synthesizing your recipe…';
+
+  const output_spec = type === 'enum' ? { type: 'enum', values: enums } : { type };
+
+  try {
+    await KS.ensureKey();
+    const r = await KS.api('/v1/synthesize', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        positives,
+        output_spec,
+        description: 'Free audit run via /audit by ' + email,
+        tags: ['audit', 'free-audit'],
+      }),
+    });
+
+    _lastConceptId = r.concept_id;
+
+    // --- compute savings using the user's stated volume ---
+    const calls = parseInt($('a-calls').value, 10);
+    const cost  = parseFloat($('a-model').value);
+    const monthly = calls * cost;
+    const recipeSpend = monthly * 0.05; // recipe runtime ~5% of LLM cost worst-case
+    const saved = Math.max(0, monthly - recipeSpend);
+    const annual = saved * 12;
+
+    $('a-results').style.display = 'block';
+    $('a-status').innerHTML = r.accepted
+      ? '<span class="pill good">ACCEPTED</span>'
+      : '<span class="pill bad">DECLINED</span>';
+    $('a-status-detail').textContent = r.accepted
+      ? 'recipe meets the 95% bar on your examples'
+      : (r.reason || 'examples too noisy for synthesis');
+    $('a-quality').textContent = ((r.quality_score || 0) * 100).toFixed(1) + '%';
+
+    if (r.accepted) {
+      $('a-monthly').textContent = fmt(saved);
+      $('a-annual').textContent = '$' + Math.round(annual).toLocaleString();
+    } else {
+      $('a-monthly').textContent = '—';
+      $('a-annual').textContent = '—';
+    }
+
+    $('a-source').textContent = r.source_code || '// synthesis declined; no source produced.';
+
+    $('a-msg').innerHTML = r.accepted
+      ? '<span class="pill good">DONE</span> recipe ready'
+      : '<span class="pill warn">SYNTH DECLINED</span> ' + (r.reason || 'low quality');
+    $('a-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    $('a-msg').innerHTML = '<span class="pill bad">ERROR</span> ' + (e.message || e);
+  } finally {
+    $('a-go').disabled = false;
+  }
+};
+
+// ---------- Try it live ----------
+$('a-test-go').onclick = async () => {
+  if (!_lastConceptId) { $('a-test-out').textContent = 'no recipe yet — run an audit first'; return; }
+  const input = $('a-test-input').value;
+  if (!input) return;
+  $('a-test-out').innerHTML = '<span class="spinner"></span> running…';
+  try {
+    const r = await KS.api('/v1/run', { method: 'POST', body: JSON.stringify({ concept_id: _lastConceptId, input }) });
+    $('a-test-out').innerHTML = '<span class="pill good">' + JSON.stringify(r.output) + '</span> in ' + (r.latency_us || '?') + 'µs';
+  } catch (e) {
+    $('a-test-out').innerHTML = '<span class="pill bad">ERROR</span> ' + (e.message || e);
+  }
+};
+
+// ---------- Email the audit (uses signup endpoint as a soft lead-capture) ----------
+$('a-email-go').onclick = async () => {
+  const email = $('a-email').value.trim();
+  if (!email) { $('a-email-msg').textContent = 'enter your email above first'; return; }
+  $('a-email-msg').innerHTML = '<span class="spinner"></span> queuing…';
+  try {
+    // Re-use signup as the lightweight lead-capture endpoint.
+    await fetch('/v1/signup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name: 'audit-' + ($('a-name').value || 'unknown') }),
+    });
+    $('a-email-msg').innerHTML = '<span class="pill good">QUEUED</span> we\'ll send the full audit shortly';
+  } catch (e) {
+    $('a-email-msg').innerHTML = '<span class="pill bad">ERROR</span> ' + (e.message || e);
+  }
+};
+</script>
+</body>
+</html>

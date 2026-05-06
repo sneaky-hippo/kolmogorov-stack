@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Live runtime — Recipe</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">LIVE RUNTIME</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard" class="active">Live runtime</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="footnote">
+      Refreshes every 2s. Every row is a recipe-call.<br/><br/>
+      Point: prove these run free, latency-wise.
+    </div>
+  </aside>
+  <main class="main">
+    <h2>Live runtime</h2>
+    <p class="lead">Every row below is a recipe-call. The whole point of this page is to prove that &mdash; once a recipe is built &mdash; serving it is free, latency-wise. Compare any number on this page to your current AI bill.</p>
+
+    <div class="banner">
+      <span class="ico">⏱</span>
+      <span><strong>Claude Sonnet 4.6 typical:</strong> ~600 ms per call &middot; <strong>Recipe (this page, right now):</strong> see p50 below &mdash; usually 30&ndash;50 µs.</span>
+    </div>
+
+    <div class="card glow" id="empty-state" style="display:none; margin-top:14px;">
+      <div class="label">Nothing's running yet</div>
+      <h3 style="margin:8px 0 4px;">This page comes alive when you call a recipe.</h3>
+      <p class="muted" style="margin:0 0 14px;">Three minutes from here to a live µs-latency timeline. Pick the path you like.</p>
+      <div class="actions">
+        <a class="btn accent" href="/playground">Open the playground &rarr;</a>
+        <a class="btn ghost" href="/onboarding">5-step onboarding</a>
+        <a class="btn ghost" href="/registry">Browse the registry</a>
+      </div>
+    </div>
+
+    <div class="row cols-3" style="margin-top:18px;">
+      <div class="card"><div class="label">Recipes</div><div class="stat" id="c-concepts">&mdash;</div><div class="delta" id="c-versions"></div></div>
+      <div class="card"><div class="label">Recipe-calls</div><div class="stat" id="c-invocations">&mdash;</div><div class="delta" id="c-avg-lat"></div></div>
+      <div class="card"><div class="label">Cache hit rate</div><div class="stat" id="c-cache-rate">&mdash;</div><div class="delta" id="c-l1"></div></div>
+    </div>
+
+    <div class="row cols-3" style="margin-top:14px;">
+      <div class="card"><div class="label">p50 latency</div><div class="stat" id="c-p50">&mdash;</div><div class="delta">µs &middot; median run</div></div>
+      <div class="card"><div class="label">p95 latency</div><div class="stat" id="c-p95">&mdash;</div><div class="delta">µs &middot; 95th percentile</div></div>
+      <div class="card"><div class="label">p99 latency</div><div class="stat" id="c-p99">&mdash;</div><div class="delta">µs &middot; tail</div></div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <div class="label">Latency, last 60 recipe-calls</div>
+      <svg id="spark" viewBox="0 0 600 90" preserveAspectRatio="none" style="width:100%; height:90px; margin-top:6px;"></svg>
+      <div class="delta" style="display:flex; justify-content:space-between;"><span id="spark-min">&mdash;</span><span id="spark-max">&mdash;</span></div>
+    </div>
+
+    <div class="row cols-3" style="margin-top:14px;">
+      <div class="card"><div class="label">Synthesis backend</div><div class="stat mono" id="c-backend" style="font-size:14px;">&mdash;</div><div class="delta" id="c-model"></div></div>
+      <div class="card"><div class="label">Warm recipes (compiled)</div><div class="stat" id="c-warm">&mdash;</div><div class="delta">10-min idle TTL</div></div>
+      <div class="card"><div class="label">Library version</div><div class="stat mono" id="c-lib" style="font-size:14px;">&mdash;</div><div class="delta">subroutine pinning</div></div>
+    </div>
+
+    <hr class="hairline" />
+
+    <div class="split">
+      <div>
+        <h3>Recent recipe-calls</h3>
+        <table class="table">
+          <thead><tr><th>ts</th><th>recipe</th><th>µs</th><th>cache</th></tr></thead>
+          <tbody id="tbl-inv"></tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Top recipes <span class="faint" style="font-weight:400;font-size:12px;">(last 200 calls)</span></h3>
+        <table class="table">
+          <thead><tr><th>recipe</th><th>calls</th><th>avg µs</th><th>cache</th></tr></thead>
+          <tbody id="tbl-top"></tbody>
+        </table>
+        <h3 style="margin-top:18px;">Recent errors</h3>
+        <table class="table">
+          <thead><tr><th>ts</th><th>recipe</th><th>message</th></tr></thead>
+          <tbody id="tbl-err"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <hr class="hairline" />
+
+    <div>
+      <h3>Quick compose</h3>
+      <p class="muted" style="font-size:13px;">Pick a topic, dispatch the top-K relevant recipes, and watch the composer merge their outputs.</p>
+      <div class="toolbar">
+        <input type="text" id="q-query" class="grow" placeholder="topic / query (e.g. 'classify support tickets')" />
+        <select id="q-strategy">
+          <option value="attention">attention</option>
+          <option value="voting">voting</option>
+          <option value="top1">top-1</option>
+          <option value="sequential">sequential</option>
+        </select>
+      </div>
+      <input type="text" id="q-input" placeholder="input passed to each recipe" style="margin-top:8px;" />
+      <div style="margin-top:8px;"><button class="btn accent" id="q-run">Compose &rarr;</button></div>
+      <pre id="q-output" style="margin-top:14px;">&mdash;</pre>
+    </div>
+
+    <footer class="page-footer">
+      <div class="left">
+        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+      </div>
+      <div class="right">
+        <a href="/why">Why</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/status">Status</a>
+      </div>
+    </footer>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/app.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+KS.showKeyBanner('main.main').catch(() => {});
+
+function paintSpark(values) {
+  const svg = $('spark');
+  svg.innerHTML = '';
+  if (!values || values.length === 0) {
+    svg.innerHTML = '<text x="300" y="48" fill="#5b6478" font-family="ui-monospace" font-size="11" text-anchor="middle">no calls yet — try the playground</text>';
+    $('spark-min').textContent = '—'; $('spark-max').textContent = '—';
+    return;
+  }
+  const W = 600, H = 90, pad = 4;
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const span = max - min || 1;
+  const stepX = (W - pad * 2) / Math.max(values.length - 1, 1);
+  const pts = values.map((v, i) => {
+    const x = pad + i * stepX;
+    const y = H - pad - ((v - min) / span) * (H - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const path = 'M ' + pts.join(' L ');
+  const fillPath = path + ` L ${pad + (values.length - 1) * stepX},${H - pad} L ${pad},${H - pad} Z`;
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(125,211,252,0.45)"/>
+        <stop offset="100%" stop-color="rgba(125,211,252,0)"/>
+      </linearGradient>
+    </defs>
+    <path d="${fillPath}" fill="url(#g1)" stroke="none"/>
+    <path d="${path}" fill="none" stroke="#7dd3fc" stroke-width="1.4"/>
+  `;
+  $('spark-min').textContent = `min ${Math.round(min)}µs`;
+  $('spark-max').textContent = `max ${Math.round(max)}µs`;
+}
+
+let conceptNameMap = {};
+async function refreshConceptNames() {
+  try {
+    const r = await KS.api('/v1/concepts?limit=200');
+    conceptNameMap = Object.fromEntries((r.concepts || []).map(c => [c.id, c.name]));
+  } catch { /* swallow — keep prior map */ }
+}
+
+function nameOf(id) {
+  if (!id) return '—';
+  return conceptNameMap[id] || id.slice(0, 16);
+}
+
+async function refresh() {
+  try {
+    const [h, t] = await Promise.all([
+      fetch('/health').then(r => r.json()),
+      KS.api('/v1/telemetry'),
+    ]);
+    $('c-concepts').textContent = h.stats.concepts;
+    $('c-versions').textContent = h.stats.versions + ' versions';
+    $('c-invocations').textContent = t.total_invocations.toLocaleString();
+    $('empty-state').style.display = (t.total_invocations === 0) ? 'block' : 'none';
+    $('c-avg-lat').textContent = 'avg ' + t.avg_latency_us + 'µs';
+    $('c-cache-rate').textContent = (t.cache_hit_rate * 100).toFixed(1) + '%';
+    $('c-l1').textContent = `L1: ${t.cache.l1_size}/${t.cache.l1_capacity}, L2 hits: ${t.cache.l2_hits}`;
+    $('c-p50').textContent = (t.p50_us || 0) + 'µs';
+    $('c-p95').textContent = (t.p95_us || 0) + 'µs';
+    $('c-p99').textContent = (t.p99_us || 0) + 'µs';
+    $('c-backend').textContent = h.has_anthropic_key ? 'Claude + Pattern' : 'Pattern only';
+    $('c-model').textContent = h.has_anthropic_key ? '(Claude writes recipes)' : 'set ANTHROPIC_API_KEY for Claude';
+    $('c-warm').textContent = t.compiled_cache_size;
+    $('c-lib').textContent = h.library_version;
+    paintSpark(t.sparkline || []);
+
+    const recent = t.recent || [];
+    const tb = $('tbl-inv');
+    tb.innerHTML = recent.slice(0, 25).map(i => `<tr><td class="mono faint">${i.ts.split('T')[1].slice(0,8)}</td><td class="mono">${nameOf(i.concept_id)}</td><td class="mono">${i.latency_us ?? '-'}</td><td>${i.cache_hit ? '<span class="pill accent">' + i.cache_hit + '</span>' : '<span class="faint">miss</span>'}</td></tr>`).join('') || '<tr><td colspan="4" class="faint">no calls yet — try the playground</td></tr>';
+
+    const agg = new Map();
+    for (const i of recent) {
+      if (!i.concept_id) continue;
+      const a = agg.get(i.concept_id) || { calls: 0, totLat: 0, latN: 0, cacheHits: 0 };
+      a.calls += 1;
+      if (i.latency_us) { a.totLat += i.latency_us; a.latN += 1; }
+      if (i.cache_hit) a.cacheHits += 1;
+      agg.set(i.concept_id, a);
+    }
+    const top = [...agg.entries()].sort((a, b) => b[1].calls - a[1].calls).slice(0, 8);
+    $('tbl-top').innerHTML = top.length === 0
+      ? '<tr><td colspan="4" class="faint">no usage yet</td></tr>'
+      : top.map(([cid, a]) => `<tr><td class="mono">${nameOf(cid)}</td><td class="mono">${a.calls}</td><td class="mono">${a.latN ? Math.round(a.totLat / a.latN) : '—'}</td><td class="mono">${a.cacheHits}/${a.calls}</td></tr>`).join('');
+
+    const errs = recent.filter(i => i.error).slice(0, 8);
+    $('tbl-err').innerHTML = errs.length === 0
+      ? '<tr><td colspan="3" class="faint">none — clean run</td></tr>'
+      : errs.map(i => `<tr><td class="mono faint">${i.ts.split('T')[1].slice(0,8)}</td><td class="mono">${nameOf(i.concept_id)}</td><td class="mono" style="color:#f87171;">${(i.error || '').slice(0, 60)}</td></tr>`).join('');
+  } catch (e) { /* swallow */ }
+}
+
+$('q-run').onclick = async () => {
+  await KS.ensureKey();
+  $('q-output').textContent = 'composing…';
+  try {
+    const r = await KS.api('/v1/compose', { method: 'POST', body: JSON.stringify({
+      query: $('q-query').value, input: $('q-input').value, strategy: $('q-strategy').value, k: 5,
+    })});
+    $('q-output').textContent = JSON.stringify(r, null, 2);
+  } catch (e) { $('q-output').textContent = 'error: ' + (e.message || e); }
+};
+
+refreshConceptNames().then(refresh);
+setInterval(refresh, 2000);
+setInterval(refreshConceptNames, 30000);
+</script>
+</body>
+</html>

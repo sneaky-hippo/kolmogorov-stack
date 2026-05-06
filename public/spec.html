@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Recipe Spec — RS-1: an open standard for AI behavior</title>
+  <meta name="description" content="Recipe Spec (RS-1) is an open, MIT-licensed standard for declaring AI behavior as deterministic, signed, executable contracts. Examples in. Behavior out. Cryptographic receipt on every run." />
+  <meta property="og:title" content="Recipe Spec — RS-1" />
+  <meta property="og:description" content="The open spec layer of AI. Examples in. Behavior out. Cryptographic receipt on every run." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">RS-1 · open spec</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/optimize">Optimize my bill</a>
+      <a href="/audit">Free bill audit</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/spec" class="active">Spec (RS-1)</a>
+      <a href="/receipts">Receipts</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="footnote">
+      <strong>Memory · Skills · Specialists.</strong><br/>
+      Recipe is the Skills layer of <a href="https://remlabs.ai" style="color:var(--ink-mute);">REM Labs</a>.
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <div class="eyebrow"><span class="dot live"></span> Open spec · MIT license · working draft</div>
+      <h1>The <span class="grad">open spec</span> for AI behavior.</h1>
+      <p class="sub">
+        <strong>Recipe Spec (RS-1)</strong> is a portable, MIT-licensed standard for declaring AI behavior as
+        <em>deterministic, signed, executable contracts</em>. Examples in. Behavior out. A cryptographic
+        receipt on every run. Anyone can implement it. Anyone can verify it. No vendor lock-in.
+      </p>
+      <div class="actions">
+        <a class="btn accent lg" href="/v1/spec" target="_blank">Read the JSON manifest &rarr;</a>
+        <a class="btn ghost lg" href="/receipts">See receipts in action</a>
+        <a class="btn ghost lg" href="https://github.com/" target="_blank">Conformance suite (soon)</a>
+      </div>
+      <div class="hero-meta">
+        <span><strong>RS-1</strong> v1.0.0-draft</span>
+        <span>&middot;</span>
+        <span>MIT license</span>
+        <span>&middot;</span>
+        <span>Reference impl is this site</span>
+      </div>
+    </section>
+
+    <section class="card" style="margin: 22px 0;">
+      <div class="row cols-1">
+        <div>
+          <div class="label">The thesis in one paragraph</div>
+          <p style="font-size: 17px; line-height: 1.65; margin-top: 8px;">
+            Today, every AI behavior — a classifier, a router, a filter — lives inside a stochastic black box.
+            You can't pin it. You can't prove what ran. You can't verify it offline. <strong>Recipe Spec changes that.</strong>
+            A recipe is a tiny piece of executable code with a published source hash, a JSON Schema for inputs and outputs,
+            and a receipt that any third party can verify. It runs in microseconds, forever, on any hardware. It's the layer
+            JSON Schema, OCI, and TCP/IP became — boring infrastructure under everything else.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <h2 class="h2">Five primitives</h2>
+    <div class="row cols-3">
+      <div class="card">
+        <div class="label">1. Recipe</div>
+        <h3 style="margin: 6px 0 8px;">A signed function</h3>
+        <p>An ID, a name, a version, a source hash, and the executable source. JS or WASM. Deterministic. Tiny.</p>
+      </div>
+      <div class="card">
+        <div class="label">2. Schema</div>
+        <h3 style="margin: 6px 0 8px;">JSON Schema in/out</h3>
+        <p>Optional input and output schemas pin the contract. Outputs that don't validate are rejected before they leave the runtime.</p>
+      </div>
+      <div class="card">
+        <div class="label">3. Examples</div>
+        <h3 style="margin: 6px 0 8px;">The training corpus</h3>
+        <p>Positives and negatives the recipe was synthesized against. Stored alongside source. Anyone can re-run them.</p>
+      </div>
+      <div class="card">
+        <div class="label">4. Receipt</div>
+        <h3 style="margin: 6px 0 8px;">Cryptographic proof</h3>
+        <p>Every run produces an HMAC-signed JSON receipt: source_hash, input_hash, output_hash, runtime version, timestamp. Verifiable forever.</p>
+      </div>
+      <div class="card">
+        <div class="label">5. Conformance</div>
+        <h3 style="margin: 6px 0 8px;">Identical bytes everywhere</h3>
+        <p>For a given (source_hash, input_hash), every conforming runtime MUST produce the same output_hash. The test suite enforces it.</p>
+      </div>
+      <div class="card">
+        <div class="label">6. Registry</div>
+        <h3 style="margin: 6px 0 8px;">A public catalog</h3>
+        <p>Recipes ship with metadata (description, tags, evaluation scores) so they're discoverable. The registry is the npm/HuggingFace of behavior.</p>
+      </div>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Recipe — the wire format</h2>
+    <div class="card">
+      <p>A recipe is a JSON document. This is the canonical shape:</p>
+      <pre class="terminal" style="margin-top: 10px;"><code>{
+  "id": "cpt_abc123",
+  "name": "is_spam",
+  "version": "1.0.0",
+  "source_hash": "8f3d…16hex",
+  "source": "function (x) { return /unsubscribe|free \\$\\$/i.test(x); }",
+  "schema": {
+    "input":  { "type": "string" },
+    "output": { "type": "boolean" }
+  },
+  "examples": [
+    { "input": "Hi, are we still on for Tuesday?", "expected": false },
+    { "input": "FREE $$$ click here unsubscribe", "expected": true }
+  ],
+  "evaluation": {
+    "quality_score":      0.96,
+    "pass_rate_positive": 1.00,
+    "reject_rate_negative": 1.00,
+    "latency_p50_us":     35
+  },
+  "lineage": {
+    "synthesized_from_n": 8,
+    "attempts_n": 3,
+    "model": "claude-opus-4-7"
+  },
+  "license": "MIT",
+  "created_at": "2026-05-06T17:42:11Z"
+}</code></pre>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Receipt — the proof format</h2>
+    <div class="card">
+      <p>Every <code>POST /v1/run</code> returns a <code>receipt</code> object alongside the output. Receipts are stable JSON, signed with HMAC-SHA256, and verifiable by anyone. The shape:</p>
+      <pre class="terminal" style="margin-top: 10px;"><code>{
+  "spec":            "rs-1",
+  "source_hash":     "8f3d…16hex",
+  "input_hash":      "sha256/64hex of canonical JSON of input",
+  "output_hash":     "sha256/64hex of canonical JSON of output",
+  "version_id":      "ver_xyz789",
+  "runtime_version": "0.3.0",
+  "issued_at":       "2026-05-06T17:42:11.443Z",
+  "cache_hit":       false,
+  "latency_us":      35,
+  "hmac":            "f8a1…64hex (HMAC-SHA256 over the canonical-JSON payload)"
+}</code></pre>
+      <p style="margin-top: 14px;">
+        Re-verifiable via <code>POST /v1/receipts/verify</code>. Pass back the receipt — and optionally the original input/output —
+        and the endpoint returns <code>{ valid: true|false, checks: { signature, input_match, output_match } }</code>.
+      </p>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Canonical JSON</h2>
+    <div class="card">
+      <p>Hashes are only stable if everyone serializes the same way. RS-1 mandates canonical JSON:</p>
+      <ul style="margin-top: 8px; line-height: 1.85;">
+        <li>Object keys sorted lexicographically at every depth.</li>
+        <li>Numbers, strings, booleans, null, arrays, objects only — no NaN, no Infinity, no undefined.</li>
+        <li>No trailing whitespace, no insignificant whitespace.</li>
+        <li>UTF-8 encoded.</li>
+      </ul>
+      <p style="margin-top: 14px; color: var(--ink-mute);">
+        Reference implementation: <code>canonicalJson(v)</code> in <code>src/router.js</code> (50 lines, public domain).
+      </p>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Why a spec, not just a product</h2>
+    <table class="table compare-full">
+      <thead>
+        <tr>
+          <th>Approach</th>
+          <th>What you get</th>
+          <th>What you lose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Closed product (Cohere, Helicone)</td>
+          <td>One vendor's runtime</td>
+          <td>Lock-in. Migration cost. No third-party verification.</td>
+        </tr>
+        <tr>
+          <td>Open spec (RS-1)</td>
+          <td>Many runtimes. Public registry. Cryptographic receipts.</td>
+          <td>Nothing — we still earn on hosting, attestation, fine-tunes.</td>
+        </tr>
+        <tr class="winner-col">
+          <td>Why this works</td>
+          <td>Same way JSON Schema, OCI containers, sigstore, OAuth 2.0 work — the spec is free, the impls compete on quality.</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="h2" style="margin-top: 32px;">Conformance — claim RS-1</h2>
+    <div class="card">
+      <p>Any team can build a runtime that claims RS-1 conformance. The requirements:</p>
+      <ol style="margin-top: 8px; line-height: 1.85;">
+        <li>Implement <code>POST /v1/synthesize</code>, <code>POST /v1/run</code>, <code>POST /v1/receipts/verify</code>, <code>GET /v1/spec</code>.</li>
+        <li>For any (source_hash, input_hash), produce the same output_hash as the reference implementation.</li>
+        <li>Pass the public conformance suite (200+ recipes × 10+ inputs each, plus determinism + canonical-JSON edge cases).</li>
+        <li>Issue receipts that re-verify under the public canonical-JSON algorithm.</li>
+      </ol>
+      <p style="margin-top: 14px;">
+        Conformance gives you the right to ship the <strong>RS-1 compliant</strong> badge. It also means recipes
+        published in our registry run unchanged on your runtime — and vice versa.
+      </p>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Compatibility hooks</h2>
+    <div class="row cols-3">
+      <div class="card">
+        <div class="label">EU AI Act 2026</div>
+        <h3 style="margin: 6px 0 8px;">Articles 12 & 50</h3>
+        <p>Receipts provide auditable behavior logs that satisfy the change-management and transparency requirements of the EU AI Act, due 2026.</p>
+      </div>
+      <div class="card">
+        <div class="label">SOC 2</div>
+        <h3 style="margin: 6px 0 8px;">CC8.1 evidence</h3>
+        <p>Receipts stored alongside source produce a tamper-evident chain of custody that auditors accept as change-management evidence.</p>
+      </div>
+      <div class="card">
+        <div class="label">npm / sigstore</div>
+        <h3 style="margin: 6px 0 8px;">Provenance ready</h3>
+        <p>Recipe source hashes plug directly into npm provenance and sigstore attestation. Same primitives, behavior layer instead of binary layer.</p>
+      </div>
+    </div>
+
+    <section class="bottom-cta" style="margin-top: 36px;">
+      <h2>The spec is the moat.</h2>
+      <p>If RS-1 wins, every AI behavior in the world ships as a recipe with a receipt. Verified. Portable. Free at runtime.<br/>
+      We earn on hosting, on attestation, on Specialists. The spec stays open.</p>
+      <div class="actions" style="margin-top: 14px;">
+        <a class="btn accent lg" href="/v1/spec" target="_blank">Read the JSON manifest</a>
+        <a class="btn ghost lg" href="/receipts">Try receipt verification</a>
+        <a class="btn ghost lg" href="/signup">Get an API key</a>
+      </div>
+    </section>
+
+  </main>
+</div>
+</body>
+</html>

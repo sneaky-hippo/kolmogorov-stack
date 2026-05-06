@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Account — Recipe</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">ACCOUNT</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account" class="active">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="footnote">
+      Your key is in browser storage. Logging out clears it.
+    </div>
+  </aside>
+  <main class="main">
+    <h2>Account</h2>
+    <p class="lead">One page for everything: your plan, your usage, your API key. No "settings" maze.</p>
+
+    <div class="card glow" id="acct-empty" style="display:none;">
+      <strong>No key in this browser.</strong>
+      <p class="muted">Paste a key to sign in, or <a href="/signup">get one</a>.</p>
+      <div class="toolbar">
+        <input type="text" id="acct-paste" class="grow mono" placeholder="ks_..." />
+        <button class="btn primary" id="acct-paste-btn">Sign in</button>
+      </div>
+    </div>
+
+    <div id="acct-loaded" style="display:none;">
+      <div class="row cols-3" style="margin-bottom:14px;">
+        <div class="card"><div class="label">Plan</div><div class="stat" id="acct-plan">&mdash;</div><div class="delta" id="acct-id"></div></div>
+        <div class="card"><div class="label">Used this month</div><div class="stat" id="acct-used">&mdash;</div><div class="delta" id="acct-pct"></div></div>
+        <div class="card"><div class="label">Remaining</div><div class="stat" id="acct-remaining">&mdash;</div><div class="delta" id="acct-quota"></div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="label">Quota</div>
+        <div class="onboard-progress" style="margin-top:8px;">
+          <div id="acct-bar" class="onboard-bar" style="width:0%"></div>
+        </div>
+        <div class="delta" id="acct-bar-text"></div>
+      </div>
+
+      <h3>API key</h3>
+      <div class="card">
+        <p class="muted" style="margin:0 0 10px;">Show, copy, rotate. Treat your key like a password.</p>
+        <div class="toolbar">
+          <input type="text" id="acct-key" class="grow mono" readonly />
+          <button class="btn-ghost" id="acct-show">Show</button>
+          <button class="btn-ghost" id="acct-copy">Copy</button>
+          <button class="btn-ghost" id="acct-rotate" style="color:var(--bad)">Rotate</button>
+        </div>
+        <p class="delta" id="acct-key-status"></p>
+      </div>
+
+      <h3>Top recipes (this month)</h3>
+      <div class="card">
+        <table class="table" style="width:100%;">
+          <thead><tr><th>Recipe</th><th style="text-align:right;">Calls</th><th style="text-align:right;">Cache hits</th><th style="text-align:right;">p50 µs</th></tr></thead>
+          <tbody id="acct-top"></tbody>
+        </table>
+        <p class="delta" id="acct-top-empty"></p>
+      </div>
+
+      <h3>Cost forecast</h3>
+      <div class="card">
+        <p class="muted">Projected using the current burn rate. Cache hits are 4× cheaper than misses.</p>
+        <div class="row cols-2">
+          <div><div class="label">This month, on track for</div><div class="stat" id="acct-forecast">$0.00</div></div>
+          <div><div class="label">If you stayed cold-LLM at 600ms+$0.001/call</div><div class="stat" id="acct-llm-cost">$0.00</div></div>
+        </div>
+        <div class="delta" id="acct-savings"></div>
+      </div>
+
+      <h3>Sign out</h3>
+      <div class="card">
+        <p class="muted" style="margin:0 0 10px;">Clears the key from this browser only. The key still works elsewhere.</p>
+        <button class="btn-ghost" id="acct-logout">Sign out of this browser</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer class="bridge">
+  <span>Memory · Skills · Specialists.</span>
+  <span>Recipes is the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+</footer>
+
+<script src="/app.js"></script>
+<script>
+(function () {
+  function getKey() { return localStorage.getItem('apiKey') || localStorage.getItem('recipeApiKey') || ''; }
+  function setKey(k) { localStorage.setItem('apiKey', k); localStorage.setItem('recipeApiKey', k); }
+  function clearKey() { localStorage.removeItem('apiKey'); localStorage.removeItem('recipeApiKey'); }
+
+  function $(id) { return document.getElementById(id); }
+  function fmt(n) { return Number(n || 0).toLocaleString(); }
+  function pct(used, quota) { return Math.min(100, Math.round((used / Math.max(1, quota)) * 100)); }
+  function dollars(n) { return '$' + (Number(n || 0)).toFixed(n < 1 ? 2 : 0); }
+
+  async function api(path) {
+    const r = await fetch(path, { headers: { 'Authorization': 'Bearer ' + getKey() } });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+
+  async function loadAccount() {
+    const k = getKey();
+    if (!k) { $('acct-empty').style.display = 'block'; $('acct-loaded').style.display = 'none'; return; }
+    $('acct-empty').style.display = 'none'; $('acct-loaded').style.display = 'block';
+    try {
+      const acct = await api('/v1/account');
+      $('acct-plan').textContent = acct.plan || (acct.admin ? 'admin' : '—');
+      $('acct-id').textContent = acct.id || acct.tenant || '';
+      $('acct-used').textContent = fmt(acct.used);
+      $('acct-quota').textContent = `of ${fmt(acct.quota)} / mo`;
+      $('acct-remaining').textContent = fmt(acct.remaining ?? Math.max(0, (acct.quota || 0) - (acct.used || 0)));
+      $('acct-pct').textContent = `${pct(acct.used, acct.quota)}% used`;
+      const p = pct(acct.used, acct.quota);
+      $('acct-bar').style.width = p + '%';
+      $('acct-bar-text').textContent = `${fmt(acct.used)} / ${fmt(acct.quota)} this month`;
+
+      // Forecast:
+      // Recipe runs cost ~$0.0000002 (fractional cents). Compare to LLM ~$0.001/call.
+      const used = Number(acct.used || 0);
+      $('acct-forecast').textContent = dollars(used * 0.0000002 * 30);
+      $('acct-llm-cost').textContent = dollars(used * 0.001 * 30);
+      $('acct-savings').textContent = `That's roughly ${(0.001 / 0.0000002).toFixed(0)}× cheaper than calling Claude/OpenAI for the same number of decisions.`;
+
+      // Show partial key
+      $('acct-key').value = k.replace(/^(ks_.{4}).+/, '$1' + '•'.repeat(28));
+    } catch (e) {
+      $('acct-empty').style.display = 'block'; $('acct-loaded').style.display = 'none';
+      $('acct-empty').firstElementChild.textContent = 'Key invalid or expired. Paste another.';
+    }
+
+    // Top recipes — derived from /v1/recipes + per-recipe stats
+    try {
+      const list = await api('/v1/recipes');
+      const recipes = (list.recipes || []).slice(0, 5);
+      const rows = await Promise.all(recipes.map(async r => {
+        try { const s = await api(`/v1/recipes/${r.id}/stats`); return { r, s }; }
+        catch { return { r, s: null }; }
+      }));
+      const tbody = $('acct-top');
+      tbody.innerHTML = '';
+      let any = false;
+      rows.forEach(({ r, s }) => {
+        if (!s || (s.invocations ?? 0) === 0) return;
+        any = true;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><a href="/registry">${r.name}</a></td><td style="text-align:right;">${fmt(s.invocations)}</td><td style="text-align:right;">${fmt(s.cache_hits || 0)}</td><td style="text-align:right;">${(s.latency_us?.p50 ?? '—')}</td>`;
+        tbody.appendChild(tr);
+      });
+      if (!any) $('acct-top-empty').textContent = 'No recipe-calls yet — try the playground.';
+    } catch (e) { $('acct-top-empty').textContent = 'Could not load recipe stats.'; }
+  }
+
+  $('acct-paste-btn').addEventListener('click', () => {
+    const k = $('acct-paste').value.trim();
+    if (!/^ks_/.test(k)) { alert('Keys start with ks_'); return; }
+    setKey(k); loadAccount();
+  });
+
+  $('acct-show').addEventListener('click', () => {
+    $('acct-key').value = getKey();
+    setTimeout(() => { $('acct-key').value = getKey().replace(/^(ks_.{4}).+/, '$1' + '•'.repeat(28)); }, 5000);
+  });
+  $('acct-copy').addEventListener('click', async () => {
+    await navigator.clipboard.writeText(getKey());
+    $('acct-key-status').textContent = 'Copied to clipboard.';
+    setTimeout(() => $('acct-key-status').textContent = '', 2000);
+  });
+  $('acct-rotate').addEventListener('click', async () => {
+    if (!confirm('Rotate? Your old key stops working immediately.')) return;
+    try {
+      const r = await fetch('/v1/account/rotate-key', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getKey() } }).then(r => r.json());
+      if (r.api_key) {
+        setKey(r.api_key);
+        $('acct-key-status').textContent = 'Rotated. New key saved to this browser.';
+        loadAccount();
+      } else {
+        $('acct-key-status').textContent = 'Could not rotate: ' + (r.error || 'unknown');
+      }
+    } catch (e) { $('acct-key-status').textContent = 'Rotate failed: ' + e.message; }
+  });
+  $('acct-logout').addEventListener('click', () => {
+    if (!confirm('Sign out of this browser? Your key still works on other devices.')) return;
+    clearKey(); location.href = '/';
+  });
+
+  loadAccount();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Optimize — Recipe</title>
+  <meta name="description" content="The autopilot for your AI bill. Paste your prompts, see the clusters, watch the savings appear, deploy with one click." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">v0.3 · autopilot</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/optimize" class="active">Optimize my bill</a>
+      <a href="/audit">Free bill audit</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="footnote">
+      <strong>Memory · Skills · Specialists.</strong><br/>
+      Recipe is the Skills layer of <a href="https://remlabs.ai" style="color:var(--ink-mute);">REM Labs</a>.
+    </div>
+  </aside>
+  <main class="main">
+
+    <!-- HERO ------------------------------------------------------------ -->
+    <section class="hero" style="padding:42px 0 18px;">
+      <div class="eyebrow"><span class="dot live"></span> AUTOPILOT &middot; LIVE</div>
+      <h1>The autopilot. <span class="grad">Watch your bill drop.</span></h1>
+      <p class="sub" style="font-size:17px;">
+        Paste a few of the prompts you send Claude or GPT every day. We'll find the patterns,
+        synthesize replacements in three seconds, and tell you what you'd save. No signup &mdash;
+        an anonymous workspace mints itself for you.
+      </p>
+    </section>
+
+    <!-- LIVE SAVINGS METER ---------------------------------------------- -->
+    <section class="card glow live-meter" style="margin-top: 8px;">
+      <div class="row cols-4">
+        <div>
+          <div class="label">Observations logged</div>
+          <div class="stat mono" id="m-obs">0</div>
+          <div class="delta">prompts your autopilot has seen</div>
+        </div>
+        <div>
+          <div class="label">Clusters detected</div>
+          <div class="stat mono" id="m-clusters">0</div>
+          <div class="delta">repeating patterns</div>
+        </div>
+        <div>
+          <div class="label">Recipes synthesized</div>
+          <div class="stat mono" id="m-recipes">0</div>
+          <div class="delta">replacements deployed</div>
+        </div>
+        <div>
+          <div class="label">Est. monthly savings</div>
+          <div class="stat grad mono" id="m-savings">$0.00</div>
+          <div class="delta">based on observed call cost</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 1 — SEED OBSERVATIONS ------------------------------------- -->
+    <h2 style="margin-top: 36px;">Step 1 &middot; Show us your prompts</h2>
+    <p class="lead">Two ways: paste a few yourself, or hit the demo button to seed realistic ones from a typical AI-startup workload.</p>
+
+    <div class="row cols-2">
+      <div class="card">
+        <div class="label">PATH A &middot; demo seed</div>
+        <h3 style="margin: 4px 0 10px;">Use a sample workload</h3>
+        <p class="muted small">Seeds the observer with 18 realistic prompts across 3 typical clusters: <span class="chip">support-ticket triage</span><span class="chip">spam detection</span><span class="chip">intent routing</span>.</p>
+        <button class="btn accent" id="seed-go">Seed sample workload &rarr;</button>
+        <span id="seed-msg" class="muted mono small" style="margin-left:10px;"></span>
+      </div>
+      <div class="card">
+        <div class="label">PATH B &middot; paste your own</div>
+        <h3 style="margin: 4px 0 10px;">Paste prompts you actually use</h3>
+        <textarea id="paste-prompts" placeholder="One JSON observation per line — { &quot;prompt&quot;: &quot;Is this spam? hello&quot;, &quot;response&quot;: false, &quot;cost_usd&quot;: 0.0006 }" style="height: 110px;"></textarea>
+        <div class="toolbar" style="margin-top: 8px;">
+          <button class="btn ghost" id="paste-go">Log observations &rarr;</button>
+          <span id="paste-msg" class="muted mono small"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2 — CLUSTERS ---------------------------------------------- -->
+    <h2 style="margin-top: 36px;">Step 2 &middot; The clusters we found</h2>
+    <p class="lead">Each cluster is a repeating prompt pattern. The autopilot groups by template signature so different inputs to the same kind of question collapse together.</p>
+
+    <div id="clusters-empty" class="card" style="text-align: center; padding: 40px 20px;">
+      <p class="muted" style="margin: 0;">No clusters yet. Seed sample data or paste your own prompts above.</p>
+    </div>
+    <div id="clusters-list" class="row cols-1" style="display:none; gap: 14px;"></div>
+
+    <!-- STEP 3 — DEPLOY SNIPPET ---------------------------------------- -->
+    <h2 style="margin-top: 36px;">Step 3 &middot; Wrap your client (the silent autopilot)</h2>
+    <p class="lead">Once a cluster is replaced, your existing AI client routes those calls to the recipe automatically. You change two lines.</p>
+
+    <div class="split">
+      <div class="card">
+        <div class="label">BEFORE</div>
+        <h4 style="margin: 4px 0 10px;">Pure Anthropic call</h4>
+<pre><code>import Anthropic from "@anthropic-ai/sdk";
+const client = new Anthropic();
+
+// ...later, 12,000 times a day...
+const r = await client.messages.create({
+  model: "claude-sonnet-4-6",
+  messages: [{
+    role: "user",
+    content: `Is this spam? "${msg}"`
+  }]
+});
+// $0.0006/call &times; 12,000 = <span class="grad">$216/mo</span></code></pre>
+      </div>
+      <div class="card glow">
+        <div class="label" style="color:var(--accent);">AFTER &middot; ONE-LINE WRAPPER</div>
+        <h4 style="margin: 4px 0 10px;">Same client, recipe-aware</h4>
+<pre><code>import Anthropic from "@anthropic-ai/sdk";
+import { wrapAnthropic } from "@kolmogorov/recipe";
+const client = wrapAnthropic(new Anthropic());
+
+// same call site &mdash; nothing else changes:
+const r = await client.messages.create({...});
+// 80% routed to recipe at <strong>35&micro;s</strong>
+// 20% still hit Claude (we never replace
+//   what we can't verify &gt;95% match)
+// new spend: <span class="grad">$43/mo</span> &middot; saves <strong>$173/mo</strong></code></pre>
+      </div>
+    </div>
+
+    <!-- ROI CALCULATOR (live) ------------------------------------------ -->
+    <h2 style="margin-top: 36px;">Step 4 &middot; What it'd save you, monthly</h2>
+    <p class="lead">Tune the sliders to your real numbers. The math is honest: 80% of repeat calls become free, the hard 20% stay on the LLM.</p>
+
+    <div class="card calc">
+      <div class="row cols-3">
+        <div>
+          <div class="label">Calls/month to your LLM</div>
+          <input type="range" id="r-calls" min="1000" max="10000000" step="1000" value="500000" />
+          <div class="mono" id="r-calls-out" style="margin-top:6px;">500,000</div>
+        </div>
+        <div>
+          <div class="label">Avg cost / call (USD)</div>
+          <input type="range" id="r-cost" min="0.0001" max="0.01" step="0.0001" value="0.0008" />
+          <div class="mono" id="r-cost-out" style="margin-top:6px;">$0.0008</div>
+        </div>
+        <div>
+          <div class="label">% replaceable (autopilot finds)</div>
+          <input type="range" id="r-pct" min="40" max="90" step="1" value="78" />
+          <div class="mono" id="r-pct-out" style="margin-top:6px;">78%</div>
+        </div>
+      </div>
+      <hr class="hairline" />
+      <div class="row cols-3">
+        <div class="calc-output">
+          <div class="label">YOUR CURRENT BILL</div>
+          <div class="big mono" id="r-bill">$400.00</div>
+          <div class="muted small">per month, on the LLM</div>
+        </div>
+        <div class="calc-output winner">
+          <div class="label">AFTER RECIPE</div>
+          <div class="big mono grad" id="r-after">$88.00</div>
+          <div class="muted small">recipes are free; 22% stays on LLM</div>
+        </div>
+        <div class="calc-output winner">
+          <div class="label">YOUR ANNUAL SAVINGS</div>
+          <div class="big mono grad" id="r-year">$3,744</div>
+          <div class="muted small"><strong id="r-cut">78%</strong> bill reduction &middot; recipe runtime free</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOW IT WORKS UNDER THE HOOD ------------------------------------ -->
+    <h2 style="margin-top: 36px;">How the autopilot finds savings &mdash; the honest version</h2>
+    <ol class="muted" style="line-height: 1.7; max-width: 820px;">
+      <li><strong>Observe.</strong> Every prompt that flows through the wrapper is hashed by template-signature (the leading instruction, with quoted strings and numbers normalized). The bodies are PII-redacted; we never store raw user content.</li>
+      <li><strong>Cluster.</strong> When the same template hits 4+ times, we mark it as a synthesis candidate. Most clusters are classification, intent detection, format checking, language detection &mdash; the boring 80%.</li>
+      <li><strong>Verify before we replace.</strong> When you click synthesize, we mint a deterministic JS function and compare its output against the LLM responses we recorded. We require &ge;95% match before we'd ever route to it.</li>
+      <li><strong>Route silently.</strong> The wrapper transparently sends future matching calls to the recipe. Misses fall through to your original LLM call &mdash; nothing breaks.</li>
+      <li><strong>Watch for drift.</strong> The autopilot keeps shadow-LLM-calling at low rate. If outputs diverge above threshold, the recipe demotes itself and re-synthesizes.</li>
+    </ol>
+
+    <!-- BOTTOM CTA ----------------------------------------------------- -->
+    <section class="bottom-cta">
+      <h2>Ready for a real audit?</h2>
+      <p class="lead">Drop the wrapper into staging for a week. We email you a savings receipt every Friday. If the receipt is zero, you pay nothing.</p>
+      <div class="actions">
+        <a class="btn accent lg" href="/docs#sdk">Install the SDK &rarr;</a>
+        <a class="btn ghost lg" href="/signup">Or sign up for the dashboard</a>
+      </div>
+    </section>
+
+    <footer class="page-footer">
+      <div class="left">
+        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+      </div>
+      <div class="right">
+        <a href="/why">Why</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/status">Status</a>
+      </div>
+    </footer>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/app.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+// ---------- Sample workload (18 realistic prompts, 3 clusters) ----------
+const SAMPLE = [
+  // cluster 1: support-ticket triage (~$0.0008/call)
+  { prompt: 'Classify this support ticket: "my refund hasn\'t arrived yet"', response: 'billing', model: 'claude-sonnet-4-6', cost_usd: 0.0008, latency_ms: 540 },
+  { prompt: 'Classify this support ticket: "the app keeps crashing on login"', response: 'bug',     model: 'claude-sonnet-4-6', cost_usd: 0.0008, latency_ms: 580 },
+  { prompt: 'Classify this support ticket: "how do I cancel my subscription"', response: 'billing', model: 'claude-sonnet-4-6', cost_usd: 0.0008, latency_ms: 510 },
+  { prompt: 'Classify this support ticket: "feature request: dark mode"', response: 'feature',     model: 'claude-sonnet-4-6', cost_usd: 0.0008, latency_ms: 600 },
+  { prompt: 'Classify this support ticket: "deploy crashes since friday"', response: 'bug',         model: 'claude-sonnet-4-6', cost_usd: 0.0008, latency_ms: 555 },
+  { prompt: 'Classify this support ticket: "wrong amount charged on card"', response: 'billing',    model: 'claude-sonnet-4-6', cost_usd: 0.0008, latency_ms: 530 },
+
+  // cluster 2: spam detection (~$0.0006/call)
+  { prompt: 'Is this spam? "WIN A FREE iPHONE click here"', response: true,  model: 'claude-sonnet-4-6', cost_usd: 0.0006, latency_ms: 470 },
+  { prompt: 'Is this spam? "hi mom, see you tomorrow"',     response: false, model: 'claude-sonnet-4-6', cost_usd: 0.0006, latency_ms: 460 },
+  { prompt: 'Is this spam? "URGENT verify your account NOW"', response: true,  model: 'claude-sonnet-4-6', cost_usd: 0.0006, latency_ms: 480 },
+  { prompt: 'Is this spam? "thanks for the meeting notes"',  response: false, model: 'claude-sonnet-4-6', cost_usd: 0.0006, latency_ms: 450 },
+  { prompt: 'Is this spam? "FINAL NOTICE pay $5000 now or"', response: true,  model: 'claude-sonnet-4-6', cost_usd: 0.0006, latency_ms: 475 },
+  { prompt: 'Is this spam? "running 5 minutes late"',        response: false, model: 'claude-sonnet-4-6', cost_usd: 0.0006, latency_ms: 440 },
+
+  // cluster 3: intent routing (~$0.0010/call)
+  { prompt: 'Route this user message to the right team: "I want to upgrade my plan"', response: 'sales',    model: 'claude-sonnet-4-6', cost_usd: 0.0010, latency_ms: 620 },
+  { prompt: 'Route this user message to the right team: "my password reset email never came"', response: 'support', model: 'claude-sonnet-4-6', cost_usd: 0.0010, latency_ms: 600 },
+  { prompt: 'Route this user message to the right team: "interested in your enterprise tier"', response: 'sales',    model: 'claude-sonnet-4-6', cost_usd: 0.0010, latency_ms: 640 },
+  { prompt: 'Route this user message to the right team: "the API returns 500 on /v1/users"',   response: 'support', model: 'claude-sonnet-4-6', cost_usd: 0.0010, latency_ms: 610 },
+  { prompt: 'Route this user message to the right team: "want to schedule a demo for tuesday"', response: 'sales',   model: 'claude-sonnet-4-6', cost_usd: 0.0010, latency_ms: 650 },
+  { prompt: 'Route this user message to the right team: "billing portal shows wrong invoice"',  response: 'support', model: 'claude-sonnet-4-6', cost_usd: 0.0010, latency_ms: 630 },
+];
+
+let synthesizedCount = 0;
+let cumulativeMonthlySavings = 0;
+
+async function ensureKey() { return await KS.ensureKey(); }
+
+async function postObs(o) {
+  return KS.api('/v1/bridges/observe', { method: 'POST', body: JSON.stringify(o) });
+}
+
+async function refreshClusters() {
+  const r = await KS.api('/v1/bridges/suggestions');
+  const list = (r.suggestions || []).sort((a, b) => b.count - a.count);
+  $('m-clusters').textContent = list.length;
+  const wrap = $('clusters-list');
+  const empty = $('clusters-empty');
+  if (!list.length) { wrap.style.display = 'none'; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  wrap.style.display = 'grid';
+  wrap.innerHTML = '';
+  list.forEach((g, i) => {
+    const monthly = (g.total_cost_usd * 30).toFixed(2);
+    const card = document.createElement('div');
+    card.className = 'card cluster-card';
+    card.innerHTML = `
+      <div class="row" style="grid-template-columns: 1fr auto; align-items: start; gap: 18px;">
+        <div>
+          <div class="label">CLUSTER #${i + 1} &middot; ${g.model || 'llm'}</div>
+          <h3 style="margin: 4px 0 6px; font-size: 16px;">"${escapeHtml(g.template_preview || '').slice(0, 120)}"</h3>
+          <p class="muted small" style="margin: 0 0 10px;">
+            Seen <strong>${g.count}&times;</strong> &middot;
+            avg latency <strong>${g.avg_latency_ms}ms</strong> &middot;
+            est <strong>$${monthly}/mo</strong> if this rate keeps up.
+          </p>
+          <div class="mono small muted" style="background:#0d0f15;border:1px solid var(--line);padding:8px 10px;border-radius:var(--r-sm);max-height:80px;overflow:auto;">
+            ${g.examples.slice(0, 3).map(e => `${escapeHtml((e.input || '').slice(0, 60))} &rarr; <span style="color:var(--accent);">${escapeHtml(JSON.stringify(e.expected)).slice(0, 30)}</span>`).join('<br/>')}
+          </div>
+        </div>
+        <div style="text-align: right; min-width: 180px;">
+          <button class="btn accent" data-hash="${g.template_hash}" data-monthly="${monthly}">Synthesize &amp; replace</button>
+          <div class="muted small" style="margin-top: 8px;">replaces all <strong>${g.count}</strong> matching calls</div>
+        </div>
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+  // attach handlers
+  wrap.querySelectorAll('button[data-hash]').forEach(btn => {
+    btn.onclick = async () => {
+      const hash = btn.dataset.hash;
+      const monthly = parseFloat(btn.dataset.monthly || '0');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> synthesizing…';
+      try {
+        const result = await KS.api('/v1/bridges/auto-synthesize', {
+          method: 'POST',
+          body: JSON.stringify({ template_hash: hash }),
+        });
+        if (result.accepted) {
+          synthesizedCount++;
+          cumulativeMonthlySavings += monthly;
+          $('m-recipes').textContent = synthesizedCount;
+          $('m-savings').textContent = '$' + cumulativeMonthlySavings.toFixed(2);
+          btn.outerHTML = `<span class="pill good">DEPLOYED</span><div class="muted small" style="margin-top:8px;">cpt_${(result.concept_id || '').slice(-8)} &middot; quality ${(result.quality_score || 0).toFixed(2)}</div>`;
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Synthesis declined &mdash; retry';
+          KS.toast(result.reason || 'synthesis declined');
+        }
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'Synthesize &amp; replace';
+        KS.toast('error: ' + (e.message || e));
+      }
+    };
+  });
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+// ---------- Step 1A: seed ----------
+$('seed-go').onclick = async () => {
+  await ensureKey();
+  $('seed-msg').textContent = 'logging 18 observations…';
+  $('seed-go').disabled = true;
+  let ok = 0;
+  for (const o of SAMPLE) {
+    try { await postObs(o); ok++; } catch (e) { /* keep going */ }
+  }
+  $('m-obs').textContent = ok;
+  $('seed-msg').innerHTML = `<span class="pill good">SEEDED</span> ${ok} observations. Clusters refreshing…`;
+  await refreshClusters();
+  $('seed-go').disabled = false;
+};
+
+// ---------- Step 1B: paste ----------
+$('paste-go').onclick = async () => {
+  await ensureKey();
+  const lines = ($('paste-prompts').value || '').split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) { $('paste-msg').textContent = 'no lines to log'; return; }
+  $('paste-msg').textContent = `logging ${lines.length}…`;
+  let ok = 0;
+  for (const line of lines) {
+    try {
+      const obj = JSON.parse(line);
+      await postObs(obj);
+      ok++;
+    } catch (e) { /* skip malformed */ }
+  }
+  const prev = parseInt($('m-obs').textContent || '0', 10);
+  $('m-obs').textContent = prev + ok;
+  $('paste-msg').innerHTML = `<span class="pill good">${ok}/${lines.length}</span> logged`;
+  await refreshClusters();
+};
+
+// ---------- Calculator (pure-client, no network) ----------
+function fmt(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function recalc() {
+  const calls = parseInt($('r-calls').value, 10);
+  const cost  = parseFloat($('r-cost').value);
+  const pct   = parseInt($('r-pct').value, 10);
+  $('r-calls-out').textContent = calls.toLocaleString();
+  $('r-cost-out').textContent  = '$' + cost.toFixed(4);
+  $('r-pct-out').textContent   = pct + '%';
+  const bill  = calls * cost;
+  const after = bill * (1 - pct / 100);
+  const year  = (bill - after) * 12;
+  $('r-bill').textContent  = fmt(bill);
+  $('r-after').textContent = fmt(after);
+  $('r-year').textContent  = '$' + Math.round(year).toLocaleString();
+  $('r-cut').textContent   = pct + '%';
+}
+['r-calls','r-cost','r-pct'].forEach(id => $(id).addEventListener('input', recalc));
+recalc();
+
+// ---------- Initial state: try to read existing observations ----------
+(async () => {
+  await ensureKey();
+  try {
+    const r = await KS.api('/v1/bridges/suggestions');
+    if (r.suggestions && r.suggestions.length) {
+      const totalObs = r.suggestions.reduce((sum, g) => sum + g.count, 0);
+      $('m-obs').textContent = totalObs;
+      await refreshClusters();
+    }
+  } catch (e) { /* fresh tenant */ }
+})();
+</script>
+</body>
+</html>

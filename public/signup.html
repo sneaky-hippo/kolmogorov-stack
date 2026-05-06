@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Get a key — Recipe</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">SIGN UP</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/signup" class="active">Get a key</a>
+    </nav>
+    <div class="footnote">
+      Free tier: 10,000 recipe-calls / month. No card. Self-serve.
+    </div>
+  </aside>
+  <main class="main">
+    <h2>Get a key</h2>
+    <p class="lead">10,000 recipe-calls a month, free. No credit card. The key is shown once and stored locally so the playground and dashboard can use it automatically.</p>
+
+    <div class="card glow" style="max-width: 540px;">
+      <div class="toolbar">
+        <input type="email" id="email" class="grow" placeholder="you@company.com" autocomplete="email" />
+      </div>
+      <div class="toolbar" style="margin-top:8px;">
+        <input type="text" id="org" class="grow" placeholder="org name (optional)" />
+      </div>
+      <div class="toolbar" style="margin-top:8px;">
+        <button class="btn accent" id="go">Generate key &rarr;</button>
+        <span id="msg" class="muted mono" style="font-size:12px;"></span>
+      </div>
+    </div>
+
+    <div id="result" style="display:none; margin-top:24px;">
+      <h3>Your key</h3>
+      <pre><code id="api-key"></code></pre>
+      <p class="muted">Saved to <span class="mono">localStorage</span>. The playground and dashboard pick it up automatically. Rotate it any time from <span class="mono">POST /v1/account/rotate-key</span>.</p>
+
+      <h3 style="margin-top:18px;">Try it</h3>
+      <pre><code id="curl-snippet"></code></pre>
+
+      <div class="toolbar" style="margin-top:14px;">
+        <a class="btn accent" href="/playground">Open playground &rarr;</a>
+        <a class="btn ghost" href="/dashboard">Live runtime</a>
+        <button class="btn ghost" id="copy-key">Copy key</button>
+      </div>
+    </div>
+
+    <hr class="hairline" />
+    <h3>Or call the API directly</h3>
+    <pre><code>curl -X POST {{HOST}}/v1/signup \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "you@company.com" }'
+# &rarr; { "api_key": "ks_…", "tenant": { … } }</code></pre>
+
+    <h3>Or skip signup entirely</h3>
+    <p class="muted" style="font-size:13.5px; max-width:680px;">Click <a href="/playground">/playground</a> &mdash; it auto-mints an anonymous demo key the first time you click <em>build recipe</em>. The key persists in your browser. Upgrade to a real email later.</p>
+
+    <footer class="page-footer">
+      <div class="left">
+        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+      </div>
+      <div class="right">
+        <a href="/why">Why</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/status">Status</a>
+      </div>
+    </footer>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/app.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+document.querySelectorAll('code').forEach(c => {
+  c.innerHTML = c.innerHTML.replaceAll('{{HOST}}', location.origin);
+});
+
+$('go').onclick = async () => {
+  const email = $('email').value.trim();
+  if (!email) { $('msg').textContent = 'email required'; return; }
+  $('msg').innerHTML = '<span class="spinner"></span> minting…';
+  try {
+    const r = await KS.api('/v1/signup', { method: 'POST', body: JSON.stringify({ email, name: $('org').value.trim() || undefined }) });
+    KS.setApiKey(r.api_key);
+    $('result').style.display = '';
+    $('api-key').textContent = r.api_key;
+    $('curl-snippet').textContent = `curl -X POST ${location.origin}/v1/run \\
+  -H "Authorization: Bearer ${r.api_key}" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "concept_id": "<paste from /registry>", "input": "WIN a free reward" }'`;
+    $('msg').innerHTML = '<span class="pill good">CREATED</span> tenant <span class="mono">' + r.tenant.name + '</span>';
+  } catch (e) {
+    $('msg').innerHTML = '<span class="pill bad">ERROR</span> ' + (e.message || e);
+  }
+};
+
+$('copy-key').onclick = () => {
+  navigator.clipboard?.writeText($('api-key').textContent);
+  KS.toast('key copied');
+};
+
+$('email').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
+</script>
+</body>
+</html>

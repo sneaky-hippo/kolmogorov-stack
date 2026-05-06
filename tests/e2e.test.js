@@ -1,0 +1,137 @@
+// End-to-end test that boots the server and exercises every layer through HTTP.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import path from 'node:path';
+import fs from 'node:fs';
+
+const PORT = 8801; // isolated test port
+const BASE = `http://127.0.0.1:${PORT}`;
+let proc, demoKey, adminKey = 'ks_admin_change_me';
+
+async function fetchJson(p, opts = {}) {
+  const res = await fetch(BASE + p, opts);
+  const text = await res.text();
+  let body; try { body = JSON.parse(text); } catch { body = { _raw: text }; }
+  return { status: res.status, body };
+}
+
+async function authedFetch(p, opts = {}, key = adminKey) {
+  return fetchJson(p, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key, ...(opts.headers || {}) },
+  });
+}
+
+async function waitForHealth(retries = 50) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const r = await fetch(BASE + '/health');
+      if (r.ok) return await r.json();
+    } catch {}
+    await new Promise(r => setTimeout(r, 100));
+  }
+  throw new Error('server did not come up');
+}
+
+test('e2e: synthesize → register → run → search → compose', async (t) => {
+  // wipe data dir for isolation
+  const dataDir = path.resolve('data');
+  for (const f of fs.readdirSync(dataDir)) {
+    const p = path.join(dataDir, f);
+    if (fs.statSync(p).isFile()) fs.unlinkSync(p);
+  }
+
+  // boot server
+  proc = spawn(process.execPath, ['server.js'], {
+    env: { ...process.env, PORT: String(PORT), DEFAULT_TENANT: 'test', ANTHROPIC_API_KEY: '' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let captured = '';
+  proc.stdout.on('data', d => { captured += d.toString(); const m = captured.match(/Demo API key:\s+(\S+)/); if (m) demoKey = m[1]; });
+  proc.stderr.on('data', d => process.stderr.write(d));
+  t.after(() => { try { proc.kill(); } catch {} });
+
+  await waitForHealth();
+  // wait briefly to capture key
+  for (let i = 0; i < 20 && !demoKey; i++) await new Promise(r => setTimeout(r, 50));
+  assert.ok(demoKey, 'should have parsed demo key');
+
+  // health
+  const h = await fetchJson('/health');
+  assert.equal(h.status, 200);
+  assert.equal(h.body.status, 'ok');
+
+  // synthesize a boolean classifier
+  const synth = await authedFetch('/v1/synthesize', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'test-spam',
+      tags: ['t'],
+      visibility: 'private',
+      output_spec: { type: 'boolean' },
+      positives: [
+        { input: 'FREE viagra click', expected: true },
+        { input: 'URGENT prize claim', expected: true },
+        { input: 'lunch tomorrow', expected: false },
+        { input: 'project review', expected: false },
+      ],
+      negatives: [{ input: 'sync at 3pm', expected_not: true }],
+    }),
+  }, demoKey);
+  assert.equal(synth.status, 200, JSON.stringify(synth.body));
+  assert.equal(synth.body.accepted, true);
+  assert.ok(synth.body.concept_id, 'concept_id present');
+
+  const conceptId = synth.body.concept_id;
+
+  // run it
+  const run1 = await authedFetch('/v1/run', { method: 'POST', body: JSON.stringify({ concept_id: conceptId, input: 'WIN a free reward' }) }, demoKey);
+  assert.equal(run1.status, 200);
+  assert.equal(typeof run1.body.output, 'boolean');
+
+  // run cached
+  const run2 = await authedFetch('/v1/run', { method: 'POST', body: JSON.stringify({ concept_id: conceptId, input: 'WIN a free reward' }) }, demoKey);
+  assert.equal(run2.body.cache, 'L1', 'second run should hit L1 cache');
+
+  // list concepts
+  const list = await authedFetch('/v1/concepts', {}, demoKey);
+  assert.equal(list.status, 200);
+  assert.ok(list.body.concepts.length >= 1);
+
+  // search
+  const search = await authedFetch('/v1/search', { method: 'POST', body: JSON.stringify({ query: 'classify spam', k: 5 }) }, demoKey);
+  assert.equal(search.status, 200);
+  assert.ok(search.body.matches.length >= 1);
+
+  // compose
+  const compose = await authedFetch('/v1/compose', { method: 'POST', body: JSON.stringify({ query: 'spam', input: 'win a reward', strategy: 'voting', k: 3 }) }, demoKey);
+  assert.equal(compose.status, 200);
+  assert.ok(compose.body.dispatched.length >= 1);
+
+  // telemetry
+  const telem = await authedFetch('/v1/telemetry', {}, demoKey);
+  assert.equal(telem.status, 200);
+  assert.ok(telem.body.total_invocations >= 2);
+
+  // verify
+  const verify = await authedFetch('/v1/verify', {
+    method: 'POST',
+    body: JSON.stringify({
+      source: 'function generate(input, lib){ return lib.containsAny(input, ["free","prize","win"]); }',
+      positives: [{ input: 'FREE prize', expected: true }, { input: 'lunch', expected: false }],
+      negatives: [],
+    }),
+  }, demoKey);
+  assert.equal(verify.status, 200);
+  assert.ok(verify.body.quality_score >= 0.8);
+
+  // public listing (no auth)
+  const pub = await fetchJson('/v1/public/concepts');
+  assert.equal(pub.status, 200);
+
+  // 401 without key
+  const noauth = await fetchJson('/v1/concepts');
+  assert.equal(noauth.status, 401);
+});

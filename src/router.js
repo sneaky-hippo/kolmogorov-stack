@@ -1,0 +1,1007 @@
+// HTTP route definitions for all three layers + admin/utility/public routes.
+
+import express from 'express';
+import crypto from 'node:crypto';
+import { synthesize, synthesizeStream } from './synthesis.js';
+import * as registry from './registry.js';
+import * as runtime from './runtime.js';
+import * as cache from './cache.js';
+import { authMiddleware, provisionTenant, provisionAnonTenant, claimAnonTenant, chargeUsage, rotateTenantKey } from './auth.js';
+import { compileJs, verify } from './verifier.js';
+import { LIBRARY_VERSION, libraryDescription } from './library.js';
+import { all, findOne, insert, update, stats as storeStats } from './store.js';
+
+const PRICING = {
+  synthesis_small: 0.10,   // < 1 KB generator
+  synthesis_large: 1.00,   // 1 KB - 32 KB
+  registry_per_gb_month: 0.01,
+  registry_per_million_reads: 0.10,
+  runtime_per_million: 0.20,
+  runtime_cache_per_million: 0.05,
+};
+
+// Cryptographic receipts — every /v1/run call returns a signed proof that
+// (recipe_source, input) → output. Anyone can re-verify with /v1/receipts/verify.
+// This is the attestation layer that distinguishes Recipe from any LLM call.
+const RECEIPT_VERSION = 'rs-1';
+const RECEIPT_SECRET = process.env.RECIPE_RECEIPT_SECRET || 'ks_receipt_dev_secret_change_in_prod';
+
+function sha256(s) {
+  return crypto.createHash('sha256').update(typeof s === 'string' ? s : JSON.stringify(s)).digest('hex');
+}
+
+function canonicalJson(v) {
+  // Stable JSON: keys sorted at every depth — required so identical inputs hash identically.
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(canonicalJson).join(',') + ']';
+  const keys = Object.keys(v).sort();
+  return '{' + keys.map(k => JSON.stringify(k) + ':' + canonicalJson(v[k])).join(',') + '}';
+}
+
+function buildReceipt({ source_hash, input, output, version_id, latency_us, cache_hit }) {
+  const input_hash = sha256(canonicalJson(input));
+  const output_hash = sha256(canonicalJson(output));
+  const issued_at = new Date().toISOString();
+  const payload = {
+    spec: RECEIPT_VERSION,
+    source_hash: source_hash || null,
+    input_hash,
+    output_hash,
+    version_id,
+    runtime_version: LIBRARY_VERSION,
+    issued_at,
+    cache_hit: !!cache_hit,
+    latency_us: latency_us || 0,
+  };
+  const canonical = canonicalJson(payload);
+  const hmac = crypto.createHmac('sha256', RECEIPT_SECRET).update(canonical).digest('hex');
+  return { ...payload, hmac };
+}
+
+function verifyReceipt(receipt) {
+  if (!receipt || typeof receipt !== 'object') return { valid: false, reason: 'no receipt' };
+  if (receipt.spec !== RECEIPT_VERSION) return { valid: false, reason: 'unknown spec ' + receipt.spec };
+  const { hmac, ...payload } = receipt;
+  if (!hmac) return { valid: false, reason: 'no hmac' };
+  const expected = crypto.createHmac('sha256', RECEIPT_SECRET).update(canonicalJson(payload)).digest('hex');
+  // Constant-time compare.
+  if (hmac.length !== expected.length) return { valid: false, reason: 'hmac mismatch' };
+  let diff = 0;
+  for (let i = 0; i < hmac.length; i++) diff |= hmac.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0 ? { valid: true } : { valid: false, reason: 'hmac mismatch' };
+}
+
+export function buildRouter() {
+  const r = express.Router();
+
+  // CORS — allow SDKs from any origin to hit the API
+  r.use((req, res, next) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    res.set('Access-Control-Max-Age', '86400');
+    if (req.method === 'OPTIONS') return res.status(204).end();
+    next();
+  });
+
+  // Security headers
+  r.use((req, res, next) => {
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.set('X-Frame-Options', 'DENY');
+    res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+  });
+
+  r.get('/health', (req, res) => res.json({
+    status: 'ok',
+    version: '0.2.0',
+    library_version: LIBRARY_VERSION,
+    has_anthropic_key: !!process.env.ANTHROPIC_API_KEY,
+    region: process.env.RAILWAY_REGION || process.env.REGION || 'local',
+    uptime_s: Math.round(process.uptime()),
+    stats: storeStats(),
+  }));
+
+  r.get('/pricing', (_req, res) => res.json({ currency: 'USD', units: PRICING }));
+
+  // ---------- Anonymous CLI auth (robots / agents) ----------
+  // Bootstrap: returns an anon_token that the CLI stores locally. 30-day TTL.
+  // No email, no signup. Designed for agents that need to start working in <1 second.
+  r.post('/v1/anon/bootstrap', (req, res) => {
+    const { user_agent, hostname } = req.body || {};
+    const t = provisionAnonTenant({ ttl_days: 30, quota: 1000 });
+    res.json({
+      anon_token: t.api_key,
+      tenant_id: t.id,
+      kind: 'anon',
+      expires_at: t.expires_at,
+      quota: t.quota,
+      message: 'anonymous workspace ready. expires in 30 days. run `recipe claim --email you@co.com` to keep your work permanently.',
+      hint: { user_agent: user_agent || null, hostname: hostname || null },
+    });
+  });
+
+  // Claim: convert an anonymous workspace into a permanent account.
+  // - if email matches an existing real tenant: merge the anon's recipes into it, return existing key
+  // - else: upgrade the anon tenant in-place to a real tenant, rotate to ks_*, return new key
+  r.post('/v1/anon/claim', (req, res) => {
+    const { anon_token, email, name } = req.body || {};
+    if (!anon_token || !anon_token.startsWith('kao_')) return res.status(400).json({ error: 'anon_token required (starts with kao_)' });
+    const result = claimAnonTenant(anon_token, { email, name });
+    if (!result.ok) return res.status(400).json({ error: result.reason });
+    res.json({
+      mode: result.mode,
+      api_key: result.api_key,
+      tenant: { id: result.tenant.id, name: result.tenant.name, plan: result.tenant.plan, quota: result.tenant.quota },
+      message: result.mode === 'merged'
+        ? 'merged your anonymous recipes into your existing account.'
+        : 'upgraded. save this key. you can rotate it from /v1/account/rotate-key.',
+    });
+  });
+
+  // ---------- Public signup ----------
+  r.post('/v1/signup', (req, res) => {
+    const { email, name } = req.body || {};
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return res.status(400).json({ error: 'valid email required' });
+    }
+    const slug = (name || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 32) || 'user';
+    const uniq = `${slug}-${Date.now().toString(36).slice(-4)}`;
+    const t = provisionTenant(uniq, { quota: 10000, plan: 'free', email });
+    res.json({
+      tenant: { id: t.id, name: t.name, plan: t.plan, quota: t.quota },
+      api_key: t.api_key,
+      message: 'Save this key. You can rotate it from /v1/account/rotate-key.',
+    });
+  });
+
+  // ---------- Public registry browsing — no auth needed for visibility=public ----------
+  r.get('/v1/public/concepts', (_req, res) => {
+    const concepts = registry.listConcepts({ tenant: '__public__', limit: 200 })
+      .filter(c => c.visibility === 'public');
+    res.json({ concepts });
+  });
+
+  r.get('/v1/public/concepts/:id', (req, res) => {
+    const c = registry.getConcept(req.params.id, '__public__');
+    if (!c || c.visibility !== 'public') return res.status(404).json({ error: 'not found' });
+    res.json(c);
+  });
+
+  // Public read-only run for any public concept (lets unauth visitors try the runtime)
+  r.post('/v1/public/run', async (req, res) => {
+    const { concept_id, version_id, input, receipt: wantReceipt = true } = req.body || {};
+    try {
+      let target = null;
+      if (version_id) {
+        const v = findOne('versions', x => x.id === version_id);
+        if (!v) return res.status(404).json({ error: 'version not found' });
+        const c = findOne('concepts', x => x.id === v.concept_id);
+        if (!c || c.visibility !== 'public') return res.status(403).json({ error: 'not public' });
+        target = { version_id };
+      } else if (concept_id) {
+        const c = findOne('concepts', x => x.id === concept_id);
+        if (!c || c.visibility !== 'public') return res.status(403).json({ error: 'not public' });
+        target = { concept_id };
+      } else return res.status(400).json({ error: 'concept_id or version_id required' });
+      const r2 = target.version_id
+        ? await runtime.runVersion({ version_id: target.version_id, input, tenant: '__public__' })
+        : await runtime.runConcept({ concept_id: target.concept_id, input, tenant: '__public__' });
+      if (wantReceipt) {
+        r2.receipt = buildReceipt({
+          source_hash: r2.source_hash,
+          input,
+          output: r2.output,
+          version_id: r2.version_id,
+          latency_us: r2.latency_us,
+          cache_hit: r2.cache,
+        });
+      }
+      res.json(r2);
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+
+  // Public receipt verification — anyone can verify any receipt, no auth.
+  // The whole point of receipts is offline, third-party-verifiable proof.
+  r.post('/v1/receipts/verify', (req, res) => {
+    const { receipt, input, output } = req.body || {};
+    const v = verifyReceipt(receipt);
+    if (!v.valid) return res.json({ valid: false, reason: v.reason });
+    const checks = { signature: true };
+    if (input !== undefined) checks.input_match = sha256(canonicalJson(input)) === receipt.input_hash;
+    if (output !== undefined) checks.output_match = sha256(canonicalJson(output)) === receipt.output_hash;
+    const allOk = Object.values(checks).every(Boolean);
+    res.json({ valid: allOk, checks, receipt });
+  });
+
+  // Public RS-1 spec document — open standard, no auth required.
+  r.get('/v1/spec', (_req, res) => {
+    res.json({
+      spec: RECEIPT_VERSION,
+      name: 'Recipe Spec',
+      version: '1.0.0-draft',
+      title: 'Recipe Spec — RS-1: A portable, attestable contract for AI behavior',
+      description: 'An open standard for declaring AI behaviors as deterministic, signed, executable specifications. ' +
+        'A recipe is examples in, behavior out — and every execution carries a cryptographic receipt that proves which code ran on which input.',
+      license: 'MIT',
+      reference_implementation: 'https://kolmogorov-stack-production.up.railway.app',
+      sections: {
+        recipe: {
+          id: 'string (cpt_…)',
+          name: 'string',
+          version: 'semver',
+          source_hash: 'sha256 (16 hex chars) of the executable source',
+          source: 'string (executable JS or WASM:base64)',
+          schema: { input: 'JSON Schema (optional)', output: 'JSON Schema (optional)' },
+          examples: [{ input: 'any', expected: 'any' }],
+          evaluation: {
+            quality_score: 'number 0..1',
+            pass_rate_positive: 'number 0..1',
+            reject_rate_negative: 'number 0..1',
+            latency_p50_us: 'integer',
+          },
+        },
+        receipt: {
+          spec: RECEIPT_VERSION,
+          source_hash: 'sha256-16',
+          input_hash: 'sha256-64 of canonical JSON of input',
+          output_hash: 'sha256-64 of canonical JSON of output',
+          version_id: 'string (ver_…)',
+          runtime_version: 'semver of the runtime that produced this output',
+          issued_at: 'ISO 8601 timestamp',
+          hmac: 'HMAC-SHA256 over canonical-JSON payload, hex',
+        },
+        canonical_json: 'Keys sorted lexicographically at every depth. Numbers, strings, booleans, null, arrays, objects only. No NaN/Infinity. No trailing whitespace.',
+      },
+      conformance: {
+        endpoints_required: ['POST /v1/synthesize', 'POST /v1/run', 'POST /v1/receipts/verify', 'GET /v1/spec'],
+        determinism: 'For a given (source_hash, input_hash), output_hash MUST match across runtimes.',
+        verifiability: 'Receipts MUST be re-verifiable using only the public canonical-JSON algorithm and the issuing runtime\'s public key (or shared HMAC for symmetric mode).',
+      },
+      compatibility: {
+        eu_ai_act_2026: 'Receipts provide auditable behavior logs required under Articles 12 and 50.',
+        soc2: 'Receipts can serve as evidence for change-management controls when stored alongside source.',
+      },
+      authors: ['Kolmogorov Stack contributors'],
+    });
+  });
+
+  r.use(authMiddleware);
+
+  // ---------- Account ----------
+  r.get('/v1/account', (req, res) => {
+    if (!req.tenant_record) return res.json({ admin: !!req.is_admin, tenant: req.tenant });
+    const { id, name, plan, quota, used, created_at, last_used_at } = req.tenant_record;
+    res.json({ id, name, plan, quota, used, created_at, last_used_at, remaining: Math.max(0, quota - used) });
+  });
+
+  r.post('/v1/account/rotate-key', (req, res) => {
+    if (!req.tenant_record) return res.status(403).json({ error: 'admin tokens cannot rotate' });
+    const k = rotateTenantKey(req.tenant_record.id);
+    res.json({ api_key: k });
+  });
+
+  // ---------- Layer 1: Synthesis ----------
+  r.post('/v1/synthesize', async (req, res) => {
+    const { positives, negatives = [], output_spec, priors = {}, name, description, tags = [], visibility = 'private', publish = true } = req.body || {};
+    if (!Array.isArray(positives) || positives.length === 0) {
+      return res.status(400).json({ error: 'positives is required (non-empty array)' });
+    }
+    try {
+      const result = await synthesize({ positives, negatives, output_spec, priors });
+      let concept_id = null, version_id = null;
+      if (result.accepted && publish) {
+        const concept = registry.createConcept({
+          name: name || 'unnamed-' + Date.now(),
+          description,
+          tenant: req.tenant,
+          schema: output_spec || null,
+          tags,
+          visibility,
+        });
+        const version = registry.publishVersion({
+          concept_id: concept.id,
+          source: result.source,
+          evaluation: {
+            quality_score: result.quality_score,
+            pass_rate_positive: result.pass_rate_positive,
+            reject_rate_negative: result.reject_rate_negative,
+            latency_p50_us: result.latency_p50_us,
+            size_bytes: result.size_bytes,
+            source_hash: result.source_hash,
+            strategy: result.strategy,
+            trace: result.test_trace,
+          },
+          lineage: { synthesized_from_n: positives.length + negatives.length, attempts_n: result.attempts_n },
+        });
+        concept_id = concept.id;
+        version_id = version.id;
+        chargeUsage(req.tenant_record, result.size_bytes < 1024 ? 1 : 10);
+      }
+      res.json({ ...result, concept_id, version_id });
+    } catch (e) {
+      res.status(500).json({ error: String(e.message || e) });
+    }
+  });
+
+  // SSE: live synthesis events (candidate generated, verified, accepted, etc.)
+  r.post('/v1/synthesize/stream', async (req, res) => {
+    const { positives, negatives = [], output_spec, priors = {}, name, description, tags = [], visibility = 'private', publish = true } = req.body || {};
+    if (!Array.isArray(positives) || positives.length === 0) {
+      return res.status(400).json({ error: 'positives is required (non-empty array)' });
+    }
+    res.set({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.flushHeaders?.();
+    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    let final = null;
+    try {
+      send('start', { name: name || null, positives_n: positives.length, negatives_n: negatives.length });
+      final = await synthesizeStream({ positives, negatives, output_spec, priors }, send);
+      let concept_id = null, version_id = null;
+      if (final.accepted && publish) {
+        const concept = registry.createConcept({
+          name: name || 'unnamed-' + Date.now(),
+          description, tenant: req.tenant, schema: output_spec || null, tags, visibility,
+        });
+        const version = registry.publishVersion({
+          concept_id: concept.id,
+          source: final.source,
+          evaluation: {
+            quality_score: final.quality_score,
+            pass_rate_positive: final.pass_rate_positive,
+            reject_rate_negative: final.reject_rate_negative,
+            latency_p50_us: final.latency_p50_us,
+            size_bytes: final.size_bytes,
+            source_hash: final.source_hash,
+            strategy: final.strategy,
+            trace: final.test_trace,
+          },
+          lineage: { synthesized_from_n: positives.length + negatives.length, attempts_n: final.attempts_n },
+        });
+        concept_id = concept.id;
+        version_id = version.id;
+        chargeUsage(req.tenant_record, final.size_bytes < 1024 ? 1 : 10);
+        send('published', { concept_id, version_id, quality_score: final.quality_score });
+      }
+      send('done', { ...final, concept_id, version_id });
+    } catch (e) {
+      send('error', { error: String(e.message || e) });
+    } finally {
+      res.end();
+    }
+  });
+
+  // Batch synthesis: multiple concepts in one round-trip. Sequential, since
+  // synthesis is CPU-bound — but billed once via shared overhead.
+  r.post('/v1/synthesize/batch', async (req, res) => {
+    const { items, publish = true, visibility = 'private' } = req.body || {};
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'items[] required (each: {name, positives, output_spec, ...})' });
+    }
+    if (items.length > 25) {
+      return res.status(400).json({ error: 'max 25 items per batch' });
+    }
+    const results = [];
+    for (const item of items) {
+      const t0 = Date.now();
+      try {
+        const r2 = await synthesize({ positives: item.positives || [], negatives: item.negatives || [], output_spec: item.output_spec, priors: item.priors || {} });
+        let concept_id = null, version_id = null;
+        if (r2.accepted && publish) {
+          const concept = registry.createConcept({
+            name: item.name || ('batch-' + Date.now()),
+            description: item.description, tenant: req.tenant,
+            schema: item.output_spec || null, tags: item.tags || [], visibility,
+          });
+          const version = registry.publishVersion({
+            concept_id: concept.id, source: r2.source,
+            evaluation: { quality_score: r2.quality_score, pass_rate_positive: r2.pass_rate_positive, reject_rate_negative: r2.reject_rate_negative, latency_p50_us: r2.latency_p50_us, size_bytes: r2.size_bytes, source_hash: r2.source_hash, strategy: r2.strategy, trace: r2.test_trace },
+            lineage: { synthesized_from_n: (item.positives?.length || 0) + (item.negatives?.length || 0), attempts_n: r2.attempts_n },
+          });
+          concept_id = concept.id; version_id = version.id;
+          chargeUsage(req.tenant_record, r2.size_bytes < 1024 ? 1 : 10);
+        }
+        results.push({ name: item.name, accepted: r2.accepted, concept_id, version_id, quality_score: r2.quality_score, strategy: r2.strategy, duration_ms: Date.now() - t0 });
+      } catch (e) {
+        results.push({ name: item.name, accepted: false, error: String(e.message || e), duration_ms: Date.now() - t0 });
+      }
+    }
+    res.json({ results, total: results.length, accepted: results.filter(r => r.accepted).length });
+  });
+
+  r.post('/v1/verify', (req, res) => {
+    const { source, positives = [], negatives = [] } = req.body || {};
+    if (!source) return res.status(400).json({ error: 'source is required' });
+    try {
+      const fn = compileJs(source);
+      const result = verify(fn, { positives, negatives });
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+
+  // Publish an edited generator (no synthesis required)
+  r.post('/v1/publish', (req, res) => {
+    const { source, name, description, tags = [], visibility = 'private', positives = [], negatives = [], output_spec } = req.body || {};
+    if (!source || !name) return res.status(400).json({ error: 'source and name are required' });
+    try {
+      const fn = compileJs(source);
+      const evaluation = verify(fn, { positives, negatives });
+      const concept = registry.createConcept({ name, description, tenant: req.tenant, schema: output_spec || null, tags, visibility });
+      const version = registry.publishVersion({
+        concept_id: concept.id,
+        source,
+        evaluation: { ...evaluation, strategy: 'manual' },
+        lineage: { manual: true, synthesized_from_n: positives.length + negatives.length },
+      });
+      chargeUsage(req.tenant_record, 1);
+      res.json({ concept_id: concept.id, version_id: version.id, evaluation });
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+
+  // ---------- Layer 2: Registry ----------
+  r.get('/v1/concepts', (req, res) => {
+    const concepts = registry.listConcepts({ tenant: req.tenant, tag: req.query.tag, limit: parseInt(req.query.limit) || 50 });
+    res.json({ concepts });
+  });
+
+  r.get('/v1/concepts/:id', (req, res) => {
+    const c = registry.getConcept(req.params.id, req.tenant);
+    if (!c) return res.status(404).json({ error: 'not found' });
+    res.json(c);
+  });
+
+  r.delete('/v1/concepts/:id', (req, res) => {
+    try {
+      const n = registry.deleteConcept(req.params.id, req.tenant);
+      res.json({ deleted: n });
+    } catch (e) { res.status(403).json({ error: String(e.message || e) }); }
+  });
+
+  r.get('/v1/concepts/:id/lineage', (req, res) => {
+    const lineage = registry.lineageOf(req.params.id, req.tenant);
+    if (!lineage) return res.status(404).json({ error: 'not found' });
+    res.json(lineage);
+  });
+
+  // Per-concept usage stats: invocation count, latency percentiles, cache hit rate.
+  r.get('/v1/concepts/:id/stats', (req, res) => {
+    const c = registry.getConcept(req.params.id, req.tenant);
+    if (!c) return res.status(404).json({ error: 'not found' });
+    const inv = all('invocations').filter(i => i.concept_id === c.id && (req.is_admin || i.tenant === req.tenant));
+    const lats = inv.map(x => x.latency_us || 0).filter(x => x > 0).sort((a, b) => a - b);
+    const pct = (p) => lats.length ? lats[Math.min(lats.length - 1, Math.floor(lats.length * p))] : 0;
+    const cacheHits = inv.filter(x => x.cache_hit).length;
+    const errors = inv.filter(x => x.error).length;
+    const last = inv.length ? inv[inv.length - 1].ts : null;
+    res.json({
+      concept_id: c.id,
+      name: c.name,
+      invocations: inv.length,
+      cache_hit_rate: inv.length ? cacheHits / inv.length : 0,
+      error_rate: inv.length ? errors / inv.length : 0,
+      latency_us: { p50: pct(0.5), p95: pct(0.95), p99: pct(0.99), avg: lats.length ? Math.round(lats.reduce((s, x) => s + x, 0) / lats.length) : 0 },
+      last_invoked_at: last,
+      versions: (c.versions || []).length,
+    });
+  });
+
+  r.post('/v1/search', (req, res) => {
+    const { query, k = 10, tag } = req.body || {};
+    if (!query) return res.status(400).json({ error: 'query is required' });
+    const matches = registry.searchSimilar({ query, tenant: req.tenant, k, tag });
+    res.json({ matches });
+  });
+
+  // ---------- Layer 3: Runtime ----------
+  r.post('/v1/run', async (req, res) => {
+    const { concept_id, version_id, input, use_cache = true, receipt: wantReceipt = true } = req.body || {};
+    try {
+      let result;
+      if (version_id) result = await runtime.runVersion({ version_id, input, tenant: req.tenant, use_cache });
+      else if (concept_id) result = await runtime.runConcept({ concept_id, input, tenant: req.tenant });
+      else return res.status(400).json({ error: 'concept_id or version_id required' });
+      chargeUsage(req.tenant_record, result.cache ? 0 : 1); // cache hits are cheap
+      // Sign the run. Clients can opt out with `receipt: false` to save the small overhead.
+      if (wantReceipt) {
+        result.receipt = buildReceipt({
+          source_hash: result.source_hash,
+          input,
+          output: result.output,
+          version_id: result.version_id,
+          latency_us: result.latency_us,
+          cache_hit: result.cache,
+        });
+      }
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+
+  r.post('/v1/compose', async (req, res) => {
+    const { query, input, k = 5, strategy = 'attention', tag } = req.body || {};
+    if (!query) return res.status(400).json({ error: 'query is required' });
+    try {
+      const result = await runtime.composeRun({ query, input, tenant: req.tenant, k, strategy, tag });
+      const billable = (result.dispatched || []).filter(d => !d.cache && !d.error).length;
+      chargeUsage(req.tenant_record, billable);
+      res.json(result);
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+
+  // ---------- Telemetry / admin ----------
+  r.get('/v1/telemetry', (req, res) => {
+    const inv = all('invocations').filter(i => !req.tenant_record || i.tenant === req.tenant);
+    const recent = inv.slice(-200).reverse();
+    const lats = inv.map(x => x.latency_us || 0).filter(x => x > 0).sort((a, b) => a - b);
+    const totalLat = inv.reduce((s, x) => s + (x.latency_us || 0), 0);
+    const cacheHits = inv.filter(x => x.cache_hit).length;
+    const pct = (p) => lats.length ? lats[Math.min(lats.length - 1, Math.floor(lats.length * p))] : 0;
+    // last 60 invocations as sparkline
+    const spark = inv.slice(-60).map(x => x.latency_us || 0);
+    res.json({
+      total_invocations: inv.length,
+      avg_latency_us: inv.length ? Math.round(totalLat / inv.length) : 0,
+      p50_us: pct(0.5),
+      p95_us: pct(0.95),
+      p99_us: pct(0.99),
+      cache_hit_rate: inv.length ? cacheHits / inv.length : 0,
+      cache: cache.cacheStats(),
+      compiled_cache_size: runtime.compiledCacheSize(),
+      sparkline: spark,
+      recent,
+    });
+  });
+
+  r.get('/v1/library', (_req, res) => {
+    res.json({ version: LIBRARY_VERSION, description: libraryDescription() });
+  });
+
+  r.post('/v1/admin/tenant', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
+    const { name, quota } = req.body || {};
+    if (!name) return res.status(400).json({ error: 'name required' });
+    const t = provisionTenant(name, { quota: quota || 10000 });
+    res.json(t);
+  });
+
+  r.get('/v1/admin/tenants', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
+    res.json({ tenants: all('tenants') });
+  });
+
+  // ---------- Recipe aliases ----------
+  // Forward-looking branding: "recipe" terminology mirrors "concept" endpoints.
+  // Both names route to the same handlers — full backward compatibility preserved.
+  r.get('/v1/recipes', (req, res) => {
+    const concepts = registry.listConcepts({ tenant: req.tenant, tag: req.query.tag, limit: parseInt(req.query.limit) || 50 });
+    res.json({ recipes: concepts.map(c => ({ ...c, recipe_id: c.id })) });
+  });
+  r.get('/v1/recipes/:id', (req, res) => {
+    const c = registry.getConcept(req.params.id, req.tenant);
+    if (!c) return res.status(404).json({ error: 'not found' });
+    res.json({ ...c, recipe_id: c.id });
+  });
+  r.get('/v1/recipes/:id/stats', (req, res) => {
+    const c = registry.getConcept(req.params.id, req.tenant);
+    if (!c) return res.status(404).json({ error: 'not found' });
+    const inv = all('invocations').filter(i => i.concept_id === c.id && (req.is_admin || i.tenant === req.tenant));
+    const lats = inv.map(x => x.latency_us || 0).filter(x => x > 0).sort((a, b) => a - b);
+    const pct = (p) => lats.length ? lats[Math.min(lats.length - 1, Math.floor(lats.length * p))] : 0;
+    res.json({
+      recipe_id: c.id, name: c.name, invocations: inv.length,
+      cache_hit_rate: inv.length ? inv.filter(x => x.cache_hit).length / inv.length : 0,
+      latency_us: { p50: pct(0.5), p95: pct(0.95), p99: pct(0.99) },
+    });
+  });
+
+  // ---------- Auto-labeling (Phase C — Day 30-60 in roadmap) ----------
+  // Run a recipe across a corpus of inputs and return labeled rows. Inline
+  // mode runs synchronously (max 500 rows). HuggingFace and URL modes return
+  // a queued job — actual fetcher lands in v0.3 once we have a Postgres queue.
+  async function runRecipeOverRows(c, rows, tenant) {
+    const out = [];
+    let errors = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const input = typeof row === 'string' ? row : (row.input ?? row.text ?? row);
+      try {
+        const r2 = await runtime.runConcept({ concept_id: c.id, input, tenant });
+        out.push({ idx: i, input, label: r2.output, latency_us: r2.latency_us, cache: r2.cache });
+      } catch (e) {
+        errors++;
+        out.push({ idx: i, input, error: String(e.message || e) });
+      }
+    }
+    return { rows: out, errors };
+  }
+
+  // Inline labeler — synchronous up to 500 rows
+  r.post('/v1/recipes/:id/label-corpus', async (req, res) => {
+    const c = registry.getConcept(req.params.id, req.tenant);
+    if (!c) return res.status(404).json({ error: 'recipe not found' });
+    const { corpus = {}, max_rows = 100, output_format = 'json' } = req.body || {};
+    const startedAt = Date.now();
+
+    if (corpus.type === 'inline') {
+      const rows = Array.isArray(corpus.rows) ? corpus.rows.slice(0, Math.min(max_rows, 500)) : [];
+      if (rows.length === 0) return res.status(400).json({ error: 'corpus.rows must be a non-empty array (max 500 in sync mode)' });
+      const { rows: labeled, errors } = await runRecipeOverRows(c, rows, req.tenant);
+      chargeUsage(req.tenant_record, Math.ceil(rows.length / 10)); // 10 rows = 1 unit
+      const job_id = 'job_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      insert('corpus_jobs', {
+        id: job_id, recipe_id: c.id, tenant: req.tenant, status: 'completed',
+        rows_labeled: labeled.length, errors, duration_ms: Date.now() - startedAt,
+        corpus_type: 'inline', created_at: new Date().toISOString(),
+      });
+      if (output_format === 'csv') {
+        res.set('Content-Type', 'text/csv');
+        const csv = ['idx,input,label,latency_us', ...labeled.map(r => `${r.idx},"${String(r.input).replace(/"/g, '""')}","${String(r.label ?? r.error ?? '').replace(/"/g, '""')}",${r.latency_us ?? 0}`)].join('\n');
+        return res.send(csv);
+      }
+      return res.json({ job_id, status: 'completed', recipe_id: c.id, rows_labeled: labeled.length, errors, duration_ms: Date.now() - startedAt, sample: labeled.slice(0, 10), all: labeled });
+    }
+
+    if (corpus.type === 'huggingface' || corpus.type === 'url') {
+      const job_id = 'job_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      insert('corpus_jobs', {
+        id: job_id, recipe_id: c.id, tenant: req.tenant, status: 'queued',
+        corpus_type: corpus.type, corpus_ref: corpus.name || corpus.url, max_rows,
+        created_at: new Date().toISOString(),
+      });
+      return res.status(202).json({
+        job_id, status: 'queued', recipe_id: c.id,
+        message: `Queued — ${corpus.type} fetcher lands when we wire the corpus pipeline (Day 30-60). Poll /v1/jobs/${job_id} to check.`,
+        est_rows: max_rows,
+      });
+    }
+
+    return res.status(400).json({ error: 'corpus.type must be "inline", "huggingface", or "url"' });
+  });
+
+  // SSE stream variant: emits progress as rows are labeled.
+  r.post('/v1/recipes/:id/label-corpus/stream', async (req, res) => {
+    const c = registry.getConcept(req.params.id, req.tenant);
+    if (!c) return res.status(404).json({ error: 'recipe not found' });
+    const { corpus = {}, max_rows = 200 } = req.body || {};
+    if (corpus.type !== 'inline') return res.status(400).json({ error: 'streaming labeler only supports corpus.type=inline (for now)' });
+    const rows = Array.isArray(corpus.rows) ? corpus.rows.slice(0, Math.min(max_rows, 500)) : [];
+    if (rows.length === 0) return res.status(400).json({ error: 'corpus.rows must be a non-empty array' });
+
+    res.set({
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.flushHeaders?.();
+    const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    const startedAt = Date.now();
+    send('start', { recipe_id: c.id, total: rows.length });
+    let errors = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const input = typeof row === 'string' ? row : (row.input ?? row.text ?? row);
+      try {
+        const r2 = await runtime.runConcept({ concept_id: c.id, input, tenant: req.tenant });
+        send('row', { idx: i, input, label: r2.output, latency_us: r2.latency_us, cache: r2.cache });
+      } catch (e) {
+        errors++;
+        send('row', { idx: i, input, error: String(e.message || e) });
+      }
+    }
+    chargeUsage(req.tenant_record, Math.ceil(rows.length / 10));
+    send('done', { rows_labeled: rows.length - errors, errors, duration_ms: Date.now() - startedAt });
+    res.end();
+  });
+
+  // Job status (used by HF / URL queued jobs)
+  r.get('/v1/jobs/:id', (req, res) => {
+    const job = findOne('corpus_jobs', x => x.id === req.params.id) || findOne('specialists', x => x.id === req.params.id);
+    if (!job) return res.status(404).json({ error: 'job not found' });
+    if (job.tenant && job.tenant !== req.tenant && !req.is_admin) return res.status(403).json({ error: 'not your job' });
+    res.json(job);
+  });
+
+  // ---------- Specialists (Phase D — Day 60-120 in roadmap) ----------
+  // Public waitlist endpoint — gathers email + task interest before the product launches.
+  r.post('/v1/specialists/waitlist', (req, res) => {
+    const { email, task } = req.body || {};
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'valid email required' });
+    if (!task || String(task).length < 3) return res.status(400).json({ error: 'task description required (3+ chars)' });
+    const existing = findOne('waitlist', x => x.email === email);
+    const position = (all('waitlist').length || 0) + 1;
+    if (existing) {
+      // Update task without changing position
+      update('waitlist', x => x.id === existing.id, { task: String(task).slice(0, 500), updated_at: new Date().toISOString() });
+      return res.json({ position: existing.position, message: 'already reserved — task updated', email });
+    }
+    const entry = {
+      id: 'wl_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      email, task: String(task).slice(0, 500), position,
+      created_at: new Date().toISOString(),
+    };
+    insert('waitlist', entry);
+    res.json({ position, message: 'reserved — first 50 teams get a Specialist trained on us', email });
+  });
+
+  r.post('/v1/specialists/train', (req, res) => {
+    const { name, recipe_id, corpus, base_model = 'Qwen/Qwen3-1.5B', rank = 16 } = req.body || {};
+    if (!name) return res.status(400).json({ error: 'name required' });
+    if (!recipe_id) return res.status(400).json({ error: 'recipe_id required (a synthesized recipe used for auto-labeling)' });
+    const c = registry.getConcept(recipe_id, req.tenant);
+    if (!c) return res.status(404).json({ error: 'recipe not found' });
+    const id = 'spc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const spec = {
+      id, name, recipe_id, base_model, rank,
+      tenant: req.tenant,
+      corpus: corpus || { type: 'inline', rows: [] },
+      status: 'queued',
+      est_minutes: 47,
+      created_at: new Date().toISOString(),
+      pipeline: 'remlabs.ai LoRA — coming Day 60-120',
+    };
+    insert('specialists', spec);
+    res.status(202).json({ specialist_id: id, status: 'queued', est_minutes: 47, name, recipe_id, base_model, rank, pipeline: spec.pipeline });
+  });
+
+  r.get('/v1/specialists', (req, res) => {
+    const specs = all('specialists').filter(s => req.is_admin || s.tenant === req.tenant);
+    res.json({ specialists: specs.map(({ corpus, ...rest }) => rest) });
+  });
+
+  r.get('/v1/specialists/:id', (req, res) => {
+    const spec = findOne('specialists', x => x.id === req.params.id);
+    if (!spec) return res.status(404).json({ error: 'not found' });
+    if (spec.tenant !== req.tenant && !req.is_admin) return res.status(403).json({ error: 'not your specialist' });
+    res.json(spec);
+  });
+
+  r.get('/v1/specialists/:id/weights', (req, res) => {
+    const spec = findOne('specialists', x => x.id === req.params.id);
+    if (!spec) return res.status(404).json({ error: 'not found' });
+    if (spec.tenant !== req.tenant && !req.is_admin) return res.status(403).json({ error: 'not your specialist' });
+    if (spec.status !== 'completed') {
+      return res.status(503).json({ error: 'training not complete', status: spec.status, message: 'Specialists training pipeline ships Day 60-120. Recipe is the labeler today; weights export becomes live with the LoRA pipeline.' });
+    }
+    res.json({ weights_url: spec.weights_url, sha256: spec.weights_sha256, base_model: spec.base_model, rank: spec.rank });
+  });
+
+  r.post('/v1/specialists/:id/run', async (req, res) => {
+    const spec = findOne('specialists', x => x.id === req.params.id);
+    if (!spec) return res.status(404).json({ error: 'not found' });
+    if (spec.tenant !== req.tenant && !req.is_admin) return res.status(403).json({ error: 'not your specialist' });
+    // Until the LoRA pipeline ships, the Specialist falls back to its source recipe so
+    // every API call still produces a real answer (just from JS, not the model).
+    try {
+      const r2 = await runtime.runConcept({ concept_id: spec.recipe_id, input: req.body?.input, tenant: req.tenant });
+      chargeUsage(req.tenant_record, r2.cache ? 0 : 1);
+      res.json({ output: r2.output, latency_ms: Math.round((r2.latency_us || 0) / 1000) || 1, model: `${spec.base_model}+lora (preview: routing through source recipe)`, source: 'recipe-fallback' });
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+
+  // ---------- Public registry submissions (Phase E — Day 120-180) ----------
+  r.post('/v1/public/submit', (req, res) => {
+    const { recipe_id, blurb = '', contact = '' } = req.body || {};
+    if (!recipe_id) return res.status(400).json({ error: 'recipe_id required' });
+    const c = registry.getConcept(recipe_id, req.tenant);
+    if (!c) return res.status(404).json({ error: 'recipe not found' });
+    if (c.tenant !== req.tenant && !req.is_admin) return res.status(403).json({ error: 'not your recipe' });
+    const sub = {
+      id: 'sub_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      recipe_id, name: c.name, tenant: req.tenant,
+      blurb: String(blurb).slice(0, 500), contact: String(contact).slice(0, 200),
+      status: 'pending_review',
+      created_at: new Date().toISOString(),
+    };
+    insert('submissions', sub);
+    res.json({ submission_id: sub.id, status: sub.status, message: 'submitted — public review on Day 120-180 schedule' });
+  });
+
+  r.get('/v1/public/featured', (_req, res) => {
+    // Hand-pick the most useful public recipes for the home registry view.
+    const featured_names = ['classify-issue-type','is-spam','extract-emails','classify-toxicity','extract-prices','classify-intent','sentiment','detect-pii','classify-language','is-question'];
+    const all_concepts = all('concepts');
+    const featured = featured_names
+      .map(n => all_concepts.find(c => c.name === n && c.visibility === 'public'))
+      .filter(Boolean)
+      .map(c => ({ id: c.id, name: c.name, description: c.description, tags: c.tags, head_version: c.head_version }));
+    res.json({ featured });
+  });
+
+  // Admin: list waitlist + submissions for triage
+  r.get('/v1/admin/waitlist', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
+    res.json({ waitlist: all('waitlist'), total: all('waitlist').length });
+  });
+  r.get('/v1/admin/submissions', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
+    res.json({ submissions: all('submissions'), total: all('submissions').length });
+  });
+
+  // ---------- Phase F: Compounding bridges ----------
+  // Three pillars compound: Memory remembers → Skills (Recipes) repeat → Specialists become.
+  // These endpoints wire the bridges so a Recipe pattern auto-grows into a Specialist,
+  // and an agent's repeated LLM calls auto-collapse into Recipes.
+
+  // Stable signature for prompt templates. Real prompts are interpolated by the time
+  // we see them, so we use the leading "instruction" portion (up to the first
+  // sentence-ending mark or newline) as the template signature — that's where the
+  // pattern lives ("Is this spam?", "Classify this:", etc.) — and treat the rest as
+  // variable input.
+  function templateSignature(prompt = '', model = '') {
+    const raw = String(prompt).replace(/\s+/g, ' ').trim();
+    const m = raw.match(/^(.{8,200}?[\?\.!:\n])(.*)$/);
+    const head = m ? m[1].trim() : raw.slice(0, 80);
+    const variable = m ? m[2].trim() : '';
+    const normalized = head
+      .replace(/"[^"]*"|'[^']*'|`[^`]*`/g, '"<S>"')
+      .replace(/\b\d+(?:\.\d+)?\b/g, '<N>');
+    const h = crypto.createHash('sha1').update(model + ' ' + normalized).digest('hex').slice(0, 16);
+    return { hash: h, normalized: normalized.slice(0, 240), variable: variable.slice(0, 240) };
+  }
+
+  // POST /v1/bridges/observe — agents log a (model, prompt, response) tuple.
+  // After ≥4 calls with the same template signature we surface a synthesis suggestion.
+  r.post('/v1/bridges/observe', (req, res) => {
+    const { model = '', prompt = '', response, latency_ms, cost_usd } = req.body || {};
+    if (!prompt || response === undefined) {
+      return res.status(400).json({ error: 'prompt and response are required' });
+    }
+    const sig = templateSignature(prompt, model);
+    const obs = {
+      id: 'obs_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      tenant: req.tenant,
+      template_hash: sig.hash,
+      template_preview: sig.normalized,
+      model: String(model).slice(0, 128),
+      prompt: String(prompt).slice(0, 4000),
+      variable_input: sig.variable,
+      response,
+      latency_ms: Number(latency_ms) || 0,
+      cost_usd: Number(cost_usd) || 0,
+      created_at: new Date().toISOString(),
+    };
+    insert('observations', obs);
+    const cluster = all('observations').filter(o => o.tenant === req.tenant && o.template_hash === sig.hash);
+    res.json({
+      observation_id: obs.id,
+      template_hash: sig.hash,
+      cluster_size: cluster.length,
+      ready_for_synthesis: cluster.length >= 4,
+      suggestion: cluster.length >= 4
+        ? { template_hash: sig.hash, count: cluster.length, est_savings_per_month_usd: Math.round(cluster.length * (obs.cost_usd || 0.001) * 30 * 100) / 100 }
+        : null,
+    });
+  });
+
+  // GET /v1/bridges/suggestions — recipe-synthesis suggestions clustered from observations.
+  r.get('/v1/bridges/suggestions', (req, res) => {
+    const obs = all('observations').filter(o => o.tenant === req.tenant);
+    const groups = new Map();
+    for (const o of obs) {
+      const g = groups.get(o.template_hash) || { template_hash: o.template_hash, template_preview: o.template_preview, model: o.model, count: 0, total_cost_usd: 0, total_latency_ms: 0, examples: [] };
+      g.count++;
+      g.total_cost_usd += o.cost_usd || 0;
+      g.total_latency_ms += o.latency_ms || 0;
+      if (g.examples.length < 8) g.examples.push({ input: o.variable_input || o.prompt, expected: o.response });
+      groups.set(o.template_hash, g);
+    }
+    const suggestions = [...groups.values()]
+      .filter(g => g.count >= 4)
+      .map(g => ({
+        ...g,
+        avg_latency_ms: Math.round(g.total_latency_ms / g.count),
+        est_savings_per_month_usd: Math.round(g.total_cost_usd * 30 / Math.max(1, g.count) * g.count * 30 * 100) / 100,
+        synthesize_url: `/v1/bridges/auto-synthesize?template_hash=${encodeURIComponent(g.template_hash)}`,
+      }))
+      .sort((a, b) => b.count - a.count);
+    res.json({ suggestions, total: suggestions.length });
+  });
+
+  // POST /v1/bridges/auto-synthesize — turn an observation cluster into a recipe.
+  r.post('/v1/bridges/auto-synthesize', async (req, res) => {
+    const hash = req.body?.template_hash || req.query?.template_hash;
+    const name = req.body?.name || `auto-${String(hash || '').slice(0, 8)}`;
+    if (!hash) return res.status(400).json({ error: 'template_hash required' });
+    const obs = all('observations').filter(o => o.tenant === req.tenant && o.template_hash === hash);
+    if (obs.length < 4) return res.status(400).json({ error: 'not enough observations (need 4+)' });
+    // Prefer the extracted variable portion as the example input. Fall back to the
+    // full prompt only if the variable wasn't isolated.
+    const positives = obs.slice(0, 8).map(o => ({ input: o.variable_input || o.prompt, expected: o.response }));
+    try {
+      const synthResult = await synthesize({
+        name,
+        positives,
+        description: `Auto-synthesized from ${obs.length} observed calls to ${obs[0].model || 'an LLM'}.`,
+        tags: ['auto-bridge'],
+        tenant: req.tenant,
+      });
+      // Mark every observation as belonging to this recipe so /lineage can trace it.
+      if (synthResult.accepted) {
+        update('observations', o => o.tenant === req.tenant && o.template_hash === hash, { promoted_recipe_id: synthResult.concept_id });
+      }
+      res.json({ ...synthResult, observations_promoted: synthResult.accepted ? obs.length : 0 });
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+
+  // GET /v1/bridges/specialist-candidates — recipes whose call volume justifies a Specialist.
+  r.get('/v1/bridges/specialist-candidates', (req, res) => {
+    const concepts = all('concepts').filter(c => c.tenant === req.tenant || req.is_admin);
+    const invocations = all('invocations');
+    const candidates = concepts
+      .map(c => {
+        const n = invocations.filter(i => i.concept_id === c.id).length;
+        return { recipe_id: c.id, name: c.name, invocations: n, threshold: 1000, ready: n >= 1000 };
+      })
+      .filter(c => c.invocations >= 100)
+      .sort((a, b) => b.invocations - a.invocations);
+    res.json({ candidates, threshold: 1000, total: candidates.length });
+  });
+
+  // GET /v1/recipes/:id/lineage — full Memory ↔ Recipe ↔ Specialist trace.
+  r.get('/v1/recipes/:id/lineage', (req, res) => {
+    const c = registry.getConcept(req.params.id, req.tenant);
+    if (!c) return res.status(404).json({ error: 'recipe not found' });
+    const observations = all('observations').filter(o => o.promoted_recipe_id === c.id);
+    const specialists = all('specialists').filter(s => s.recipe_id === c.id);
+    const invocations = all('invocations').filter(i => i.concept_id === c.id);
+    const corpus_jobs = all('corpus_jobs').filter(j => j.recipe_id === c.id);
+    res.json({
+      recipe: { id: c.id, name: c.name, head_version: c.head_version, tenant: c.tenant },
+      lineage: {
+        observations: observations.length,
+        observation_models: [...new Set(observations.map(o => o.model).filter(Boolean))],
+        invocations: invocations.length,
+        cache_hits: invocations.filter(i => i.cache).length,
+        corpus_jobs: corpus_jobs.length,
+        rows_labeled: corpus_jobs.reduce((s, j) => s + (j.rows_labeled || 0), 0),
+        specialists: specialists.map(s => ({ id: s.id, status: s.status, base_model: s.base_model })),
+      },
+      compounds_to: specialists.length > 0 ? `Specialist (${specialists[0].id})` : (invocations.length >= 1000 ? 'eligible for Specialist training' : 'still maturing'),
+    });
+  });
+
+  // POST /v1/memory/recall — REM Memory ↔ Skills bridge.
+  // Given a query, find recipes tagged with that namespace, run them, and return the merged result.
+  r.post('/v1/memory/recall', async (req, res) => {
+    const { query, namespace, input, k = 3 } = req.body || {};
+    if (!query) return res.status(400).json({ error: 'query is required' });
+    try {
+      // Search the registry with optional namespace filter.
+      let matches = registry.searchSimilar({ query, tenant: req.tenant, k, tag: namespace });
+      const results = [];
+      for (const m of matches.slice(0, k)) {
+        try {
+          const out = await runtime.runConcept({ concept_id: m.concept_id, input: input ?? query, tenant: req.tenant });
+          results.push({ recipe: m.name, recipe_id: m.concept_id, output: out.output, latency_us: out.latency_us, score: m.score });
+        } catch (e) {
+          results.push({ recipe: m.name, recipe_id: m.concept_id, error: String(e.message || e), score: m.score });
+        }
+      }
+      res.json({ query, namespace: namespace || null, k: matches.length, results });
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+
+  return r;
+}

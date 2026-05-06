@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Status — Recipe</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">STATUS</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/status" class="active">Status</a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <h2>System status</h2>
+    <p class="lead">Live health, version, and changelog. The dot to the right of each component is a real ping &mdash; not a marketing page.</p>
+
+    <h3>Right now</h3>
+    <div class="row cols-3" id="status-row">
+      <div class="card"><div class="label">API</div><div class="stat" id="s-api"><span class="spinner"></span></div><div class="delta" id="s-api-delta">checking…</div></div>
+      <div class="card"><div class="label">Synthesis</div><div class="stat" id="s-syn"><span class="spinner"></span></div><div class="delta" id="s-syn-delta">checking…</div></div>
+      <div class="card"><div class="label">Runtime</div><div class="stat" id="s-rt"><span class="spinner"></span></div><div class="delta" id="s-rt-delta">checking…</div></div>
+    </div>
+
+    <h3>Build &amp; uptime</h3>
+    <table class="kvtable" id="meta">
+      <tr><td>version</td><td class="mono" id="m-version">—</td></tr>
+      <tr><td>library</td><td class="mono" id="m-lib">—</td></tr>
+      <tr><td>region</td><td class="mono" id="m-region">—</td></tr>
+      <tr><td>uptime (this instance)</td><td class="mono" id="m-up">—</td></tr>
+      <tr><td>concepts</td><td class="mono" id="m-concepts">—</td></tr>
+      <tr><td>versions</td><td class="mono" id="m-versions">—</td></tr>
+      <tr><td>tenants</td><td class="mono" id="m-tenants">—</td></tr>
+      <tr><td>recipe-calls served</td><td class="mono" id="m-inv">—</td></tr>
+    </table>
+
+    <hr class="hairline" />
+
+    <h3>Changelog</h3>
+    <table class="table">
+      <thead><tr><th>date</th><th>change</th></tr></thead>
+      <tbody>
+        <tr><td class="mono faint">2026-05-06</td><td>Recipe rebrand: "show / get / run" surface, three-pillar framing, Memory · Skills · Specialists footer. Engine still code-named Kolmogorov.</td></tr>
+        <tr><td class="mono faint">2026-05-06</td><td>New endpoints: <span class="mono">/v1/concepts/:id/stats</span>, <span class="mono">/v1/synthesize/batch</span> (max 25/req). Auto-labeler &amp; Specialists endpoints scaffolded.</td></tr>
+        <tr><td class="mono faint">2026-05-06</td><td>npm package <span class="mono">@kolmogorov/recipe</span>, Python SDK <span class="mono">kolmogorov-recipe</span>, MCP server <span class="mono">@kolmogorov/recipe-mcp</span>, VS Code extension scaffold.</td></tr>
+        <tr><td class="mono faint">2026-05-04</td><td>v0.2.0 ships: 19-endpoint API, gzip on JSON, full rate-limit + quota headers, Railway deploy. 45/45 smoke tests green.</td></tr>
+        <tr><td class="mono faint">2026-05-03</td><td>v0.1 alpha: Synthesis &middot; Concept Registry &middot; Edge Runtime running end-to-end on Railway.</td></tr>
+      </tbody>
+    </table>
+
+    <hr class="hairline" />
+
+    <h3>Roadmap</h3>
+    <table class="table">
+      <thead><tr><th>when</th><th>what</th></tr></thead>
+      <tbody>
+        <tr><td class="mono faint">Day 7-30</td><td>npm + Python + MCP + VS Code distribution surfaces (shipped scaffolds; iterating).</td></tr>
+        <tr><td class="mono faint">Day 30-60</td><td><span class="mono">/v1/recipes/:id/label-corpus</span> &mdash; auto-label a HuggingFace dataset with one of your recipes.</td></tr>
+        <tr><td class="mono faint">Day 60-120</td><td><strong>Specialists</strong> launch: paste examples, get a fine-tuned LoRA. Integrates the existing REM Labs LoRA pipeline.</td></tr>
+        <tr><td class="mono faint">Day 120-180</td><td>Public registry submissions, top-100 spotlight, embed API, search-first discovery.</td></tr>
+        <tr><td class="mono faint">Day 180+</td><td>Compounding: Memory ↔ Recipe ↔ Specialist routing inside the REM Labs console; specialist marketplace.</td></tr>
+      </tbody>
+    </table>
+
+    <footer class="page-footer">
+      <div class="left">
+        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+      </div>
+      <div class="right">
+        <a href="/why">Why</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </div>
+    </footer>
+  </main>
+</div>
+<script src="/app.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const fmtUp = (s) => {
+  if (!s) return '—';
+  const m = Math.floor(s/60), h = Math.floor(m/60), d = Math.floor(h/24);
+  if (d) return `${d}d ${h%24}h`;
+  if (h) return `${h}h ${m%60}m`;
+  if (m) return `${m}m ${s%60}s`;
+  return `${s}s`;
+};
+
+async function check() {
+  let h;
+  try { h = await fetch('/health').then(r => r.ok ? r.json() : Promise.reject(r)); }
+  catch {
+    for (const id of ['s-api','s-syn','s-rt']) { $(id).innerHTML = '<span class="status-dot bad"></span>down'; }
+    return;
+  }
+  $('s-api').innerHTML = '<span class="status-dot ok"></span>up';
+  $('s-api-delta').textContent = `${h.uptime_s ? fmtUp(h.uptime_s) : ''} uptime`;
+  $('s-syn').innerHTML = '<span class="status-dot ok"></span>' + (h.has_anthropic_key ? 'Claude + pattern' : 'pattern only');
+  $('s-syn-delta').textContent = h.has_anthropic_key ? 'real LLM synthesis' : 'set ANTHROPIC_API_KEY for Claude';
+  $('s-rt').innerHTML = '<span class="status-dot ok"></span>up';
+  $('s-rt-delta').textContent = `${h.stats.invocations.toLocaleString()} calls served`;
+  $('m-version').textContent = h.version;
+  $('m-lib').textContent = h.library_version;
+  $('m-region').textContent = h.region;
+  $('m-up').textContent = fmtUp(h.uptime_s);
+  $('m-concepts').textContent = h.stats.concepts.toLocaleString();
+  $('m-versions').textContent = h.stats.versions.toLocaleString();
+  $('m-tenants').textContent = h.stats.tenants.toLocaleString();
+  $('m-inv').textContent = h.stats.invocations.toLocaleString();
+}
+check();
+setInterval(check, 5000);
+</script>
+</body>
+</html>

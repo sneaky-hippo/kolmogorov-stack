@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Receipts — cryptographic proof on every AI behavior</title>
+  <meta name="description" content="Every Recipe call returns a signed receipt: source hash, input hash, output hash, runtime version, HMAC. Anyone can verify offline. Auditor-ready." />
+  <meta property="og:title" content="Receipts — cryptographic proof on every AI behavior" />
+  <meta property="og:description" content="Recipe receipts make AI behavior provable, portable, and audit-ready. The proof layer of AI." />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <div class="tag">receipts · attestation</div>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/optimize">Optimize my bill</a>
+      <a href="/audit">Free bill audit</a>
+      <a href="/playground">Playground</a>
+      <a href="/registry">Recipes</a>
+      <a href="/dashboard">Live runtime</a>
+      <a href="/spec">Spec (RS-1)</a>
+      <a href="/receipts" class="active">Receipts</a>
+      <a href="/why">Why this exists</a>
+      <a href="/docs">API &amp; SDKs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
+      <a href="/account">Account</a>
+      <a href="/signup">Get a key</a>
+    </nav>
+    <div class="footnote">
+      <strong>Memory · Skills · Specialists.</strong><br/>
+      Recipe is the Skills layer of <a href="https://remlabs.ai" style="color:var(--ink-mute);">REM Labs</a>.
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <section class="hero">
+      <div class="eyebrow"><span class="dot live"></span> Cryptographic receipts · live</div>
+      <h1>Every run, a <span class="grad">signed proof</span>.</h1>
+      <p class="sub">
+        Every <code>POST /v1/run</code> returns a <strong>receipt</strong>: a stable JSON object that names
+        the recipe by its source hash, fingerprints the input and output, stamps the runtime version and time,
+        and signs the bundle with HMAC-SHA256. Anyone can verify it. Offline. Years from now. Without us.
+      </p>
+      <div class="actions">
+        <a class="btn accent lg" href="#try">Try the verifier &darr;</a>
+        <a class="btn ghost lg" href="/spec">Read RS-1 spec</a>
+        <a class="btn ghost lg" href="/v1/spec" target="_blank">JSON manifest</a>
+      </div>
+      <div class="hero-meta">
+        <span><strong>HMAC-SHA256</strong> · public canonical-JSON</span>
+        <span>&middot;</span>
+        <span>EU AI Act 2026 ready</span>
+        <span>&middot;</span>
+        <span>SOC 2 evidence</span>
+      </div>
+    </section>
+
+    <section class="card" style="margin: 22px 0;">
+      <div class="row cols-3">
+        <div>
+          <div class="label">What it proves</div>
+          <h3 style="margin: 6px 0 8px;">Behavior provenance</h3>
+          <p>Which exact recipe ran, on which exact input, produced which exact output, on which runtime, when.
+          Not "approximately" — bit-exact, hash-pinned.</p>
+        </div>
+        <div>
+          <div class="label">Why an LLM can't</div>
+          <h3 style="margin: 6px 0 8px;">Stochastic by design</h3>
+          <p>Every Claude/GPT call is non-deterministic at the token level. Even with temperature 0, retries differ.
+          You can't sign what you can't reproduce.</p>
+        </div>
+        <div>
+          <div class="label">Why we can</div>
+          <h3 style="margin: 6px 0 8px;">Deterministic by definition</h3>
+          <p>A recipe is pure code. <code>fn(input) = output</code>, always. Which means we can hash both ends
+          and bind them to a source hash forever.</p>
+        </div>
+      </div>
+    </section>
+
+    <h2 class="h2" id="try">Try it — verify a live receipt</h2>
+    <div class="card">
+      <p>Click <em>"Run a recipe"</em> below. The runtime executes a real recipe and returns a real receipt.
+      Then click <em>"Verify"</em> — we re-derive the HMAC from scratch and confirm the chain.</p>
+
+      <div class="row cols-2" style="margin-top: 14px;">
+        <div>
+          <button class="btn accent" id="btn-run">Run a recipe &rarr;</button>
+          <div style="margin-top: 14px;">
+            <div class="label">Run response</div>
+            <pre class="terminal" id="run-out" style="min-height: 140px; max-height: 360px; overflow: auto;">(click "Run a recipe" to populate)</pre>
+          </div>
+        </div>
+        <div>
+          <button class="btn ghost" id="btn-verify" disabled>Verify receipt &rarr;</button>
+          <button class="btn ghost" id="btn-tamper" disabled style="margin-left:6px;">Tamper, then verify</button>
+          <div style="margin-top: 14px;">
+            <div class="label">Verify response</div>
+            <pre class="terminal" id="verify-out" style="min-height: 140px; max-height: 360px; overflow: auto;">(click "Verify receipt" after running)</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Anatomy of a receipt</h2>
+    <div class="card">
+      <pre class="terminal"><code>{
+  <span class="kw">"spec"</span>:            "rs-1",
+  <span class="kw">"source_hash"</span>:     "8f3d…16hex",        <span class="dim">// which code ran</span>
+  <span class="kw">"input_hash"</span>:      "sha256/64hex",       <span class="dim">// what you sent in</span>
+  <span class="kw">"output_hash"</span>:     "sha256/64hex",       <span class="dim">// what came out</span>
+  <span class="kw">"version_id"</span>:      "ver_xyz789",        <span class="dim">// registry pointer</span>
+  <span class="kw">"runtime_version"</span>: "0.3.0",             <span class="dim">// reproducer</span>
+  <span class="kw">"issued_at"</span>:       "2026-05-06T17:42:11Z",
+  <span class="kw">"cache_hit"</span>:       false,
+  <span class="kw">"latency_us"</span>:      35,
+  <span class="kw">"hmac"</span>:            "f8a1…64hex"          <span class="dim">// signs everything above</span>
+}</code></pre>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Three things receipts let you do</h2>
+    <div class="row cols-3">
+      <div class="card">
+        <div class="label">Proof for auditors</div>
+        <h3 style="margin: 6px 0 8px;">"Show me what ran in March"</h3>
+        <p>Store receipts in your warehouse. Auditors get a tamper-evident log of every classification, route, and filter.
+        Required under EU AI Act 2026.</p>
+      </div>
+      <div class="card">
+        <div class="label">Reproducible experiments</div>
+        <h3 style="margin: 6px 0 8px;">Pin the exact behavior</h3>
+        <p>A receipt fixes the recipe at a hash. Six months later, you can rerun the exact same recipe
+        and get bit-exact outputs. No "model drift" debate.</p>
+      </div>
+      <div class="card">
+        <div class="label">Portable trust</div>
+        <h3 style="margin: 6px 0 8px;">Verify without us</h3>
+        <p>The verification algorithm is public canonical-JSON + HMAC. Build your own verifier in 50 lines.
+        We're not in the loop after the receipt is issued.</p>
+      </div>
+    </div>
+
+    <h2 class="h2" style="margin-top: 32px;">Receipts vs. logs</h2>
+    <table class="table compare-full">
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>Plain logs (Helicone, Langfuse)</th>
+          <th>Recipe receipts</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Tamper-evident</td><td>No (database row, mutable)</td><td>Yes (HMAC over canonical JSON)</td></tr>
+        <tr><td>Verifiable offline</td><td>No</td><td>Yes</td></tr>
+        <tr><td>Bit-exact replay</td><td>No (stochastic upstream)</td><td>Yes (deterministic)</td></tr>
+        <tr><td>Vendor-neutral</td><td>No</td><td>Yes (open spec)</td></tr>
+        <tr><td>Auditor-acceptable as evidence</td><td>Maybe</td><td>Yes (RS-1 chain of custody)</td></tr>
+        <tr class="winner-col"><td>Cost per call</td><td>~$0.0001 storage + AI cost</td><td>~$0.000001 storage, recipe cost = $0</td></tr>
+      </tbody>
+    </table>
+
+    <section class="bottom-cta" style="margin-top: 36px;">
+      <h2>This is the layer the AI stack is missing.</h2>
+      <p>Stochastic models can't sign their work. Recipes can. That's the difference between a vendor and a standard.</p>
+      <div class="actions" style="margin-top: 14px;">
+        <a class="btn accent lg" href="/spec">Read the spec</a>
+        <a class="btn ghost lg" href="/audit">Free bill audit</a>
+        <a class="btn ghost lg" href="/signup">Get an API key</a>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+const TENANT_KEY = 'demo'; // public demo key fetched lazily; runs are anonymous-friendly
+
+let lastReceipt = null;
+let lastInput = null;
+let lastOutput = null;
+let lastVersionId = null;
+
+const headers = { 'Content-Type': 'application/json' };
+
+async function pickRecipe() {
+  // Use the public concept list — no auth required.
+  const res = await fetch('/v1/public/concepts', { headers });
+  if (!res.ok) throw new Error('cannot list recipes');
+  const { concepts } = await res.json();
+  if (!concepts || !concepts.length) throw new Error('no public recipes published');
+  return concepts[0];
+}
+
+document.getElementById('btn-run').addEventListener('click', async () => {
+  const out = document.getElementById('run-out');
+  out.textContent = 'Running…';
+  try {
+    const concept = await pickRecipe();
+    const sample = (concept.tags || []).includes('spam')
+      ? 'FREE $$$ click here unsubscribe'
+      : 'Hello, are we still on for Tuesday?';
+    lastInput = sample;
+    const res = await fetch('/v1/public/run', {
+      method: 'POST', headers,
+      body: JSON.stringify({ concept_id: concept.id, input: sample }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'run failed');
+    lastReceipt = data.receipt;
+    lastOutput = data.output;
+    lastVersionId = data.version_id;
+    out.textContent = JSON.stringify(data, null, 2);
+    document.getElementById('btn-verify').disabled = false;
+    document.getElementById('btn-tamper').disabled = false;
+  } catch (e) {
+    out.textContent = 'Error: ' + (e.message || e);
+  }
+});
+
+document.getElementById('btn-verify').addEventListener('click', async () => {
+  const out = document.getElementById('verify-out');
+  out.textContent = 'Verifying…';
+  try {
+    const res = await fetch('/v1/receipts/verify', {
+      method: 'POST', headers,
+      body: JSON.stringify({ receipt: lastReceipt, input: lastInput, output: lastOutput }),
+    });
+    const data = await res.json();
+    out.textContent = JSON.stringify(data, null, 2);
+  } catch (e) {
+    out.textContent = 'Error: ' + (e.message || e);
+  }
+});
+
+document.getElementById('btn-tamper').addEventListener('click', async () => {
+  const out = document.getElementById('verify-out');
+  out.textContent = 'Tampering, then verifying…';
+  try {
+    // Flip one byte of the output_hash. The HMAC will no longer match.
+    const tampered = { ...lastReceipt };
+    const ch = tampered.output_hash[0];
+    tampered.output_hash = (ch === 'a' ? 'b' : 'a') + tampered.output_hash.slice(1);
+    const res = await fetch('/v1/receipts/verify', {
+      method: 'POST', headers,
+      body: JSON.stringify({ receipt: tampered, input: lastInput, output: lastOutput }),
+    });
+    const data = await res.json();
+    out.textContent = '// Tampered receipt — expected valid:false\n' + JSON.stringify(data, null, 2);
+  } catch (e) {
+    out.textContent = 'Error: ' + (e.message || e);
+  }
+});
+</script>
+</body>
+</html>
