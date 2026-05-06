@@ -546,8 +546,7 @@ export function buildRouter() {
       return res.status(400).json({ error: 'examples must be an array with ≤200 entries' });
     }
     const job = createJob({ task, examples, corpus_namespace, base_model, tenant: req.tenant });
-    // Fire and forget. Sprint 1 stub Recall + Distill resolve fast (<1s).
-    setImmediate(() => runJob(job, {
+    const ctx = {
       synthesize,
       publicRecipes: () => {
         const concepts = all('concepts').filter(c => c.visibility === 'public');
@@ -573,7 +572,18 @@ export function buildRouter() {
         query: ({ namespace, query, k }) => recall.query({ tenant: req.tenant, namespace, query, k }),
       },
       outDir: process.env.KOLM_ARTIFACT_DIR,
-    }));
+    };
+    // On serverless platforms the function instance is killed shortly after
+    // res.end(), so a fire-and-forget runJob would never complete. Await it
+    // there; on long-running self-hosted nodes, fire and forget for snappy
+    // 202s. The pattern-mode synthesizer typically finishes in <1s.
+    const ON_SERVERLESS = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    if (ON_SERVERLESS || req.query.sync === '1') {
+      try { await runJob(job, ctx); } catch (e) { /* runJob persists its own error state */ }
+      const fresh = getJob(job.id, req.tenant) || job;
+      return res.status(202).json({ job_id: fresh.id, status: fresh.status, poll: `/v1/compile/${fresh.id}` });
+    }
+    setImmediate(() => runJob(job, ctx));
     res.status(202).json({ job_id: job.id, status: job.status, poll: `/v1/compile/${job.id}` });
   });
 

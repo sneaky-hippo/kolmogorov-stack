@@ -6,9 +6,28 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-const DATA_DIR = path.resolve('data');
+// On Vercel/Lambda the deploy bundle is read-only; only /tmp is writable
+// and is shared across warm invocations of the same function. We seed
+// /tmp/data from the bundled ./data directory on cold start so seed
+// rows (registry concepts, etc.) survive — writes are warm-only.
+const ON_VERCEL = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const BUNDLED_DATA_DIR = path.resolve('data');
+const DATA_DIR = ON_VERCEL ? '/tmp/data' : BUNDLED_DATA_DIR;
+
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(path.join(DATA_DIR, 'cache'), { recursive: true });
+
+if (ON_VERCEL && fs.existsSync(BUNDLED_DATA_DIR) && BUNDLED_DATA_DIR !== DATA_DIR) {
+  for (const f of fs.readdirSync(BUNDLED_DATA_DIR)) {
+    const src = path.join(BUNDLED_DATA_DIR, f);
+    const dst = path.join(DATA_DIR, f);
+    if (fs.existsSync(dst)) continue;
+    try {
+      const stat = fs.statSync(src);
+      if (stat.isFile()) fs.copyFileSync(src, dst);
+    } catch { /* best-effort seed; safe to skip */ }
+  }
+}
 
 const tables = new Map();
 
