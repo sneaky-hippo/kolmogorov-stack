@@ -90,8 +90,10 @@
   header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
   header.site nav a:hover { color: var(--ink); }
   header.site .right { display: flex; align-items: center; gap: 14px; }
-  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; display: inline-flex; align-items: center; }
   header.site .right .ghost:hover { color: var(--ink); }
+  header.site .right .ghost.gh { color: var(--ink-faint); padding: 4px; }
+  header.site .right .ghost.gh:hover { color: var(--ink); }
   header.site .right .cta {
     display: inline-flex; align-items: center; gap: 6px;
     color: var(--bg); background: var(--ink); border-radius: 6px;
@@ -127,22 +129,25 @@
   .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
 
   h1.hero-h1 {
-    margin: 24px 0 24px;
-    font-size: clamp(40px, 6.4vw, 76px);
-    line-height: 1.05;
+    margin: 26px 0 26px;
+    font-size: clamp(34px, 6.6vw, 76px);
+    line-height: 1.04;
     font-weight: 500;
-    letter-spacing: -0.028em;
+    letter-spacing: -0.030em;
     color: var(--ink);
-    max-width: 18ch;
+    max-width: 19ch;
   }
   h1.hero-h1 .tone { color: var(--accent); }
+  @media (max-width: 720px) {
+    h1.hero-h1 { max-width: 100%; line-height: 1.08; letter-spacing: -0.024em; }
+  }
 
   p.lede {
-    margin: 0 0 36px;
+    margin: 0 0 38px;
     font-size: clamp(16px, 1.4vw, 19px);
-    line-height: 1.5;
+    line-height: 1.55;
     color: var(--ink-mute);
-    max-width: 56ch;
+    max-width: 58ch;
     letter-spacing: -0.005em;
   }
   p.lede b { color: var(--ink); font-weight: 540; }
@@ -152,7 +157,7 @@
     padding: 1px 6px;
   }
 
-  .cta-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 64px; }
+  .cta-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 28px; }
   a.btn-primary {
     display: inline-flex; align-items: center; gap: 8px;
     background: var(--ink); color: var(--bg);
@@ -175,62 +180,89 @@
   a.btn-link .arrow { transition: transform 160ms; }
   a.btn-link:hover .arrow { transform: translateX(2px); color: var(--accent); }
 
+  /* hero "built for" sector strip */
+  .hero-built {
+    margin: 0 0 56px;
+    display: flex; flex-wrap: wrap; align-items: center;
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .hero-built .hb-label { padding: 6px 16px 6px 0; margin-right: 0; }
+  .hero-built a {
+    padding: 6px 14px;
+    color: var(--ink-mute);
+    border-left: 1px solid var(--line);
+    transition: color 120ms;
+  }
+  .hero-built a:hover { color: var(--ink); }
+  @media (max-width: 720px) {
+    .hero-built { margin-bottom: 40px; font-size: 10.5px; letter-spacing: 0.10em; }
+    .hero-built .hb-label { padding: 6px 12px 6px 0; width: 100%; border-bottom: 1px solid var(--line); margin-bottom: 8px; padding-bottom: 10px; }
+    .hero-built a { padding: 6px 10px 6px 10px; border-left: none; }
+    .hero-built a:first-of-type { padding-left: 0; }
+  }
+
   /* artifact card */
   .artifact {
     background: linear-gradient(180deg, var(--bg-elev), var(--bg-card));
     border: 1px solid var(--line-strong);
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 30px 80px -30px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.02);
+    box-shadow: 0 40px 100px -36px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.02);
     max-width: 980px;
   }
   .artifact .head {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 22px;
+    padding: 18px 26px;
     border-bottom: 1px solid var(--line);
-    background: rgba(0,0,0,0.2);
+    background: rgba(0,0,0,0.22);
+    flex-wrap: wrap; gap: 16px;
   }
   .artifact .head .file {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-family: var(--mono); font-size: 13px; color: var(--ink);
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 13.5px; color: var(--ink);
   }
   .artifact .head .file .icon { color: var(--ink-faint); }
   .artifact .head .file .ext { color: var(--ink-mute); }
   .artifact .head .ksum {
-    display: inline-flex; align-items: baseline; gap: 10px;
-    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    display: inline-flex; align-items: baseline; gap: 12px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em;
     text-transform: uppercase; color: var(--ink-mute);
   }
   .artifact .head .ksum .num {
-    font-family: var(--sans); font-size: 22px; font-weight: 540;
-    letter-spacing: -0.02em; color: var(--accent);
+    font-family: var(--sans); font-size: 32px; font-weight: 540;
+    letter-spacing: -0.030em; color: var(--accent);
     text-transform: none;
+    line-height: 1;
   }
 
   .k-grid { display: grid; grid-template-columns: repeat(5, 1fr); }
   .k-grid .cell {
-    padding: 18px 22px;
+    padding: 22px 24px;
     border-right: 1px solid var(--line);
   }
   .k-grid .cell:last-child { border-right: none; }
   .k-grid .cell .lab {
-    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
     text-transform: uppercase; color: var(--ink-faint);
   }
   .k-grid .cell .val {
-    margin-top: 6px;
-    font-size: 22px; font-weight: 540; letter-spacing: -0.02em;
-    color: var(--ink);
+    margin-top: 10px;
+    font-size: 19px; font-weight: 540; letter-spacing: -0.02em;
+    color: var(--ink); line-height: 1.05;
   }
   .k-grid .cell .val .u {
-    font-size: 13px; font-weight: 400; color: var(--ink-mute);
+    font-size: 12px; font-weight: 400; color: var(--ink-mute);
     margin-left: 3px;
   }
   @media (max-width: 720px) {
     .k-grid { grid-template-columns: repeat(2, 1fr); }
-    .k-grid .cell { border-bottom: 1px solid var(--line); }
+    .k-grid .cell { padding: 18px 20px; border-bottom: 1px solid var(--line); }
     .k-grid .cell:nth-child(2n) { border-right: none; }
     .k-grid .cell:last-child { border-bottom: none; }
+    .artifact .head { padding: 16px 20px; }
+    .artifact .head .ksum .num { font-size: 26px; }
   }
 
   .artifact .serve {
@@ -246,57 +278,78 @@
     font-size: 11px; letter-spacing: 0.06em; color: var(--ink-mute);
   }
 
-  /* VI band — neuro-optimized hero-trough fill (5-10% scroll) */
-  section.vi-band { padding: 64px 0 72px; position: relative; }
-  section.vi-band .wrap { max-width: 1100px; }
-  .vi-eyebrow { margin: 0 0 22px; }
-  .vi-figure { margin: 0; }
+  /* VI band — compile-pipeline figure */
+  section.vi-band { padding: 96px 0; position: relative; }
+  section.vi-band .wrap { max-width: 1080px; }
+  .vi-eyebrow { margin: 0 0 36px; }
+  .vi-figure { margin: 0; position: relative; }
+  .vi-figure::before {
+    content: ""; position: absolute; left: 50%; top: -48px;
+    width: 1px; height: 32px; background: var(--line); transform: translateX(-50%);
+  }
   .vi-figure img {
-    display: block; width: 100%; height: auto;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--bg);
+    display: block; width: 100%; height: auto; max-height: 540px;
+    object-fit: contain;
+    background: transparent;
   }
   .vi-figure figcaption {
-    margin-top: 18px;
-    font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
-    color: var(--ink-mute); text-align: center; line-height: 1.6;
+    margin-top: 32px; padding-top: 24px;
+    border-top: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute); line-height: 1.4;
+    flex-wrap: wrap;
   }
   .vi-figure figcaption .vi-cap-num { color: var(--accent); font-weight: 540; }
-  .vi-figure figcaption .vi-cap-sep { color: var(--ink-faint); margin: 0 4px; }
+  .vi-figure figcaption .vi-cap-sep { color: var(--ink-faint); }
   .vi-figure figcaption .vi-cap-code {
-    font-family: var(--mono); font-size: 12px; color: var(--ink);
+    font-family: var(--mono); font-size: 11px; color: var(--ink);
     background: var(--bg-card); border: 1px solid var(--line); border-radius: 3px;
-    padding: 0 5px;
+    padding: 1px 6px; letter-spacing: 0;
   }
   .vi-figure figcaption .vi-cap-zero { color: var(--accent); font-weight: 600; }
+  @media (max-width: 720px) {
+    section.vi-band { padding: 72px 0 64px; }
+    .vi-figure::before { display: none; }
+    .vi-figure figcaption { gap: 10px; font-size: 10px; }
+  }
 
   /* SECTION FRAME */
-  section { padding: 96px 0; position: relative; }
+  section { padding: 104px 0; position: relative; }
   section + section { border-top: 1px solid var(--line); }
   section.vi-band + section { border-top: none; }
   .eyebrow {
-    display: inline-flex; align-items: center; gap: 10px;
+    display: inline-flex; align-items: center; gap: 12px;
     font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
-    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 18px;
+    text-transform: uppercase; color: var(--ink-mute); margin: 0 0 22px;
   }
-  .eyebrow .num { color: var(--accent); }
+  .eyebrow::before {
+    content: ""; display: inline-block; width: 22px; height: 1px;
+    background: var(--accent); flex: 0 0 auto; opacity: 0.55;
+  }
+  .eyebrow .num { color: var(--accent); font-weight: 540; }
   h2 {
-    margin: 0 0 18px;
-    font-size: clamp(28px, 3.4vw, 42px);
-    line-height: 1.1;
-    font-weight: 540;
-    letter-spacing: -0.024em;
+    margin: 0 0 22px;
+    font-size: clamp(30px, 3.6vw, 46px);
+    line-height: 1.06;
+    font-weight: 500;
+    letter-spacing: -0.028em;
     color: var(--ink);
     max-width: 22ch;
   }
   h2 .tone { color: var(--accent); }
   p.sec-lede {
-    margin: 0 0 48px;
+    margin: 0 0 56px;
     font-size: 17px;
-    line-height: 1.55;
+    line-height: 1.6;
     color: var(--ink-mute);
-    max-width: 60ch;
+    max-width: 62ch;
+  }
+  @media (max-width: 720px) {
+    section { padding: 72px 0; }
+    .eyebrow::before { width: 16px; }
+    p.sec-lede { margin-bottom: 40px; }
   }
   p.sec-lede code {
     font-family: var(--mono); font-size: 0.92em; color: var(--ink);
@@ -305,20 +358,26 @@
   }
 
   /* INSTALL */
+  .install-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; }
+  @media (max-width: 880px) { .install-grid { grid-template-columns: 1fr; } }
   .install {
     background: var(--bg-elev);
     border: 1px solid var(--line);
     border-radius: 8px;
     overflow: hidden;
-    max-width: 720px;
+  }
+  .install-head {
+    padding: 12px 18px; border-bottom: 1px solid var(--line);
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-faint); background: rgba(0,0,0,0.18);
   }
   .install .tabs {
-    display: flex; border-bottom: 1px solid var(--line);
+    display: flex; border-bottom: 1px solid var(--line); flex-wrap: wrap;
   }
   .install .tabs button {
     flex: 0 0 auto;
     background: none; border: none; cursor: pointer;
-    padding: 10px 18px;
+    padding: 10px 16px;
     font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
     color: var(--ink-faint);
     border-bottom: 2px solid transparent;
@@ -328,13 +387,19 @@
   .install .tabs button.active { color: var(--ink); border-bottom-color: var(--accent); }
   .install .pane {
     display: none;
-    padding: 22px 24px;
-    font-family: var(--mono); font-size: 14px; line-height: 1.7;
-    color: var(--ink); white-space: pre;
+    padding: 20px 22px;
+    font-family: var(--mono); font-size: 13px; line-height: 1.75;
+    color: var(--ink); white-space: pre; overflow-x: auto;
   }
   .install .pane.active { display: block; }
   .install .pane .com { color: var(--ink-faint); }
   .install .pane .arg { color: var(--accent); }
+  .install .pane .kw { color: #b0bbff; }
+  .install.integ .pane { font-size: 12.5px; }
+  @media (max-width: 720px) {
+    .install .pane { font-size: 12px; padding: 16px 18px; }
+    .install.integ .pane { font-size: 11.5px; }
+  }
 
   /* ANATOMY */
   .anatomy {
@@ -757,6 +822,11 @@
       </nav>
     </div>
     <div class="right">
+      <a href="https://github.com/sneaky-hippo/kolmogorov-stack" class="ghost gh" aria-label="kolm on GitHub" title="kolm on GitHub">
+        <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" aria-hidden="true">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2 .37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+      </a>
       <a href="/signin" class="ghost">Sign in</a>
       <a href="/signup" class="cta">Get kolm</a>
     </div>
@@ -774,9 +844,15 @@
     <div class="cta-row">
       <a href="/compile" class="btn-primary">Get kolm <code>·</code> <code>kolm compile</code></a>
       <a href="/quickstart" class="btn-link">5-minute Hello World <span class="arrow">→</span></a>
-      <a href="/anatomy" class="btn-link">See what's inside a <code style="font-family:var(--mono);font-size:13px">.kolm</code> <span class="arrow">→</span></a>
     </div>
-    <p class="hero-built" style="margin-top:22px;font-size:13px;color:var(--ink-faint);font-family:var(--mono);letter-spacing:0.04em;">Built for <a href="/healthcare" style="color:var(--ink-mute);">healthcare</a> · <a href="/finance" style="color:var(--ink-mute);">financial services</a> · <a href="/defense" style="color:var(--ink-mute);">defense &amp; intel</a> · <a href="/mobile" style="color:var(--ink-mute);">consumer mobile</a></p>
+
+    <div class="hero-built">
+      <span class="hb-label">Built for</span>
+      <a href="/healthcare">Healthcare</a>
+      <a href="/finance">Financial services</a>
+      <a href="/defense">Defense &amp; intel</a>
+      <a href="/mobile">Consumer mobile</a>
+    </div>
 
     <div class="artifact">
       <div class="head">
@@ -907,18 +983,51 @@
     <h2>One command. Then <code style="font-family:var(--mono);font-size:0.78em;font-weight:500;background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 8px;letter-spacing:0">kolm compile</code>.</h2>
     <p class="sec-lede">No GPU, no Docker, no setup. The CLI handles the cloud compile, the local cache, and the MCP serve. The artifact you produce runs unchanged on every supported runtime.</p>
 
-    <div class="install">
-      <div class="tabs">
-        <button class="active" data-pane="curl">curl</button>
-        <button data-pane="npm">npm</button>
-        <button data-pane="brew">brew</button>
-        <button data-pane="pip">pip</button>
-      </div>
-      <div class="pane active" id="pane-curl"><span class="com"># macOS, Linux, Windows (WSL)</span>
+    <div class="install-grid">
+      <div class="install">
+        <div class="install-head">Install the CLI</div>
+        <div class="tabs">
+          <button class="active" data-pane="curl">curl</button>
+          <button data-pane="npm">npm</button>
+          <button data-pane="brew">brew</button>
+          <button data-pane="pip">pip</button>
+        </div>
+        <div class="pane active" id="pane-curl"><span class="com"># macOS, Linux, Windows (WSL)</span>
 curl -fsSL <span class="arg">kolm.ai/install.sh</span> | sh</div>
-      <div class="pane" id="pane-npm">npm i -g <span class="arg">@kolmogorov/kolm</span></div>
-      <div class="pane" id="pane-brew">brew install <span class="arg">kolmogorov/tap/kolm</span></div>
-      <div class="pane" id="pane-pip">pip install <span class="arg">kolm</span></div>
+        <div class="pane" id="pane-npm">npm i -g <span class="arg">@kolmogorov/kolm</span></div>
+        <div class="pane" id="pane-brew">brew install <span class="arg">kolmogorov/tap/kolm</span></div>
+        <div class="pane" id="pane-pip">pip install <span class="arg">kolm</span></div>
+      </div>
+
+      <div class="install integ">
+        <div class="install-head">Drop the artifact in your app</div>
+        <div class="tabs">
+          <button class="active" data-pane="ts">TypeScript</button>
+          <button data-pane="swift">Swift</button>
+          <button data-pane="kt">Kotlin</button>
+          <button data-pane="py">Python</button>
+        </div>
+        <div class="pane active" id="pane-ts"><span class="com">// node, web, edge — same artifact</span>
+<span class="kw">import</span> { Kolm } <span class="kw">from</span> <span class="arg">"@kolmogorov/kolm"</span>;
+<span class="kw">const</span> k = <span class="kw">await</span> Kolm.load(<span class="arg">"./support-triage.kolm"</span>);
+<span class="kw">const</span> r = <span class="kw">await</span> k.run({ subject, body });
+<span class="com">// r.output, r.score, r.receipt</span></div>
+        <div class="pane" id="pane-swift"><span class="com">// iOS · Apple Neural Engine</span>
+<span class="kw">import</span> Kolm
+<span class="kw">let</span> k = <span class="kw">try</span> Kolm.load(name: <span class="arg">"support-triage"</span>)
+<span class="kw">let</span> r = <span class="kw">try await</span> k.run([<span class="arg">"subject"</span>: subject, <span class="arg">"body"</span>: body])
+<span class="com">// r.output, r.score, r.receipt</span></div>
+        <div class="pane" id="pane-kt"><span class="com">// Android · Snapdragon Hexagon / NPU</span>
+<span class="kw">import</span> ai.kolm.Kolm
+<span class="kw">val</span> k = Kolm.load(<span class="arg">"support-triage.kolm"</span>)
+<span class="kw">val</span> r = k.run(mapOf(<span class="arg">"subject"</span> <span class="kw">to</span> subject, <span class="arg">"body"</span> <span class="kw">to</span> body))
+<span class="com">// r.output, r.score, r.receipt</span></div>
+        <div class="pane" id="pane-py"><span class="com"># server, agent, batch</span>
+<span class="kw">from</span> kolm <span class="kw">import</span> Kolm
+k = Kolm.load(<span class="arg">"support-triage.kolm"</span>)
+r = k.run(subject=subject, body=body)
+<span class="com"># r.output, r.score, r.receipt</span></div>
+      </div>
     </div>
   </div>
 </section>
@@ -1335,13 +1444,15 @@ curl -fsSL <span class="arg">kolm.ai/install.sh</span> | sh</div>
 
 <script>
 (function(){
-  document.querySelectorAll('.install .tabs button').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      document.querySelectorAll('.install .tabs button').forEach(function(b){ b.classList.remove('active'); });
-      document.querySelectorAll('.install .pane').forEach(function(p){ p.classList.remove('active'); });
-      btn.classList.add('active');
-      var pane = document.getElementById('pane-' + btn.dataset.pane);
-      if (pane) pane.classList.add('active');
+  document.querySelectorAll('.install').forEach(function(box){
+    box.querySelectorAll('.tabs button').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        box.querySelectorAll('.tabs button').forEach(function(b){ b.classList.remove('active'); });
+        box.querySelectorAll('.pane').forEach(function(p){ p.classList.remove('active'); });
+        btn.classList.add('active');
+        var pane = box.querySelector('#pane-' + btn.dataset.pane);
+        if (pane) pane.classList.add('active');
+      });
     });
   });
 })();
