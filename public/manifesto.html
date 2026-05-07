@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The case for compiled AI · kolm</title>
+<meta name="description" content="Cloud AI gets smart by sending your users' data away. Compiled AI gets smart by leaving it there. The case for a new category — and the file format that defines it.">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm · the case for compiled AI">
+<meta property="og:description" content="Cloud AI gets smart by sending data away. Compiled AI gets smart by leaving it there. A manifesto.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/manifesto">
+<meta property="og:image" content="/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/manifesto">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0a0a0a; --bg-elev: #0f0f12; --bg-card: #13141a;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #ededed; --ink-mute: #9a9da8; --ink-faint: #5a5c66;
+    --accent: #7c8cff; --accent-soft: rgba(124,140,255,0.10); --accent-strong: #93a1ff;
+    --good: #7ce3b6; --bad: #ff7a98;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(10,10,10,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
+  header.site .brand svg { height: 18px; width: 18px; }
+  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .ghost:hover { color: var(--ink); }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  header.site .right .cta:hover { background: #fff; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 56px; position: relative; overflow: hidden; }
+  section.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 900px 460px at 22% 12%, rgba(124,140,255,0.10), transparent 60%); }
+  section.hero .wrap { position: relative; }
+
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+
+  h1 { margin: 24px 0 22px; font-size: clamp(38px, 5.6vw, 60px); line-height: 1.05; font-weight: 500; letter-spacing: -0.028em; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 0; font-size: clamp(17px, 1.4vw, 21px); line-height: 1.55; color: var(--ink-mute); }
+  p.lede b { color: var(--ink); font-weight: 540; }
+
+  article { padding: 40px 0 96px; }
+  article h2 { margin: 56px 0 14px; font-size: clamp(24px, 2.6vw, 30px); line-height: 1.18; font-weight: 540; letter-spacing: -0.018em; color: var(--ink); }
+  article h2 .tone { color: var(--accent); }
+  article p { margin: 0 0 16px; font-size: 16.5px; line-height: 1.7; color: var(--ink-mute); }
+  article p b { color: var(--ink); font-weight: 540; }
+  article p code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
+  article blockquote { margin: 28px 0; padding: 16px 22px; border-left: 2px solid var(--accent); background: var(--bg-elev); border-radius: 0 8px 8px 0; font-size: 17px; line-height: 1.6; color: var(--ink); }
+  article blockquote p { color: var(--ink); margin: 0; font-weight: 480; }
+  article ul { padding-left: 0; list-style: none; margin: 16px 0 24px; }
+  article ul li { padding: 8px 0 8px 22px; position: relative; font-size: 16px; line-height: 1.6; color: var(--ink-mute); }
+  article ul li::before { content: "·"; color: var(--accent); position: absolute; left: 6px; font-weight: 700; }
+  article ul li b { color: var(--ink); font-weight: 540; }
+
+  .signpost { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 36px 0 0; }
+  @media (max-width: 720px) { .signpost { grid-template-columns: 1fr; } }
+  .signpost a { display: flex; flex-direction: column; gap: 8px; padding: 22px 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; transition: border-color 120ms, background 120ms; }
+  .signpost a:hover { border-color: var(--line-strong); background: var(--bg-card); }
+  .signpost a .lab { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
+  .signpost a .v { color: var(--ink); font-weight: 540; font-size: 16px; letter-spacing: -0.012em; }
+  .signpost a .v .arrow { color: var(--accent); margin-left: 6px; }
+  .signpost a p { margin: 4px 0 0; font-size: 13.5px; color: var(--ink-mute); line-height: 1.5; }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-faint); }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand" aria-label="kolm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square"><path d="M 6.5 4 L 6.5 20 M 6.5 13.4 L 14.6 4.6 M 9.4 10.6 L 17.5 19.4"/></svg>
+        <span>kolm</span>
+      </a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">Sign in</a>
+      <a href="/signup" class="cta">Get kolm</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill">Manifesto · 2026-05-07</span>
+    <h1>The case for <span class="tone">compiled AI.</span></h1>
+    <p class="lede">Cloud AI got smart by sending your users' data away. Compiled AI gets smart by leaving it there. A short argument for a new category, and the file format that defines it.</p>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <h2>The dirty secret of cloud AI.</h2>
+    <p>Every powerful AI product today rests on a hidden assumption: that to be useful, it has to read everything you give it, on a server you don't control, run by a company you have no leverage over. Your prompt becomes a row in their log. Your photo becomes a tensor on their GPU. Your medical record, your inbox, your location, your calendar: all of it ends up in a third-party perimeter, even when the privacy policy says otherwise.</p>
+    <p>That's not a bug of the architecture, it's the architecture. <b>The model lives where the GPUs are. The data has to come to the model.</b> Privacy and personalization are presented as a tradeoff. The more your AI knows about you, the more your data has to leave.</p>
+
+    <h2>The inversion.</h2>
+    <p>The premise of compiled AI is that this tradeoff is an artifact of how the technology was first deployed, not a law of physics. Frontier models, in 2026, are good enough teachers that their intelligence can be distilled into a small open-weight student. Phones shipped since 2021 have NPUs powerful enough to run a 3B-parameter model at interactive latency. The compile step closes the gap.</p>
+    <p>You bring the frontier model API key you already pay for. <code>kolm compile</code> takes a task description, your seed examples, and your evals, and runs the frontier as a teacher inside your VPC. It distills a personal LoRA, extracts a deterministic recipe pack, builds a multimodal recall index of your data, runs the verifier, and seals everything into a single signed file: <code>.kolm</code>.</p>
+    <p>The artifact ships to the device. <b>The data already on the device is what the artifact reads.</b> Frontier-class intelligence runs locally, on the user's actual emails, the user's actual health record, the user's actual photos, with zero runtime egress. Privacy enables a depth of personalization that cloud AI structurally cannot match.</p>
+
+    <blockquote>
+      <p>The more private it is, the more personal it can be. The artifact reads what the user actually has, because the artifact is where the user already is.</p>
+    </blockquote>
+
+    <h2>Why deploying raw LLMs is broken.</h2>
+    <p>The status quo for "AI features" in any privacy-sensitive app is one of three options, each broken:</p>
+    <ul>
+      <li><b>Call a cloud API.</b> Fast to ship, slow to legal-approve. Every prompt is a BAA-scoped event in healthcare, an examinable record in finance, a discoverable artifact in litigation. Vendors deprecate models on 14-day notice. The cost grows linearly with usage forever. Data leaves on every call.</li>
+      <li><b>Self-host a runtime.</b> Pull a quantized open-weight model into llama.cpp or MLC.ai. Solves data egress, but the model is generic; it doesn't know the user. You still need a way to teach it the task, ground it in the user's data, evaluate it, sign it, and ship it across iOS and Android. That's an ML team you don't have.</li>
+      <li><b>Skip AI entirely.</b> What most regulated teams quietly do. The compliance officer wins, the user loses, the competitor with looser scruples ships first.</li>
+    </ul>
+    <p>Compiled AI is the fourth option. <b>Cloud at compile time, edge at run time.</b> You get the frontier as a teacher in a controlled environment, you get a personal artifact your users own, and you get a runtime that needs no link.</p>
+
+    <h2>What we mean by compiler.</h2>
+    <p>The word matters. We don't mean wrapper, we don't mean platform, we don't mean framework. We mean compiler in the same sense that <code>gcc</code> is a compiler: a deterministic process that turns a higher-level description (a task spec, examples, evals, a frontier model API key) into a lower-level executable artifact (a signed file with a model, an adapter, a recipe pack, a recall index, and a verifier).</p>
+    <p>Compilation is not training. Training builds a model from scratch. Compilation takes a model that already exists and produces something narrower, faster, and personal. The frontier did the hard part. The compile step makes it portable.</p>
+
+    <h2>K-score: the cover number.</h2>
+    <p>Every compiled artifact ships with a single number on the cover and five you can defend. The K-score is the harmonic mean of size, accuracy, latency, cost, and coverage, normalized against the frontier baseline measured at compile time. Below the gate, the artifact does not ship. The gate is configurable; the default is 0.70.</p>
+    <p>This matters because <b>"my model is good enough"</b> has been a feeling, not a number, for the entire history of applied ML. Compilation lets us measure whether the artifact is worth shipping the way we measure whether a build is worth releasing. If the test suite passes, you ship. If the K-score passes, the artifact ships.</p>
+
+    <h2>Receipts: the new audit trail.</h2>
+    <p>Every <code>.kolm</code> file carries an HMAC chain over its layers: manifest hash, model hash, adapter delta, recipe pack, recall index, verifier set. Tamper with any layer and the chain breaks. Verifiable offline. Anchored to the public Kolmogorov registry. Useful at audit, defensible at deposition, accepted by App Store review.</p>
+    <p>The receipts are not paperwork. They are <b>the new way regulated software gets approved.</b> A compliance officer can look at the manifest, see exactly which base model the artifact was distilled from, see exactly which examples it was trained on, see exactly which evals it passed, and verify all of it cryptographically. No black box, no "trust us," no third-party promise. The thing in the file is the thing on the device.</p>
+
+    <h2>Why this category, why now.</h2>
+    <p>Three forces are converging in 2026.</p>
+    <ul>
+      <li><b>Regulation is closing the cloud-AI window.</b> The EU AI Act enters enforcement on systems touching personal or biometric data. HIPAA enforcement on AI-driven workflows in healthcare is escalating. SR 11-7 model risk requirements at banks now extend to LLMs. Cloud calls are increasingly an audit row, not an architectural detail.</li>
+      <li><b>Hardware is no longer the blocker.</b> The Neural Engine, Hexagon, and APU shipped on every phone since 2021 run a 3B-class model at sub-100ms latency. WebGPU is shipping in browsers. Edge boxes are cheap. The runtime layer is solved.</li>
+      <li><b>Open weights match yesterday's frontier.</b> Qwen 2.5, Llama 3, Phi-3, Hermes-3 in the 3B-7B range now match GPT-4 of two years ago on narrow tasks. Distillation closes the rest. The student is good enough; only the compile step was missing.</li>
+    </ul>
+
+    <h2>What we're building.</h2>
+    <p>kolm is the build system for private AI. It is not a runtime, not a vendor SDK, not an ML platform. It is the deterministic compiler that turns a task description into a portable signed file, and the registry that makes those files discoverable, and the receipts chain that makes them defensible.</p>
+    <p>The runtime is whatever you want: llama.cpp on a server, MLC.ai on a phone, ExecuTorch on iOS, the kolm WASM runtime in a browser. The artifact is the same. <b>The compile step is the new layer.</b></p>
+
+    <blockquote>
+      <p>If Webpack made web apps shippable, Docker made services shippable, and the App Store made mobile apps shippable, kolm makes <em>private AI</em> shippable. The unit is one signed file.</p>
+    </blockquote>
+
+    <h2>An open invitation.</h2>
+    <p>We are publishing the spec (RS-1, MIT). We are open-sourcing the runtime. We are running the public registry as a neutral commons. The compiler itself is the proprietary part, because the compiler is the moat: every compile teaches the compiler which task descriptions, model architectures, and recipe patterns produce high K-scores, and that flywheel is what compounds. The output of a kolm compile is yours. The compiler stays a service.</p>
+    <p>If you build software in healthcare, finance, defense, or for end-user privacy, this is the architecture you've been wanting. If you build infrastructure, the artifact format is the new portable unit. If you research deployable AI, the K-score and the receipt chain are open standards that need your eyes.</p>
+
+    <h2>One paragraph.</h2>
+    <p>Cloud AI got smart by sending your users' data away. Compiled AI gets smart by leaving it there. The frontier teaches the artifact in your VPC. The artifact ships to the device. The data the user trusts your app with stays where they trust it. The K-score on the cover tells you whether the artifact is worth shipping. The receipt chain tells you whether the artifact is the one you signed. The runtime is whatever runtime you want. The artifact is one signed file. <b>That's the inversion. That's the category. That's kolm.</b></p>
+
+    <div class="signpost">
+      <a href="/compile">
+        <span class="lab">act</span>
+        <span class="v">Run <code style="font-family:var(--mono);font-size:0.92em">kolm compile</code> <span class="arrow">→</span></span>
+        <p>Ten lines of CLI. A signed artifact in five minutes.</p>
+      </a>
+      <a href="/anatomy">
+        <span class="lab">read</span>
+        <span class="v">What's inside a <code style="font-family:var(--mono);font-size:0.92em">.kolm</code> <span class="arrow">→</span></span>
+        <p>The seven components and the receipt chain that ties them together.</p>
+      </a>
+      <a href="/k-score">
+        <span class="lab">measure</span>
+        <span class="v">How K-score is computed <span class="arrow">→</span></span>
+        <p>One number on the cover. Five you can defend at review.</p>
+      </a>
+      <a href="/security">
+        <span class="lab">audit</span>
+        <span class="v">Security &amp; compliance posture <span class="arrow">→</span></span>
+        <p>HIPAA path, SOC 2 in flight, EU AI Act conformity, the receipt chain in detail.</p>
+      </a>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolmogorov · 2026 · manifesto v1</span>
+    <span>compile once · run anywhere</span>
+  </div>
+</footer>
+
+</body>
+</html>

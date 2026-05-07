@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Changelog · kolm</title>
+<meta name="description" content="What shipped, when. Public log of every release, fix, spec change, and benchmark posted by Kolmogorov.">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm · changelog">
+<meta property="og:description" content="What shipped, when. Public release log.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/changelog">
+<meta property="og:image" content="/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/changelog">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0a0a0a; --bg-elev: #0f0f12; --bg-card: #13141a;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #ededed; --ink-mute: #9a9da8; --ink-faint: #5a5c66;
+    --accent: #7c8cff; --accent-soft: rgba(124,140,255,0.10); --accent-strong: #93a1ff;
+    --good: #7ce3b6; --bad: #ff7a98;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(10,10,10,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
+  header.site .brand svg { height: 18px; width: 18px; }
+  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .ghost:hover { color: var(--ink); }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  header.site .right .cta:hover { background: #fff; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 40px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
+  h1 { margin: 24px 0 16px; font-size: clamp(36px, 5vw, 56px); line-height: 1.05; font-weight: 500; letter-spacing: -0.028em; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 0; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
+  p.lede b { color: var(--ink); font-weight: 540; }
+
+  article { padding: 36px 0 80px; }
+  .release { margin: 0 0 36px; padding: 26px 28px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 10px; }
+  .release.recent { border-color: var(--line-strong); box-shadow: 0 0 0 1px rgba(124,140,255,0.10); }
+  .rel-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; margin: 0 0 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .rel-head .ver { font-family: var(--mono); font-size: 14px; font-weight: 540; color: var(--accent); letter-spacing: -0.01em; }
+  .rel-head .date { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); letter-spacing: 0.06em; }
+  .rel-head .tag { display: inline-flex; align-items: center; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line); background: var(--bg-card); border-radius: 999px; padding: 3px 9px; }
+  .rel-head .tag.major { color: var(--accent); border-color: rgba(124,140,255,0.24); background: var(--accent-soft); }
+  .rel-head .tag.security { color: var(--bad); border-color: rgba(255,122,152,0.22); background: rgba(255,122,152,0.06); }
+  .rel-head .tag.spec { color: var(--good); border-color: rgba(124,232,182,0.22); background: rgba(124,232,182,0.06); }
+  .rel-head h2 { margin: 0; font-size: 18px; font-weight: 540; color: var(--ink); letter-spacing: -0.012em; line-height: 1.4; flex: 1 1 100%; padding-top: 4px; }
+  .rel-body p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.65; color: var(--ink-mute); }
+  .rel-body p:last-child { margin-bottom: 0; }
+  .rel-body p b { color: var(--ink); font-weight: 540; }
+  .rel-body p code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-card); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--ink); }
+  .rel-body ul { padding-left: 0; list-style: none; margin: 12px 0; }
+  .rel-body ul li { padding: 5px 0 5px 22px; position: relative; font-size: 14.5px; line-height: 1.55; color: var(--ink-mute); }
+  .rel-body ul li::before { content: "·"; color: var(--accent); position: absolute; left: 8px; font-weight: 700; }
+  .rel-body ul li b { color: var(--ink); font-weight: 540; }
+  .rel-body a { color: var(--accent); }
+  .rel-body a:hover { color: var(--accent-strong); }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-faint); }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand" aria-label="kolm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square"><path d="M 6.5 4 L 6.5 20 M 6.5 13.4 L 14.6 4.6 M 9.4 10.6 L 17.5 19.4"/></svg>
+        <span>kolm</span>
+      </a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">Sign in</a>
+      <a href="/signup" class="cta">Get kolm</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span>Updated 2026-05-07 · ship cadence weekly</span>
+    <h1>What shipped, <span class="tone">when.</span></h1>
+    <p class="lede">Public log of every release, spec change, fix, and benchmark posted by Kolmogorov. Subscribe to the Atom feed at <a href="/changelog.xml" style="color:var(--accent);">/changelog.xml</a> for one-line notifications when anything moves.</p>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="release recent">
+      <div class="rel-head">
+        <span class="ver">v5.2</span>
+        <span class="date">2026-05-07</span>
+        <span class="tag major">Major · positioning</span>
+        <h2>Hero reframe to the inversion. New ICP landings, manifesto, FAQ, quickstart, changelog.</h2>
+      </div>
+      <div class="rel-body">
+        <p>Pivot the homepage from feature-led to outcome-led. The H1 now reads "AI that knows your users. Without knowing your users." and the page leads with the inversion: cloud AI gets smart by sending data away, kolm gets smart by leaving it there.</p>
+        <ul>
+          <li><b>New trust-split section</b> on the homepage proves the inversion visually. What cloud AI sees vs what kolm sees, side by side.</li>
+          <li><b>New compared-to table</b> against llama.cpp, MLC.ai, ExecuTorch, CoreML. kolm sits one layer above the runtime, the way Webpack sits above V8.</li>
+          <li><b>New ICP pages</b>: <a href="/healthcare">/healthcare</a>, <a href="/finance">/finance</a>, <a href="/defense">/defense</a>. Each with quantified pain, reference deployment, compliance posture row.</li>
+          <li><b>New <a href="/manifesto">/manifesto</a></b> ("The case for compiled AI") establishes the category in long form.</li>
+          <li><b>New <a href="/quickstart">/quickstart</a></b> ships a 7-step Hello World tutorial. Install through bundle for ios/wasm.</li>
+          <li><b>New <a href="/faq">/faq</a></b> answers the questions developers, security, and procurement actually ask.</li>
+          <li><b>New /changelog</b> (this page) signals active development.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="release">
+      <div class="rel-head">
+        <span class="ver">v5.1</span>
+        <span class="date">2026-05-07</span>
+        <span class="tag">Sweep</span>
+        <h2>Hero outcome lede, Why-now pain quanta, em-dash audit, SW cache bump.</h2>
+      </div>
+      <div class="rel-body">
+        <p>Replaced the prior feature-led hero with the outcome-led version, added the Why-now strip with quantified pain across latency, cost, data egress, and vendor risk, and audited body copy across 6 pages to enforce the no-em-dash rule.</p>
+        <ul>
+          <li>Hero lede reframed feature-led to outcome-led.</li>
+          <li>Why-now section added: 4 pain cards + 3 market-timing cards.</li>
+          <li>Em-dash audit across <a href="/compile">/compile</a>, <a href="/pricing">/pricing</a>, <a href="/security">/security</a>, <a href="/manual">/manual</a>, <a href="/status">/status</a>.</li>
+          <li>Service worker cache bumped to invalidate stale clients.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="release">
+      <div class="rel-head">
+        <span class="ver">v5.0</span>
+        <span class="date">2026-05-07</span>
+        <span class="tag major">Major · v5 sweep</span>
+        <h2>4-tier pricing, ICP grid, 5-card moat, /security trust chain, /docs entry, manual, privacy, terms, 404.</h2>
+      </div>
+      <div class="rel-body">
+        <p>The locked v5 design rebuild. New pricing structure (Developer / Mobile / Pro / Enterprise), ICP grid on the homepage, five-layer moat narrative, security trust chain on a dedicated page, full manual, privacy and terms pages, custom 404.</p>
+        <ul>
+          <li><b>Pricing reset</b>: Developer $0 / Mobile $9 / Pro $49 / Enterprise custom.</li>
+          <li><b>Trust chain page</b>: HMAC chain explained step by step, public registry anchor, third-party verifier protocol.</li>
+          <li><b>Manual</b>: full reference for the four engines (Distill, Decompose, Recall, Run).</li>
+          <li>Locked design system: <code>--bg #0a0a0a</code>, <code>--accent #7c8cff</code>, system fonts, square 6px CTAs.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="release">
+      <div class="rel-head">
+        <span class="ver">v4.9</span>
+        <span class="date">2026-05-06</span>
+        <span class="tag spec">Spec · RS-1</span>
+        <h2>RS-1 spec at v0.1, manifest schema and receipt schema published.</h2>
+      </div>
+      <div class="rel-body">
+        <p>Published the RS-1 (Recipe Spec 1) JSON Schemas for the manifest and the receipt chain. MIT license. Hosted at <code>/docs/manifest-v0.1.json</code> and <code>/docs/receipt-v0.1.json</code>. Spec markdown at <code>/docs/rs-1.md</code>.</p>
+        <ul>
+          <li>Schemas are stable for v0.1.x; breaking changes will land in v0.2.</li>
+          <li>Receipt schema includes the HMAC chain anchor field for public-registry verification.</li>
+          <li>Manifest schema includes K-score breakdown, base hash, adapter hash, recipe hash, recall hash, eval hash.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="release">
+      <div class="rel-head">
+        <span class="ver">v4.8</span>
+        <span class="date">2026-05-06</span>
+        <span class="tag">Runtime</span>
+        <h2>On-device PWA at /device, browser-native SDK at /sdk.js, service worker, manifest.</h2>
+      </div>
+      <div class="rel-body">
+        <p>The first runtime surface that runs entirely in a browser. Loads a quantized base via wllama.wasm, sqlite-vec for the recall index, and the recipe pack. Installable as a PWA. Service worker caches everything for offline use.</p>
+      </div>
+    </div>
+
+    <div class="release">
+      <div class="rel-head">
+        <span class="ver">v4.7</span>
+        <span class="date">2026-05-05</span>
+        <span class="tag">Smoke</span>
+        <h2>Live smoke battery at 128/0 against production.</h2>
+      </div>
+      <div class="rel-body">
+        <p>The full smoke battery (128 tests covering compile, run, registry, receipts, security headers, rate limits, auth, and SDK) passes against the live Railway deployment with zero failures. Reproducible via <code>URL=https://kolmogorov-stack-production.up.railway.app bash scripts/smoke-live.sh</code>.</p>
+      </div>
+    </div>
+
+    <div class="release">
+      <div class="rel-head">
+        <span class="ver">v4.6</span>
+        <span class="date">2026-05-04</span>
+        <span class="tag security">Security</span>
+        <h2>CSP rolled out, helmet ahead of static, scrypt password hashing, OAuth tokens AES-256-GCM at rest.</h2>
+      </div>
+      <div class="rel-body">
+        <p>Round-one hardening to remove the C+ blockers. Helmet middleware now runs before <code>express.static</code> so HSTS and CSP cover static assets. Passwords rehash to scrypt opportunistically on login. OAuth tokens encrypted at rest with backward-compat decrypt and lazy re-encrypt on refresh.</p>
+      </div>
+    </div>
+
+    <div class="release">
+      <div class="rel-head">
+        <span class="ver">v4.5</span>
+        <span class="date">2026-05-02</span>
+        <span class="tag">Verifier</span>
+        <h2>Verified Inference live on the production tenant. K-sample → deterministic verify → labels.</h2>
+      </div>
+      <div class="rel-body">
+        <p>The Verified Inference endpoint runs k-sample frontier inference, verifies each sample with a deterministic synthesized verifier, and returns the winning label with a receipt. First step of the Distill pipeline.</p>
+      </div>
+    </div>
+
+    <div class="release">
+      <div class="rel-head">
+        <span class="ver">v4.4</span>
+        <span class="date">2026-04-30</span>
+        <span class="tag">Bench</span>
+        <h2>SWE-bench Lite breakout: <b>+15.33pp strict</b>, n=150, p&lt;0.05.</h2>
+      </div>
+      <div class="rel-body">
+        <p>Reproducible improvement of Opus-4.7 on SWE-bench Lite via REM hooks loop. 26 recovered vs 3 regressed. Apply-errors down 48%. Methodology and scripts at <a href="https://github.com/sneaky-hippo/kolmogorov-stack">github.com/sneaky-hippo/kolmogorov-stack</a>.</p>
+      </div>
+    </div>
+
+    <div class="release">
+      <div class="rel-head">
+        <span class="ver">v4.0</span>
+        <span class="date">2026-04-22</span>
+        <span class="tag major">Major · pivot</span>
+        <h2>kolm reframed as the AI compiler. Four engines (Distill, Decompose, Recall, Run) under one orchestrator.</h2>
+      </div>
+      <div class="rel-body">
+        <p>The strategic pivot to "specialization-as-a-service": train with any frontier model, deploy to any local model. Four engines under <code>kolm compile</code>, three surfaces (CLI, Cloud, Mobile App), one artifact format.</p>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolmogorov · 2026 · changelog</span>
+    <span><a href="/changelog.xml" style="color:var(--ink-faint);">Atom feed</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

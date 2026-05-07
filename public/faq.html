@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FAQ · kolm</title>
+<meta name="description" content="What kolm uses, what happens when K-score fails, how to debug a compile, what we do with your data, and the questions enterprise teams ask before they sign.">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm · FAQ">
+<meta property="og:description" content="Direct answers to the questions developers and enterprise teams ask before they sign.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/faq">
+<meta property="og:image" content="/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/faq">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0a0a0a; --bg-elev: #0f0f12; --bg-card: #13141a;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #ededed; --ink-mute: #9a9da8; --ink-faint: #5a5c66;
+    --accent: #7c8cff; --accent-soft: rgba(124,140,255,0.10); --accent-strong: #93a1ff;
+    --good: #7ce3b6; --bad: #ff7a98;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(10,10,10,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
+  header.site .brand svg { height: 18px; width: 18px; }
+  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .ghost:hover { color: var(--ink); }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  header.site .right .cta:hover { background: #fff; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 40px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  h1 { margin: 24px 0 16px; font-size: clamp(36px, 5vw, 56px); line-height: 1.05; font-weight: 500; letter-spacing: -0.028em; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 24px; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 56ch; }
+  p.lede b { color: var(--ink); font-weight: 540; }
+
+  .toc { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 12px; padding: 0; list-style: none; }
+  .toc a { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; transition: color 120ms, border-color 120ms; }
+  .toc a:hover { color: var(--accent); border-color: var(--line-strong); }
+
+  article { padding: 24px 0 80px; }
+  .group { margin: 56px 0 0; padding-top: 32px; border-top: 1px solid var(--line); }
+  .group:first-of-type { margin-top: 28px; padding-top: 28px; }
+  .group h2 { margin: 0 0 22px; font-size: clamp(20px, 2vw, 24px); font-weight: 540; color: var(--ink); letter-spacing: -0.014em; }
+  .qa { padding: 22px 0; border-bottom: 1px solid var(--line); }
+  .qa:last-child { border-bottom: none; }
+  .qa h3 { margin: 0 0 10px; font-size: 17px; font-weight: 540; color: var(--ink); letter-spacing: -0.012em; line-height: 1.35; }
+  .qa p { margin: 0 0 10px; font-size: 15px; line-height: 1.65; color: var(--ink-mute); }
+  .qa p:last-child { margin-bottom: 0; }
+  .qa p b { color: var(--ink); font-weight: 540; }
+  .qa code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
+  .qa a { color: var(--accent); text-decoration: none; }
+  .qa a:hover { color: var(--accent-strong); }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-faint); }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand" aria-label="kolm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square"><path d="M 6.5 4 L 6.5 20 M 6.5 13.4 L 14.6 4.6 M 9.4 10.6 L 17.5 19.4"/></svg>
+        <span>kolm</span>
+      </a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">Sign in</a>
+      <a href="/signup" class="cta">Get kolm</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill">FAQ · plain answers</span>
+    <h1>The questions <span class="tone">we get asked.</span></h1>
+    <p class="lede">No marketing. Direct answers to the questions developers, security teams, and procurement ask before they sign. If you have a question that isn't here, mail <a href="mailto:hello@kolm.ai" style="color:var(--accent);text-decoration:none;">hello@kolm.ai</a>.</p>
+    <ul class="toc" aria-label="Section nav">
+      <li><a href="#product">Product</a></li>
+      <li><a href="#compile">Compile</a></li>
+      <li><a href="#runtime">Runtime</a></li>
+      <li><a href="#privacy">Privacy &amp; data</a></li>
+      <li><a href="#compliance">Compliance</a></li>
+      <li><a href="#commercial">Commercial</a></li>
+      <li><a href="#open">Open source</a></li>
+    </ul>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group" id="product">
+      <h2>Product</h2>
+      <div class="qa">
+        <h3>What is kolm, in one sentence?</h3>
+        <p>kolm is the build system for private AI. <code>kolm compile</code> takes a task description, your data, and a frontier model API key, and produces a single signed <code>.kolm</code> file that runs on-device or behind your VPC with no runtime egress.</p>
+      </div>
+      <div class="qa">
+        <h3>How is this different from MLC.ai, ExecuTorch, llama.cpp, or CoreML?</h3>
+        <p>Those are <b>runtimes</b>. kolm is the <b>compile step</b> above the runtime. The artifact kolm produces runs on top of any of them. Runtimes give you a way to execute open-weight models locally; kolm gives you the way to teach a small model your task, ground it in your data, gate it on a quality score, and seal it as one portable file. <a href="/#compared-to">Comparison table</a>.</p>
+      </div>
+      <div class="qa">
+        <h3>What's a Specialist?</h3>
+        <p>A Specialist is the artifact that comes out of <code>kolm compile</code>. It's a single signed zip with the base model, a personal LoRA, a recipe pack, a recall index, the verifier, the manifest, and the signature chain. <a href="/anatomy">/anatomy</a> shows the structure.</p>
+      </div>
+      <div class="qa">
+        <h3>What's the K-score?</h3>
+        <p>The harmonic mean of size, accuracy, latency, cost, and coverage, normalized against the frontier baseline measured at compile time. One number on the cover. Five you can defend. Default ship gate is 0.70. <a href="/k-score">/k-score</a>.</p>
+      </div>
+    </div>
+
+    <div class="group" id="compile">
+      <h2>Compile</h2>
+      <div class="qa">
+        <h3>What models does the compile use?</h3>
+        <p>You bring the frontier teacher (Anthropic, OpenAI, Google, your own). kolm runs k-sample inference, deterministically verifies, and uses the winning labels to distill. The student base is open-weight: Qwen 2.5, Llama 3.1, Phi-3, Hermes-3, Mistral. You pick. The artifact ships with the student baked in.</p>
+      </div>
+      <div class="qa">
+        <h3>What happens if the K-score is below the gate?</h3>
+        <p>The artifact does not ship. The compile log tells you which sub-score failed (size, accuracy, latency, cost, or coverage), the failing eval cases, and the suggested remediation: more examples, a smaller base model for size pressure, more recipe coverage, or a tighter task scope. You re-run <code>kolm compile</code> and try again.</p>
+      </div>
+      <div class="qa">
+        <h3>How long does a compile take?</h3>
+        <p>Recipe-only artifacts (no LoRA, no recall): under 60 seconds. Full LoRA distill on a 100-example seed set with a 7B base: 8-25 minutes. Multi-million-token corpus with full multimodal recall: 30-90 minutes. The CLI streams progress.</p>
+      </div>
+      <div class="qa">
+        <h3>How do I debug a failed compile?</h3>
+        <p><code>kolm compile --explain</code> prints the full eval trace, the failing examples with the model's outputs, and the verifier's reasoning. If a specific eval fails repeatedly, that's usually a task-spec ambiguity or a contradiction between examples. <code>kolm compile --dry-run</code> runs the verifier synthesis without spending teacher tokens.</p>
+      </div>
+      <div class="qa">
+        <h3>Can I use my own base model?</h3>
+        <p>On Pro and Enterprise, yes. <code>--base ./my-model.gguf</code> or <code>--base hf://org/repo</code>. The artifact will record the base hash in the manifest and sign it like any other component.</p>
+      </div>
+      <div class="qa">
+        <h3>What if my frontier teacher deprecates?</h3>
+        <p>The artifact is already compiled and signed. It runs unchanged for the life of the deployment. If you re-compile, you can pin a version of the teacher (<code>--teacher-version</code>) or switch teachers entirely; the new artifact will record the new lineage in the manifest.</p>
+      </div>
+    </div>
+
+    <div class="group" id="runtime">
+      <h2>Runtime</h2>
+      <div class="qa">
+        <h3>Where does a <code>.kolm</code> artifact run?</h3>
+        <p>iOS, Android, macOS, Linux, Windows, Web (WASM), edge (Jetson, NUC, ruggedized boxes), or behind a VPC. The runtime is whatever you have: llama.cpp, MLC.ai, ExecuTorch, the kolm WASM runtime in browsers. The artifact is portable across all of them.</p>
+      </div>
+      <div class="qa">
+        <h3>Does it actually run offline?</h3>
+        <p>Yes. Once the artifact is on the device, no network calls are required. <code>kolm run artifact.kolm "prompt"</code> works on a plane, in a Faraday cage, or on a tactical edge box with no link.</p>
+      </div>
+      <div class="qa">
+        <h3>How do I update an artifact?</h3>
+        <p>Re-run <code>kolm compile</code> with new examples or a new corpus, push the new artifact to your distribution channel (MDM, App Store, internal mirror, signed sneakernet). The manifest carries a version field; clients can pin or auto-upgrade.</p>
+      </div>
+      <div class="qa">
+        <h3>What's "kolm serve --mcp"?</h3>
+        <p>The artifact joins the local MCP bus and is discoverable by Claude, Codex, Cursor, and Zed by name. Matching agent calls hit the cache instead of the frontier. Latency drops from cloud round-trip to local. <a href="/serve">/serve</a>.</p>
+      </div>
+      <div class="qa">
+        <h3>What if my user's device is too old?</h3>
+        <p>The compile step targets a hardware tier (<code>--target ios-2021</code>, <code>--target android-mid</code>, <code>--target server-cpu</code>). Older targets pick smaller bases. The K-score reflects the target, so a passing artifact is shippable on the target it was compiled for. For very old devices, the runtime falls back to your remote cache via <code>kolm serve</code> on a server you control.</p>
+      </div>
+    </div>
+
+    <div class="group" id="privacy">
+      <h2>Privacy &amp; data</h2>
+      <div class="qa">
+        <h3>Does the data I compile against ever leave my environment?</h3>
+        <p>The compile pipeline runs in your tenant. The frontier teacher you bring is reachable through your egress proxy. <b>kolm cloud does not persist your training data after the compile completes</b>; logs default to redacted summaries. On Enterprise, the compile bridge runs inside your VPC and nothing leaves at all.</p>
+      </div>
+      <div class="qa">
+        <h3>Do you train on my data?</h3>
+        <p>No. Your compile inputs are not used to train any model we ship, and they are not used to improve the compiler. The compiler improves on the schema of <em>which task descriptions yield high K-scores against which bases</em>, which is metadata, not your content.</p>
+      </div>
+      <div class="qa">
+        <h3>What does the cloud see during a compile?</h3>
+        <p>Task description, examples, evals, base-model selection, target hardware, frontier-teacher API endpoint. During compile, the cloud sends prompts to your frontier teacher on your behalf. Outputs are verified locally to the compile pipeline and used to distill the LoRA. After compile, the inputs are purged on a default 24-hour window; on Enterprise, a 0-retention mode is available.</p>
+      </div>
+      <div class="qa">
+        <h3>What does the device see at runtime?</h3>
+        <p>Whatever the user gives the app, plus whatever the app reads from the local OS sandbox. The artifact reads its own bundled recall index plus any local data you grant it. No network calls are issued by the runtime. <a href="/security">Security page</a> has the full data-flow diagram.</p>
+      </div>
+    </div>
+
+    <div class="group" id="compliance">
+      <h2>Compliance</h2>
+      <div class="qa">
+        <h3>HIPAA Business Associate Agreement?</h3>
+        <p>Available on Enterprise. The compile bridge runs inside your VPC, the frontier teacher routes through your egress proxy, and the artifact ships with HIPAA-aware redaction defaults. <a href="/healthcare">Healthcare overview</a>.</p>
+      </div>
+      <div class="qa">
+        <h3>SOC 2?</h3>
+        <p>Type I evidence available now. Type II in flight, target Q4 2026. Quarterly evidence packets to Pro and Enterprise tenants.</p>
+      </div>
+      <div class="qa">
+        <h3>EU AI Act?</h3>
+        <p>Designed against the high-risk Annex III obligations from day one. Per-artifact technical documentation by construction (the manifest is the dossier). Conformity assessment in flight, target Q2 2027.</p>
+      </div>
+      <div class="qa">
+        <h3>FedRAMP, CMMC, ITAR?</h3>
+        <p>FedRAMP Moderate roadmap 2027. CMMC 2.0 Level 2 evidence on Enterprise. ITAR-aware: open-weight bases only on Enterprise so no proprietary frontier weights cross the diode. <a href="/defense">Defense &amp; intel overview</a>.</p>
+      </div>
+      <div class="qa">
+        <h3>Is the privacy claim audited by anyone other than you?</h3>
+        <p>A third-party security review is in flight; the report will be published on <a href="/security">/security</a> when complete. The receipt chain is independently verifiable today: the manifest, the layer hashes, and the signature chain are all reproducible offline. Your auditor can verify cryptographically that the artifact does what the manifest says without trusting us.</p>
+      </div>
+      <div class="qa">
+        <h3>Where's your security contact / vulnerability disclosure?</h3>
+        <p><a href="mailto:security@kolm.ai">security@kolm.ai</a> · PGP fingerprint and disclosure policy on <a href="/security">/security</a>. We commit to triage within 48 hours.</p>
+      </div>
+    </div>
+
+    <div class="group" id="commercial">
+      <h2>Commercial</h2>
+      <div class="qa">
+        <h3>Who pays the frontier model bill?</h3>
+        <p>You do. kolm doesn't resell tokens. You bring your own API key (Anthropic, OpenAI, Google, your own). The compile pipeline runs against it. The artifact you walk away with is yours; the frontier bill amortizes to zero after compile.</p>
+      </div>
+      <div class="qa">
+        <h3>Free tier limits?</h3>
+        <p>Developer tier ($0): 3 compiles per month, recipe-only artifacts (no LoRA), 4B-class open bases. Enough to prove the architecture for your use case end-to-end. <a href="/pricing">/pricing</a>.</p>
+      </div>
+      <div class="qa">
+        <h3>What does "Enterprise: custom" actually cost?</h3>
+        <p>Enterprise starts at $36,000/year for an annual contract with BAA, on-prem compile bridge, dedicated support, and a quarterly compliance evidence packet. Volume discounts at 100+ artifacts/month. Mail <a href="mailto:sales@kolm.ai">sales@kolm.ai</a> for a quote.</p>
+      </div>
+      <div class="qa">
+        <h3>Annual billing?</h3>
+        <p>Yes, ~17% off (two months free) on Pro. Toggle on <a href="/pricing">/pricing</a>.</p>
+      </div>
+      <div class="qa">
+        <h3>What happens when I exhaust my compile quota?</h3>
+        <p>Existing artifacts keep running. The next compile blocks with a clear upgrade path. No surprise overages: we don't auto-charge past your tier.</p>
+      </div>
+      <div class="qa">
+        <h3>Refunds?</h3>
+        <p>30-day no-questions refund on the first month of any paid tier. After that, prorated refund on cancellation.</p>
+      </div>
+    </div>
+
+    <div class="group" id="open">
+      <h2>Open source</h2>
+      <div class="qa">
+        <h3>What's open?</h3>
+        <p>The artifact format spec (RS-1, MIT). The runtime SDK (MIT). The receipt chain spec (RS-1-receipts, MIT). The public registry. The verifier protocol.</p>
+      </div>
+      <div class="qa">
+        <h3>What's closed?</h3>
+        <p>The compiler itself. That's the proprietary surface, because the compile flywheel (which task descriptions yield high K-scores against which bases) is the moat.</p>
+      </div>
+      <div class="qa">
+        <h3>Can I host my own registry?</h3>
+        <p>Yes. <code>kolm publish --registry https://registry.example.com</code>. The signature chain still anchors to whatever public registry the artifact references; for fully air-gapped, anchor to your own root.</p>
+      </div>
+      <div class="qa">
+        <h3>Where's the GitHub?</h3>
+        <p><a href="https://github.com/sneaky-hippo/kolmogorov-stack">github.com/sneaky-hippo/kolmogorov-stack</a> · the runtime SDK and the spec live there. Sample apps coming this month.</p>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolmogorov · 2026 · faq</span>
+    <span><a href="mailto:hello@kolm.ai" style="color:var(--ink-faint);">hello@kolm.ai</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

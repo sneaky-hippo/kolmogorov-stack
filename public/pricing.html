@@ -117,6 +117,26 @@
     line-height: 1.55; color: var(--ink-mute); max-width: 60ch;
   }
 
+  /* billing toggle */
+  .bill-toggle {
+    display: inline-flex; align-items: center; gap: 8px; margin-bottom: 28px;
+    background: var(--bg-elev); border: 1px solid var(--line-strong);
+    border-radius: 999px; padding: 4px;
+  }
+  .bill-toggle button {
+    appearance: none; cursor: pointer; background: transparent;
+    border: 0; color: var(--ink-mute);
+    font-family: var(--sans); font-size: 13px; font-weight: 540;
+    letter-spacing: -0.005em;
+    padding: 8px 16px; border-radius: 999px; transition: background 120ms, color 120ms;
+  }
+  .bill-toggle button.on { background: var(--ink); color: var(--bg); }
+  .bill-toggle button:not(.on):hover { color: var(--ink); }
+  .bill-toggle .save {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em;
+    color: var(--accent); margin-left: 4px;
+  }
+
   .tiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
   @media (max-width: 1080px) { .tiers { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 540px) { .tiers { grid-template-columns: 1fr; } }
@@ -220,6 +240,55 @@
     border-radius: 4px; padding: 1px 6px;
   }
 
+  /* ROI / self-hosting comparison */
+  .roi-grid {
+    display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 14px;
+  }
+  @media (max-width: 920px) { .roi-grid { grid-template-columns: 1fr; } }
+  .roi-card {
+    background: var(--bg-elev); border: 1px solid var(--line);
+    border-radius: 10px; padding: 28px;
+  }
+  .roi-card h3 {
+    margin: 0 0 14px; font-size: 18px; font-weight: 540;
+    letter-spacing: -0.014em; color: var(--ink); line-height: 1.3;
+  }
+  .roi-card h3 .tone { color: var(--accent); }
+  .roi-card p { margin: 0 0 14px; font-size: 13.5px; line-height: 1.6; color: var(--ink-mute); }
+  .roi-card p:last-child { margin: 0; }
+  .roi-rows { display: grid; gap: 6px; margin: 16px 0; }
+  .roi-row {
+    display: grid; grid-template-columns: 1fr auto;
+    padding: 10px 0; border-bottom: 1px solid var(--line);
+    font-size: 13.5px;
+  }
+  .roi-row:last-child { border-bottom: none; }
+  .roi-row .lbl { color: var(--ink-mute); }
+  .roi-row .val { color: var(--ink); font-family: var(--mono); font-size: 13px; }
+  .roi-row.tot { padding-top: 14px; }
+  .roi-row.tot .lbl { color: var(--ink); font-weight: 540; }
+  .roi-row.tot .val { color: var(--accent); font-weight: 540; font-size: 14px; }
+
+  .vs-tbl {
+    background: var(--bg-elev); border: 1px solid var(--line);
+    border-radius: 10px; overflow: hidden; margin-top: 14px;
+  }
+  .vs-tbl table { width: 100%; border-collapse: collapse; }
+  .vs-tbl th, .vs-tbl td {
+    padding: 13px 18px; text-align: left;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .vs-tbl th {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 500;
+    background: rgba(0,0,0,0.20);
+  }
+  .vs-tbl th.col-kolm { color: var(--accent); }
+  .vs-tbl td:first-child { color: var(--ink); font-weight: 500; }
+  .vs-tbl td { color: var(--ink-mute); }
+  .vs-tbl tr:last-child td { border-bottom: none; }
+
   footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); }
   footer.site .grid { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 36px; margin-bottom: 36px; }
   @media (max-width: 720px) { footer.site .grid { grid-template-columns: 1fr 1fr; } }
@@ -277,15 +346,21 @@
 
 <section>
   <div class="wrap">
+    <div class="bill-toggle" role="tablist" aria-label="Billing cycle">
+      <button class="on" data-bill="monthly" type="button" role="tab" aria-selected="true">Monthly</button>
+      <button data-bill="annual" type="button" role="tab" aria-selected="false">Annual<span class="save">SAVE 17%</span></button>
+    </div>
     <div class="tiers">
       <div class="tier">
         <div class="tag">Developer</div>
         <div class="name">Free.</div>
         <div class="pitch">For solo builders, researchers, and the public atlas.</div>
-        <div class="num">$0<span class="per">forever</span></div>
+        <div class="num"><span data-mo="$0" data-yr="$0">$0</span><span class="per" data-mo="forever" data-yr="forever">forever</span></div>
         <div class="frontier">+ your frontier model bill</div>
         <ul>
-          <li><b>1</b> private artifact at a time</li>
+          <li><b>3</b> compiles per month</li>
+          <li>Recipe-only artifacts (no LoRA)</li>
+          <li>4B-class open bases</li>
           <li>Public atlas pulls unlimited</li>
           <li>BYO model API key</li>
           <li>Local MCP server</li>
@@ -299,10 +374,11 @@
         <div class="tag">Mobile</div>
         <div class="name">Personal.</div>
         <div class="pitch">For people building one AI feature into one app.</div>
-        <div class="num">$9<span class="per">/ month</span></div>
+        <div class="num"><span data-mo="$9" data-yr="$90">$9</span><span class="per" data-mo="/ month" data-yr="/ year · 2 mo free">/ month</span></div>
         <div class="frontier">+ your frontier model bill</div>
         <ul>
           <li><b>3</b> private artifacts</li>
+          <li>Full LoRA distill</li>
           <li>iOS · Android SDK</li>
           <li>1M-vector recall</li>
           <li>On-device runtime</li>
@@ -316,16 +392,18 @@
         <div class="tag">Pro</div>
         <div class="name">Team.</div>
         <div class="pitch">For product teams shipping AI features at scale.</div>
-        <div class="num">$49<span class="per">/ month</span></div>
+        <div class="num"><span data-mo="$49" data-yr="$490">$49</span><span class="per" data-mo="/ month" data-yr="/ year · 2 mo free">/ month</span></div>
         <div class="frontier">+ your frontier model bill</div>
         <ul>
           <li><b>Unlimited</b> private artifacts</li>
+          <li>Hermes-3 · Llama-3 · Qwen 3.x bases</li>
           <li>Cloud compile pipeline</li>
           <li>Nightly drift recompile</li>
           <li>10M-vector recall</li>
           <li>Priority registry indexing</li>
           <li>CI/CD integrations</li>
-          <li>Slack support</li>
+          <li>14-day free trial · cancel any time</li>
+          <li>Slack support · 24h SLA</li>
         </ul>
         <a href="/signup?plan=pro" class="cta">Start Pro →</a>
       </div>
@@ -334,18 +412,67 @@
         <div class="tag">Enterprise</div>
         <div class="name">VPC.</div>
         <div class="pitch">For regulated buyers who can't put data anywhere else.</div>
-        <div class="num">Custom</div>
-        <div class="frontier">on-prem or hosted</div>
+        <div class="num">$36k<span class="per">/ year · starting</span></div>
+        <div class="frontier">annual contract · on-prem or hosted</div>
         <ul>
           <li>Air-gapped registry mirror</li>
           <li>On-prem compile bridge</li>
+          <li>Private base models</li>
           <li>SAML · SCIM · audit log</li>
           <li>BAA · DPA · DPIA paths</li>
           <li>SOC 2 Type II evidence</li>
           <li>On-chain receipt anchoring</li>
-          <li>Dedicated support · SLA</li>
+          <li>Dedicated support · custom SLA</li>
         </ul>
         <a href="mailto:hello@kolm.ai?subject=Enterprise" class="cta">Contact sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">·</span><span>The math</span></div>
+    <h2>What it actually costs<br><span class="tone">to ship one private AI feature.</span></h2>
+    <p class="sec-lede">Most teams quote "an LLM feature" at one number and pay it three times. Compile is the cache. Pay the frontier teacher once, ship the artifact forever, run inference at zero marginal cost.</p>
+
+    <div class="roi-grid">
+      <div class="roi-card">
+        <h3>One feature · 100,000 monthly users<br><span class="tone">Cloud frontier vs kolm + local runtime.</span></h3>
+        <p>Reference workload: customer-support summary feature, 12 calls per active user per month, 800 input + 250 output tokens per call. 1.2 M frontier calls / month.</p>
+        <div class="roi-rows">
+          <div class="roi-row"><span class="lbl">Cloud frontier (Sonnet · per-call)</span><span class="val">~$5,400 / mo</span></div>
+          <div class="roi-row"><span class="lbl">+ egress · per-user inference latency variance</span><span class="val">~$420 / mo</span></div>
+          <div class="roi-row tot"><span class="lbl">Year 1 cloud-only</span><span class="val">$69,840</span></div>
+          <div class="roi-row" style="margin-top:18px"><span class="lbl">kolm Pro · 12 monthly recompiles · 1 feature</span><span class="val">$588 / yr</span></div>
+          <div class="roi-row"><span class="lbl">Frontier teacher · k-sample at compile (one-shot)</span><span class="val">~$1,920 / yr</span></div>
+          <div class="roi-row"><span class="lbl">On-device inference</span><span class="val">$0</span></div>
+          <div class="roi-row tot"><span class="lbl">Year 1 kolm</span><span class="val">$2,508</span></div>
+        </div>
+        <p>One feature, one year, at this scale: roughly <b>27× cheaper</b>, with the data and the receipts staying on the user's device. Numbers scale near-linearly with users; the gap widens.</p>
+      </div>
+
+      <div class="roi-card">
+        <h3>vs rolling your own<br><span class="tone">llama.cpp · MLC.ai · ExecuTorch · CoreML.</span></h3>
+        <p>You can wire a base model onto a phone yourself. The work that's missing — and the work that takes most of a quarter — is everything that comes <em>after</em>.</p>
+        <div class="vs-tbl">
+          <table>
+            <thead>
+              <tr><th>What you still need</th><th class="col-kolm">kolm</th><th>DIY stack</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Task description &rarr; verifier synthesis</td><td>built-in</td><td>roll your own</td></tr>
+              <tr><td>Personal LoRA on your data</td><td>built-in</td><td>fine-tune pipeline</td></tr>
+              <tr><td>Recipe pack speculative decoding</td><td>built-in</td><td>not available</td></tr>
+              <tr><td>Multimodal recall index</td><td>built-in</td><td>integrate sqlite-vec yourself</td></tr>
+              <tr><td>K-score gate · drift detection</td><td>built-in</td><td>build evals + dashboards</td></tr>
+              <tr><td>HMAC-chained receipts</td><td>built-in</td><td>build cryptographic chain</td></tr>
+              <tr><td>One signed file across phones · laptops · server</td><td>built-in</td><td>three runtimes to ship</td></tr>
+              <tr><td>Compliance posture (SOC 2 · BAA · DPIA)</td><td>Enterprise tier</td><td>your auditor's problem</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:14px">Hours, not licenses, are what self-hosting costs you. A two-engineer team typically loses 8–14 weeks reproducing the compile pipeline. <b>kolm</b> is the buy-versus-build line drawn in the right place.</p>
       </div>
     </div>
   </div>
@@ -504,6 +631,29 @@
     </div>
   </div>
 </footer>
+
+<script>
+(function () {
+  var btns = document.querySelectorAll('.bill-toggle button[data-bill]');
+  if (!btns.length) return;
+  function apply(mode) {
+    document.querySelectorAll('.tier .num span[data-mo]').forEach(function (s) {
+      s.textContent = mode === 'annual' ? s.getAttribute('data-yr') : s.getAttribute('data-mo');
+    });
+    document.querySelectorAll('.tier .num span.per[data-mo]').forEach(function (s) {
+      s.textContent = mode === 'annual' ? s.getAttribute('data-yr') : s.getAttribute('data-mo');
+    });
+    btns.forEach(function (b) {
+      var on = b.getAttribute('data-bill') === mode;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+  btns.forEach(function (b) {
+    b.addEventListener('click', function () { apply(b.getAttribute('data-bill')); });
+  });
+})();
+</script>
 
 </body>
 </html>
