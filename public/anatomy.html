@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Anatomy of .kolm · kolm</title>
+<meta name="description" content="What's inside a .kolm file: model, adapter, recipe pack, recall index, eval suite, manifest, signature. Every byte is reproducible.">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://kolm.ai/anatomy">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+<style>
+  :root{--bg:#0a0a0a;--bg-elev:#0f0f12;--bg-card:#13141a;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#ededed;--ink-mute:#9a9da8;--ink-faint:#5a5c66;--accent:#7c8cff;--accent-soft:rgba(124,140,255,0.10);--good:#7ce3b6;--bad:#ff7a98;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;letter-spacing:-0.011em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:rgba(124,140,255,0.30)}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(10,10,10,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand svg{height:18px;width:18px}
+  header.site .brand span{font-weight:540;font-size:16px;letter-spacing:-0.04em}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover,header.site nav a.active{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .ghost:hover{color:var(--ink)}
+  header.site .right .cta{display:inline-flex;align-items:center;gap:6px;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540;letter-spacing:-0.01em}
+  header.site .right .cta:hover{background:#fff}
+  @media(max-width:720px){header.site nav{display:none}}
+
+  section{padding:80px 0;position:relative}
+  section.hero{padding:96px 0 64px}
+  section.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 900px 480px at 22% 12%,rgba(124,140,255,0.10),transparent 60%);pointer-events:none}
+  section.hero .wrap{position:relative}
+  section + section{border-top:1px solid var(--line)}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .eyebrow .num{color:var(--accent)}
+
+  h1{margin:0 0 22px;font-size:clamp(36px,5vw,60px);line-height:1.05;font-weight:500;letter-spacing:-0.028em;color:var(--ink);max-width:18ch}
+  h1 .tone{color:var(--accent)}
+  h2{margin:0 0 16px;font-size:clamp(24px,3vw,34px);line-height:1.15;font-weight:540;letter-spacing:-0.022em;max-width:24ch}
+  h2 .tone{color:var(--accent)}
+  h3{margin:0 0 8px;font-size:16px;font-weight:540;letter-spacing:-0.014em}
+
+  p.lede{margin:0 0 36px;font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:60ch}
+  p.lede b{color:var(--ink);font-weight:540}
+  p.lede code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  p{color:var(--ink-mute);max-width:62ch}
+  p code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+
+  .layout{display:grid;grid-template-columns:1.25fr 1fr;gap:48px;align-items:start;margin-top:36px}
+  @media(max-width:880px){.layout{grid-template-columns:1fr;gap:36px}}
+
+  ul.parts{list-style:none;padding:0;margin:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg-elev)}
+  ul.parts li{display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:start;padding:18px 22px;border-bottom:1px solid var(--line)}
+  ul.parts li:last-child{border-bottom:none}
+  ul.parts li:hover{background:var(--bg-card)}
+  ul.parts .icon{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);padding:3px 8px;background:var(--accent-soft);border:1px solid rgba(124,140,255,0.18);border-radius:4px;line-height:1;margin-top:4px;min-width:60px;text-align:center}
+  ul.parts .body h3{margin:0 0 4px;font-size:14.5px;color:var(--ink);font-weight:540}
+  ul.parts .body p{margin:0;font-size:13px;color:var(--ink-mute);max-width:48ch;line-height:1.55}
+  ul.parts .body p code{font-family:var(--mono);font-size:11.5px;color:var(--ink);background:var(--bg);padding:1px 4px;border-radius:3px}
+  ul.parts .size{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);align-self:start;padding-top:6px}
+
+  .preview{position:sticky;top:84px;background:#0b0e15;border:1px solid var(--line);border-radius:8px;padding:18px 20px;font-family:var(--mono);font-size:12px;line-height:1.7;color:#e2e8f0;overflow:auto;max-height:calc(100vh - 140px)}
+  .preview .key{color:var(--accent)}
+  .preview .str{color:#e2e8f0}
+  .preview .com{color:var(--ink-faint)}
+  .preview .num{color:var(--good)}
+
+  pre{background:#0b0e15;border:1px solid var(--line);border-radius:8px;padding:18px 20px;overflow:auto;color:#e2e8f0;font-family:var(--mono);font-size:13px;line-height:1.7;margin:24px 0}
+  pre .com{color:var(--ink-faint)}
+  pre .key{color:var(--accent)}
+  pre .ok{color:var(--good)}
+
+  .invariants{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:36px}
+  @media(max-width:880px){.invariants{grid-template-columns:1fr}}
+  .invariants .cell{padding:24px 22px;background:var(--bg-elev)}
+  .invariants .cell h4{margin:0 0 6px;font-size:14px;color:var(--ink);font-weight:540}
+  .invariants .cell p{margin:0;font-size:13px;color:var(--ink-mute);line-height:1.55}
+
+  .cta-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:36px}
+  .btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);border-radius:6px;padding:11px 18px;font-size:14px;font-weight:540;letter-spacing:-0.005em;transition:background 120ms}
+  .btn-primary:hover{background:#fff}
+  .btn-link{display:inline-flex;align-items:center;gap:6px;color:var(--ink);padding:11px 14px;font-size:14px;font-weight:500}
+  .btn-link:hover{color:var(--accent)}
+
+  footer{border-top:1px solid var(--line);padding:48px 0 36px;color:var(--ink-faint);font-size:12.5px}
+  footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:24px}
+  @media(max-width:720px){footer .cols{grid-template-columns:1fr 1fr;gap:24px}}
+  footer h4{font-size:11px;color:var(--ink-mute);letter-spacing:0.14em;text-transform:uppercase;margin:0 0 10px;font-weight:540}
+  footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+  footer ul a{color:var(--ink-faint);transition:color 120ms}
+  footer ul a:hover{color:var(--ink)}
+  footer .legal{padding-top:18px;border-top:1px solid var(--line);color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap"><div class="row">
+    <div class="left">
+      <a class="brand" href="/" aria-label="kolm home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M 6.5 4 L 6.5 20 M 6.5 13.4 L 14.6 4.6 M 9.4 10.6 L 17.5 19.4" stroke-linecap="square" stroke-linejoin="miter"/></svg>
+        <span>kolm</span>
+      </a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy" class="active">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">Sign in</a>
+      <a href="/signup" class="cta">Get kolm <span aria-hidden="true">›</span></a>
+    </div>
+  </div></div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">02</span> · Anatomy</div>
+    <h1>One file. <span class="tone">Seven layers.</span></h1>
+    <p class="lede">A <code>.kolm</code> is a deterministic zip with a fixed schema (<code>RS-1</code>).
+      Every layer is reproducible from <code>(task, examples, base_model, recipe_registry@version)</code>.
+      Two compiles with the same inputs produce <b>byte-identical</b> artifacts.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">01</span> · What’s inside</div>
+    <h2>The seven parts.</h2>
+    <p class="lede">Listed in the order kolm writes them. Sizes are an example
+      from a typical task; small artifacts run ~30 MB, large ones cap around 3 GB.</p>
+
+    <div class="layout">
+      <ul class="parts">
+        <li>
+          <span class="icon">01</span>
+          <div class="body">
+            <h3>model.gguf</h3>
+            <p>The base model, INT4-quantized via <code>llama.cpp</code>. Pinned by hash to a known open-weight release. The student.</p>
+          </div>
+          <span class="size">2.1 GB</span>
+        </li>
+        <li>
+          <span class="icon">02</span>
+          <div class="body">
+            <h3>lora.bin</h3>
+            <p>The personal adapter. Distilled from k-sample frontier verified inference on <em>your</em> task. The 90% lift in 100 MB.</p>
+          </div>
+          <span class="size">82 MB</span>
+        </li>
+        <li>
+          <span class="icon">03</span>
+          <div class="body">
+            <h3>recipes.json</h3>
+            <p>The recipe pack — deterministic-token drafts indexed by prefix-shape and embedding-shape. Drives speculative decoding for the structured-output subset.</p>
+          </div>
+          <span class="size">7.2 MB</span>
+        </li>
+        <li>
+          <span class="icon">04</span>
+          <div class="body">
+            <h3>index.sqlite-vec</h3>
+            <p>Multimodal embedding index over your corpus. Queryable offline. Grounds every inference in your own data.</p>
+          </div>
+          <span class="size">11 MB</span>
+        </li>
+        <li>
+          <span class="icon">05</span>
+          <div class="body">
+            <h3>tests.jsonl</h3>
+            <p>The eval suite the K-score is computed against. Travels with the artifact. <code>kolm verify</code> re-runs them locally; no eval, no ship.</p>
+          </div>
+          <span class="size">1.4 MB</span>
+        </li>
+        <li>
+          <span class="icon">06</span>
+          <div class="body">
+            <h3>manifest.json</h3>
+            <p>Task description, base hash, training stats, registry version, K-score, gate, recall model hashes. The contract for what this file is.</p>
+          </div>
+          <span class="size">12 KB</span>
+        </li>
+        <li>
+          <span class="icon">07</span>
+          <div class="body">
+            <h3>signature.sig</h3>
+            <p>Hmac chain over every preceding layer. Anchored to the public Kolmogorov registry. Tampering breaks <code>kolm verify</code>.</p>
+          </div>
+          <span class="size">256 B</span>
+        </li>
+      </ul>
+
+      <pre class="preview" aria-label="manifest.json preview"><span class="com">// manifest.json — the contract</span>
+{
+  <span class="key">"spec"</span>: "rs-1-manifest",
+  <span class="key">"task"</span>: "triage support email,
+            output {label,severity}",
+  <span class="key">"base_model"</span>: {
+    "id": "qwen2.5-coder-7b-instruct-q4_0",
+    "hash": "sha256:9f1a…b3"
+  },
+  <span class="key">"k_score"</span>: <span class="num">0.94</span>,
+  <span class="key">"k_components"</span>: {
+    "accuracy":  <span class="num">0.974</span>,
+    "size":      <span class="num">0.95</span>,
+    "latency":   <span class="num">0.94</span>,
+    "cost":      <span class="num">1.00</span>,
+    "coverage":  <span class="num">0.92</span>
+  },
+  <span class="key">"gate"</span>: <span class="num">0.70</span>,
+  <span class="key">"training"</span>: {
+    "distilled_pairs": <span class="num">3120</span>,
+    "verifier_accepted": true,
+    "pass_rate_positive": <span class="num">0.98</span>,
+    "latency_p50_us": <span class="num">50</span>
+  },
+  <span class="key">"recipe_registry"</span>: "rs-1@2026-05-06",
+  <span class="key">"runtime"</span>: "kolm/0.4.0",
+  <span class="key">"created_at"</span>: "2026-05-07T03:14:00Z"
+}</pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">02</span> · Three invariants</div>
+    <h2>Three rules <span class="tone">every .kolm respects.</span></h2>
+
+    <div class="invariants">
+      <div class="cell">
+        <h4>Reproducible</h4>
+        <p>Same <code>(task, examples, base, registry@v)</code> &nbsp;→&nbsp; byte-identical zip. No hidden randomness; sampling seeds are pinned in the manifest.</p>
+      </div>
+      <div class="cell">
+        <h4>Self-evaluating</h4>
+        <p>The artifact carries the tests it was scored against. <code>kolm verify</code> recomputes K offline. The number on the box matches the number you measure.</p>
+      </div>
+      <div class="cell">
+        <h4>Tamper-evident</h4>
+        <p>Hmac chain over all seven layers. One byte changes anywhere and <code>kolm verify</code> refuses to load the artifact. No silent corruption.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">03</span> · Inspect</div>
+    <h2>Open the box.</h2>
+    <p class="lede">Every artifact is a normal zip. <code>kolm inspect</code> formats the
+      contents for humans; <code>unzip -l</code> works fine if you don’t have kolm installed.</p>
+
+    <pre>$ kolm inspect <span class="key">support-triage.kolm</span>
+
+  layer            size    sha256
+  ───────────────  ──────  ─────────────────
+  model.gguf       2.1 GB  9f1a8c…b3
+  lora.bin         82  MB  4d22ef…c1
+  recipes.json     7.2 MB  ab02f1…7e
+  index.sqlite-vec 11  MB  8b73e9…02
+  tests.jsonl      1.4 MB  ef44a3…c8
+  manifest.json    12 KB   1a92c4…aa
+  signature.sig    256 B   <span class="ok">verified</span>
+
+  total            2.21 GB
+  k_score          <span class="key">0.94</span>   gate <span class="ok">passed</span>
+  signature        <span class="ok">ok</span>     anchored to rs-1@2026-05-06</pre>
+
+    <div class="cta-row">
+      <a href="/signup" class="btn-primary">Compile your first artifact <span aria-hidden="true">›</span></a>
+      <a href="/k-score" class="btn-link">How K-score is computed <span aria-hidden="true">›</span></a>
+      <a href="/docs/rs-1.md" class="btn-link">Read RS-1 spec <span aria-hidden="true">›</span></a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <a class="brand" href="/" style="display:inline-flex;align-items:center;gap:9px;color:var(--ink);margin-bottom:10px">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M 6.5 4 L 6.5 20 M 6.5 13.4 L 14.6 4.6 M 9.4 10.6 L 17.5 19.4" stroke-linecap="square"/></svg>
+          <span style="font-weight:540;font-size:15px;letter-spacing:-0.04em">kolm</span>
+        </a>
+        <p style="color:var(--ink-faint);font-size:12.5px;margin:0;max-width:36ch">The compiler cache for intelligence.</p>
+      </div>
+      <div><h4>Product</h4><ul><li><a href="/compile">Compile</a></li><li><a href="/serve">Serve --mcp</a></li><li><a href="/anatomy">.kolm format</a></li><li><a href="/k-score">K-score</a></li></ul></div>
+      <div><h4>Develop</h4><ul><li><a href="/docs">Docs</a></li><li><a href="/atlas">Atlas</a></li><li><a href="/pricing">Pricing</a></li></ul></div>
+      <div><h4>Trust</h4><ul><li><a href="/security">Security</a></li><li><a href="/docs/rs-1.md">RS-1 spec</a></li><li><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></li></ul></div>
+    </div>
+    <div class="legal">
+      <span>© 2026 Kolmogorov · the AI compiler</span>
+      <span>Recipe (RS-1, MIT) · Receipts (RS-1-receipts, MIT)</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

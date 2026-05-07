@@ -87,9 +87,16 @@ app.use('/', buildRouter());
 // Legacy v4 pages (/optimize, /audit, /why, /how-it-works, /economics, /spec,
 // /receipts, /verified, /specialists) stay reachable until Sprint 1's kill-list
 // pass — the static files still live in public/.
-for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/signup', '/why', '/pricing', '/status', '/specialists', '/onboarding', '/account', '/optimize', '/audit', '/spec', '/receipts', '/how-it-works', '/verified', '/economics', '/device', '/compile', '/run', '/recall', '/cloud', '/manual', '/mobile']) {
+// Page aliases — same file serves multiple URLs.
+//  /signin → public/signup.html (one page, two tabs)
+//  /atlas  → public/registry.html (registry → atlas rename, /registry kept for back-compat)
+const ROUTE_ALIASES = {
+  '/signin': 'signup',
+  '/atlas': 'registry',
+};
+for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/atlas', '/signup', '/signin', '/why', '/pricing', '/status', '/specialists', '/onboarding', '/account', '/optimize', '/audit', '/spec', '/receipts', '/how-it-works', '/verified', '/economics', '/device', '/compile', '/run', '/recall', '/cloud', '/manual', '/mobile', '/k-score', '/serve', '/anatomy']) {
   app.get(route, (_req, res) => {
-    const name = route === '/' ? 'index' : route.slice(1);
+    const name = route === '/' ? 'index' : (ROUTE_ALIASES[route] || route.slice(1));
     const file = path.join(__dirname, 'public', name + '.html');
     if (fs.existsSync(file)) return res.sendFile(file);
     res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));

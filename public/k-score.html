@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>K-score · kolm</title>
+<meta name="description" content="K-score is the gate that decides whether a .kolm artifact is allowed to ship. Five components, one number, no eval no ship.">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://kolm.ai/k-score">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+<style>
+  :root{--bg:#0a0a0a;--bg-elev:#0f0f12;--bg-card:#13141a;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#ededed;--ink-mute:#9a9da8;--ink-faint:#5a5c66;--accent:#7c8cff;--accent-soft:rgba(124,140,255,0.10);--good:#7ce3b6;--bad:#ff7a98;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;letter-spacing:-0.011em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:rgba(124,140,255,0.30)}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(10,10,10,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand svg{height:18px;width:18px}
+  header.site .brand span{font-weight:540;font-size:16px;letter-spacing:-0.04em}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover,header.site nav a.active{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .ghost:hover{color:var(--ink)}
+  header.site .right .cta{display:inline-flex;align-items:center;gap:6px;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540;letter-spacing:-0.01em}
+  header.site .right .cta:hover{background:#fff}
+  @media(max-width:720px){header.site nav{display:none}}
+
+  section{padding:80px 0;position:relative}
+  section.hero{padding:96px 0 64px}
+  section.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 900px 480px at 22% 12%,rgba(124,140,255,0.10),transparent 60%);pointer-events:none}
+  section.hero .wrap{position:relative}
+  section + section{border-top:1px solid var(--line)}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .eyebrow .num{color:var(--accent)}
+
+  h1{margin:0 0 22px;font-size:clamp(36px,5vw,60px);line-height:1.05;font-weight:500;letter-spacing:-0.028em;color:var(--ink);max-width:18ch}
+  h1 .tone{color:var(--accent)}
+
+  h2{margin:0 0 16px;font-size:clamp(24px,3vw,34px);line-height:1.15;font-weight:540;letter-spacing:-0.022em;max-width:24ch}
+  h3{margin:0 0 8px;font-size:16px;font-weight:540;letter-spacing:-0.014em}
+
+  p.lede{margin:0 0 36px;font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:60ch}
+  p.lede b{color:var(--ink);font-weight:540}
+  p.lede code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  p{color:var(--ink-mute);max-width:62ch}
+  p code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+
+  .formula{font-family:var(--mono);font-size:14px;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:18px 22px;line-height:1.9;margin:0 0 36px;max-width:780px}
+  .formula .op{color:var(--ink-faint)}
+  .formula .var{color:var(--accent)}
+  .formula .lab{display:block;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px}
+
+  .grid{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:36px 0 0}
+  .grid.cols-5{grid-template-columns:repeat(5,1fr)}
+  @media(max-width:880px){.grid.cols-5{grid-template-columns:repeat(2,1fr)}}
+  .grid .cell{background:var(--bg-elev);padding:24px 22px}
+  .grid .cell .num{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+  .grid .cell .v{font-family:var(--sans);font-size:34px;font-weight:540;letter-spacing:-0.022em;line-height:1;color:var(--ink);margin-bottom:8px}
+  .grid .cell .v .u{font-size:14px;color:var(--ink-mute);font-weight:400;margin-left:2px}
+  .grid .cell .name{font-family:var(--sans);font-size:14px;font-weight:540;color:var(--ink);margin-bottom:6px}
+  .grid .cell .desc{font-size:13px;color:var(--ink-mute);line-height:1.5}
+
+  .gate{margin-top:36px;padding:22px 24px;background:var(--bg-elev);border:1px solid var(--line-strong);border-radius:8px;display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+  .gate .big{font-family:var(--mono);font-size:48px;font-weight:540;letter-spacing:-0.026em;color:var(--accent);line-height:1}
+  .gate .desc{color:var(--ink-mute);font-size:14.5px;line-height:1.55}
+  .gate .desc b{color:var(--ink);font-weight:540}
+  .gate .desc code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  @media(max-width:720px){.gate{grid-template-columns:1fr}}
+
+  pre{background:#0b0e15;border:1px solid var(--line);border-radius:8px;padding:18px 20px;overflow:auto;color:#e2e8f0;font-family:var(--mono);font-size:13px;line-height:1.6;margin:24px 0}
+  pre .com{color:var(--ink-faint)}
+  pre .key{color:var(--accent)}
+
+  .cta-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:36px}
+  .btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);border-radius:6px;padding:11px 18px;font-size:14px;font-weight:540;letter-spacing:-0.005em;transition:background 120ms}
+  .btn-primary:hover{background:#fff}
+  .btn-link{display:inline-flex;align-items:center;gap:6px;color:var(--ink);padding:11px 14px;font-size:14px;font-weight:500}
+  .btn-link:hover{color:var(--accent)}
+
+  footer{border-top:1px solid var(--line);padding:48px 0 36px;color:var(--ink-faint);font-size:12.5px}
+  footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:24px}
+  @media(max-width:720px){footer .cols{grid-template-columns:1fr 1fr;gap:24px}}
+  footer h4{font-size:11px;color:var(--ink-mute);letter-spacing:0.14em;text-transform:uppercase;margin:0 0 10px;font-weight:540}
+  footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+  footer ul a{color:var(--ink-faint);transition:color 120ms}
+  footer ul a:hover{color:var(--ink)}
+  footer .legal{padding-top:18px;border-top:1px solid var(--line);color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap"><div class="row">
+    <div class="left">
+      <a class="brand" href="/" aria-label="kolm home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M 6.5 4 L 6.5 20 M 6.5 13.4 L 14.6 4.6 M 9.4 10.6 L 17.5 19.4" stroke-linecap="square" stroke-linejoin="miter"/></svg>
+        <span>kolm</span>
+      </a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score" class="active">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">Sign in</a>
+      <a href="/signup" class="cta">Get kolm <span aria-hidden="true">›</span></a>
+    </div>
+  </div></div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">04</span> · The gate</div>
+    <h1>K-score is one number. <span class="tone">Ship or don’t.</span></h1>
+    <p class="lede">Every <code>.kolm</code> artifact carries a single decimal, <b>K</b>, between 0 and 1.
+      Below the gate, kolm refuses to write the file. No score, no eval, no ship.</p>
+    <div class="formula" aria-label="K-score formula">
+      <span class="lab">Definition</span>
+      <span class="var">K</span>  <span class="op">=</span>  <span class="var">w<sub>a</sub></span>·accuracy <span class="op">+</span>
+      <span class="var">w<sub>s</sub></span>·size_inv <span class="op">+</span>
+      <span class="var">w<sub>l</sub></span>·latency_inv <span class="op">+</span>
+      <span class="var">w<sub>c</sub></span>·cost_inv <span class="op">+</span>
+      <span class="var">w<sub>v</sub></span>·coverage<br>
+      <span class="op">where</span>  Σ<span class="var">w</span> <span class="op">=</span> 1
+    </div>
+    <p>Components are normalized to <code>[0,1]</code> against the frontier baseline
+      the artifact was distilled from. <b>1.0</b> means the artifact ties or beats
+      frontier on every component. <b>0.0</b> means it doesn’t exist.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">01</span> · Components</div>
+    <h2>Five inputs. <span class="tone">One number.</span></h2>
+    <p class="lede">No mystery. Every component is reproducible from the artifact and the
+      tests it was sealed with. Anyone with the file can re-run the math.</p>
+
+    <div class="grid cols-5">
+      <div class="cell">
+        <div class="num">w · 0.40</div>
+        <div class="v">a</div>
+        <div class="name">Accuracy</div>
+        <div class="desc">Pass-rate on <code>tests.jsonl</code>, the eval suite stored in the artifact. The dominant term.</div>
+      </div>
+      <div class="cell">
+        <div class="num">w · 0.15</div>
+        <div class="v">s</div>
+        <div class="name">Size</div>
+        <div class="desc">Inverse-normalized against base. Smaller is closer to 1. A 38&nbsp;MB lift is a 0.95.</div>
+      </div>
+      <div class="cell">
+        <div class="num">w · 0.15</div>
+        <div class="v">l</div>
+        <div class="name">Latency</div>
+        <div class="desc">p50 ms / token. Locally measured. 80&nbsp;ms vs frontier 1240&nbsp;ms = 0.94.</div>
+      </div>
+      <div class="cell">
+        <div class="num">w · 0.15</div>
+        <div class="v">c</div>
+        <div class="name">Cost</div>
+        <div class="desc">$/1k runs. Local-only artifacts hit 1.0; cloud-pointer hybrids drop proportionally.</div>
+      </div>
+      <div class="cell">
+        <div class="num">w · 0.15</div>
+        <div class="v">v</div>
+        <div class="name">Coverage</div>
+        <div class="desc">Share of expected outputs covered by the recipe pack. Drives speculative-decoding speedup.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">02</span> · The gate</div>
+    <h2>0.70 ships. <span class="tone">Anything below fails closed.</span></h2>
+
+    <div class="gate">
+      <div class="big">≥&nbsp;0.70</div>
+      <div class="desc"><b>Default ship gate.</b>
+        Compile fails closed if K&nbsp;&lt;&nbsp;0.70 — the artifact never gets a signature.
+        Tune with <code>kolm compile --gate 0.85</code> for high-stakes tasks.
+        The threshold is part of the manifest, anchored to the receipt, immutable post-sign.</div>
+    </div>
+
+    <pre><span class="com"># inspect any .kolm</span>
+$ kolm inspect <span class="key">support-triage.kolm</span>
+  task            : "triage support email, output {label,severity}"
+  base_model      : qwen2.5-coder-7b-instruct-q4_0
+  k_score         : <span class="key">0.94</span>
+  k.accuracy      : 0.974   <span class="com">(380 / 390 cases)</span>
+  k.size          : 0.95    <span class="com">(38 MB vs 80 GB frontier)</span>
+  k.latency       : 0.94    <span class="com">(80 ms vs 1240 ms)</span>
+  k.cost          : 1.00    <span class="com">($0 local vs $0.018 frontier)</span>
+  k.coverage      : 0.92    <span class="com">(recipe pack hit-rate)</span>
+  signature       : ok      <span class="com">(hmac chain verified, 4 layers)</span></pre>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">03</span> · Why one number</div>
+    <h2>Because shipping is binary.</h2>
+    <p class="lede">Every model card in the wild today is a tasteful menu of cherry-picked plots.
+      You read down the page and never decide. <b>K is the decision.</b></p>
+    <p>Every component is recoverable, but the gate hides the wiring.
+      A green K means the artifact passed its own tests, fits on the device,
+      runs faster than frontier, costs nothing to invoke, and the recipe pack
+      covers most of the outputs it’ll be asked for. A single decimal lets a
+      CI pipeline gate a deploy. Lets a registry rank artifacts. Lets a phone
+      decide whether to download.</p>
+    <p>If you don’t like 0.70, override it. The number is the contract; the
+      threshold is the policy. They’re separate on purpose.</p>
+    <div class="cta-row">
+      <a href="/signup" class="btn-primary">Compile your first artifact <span aria-hidden="true">›</span></a>
+      <a href="/anatomy" class="btn-link">See what’s inside .kolm <span aria-hidden="true">›</span></a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <a class="brand" href="/" style="display:inline-flex;align-items:center;gap:9px;color:var(--ink);margin-bottom:10px">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M 6.5 4 L 6.5 20 M 6.5 13.4 L 14.6 4.6 M 9.4 10.6 L 17.5 19.4" stroke-linecap="square"/></svg>
+          <span style="font-weight:540;font-size:15px;letter-spacing:-0.04em">kolm</span>
+        </a>
+        <p style="color:var(--ink-faint);font-size:12.5px;margin:0 0 12px;max-width:36ch">The compiler cache for intelligence.</p>
+      </div>
+      <div><h4>Product</h4><ul><li><a href="/compile">Compile</a></li><li><a href="/serve">Serve --mcp</a></li><li><a href="/anatomy">.kolm format</a></li><li><a href="/k-score">K-score</a></li></ul></div>
+      <div><h4>Develop</h4><ul><li><a href="/docs">Docs</a></li><li><a href="/atlas">Atlas</a></li><li><a href="/pricing">Pricing</a></li></ul></div>
+      <div><h4>Trust</h4><ul><li><a href="/security">Security</a></li><li><a href="/docs/rs-1.md">RS-1 spec</a></li><li><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></li></ul></div>
+    </div>
+    <div class="legal">
+      <span>© 2026 Kolmogorov · the AI compiler</span>
+      <span>Recipe (RS-1, MIT) · Receipts (RS-1-receipts, MIT)</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
