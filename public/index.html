@@ -799,6 +799,66 @@
   .compare-table tbody td.kolm { color: var(--accent); font-weight: 540; background: var(--accent-soft); }
   .compare-table tbody td.yes { color: var(--accent-strong); }
   .compare-table tbody tr:last-child th, .compare-table tbody tr:last-child td { border-bottom: none; }
+
+  /* — terminal/window chrome dots — */
+  .chrome-dots { display: inline-flex; gap: 6px; align-items: center; margin-right: 12px; flex: 0 0 auto; }
+  .chrome-dots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.10); display: inline-block; }
+  .chrome-dots i:nth-child(2) { background: rgba(255,255,255,0.075); }
+  .chrome-dots i:nth-child(3) { background: rgba(255,255,255,0.05); }
+  .install-head { display: flex; align-items: center; }
+  .artifact .head .file { display: inline-flex; align-items: center; gap: 10px; }
+  .artifact .head .file .chrome-dots { margin-right: 4px; }
+  .anatomy .file-card .fc-chrome {
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 14px; margin-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .anatomy .file-card .fc-name {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+
+  /* — K-score arc dial — */
+  .k-dial {
+    position: relative;
+    width: 100%; max-width: 220px;
+    margin: 6px 0 16px; aspect-ratio: 1 / 0.78;
+  }
+  .k-dial svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .k-dial .k-num {
+    position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%);
+    font-size: 46px; font-weight: 540; letter-spacing: -0.04em;
+    color: var(--accent); line-height: 1; font-family: var(--sans);
+  }
+  .k-dial .k-cap {
+    position: absolute; left: 50%; bottom: -2px; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-faint); white-space: nowrap;
+  }
+  .k-dial .k-cap b { color: var(--ink-mute); font-weight: 540; }
+
+  /* — inversion data-flow schematic — */
+  .inv-fig { margin: 0 0 48px; padding: 32px 16px 24px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(180deg, rgba(255,255,255,0.012), transparent); }
+  .inv-fig svg { width: 100%; height: auto; display: block; max-height: 280px; }
+  @media (max-width: 720px) { .inv-fig { padding: 18px 8px; } .inv-fig svg { max-height: 320px; } }
+
+  /* — compounding loop schematic — */
+  .loop-fig { margin: 0 0 40px; padding: 36px 16px 28px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(180deg, rgba(124,140,255,0.025), transparent); }
+  .loop-fig svg { width: 100%; height: auto; display: block; max-height: 320px; }
+  @media (max-width: 720px) { .loop-fig { padding: 24px 8px; } .loop-fig svg { max-height: 360px; } }
+
+  /* — anatomy stack visualization — */
+  .stack-mini { margin-bottom: 18px; }
+  .stack-mini .stack-row {
+    display: grid; grid-template-columns: 100px 1fr 28px;
+    align-items: center; gap: 10px;
+    padding: 4px 0;
+  }
+  .stack-mini .stack-row .stack-name { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); letter-spacing: 0; }
+  .stack-mini .stack-row .stack-bar { height: 5px; background: rgba(124,140,255,0.18); border-radius: 2px; }
+  .stack-mini .stack-row .stack-size { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); text-align: right; }
+  .stack-mini .stack-foot { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute); letter-spacing: 0.04em; }
+  .stack-mini .stack-foot .total { color: var(--ink); }
 </style>
 </head>
 <body>
@@ -857,6 +917,7 @@
     <div class="artifact">
       <div class="head">
         <div class="file">
+          <span class="chrome-dots" aria-hidden="true"><i></i><i></i><i></i></span>
           <span class="icon">$</span>
           <span>support-triage<span class="ext">.kolm</span></span>
         </div>
@@ -898,6 +959,59 @@
     <div class="eyebrow"><span class="num">·</span><span>The inversion</span></div>
     <h2>The more private it is,<br>the more <span class="tone">personal it can be.</span></h2>
     <p class="sec-lede"><b>Privacy and personalization stop being a tradeoff.</b> Below: what every prompt, photo, voice note, and email sent to a cloud AI looks like on the wire vs. what a <code>.kolm</code> running on the device sends.</p>
+
+    <div class="inv-fig" role="img" aria-label="Data flow comparison: cloud AI egresses prompts, photos, voice, location, and PII to the frontier; kolm-powered AI keeps everything on the device with zero runtime egress.">
+      <svg viewBox="0 0 960 220" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <marker id="ar-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(255,122,152,0.6)"/>
+          </marker>
+        </defs>
+        <text x="40" y="22" fill="rgba(237,237,237,0.45)" font-family="ui-monospace,monospace" font-size="10" letter-spacing="0.16em">CLOUD AI</text>
+        <g transform="translate(40,40)">
+          <rect width="80" height="130" rx="10" stroke="rgba(237,237,237,0.22)" stroke-width="1.3" fill="rgba(255,255,255,0.018)"/>
+          <rect x="13" y="14" width="54" height="86" rx="2" stroke="rgba(237,237,237,0.10)" fill="none"/>
+          <circle cx="40" cy="118" r="4" stroke="rgba(237,237,237,0.18)" fill="none"/>
+        </g>
+        <g transform="translate(330,30)">
+          <ellipse cx="60" cy="32" rx="64" ry="22" fill="rgba(255,122,152,0.08)" stroke="rgba(255,122,152,0.32)" stroke-width="1.1"/>
+          <ellipse cx="48" cy="20" rx="22" ry="14" fill="rgba(255,122,152,0.06)" stroke="rgba(255,122,152,0.25)" stroke-width="1"/>
+          <ellipse cx="78" cy="22" rx="26" ry="14" fill="rgba(255,122,152,0.06)" stroke="rgba(255,122,152,0.25)" stroke-width="1"/>
+          <text x="60" y="36" fill="rgba(255,122,152,0.85)" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle" letter-spacing="0.10em">FRONTIER</text>
+        </g>
+        <path d="M 122 60 Q 220 48 318 60" stroke="rgba(255,122,152,0.45)" stroke-width="1.3" stroke-dasharray="3,3" fill="none" marker-end="url(#ar-pink)"/>
+        <path d="M 122 78 Q 220 64 318 64" stroke="rgba(255,122,152,0.42)" stroke-width="1.3" stroke-dasharray="3,3" fill="none" marker-end="url(#ar-pink)"/>
+        <path d="M 122 96 Q 220 86 318 68" stroke="rgba(255,122,152,0.38)" stroke-width="1.3" stroke-dasharray="3,3" fill="none" marker-end="url(#ar-pink)"/>
+        <path d="M 122 116 Q 220 110 318 72" stroke="rgba(255,122,152,0.34)" stroke-width="1.3" stroke-dasharray="3,3" fill="none" marker-end="url(#ar-pink)"/>
+        <path d="M 122 138 Q 220 132 318 76" stroke="rgba(255,122,152,0.30)" stroke-width="1.3" stroke-dasharray="3,3" fill="none" marker-end="url(#ar-pink)"/>
+        <text x="170" y="55" fill="rgba(237,237,237,0.60)" font-family="ui-monospace,monospace" font-size="10">prompt</text>
+        <text x="170" y="76" fill="rgba(237,237,237,0.50)" font-family="ui-monospace,monospace" font-size="10">photos</text>
+        <text x="170" y="98" fill="rgba(237,237,237,0.45)" font-family="ui-monospace,monospace" font-size="10">voice</text>
+        <text x="170" y="118" fill="rgba(237,237,237,0.42)" font-family="ui-monospace,monospace" font-size="10">location</text>
+        <text x="170" y="140" fill="rgba(237,237,237,0.40)" font-family="ui-monospace,monospace" font-size="10">PII</text>
+        <text x="40" y="200" fill="rgba(255,122,152,0.85)" font-family="ui-monospace,monospace" font-size="10.5" letter-spacing="0.08em">logged · trained on · subpoenable</text>
+        <line x1="480" y1="14" x2="480" y2="206" stroke="rgba(237,237,237,0.10)" stroke-width="1" stroke-dasharray="2,5"/>
+        <rect x="466" y="98" width="28" height="22" rx="4" fill="#0a0a0a" stroke="rgba(237,237,237,0.18)" stroke-width="1"/>
+        <text x="480" y="113" fill="rgba(237,237,237,0.55)" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle" letter-spacing="0.16em">VS</text>
+        <text x="600" y="22" fill="rgba(124,140,255,0.95)" font-family="ui-monospace,monospace" font-size="10" letter-spacing="0.16em">KOLM-POWERED AI</text>
+        <g transform="translate(540,40)">
+          <text x="0" y="22" fill="rgba(237,237,237,0.55)" font-family="ui-monospace,monospace" font-size="10" letter-spacing="0.16em">RUNTIME EGRESS</text>
+          <text x="0" y="84" fill="#7ce3b6" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="56" font-weight="540" letter-spacing="-0.03em">0</text>
+          <text x="0" y="108" fill="rgba(237,237,237,0.55)" font-family="ui-monospace,monospace" font-size="10" letter-spacing="0.10em">bytes</text>
+          <text x="0" y="142" fill="rgba(237,237,237,0.42)" font-family="ui-monospace,monospace" font-size="10">data + intelligence</text>
+          <text x="0" y="158" fill="rgba(237,237,237,0.42)" font-family="ui-monospace,monospace" font-size="10">stay on the device.</text>
+        </g>
+        <g transform="translate(820,40)">
+          <rect width="80" height="130" rx="10" stroke="rgba(124,140,255,0.45)" stroke-width="1.4" fill="rgba(124,140,255,0.04)"/>
+          <rect x="13" y="14" width="54" height="86" rx="2" stroke="rgba(124,140,255,0.25)" fill="none"/>
+          <circle cx="40" cy="118" r="4" stroke="rgba(124,140,255,0.32)" fill="none"/>
+          <circle cx="40" cy="57" r="20" stroke="rgba(124,140,255,0.42)" stroke-width="1.3" stroke-dasharray="3,2" fill="none"/>
+          <path d="M 56 50 L 60 56 L 53 58" stroke="rgba(124,140,255,0.95)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="40" y="61" fill="rgba(124,140,255,0.95)" font-family="ui-monospace,monospace" font-size="9" text-anchor="middle">.kolm</text>
+        </g>
+        <text x="540" y="200" fill="rgba(124,232,182,0.85)" font-family="ui-monospace,monospace" font-size="10.5" letter-spacing="0.08em">stays on device · App Store safe · audit-clean</text>
+      </svg>
+    </div>
 
     <div class="trust-split" aria-label="Cloud AI versus kolm-powered AI: data egress comparison">
       <div class="ts-col before">
@@ -985,7 +1099,7 @@
 
     <div class="install-grid">
       <div class="install">
-        <div class="install-head">Install the CLI</div>
+        <div class="install-head"><span class="chrome-dots" aria-hidden="true"><i></i><i></i><i></i></span>Install the CLI</div>
         <div class="tabs">
           <button class="active" data-pane="curl">curl</button>
           <button data-pane="npm">npm</button>
@@ -1000,7 +1114,7 @@ curl -fsSL <span class="arg">kolm.ai/install.sh</span> | sh</div>
       </div>
 
       <div class="install integ">
-        <div class="install-head">Drop the artifact in your app</div>
+        <div class="install-head"><span class="chrome-dots" aria-hidden="true"><i></i><i></i><i></i></span>Drop the artifact in your app</div>
         <div class="tabs">
           <button class="active" data-pane="ts">TypeScript</button>
           <button data-pane="swift">Swift</button>
@@ -1071,6 +1185,18 @@ r = k.run(subject=subject, body=body)
       </ul>
 
       <div class="file-card" aria-label="Manifest preview">
+        <div class="fc-chrome">
+          <span class="chrome-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="fc-name">manifest.json</span>
+        </div>
+        <div class="stack-mini" aria-hidden="true">
+          <div class="stack-row"><span class="stack-name">model.gguf</span><span class="stack-bar" style="width:96%"></span><span class="stack-size">22M</span></div>
+          <div class="stack-row"><span class="stack-name">lora.bin</span><span class="stack-bar" style="width:36%"></span><span class="stack-size">8M</span></div>
+          <div class="stack-row"><span class="stack-name">index</span><span class="stack-bar" style="width:28%"></span><span class="stack-size">6M</span></div>
+          <div class="stack-row"><span class="stack-name">recipes</span><span class="stack-bar" style="width:8%"></span><span class="stack-size">1.2M</span></div>
+          <div class="stack-row"><span class="stack-name">tests · sig</span><span class="stack-bar" style="width:4%"></span><span class="stack-size">0.8M</span></div>
+          <div class="stack-foot"><span>7 components</span><span class="total">38 MB · signed</span></div>
+        </div>
         <div class="row"><span class="k">artifact</span><span class="v">support-triage.kolm</span></div>
         <div class="row"><span class="k">version</span><span class="v">0.1.0</span></div>
         <div class="row"><span class="k">base</span><span class="v">qwen2.5-3b@INT4</span></div>
@@ -1180,8 +1306,18 @@ r = k.run(subject=subject, body=body)
     <div class="kgrid">
       <div class="kbox lead">
         <div class="lab">K-score</div>
-        <div class="val">0.94</div>
-        <p>Harmonic average. 1.0 means matches the frontier on accuracy at zero marginal cost. Default ship gate is 0.70.</p>
+        <div class="k-dial" role="img" aria-label="K-score 0.94, ship gate at 0.70">
+          <svg viewBox="0 0 220 172" fill="none" aria-hidden="true">
+            <path d="M 54.9 141.1 A 78 78 0 1 1 165.1 141.1" stroke="rgba(255,255,255,0.07)" stroke-width="11" stroke-linecap="round"/>
+            <path d="M 54.9 141.1 A 78 78 0 1 1 178.3 123.6" stroke="#7c8cff" stroke-width="11" stroke-linecap="round"/>
+            <line x1="168.2" y1="43.7" x2="177.9" y2="36.6" stroke="rgba(237,237,237,0.65)" stroke-width="1.8" stroke-linecap="round"/>
+            <text x="48" y="160" fill="rgba(237,237,237,0.32)" font-family="ui-monospace,monospace" font-size="10" text-anchor="end">0</text>
+            <text x="172" y="160" fill="rgba(237,237,237,0.32)" font-family="ui-monospace,monospace" font-size="10">1</text>
+          </svg>
+          <div class="k-num">0.94</div>
+          <div class="k-cap">harmonic · ship-gate <b>0.70</b></div>
+        </div>
+        <p>Harmonic average. 1.0 means matches the frontier on accuracy at zero marginal cost. The artifact does not ship below 0.70.</p>
       </div>
       <div class="kbox">
         <div class="lab">Size</div>
@@ -1212,6 +1348,54 @@ r = k.run(subject=subject, body=body)
     <div class="eyebrow"><span class="num">07</span><span>Compounding</span></div>
     <h2>Every compile makes the next one cheaper.</h2>
     <p class="sec-lede">kolm watches the live MCP traffic. Cache hits get faster and free. Inputs outside coverage go back to the frontier and the next compile absorbs them. The cache strictly grows.</p>
+
+    <div class="loop-fig" role="img" aria-label="The compounding loop: first call, repeat call, drift detected, recompile, then back to first. Each iteration grows the cache.">
+      <svg viewBox="0 0 960 280" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <marker id="ar-loop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(124,140,255,0.85)"/>
+          </marker>
+          <radialGradient id="cache-grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="rgba(124,140,255,0.18)"/>
+            <stop offset="100%" stop-color="rgba(124,140,255,0)"/>
+          </radialGradient>
+        </defs>
+        <circle cx="480" cy="130" r="78" fill="url(#cache-grad)"/>
+        <circle cx="480" cy="130" r="48" stroke="rgba(124,140,255,0.20)" stroke-width="1" fill="none" stroke-dasharray="2,3"/>
+        <circle cx="480" cy="130" r="62" stroke="rgba(124,140,255,0.14)" stroke-width="1" fill="none" stroke-dasharray="2,3"/>
+        <circle cx="480" cy="130" r="76" stroke="rgba(124,140,255,0.09)" stroke-width="1" fill="none" stroke-dasharray="2,3"/>
+        <text x="480" y="124" fill="rgba(124,140,255,0.95)" font-family="ui-monospace,monospace" font-size="10" letter-spacing="0.16em" text-anchor="middle">CACHE</text>
+        <text x="480" y="142" fill="rgba(237,237,237,0.55)" font-family="ui-monospace,monospace" font-size="9.5" text-anchor="middle">strictly grows</text>
+        <g transform="translate(425,12)">
+          <rect width="110" height="40" rx="8" fill="#0f0f12" stroke="rgba(124,140,255,0.32)" stroke-width="1.2"/>
+          <text x="14" y="18" fill="rgba(124,140,255,0.95)" font-family="ui-monospace,monospace" font-size="9.5" letter-spacing="0.16em">01</text>
+          <text x="14" y="33" fill="rgba(237,237,237,0.88)" font-family="ui-monospace,monospace" font-size="11">first call</text>
+        </g>
+        <g transform="translate(670,108)">
+          <rect width="120" height="40" rx="8" fill="#0f0f12" stroke="rgba(124,140,255,0.32)" stroke-width="1.2"/>
+          <text x="14" y="18" fill="rgba(124,140,255,0.95)" font-family="ui-monospace,monospace" font-size="9.5" letter-spacing="0.16em">02</text>
+          <text x="14" y="33" fill="rgba(237,237,237,0.88)" font-family="ui-monospace,monospace" font-size="11">repeat call</text>
+        </g>
+        <g transform="translate(420,210)">
+          <rect width="120" height="40" rx="8" fill="#0f0f12" stroke="rgba(124,140,255,0.32)" stroke-width="1.2"/>
+          <text x="14" y="18" fill="rgba(124,140,255,0.95)" font-family="ui-monospace,monospace" font-size="9.5" letter-spacing="0.16em">03</text>
+          <text x="14" y="33" fill="rgba(237,237,237,0.88)" font-family="ui-monospace,monospace" font-size="11">drift detected</text>
+        </g>
+        <g transform="translate(170,108)">
+          <rect width="120" height="40" rx="8" fill="#0f0f12" stroke="rgba(124,140,255,0.32)" stroke-width="1.2"/>
+          <text x="14" y="18" fill="rgba(124,140,255,0.95)" font-family="ui-monospace,monospace" font-size="9.5" letter-spacing="0.16em">04</text>
+          <text x="14" y="33" fill="rgba(237,237,237,0.88)" font-family="ui-monospace,monospace" font-size="11">recompile</text>
+        </g>
+        <path d="M 535 40 Q 640 52 668 108" stroke="rgba(124,140,255,0.55)" stroke-width="1.4" stroke-dasharray="3,3" fill="none" marker-end="url(#ar-loop)"/>
+        <path d="M 728 150 Q 720 218 542 215" stroke="rgba(124,140,255,0.55)" stroke-width="1.4" stroke-dasharray="3,3" fill="none" marker-end="url(#ar-loop)"/>
+        <path d="M 420 215 Q 320 218 290 150" stroke="rgba(124,140,255,0.55)" stroke-width="1.4" stroke-dasharray="3,3" fill="none" marker-end="url(#ar-loop)"/>
+        <path d="M 240 105 Q 296 50 423 40" stroke="rgba(124,140,255,0.55)" stroke-width="1.4" stroke-dasharray="3,3" fill="none" marker-end="url(#ar-loop)"/>
+        <text x="40" y="36" fill="rgba(237,237,237,0.45)" font-family="ui-monospace,monospace" font-size="10" letter-spacing="0.16em">EVERY COMPILE</text>
+        <text x="40" y="52" fill="rgba(237,237,237,0.32)" font-family="ui-monospace,monospace" font-size="9.5">enriches the next.</text>
+        <text x="800" y="252" fill="rgba(237,237,237,0.45)" font-family="ui-monospace,monospace" font-size="10" letter-spacing="0.16em">CACHE GROWS</text>
+        <text x="800" y="268" fill="rgba(237,237,237,0.32)" font-family="ui-monospace,monospace" font-size="9.5">marginal cost ↓</text>
+      </svg>
+    </div>
 
     <div class="loop">
       <div class="step">
