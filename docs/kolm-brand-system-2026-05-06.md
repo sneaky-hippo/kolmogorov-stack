@@ -39,14 +39,15 @@ Your product team wants AI features. Your legal and security teams do not want P
 
 ## Visual System
 
-- Base: near-black infrastructure shell.
+- Base: obsidian-black infrastructure shell, warmer and deeper than generic blue-black SaaS.
 - Brand mark: bracketed K. The left bracket represents the compiler boundary and artifact package; the K stroke represents the compiled behavior crossing from cloud spec into device execution; the three short internal bars represent eval evidence, manifest, and receipt.
-- Brand energy: aurora ribbons, not decorative blobs.
+- Brand energy: prismatic aurora ribbons, not decorative blobs.
 - Accent roles:
-  - Cyan: compile and platform.
-  - Green: verification, privacy, receipts.
-  - Violet: intelligence and registry.
-  - Amber: risk and policy.
+  - Electric cyan `#04e7ff`: compile path, target matrix, platform energy.
+  - Acid emerald `#21f7b6`: verification, privacy boundary, valid receipts.
+  - Ultraviolet `#9b5cff`: intelligence layer, registry, model behavior.
+  - Signal coral `#ff6b5f`: artifact gate, release moments, brand heat.
+  - Warm amber `#ffbf6b`: policy, review, enterprise evidence.
 - Type: SF Pro/system UI for product confidence; SF Mono for receipts, artifacts, scores, targets, and CLI.
 - Shape language: 8px radius, thin borders, dense information, no oversized cards inside cards.
 
@@ -57,6 +58,7 @@ Your product team wants AI features. Your legal and security teams do not want P
 - `/favicon.svg`: app-icon version with dark rounded square and gradient edge.
 - `/og-card.svg`: social preview card with the new mark and positioning.
 - `/brand-logo-exploration.png`: generated exploration board used to choose the final direction.
+- `/brand-hero-prism.png`: generated prism hero image used for the current richer site aesthetic.
 
 ## Generated Hero Image Prompt
 
