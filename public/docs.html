@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Docs · kolm</title>
 <meta name="description" content="kolm documentation. Install the CLI, call the SDK, read the RS-1 spec, the Manifest format, and the Receipt chain.">
-<meta name="theme-color" content="#07090f">
+<meta name="theme-color" content="#050610">
 <meta name="color-scheme" content="dark">
 <link rel="canonical" href="https://kolm.ai/docs">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -13,12 +13,12 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#07090f;--bg-2:#0b1018;--bg-3:#13101f;
-  --surface:#101722;--surface-2:#162033;
-  --line:#1c2738;--line-2:#28324a;--line-3:#3a3658;
-  --fg:#f6f8fb;--fg-2:#d6d3e3;--fg-3:#a8b3c2;
-  --muted:#7d7898;--dim:#778396;
-  --violet:#a78bfa;--violet-2:#d4c2ff;--cyan:#65d4ff;--emerald:#43e6a6;--amber:#ffb084;
+  --bg:#050610;--bg-2:#0b0e15;--bg-3:#0e1320;
+  --surface:#0d1224;--surface-2:#11172a;
+  --line:#1c2738;--line-2:#28324a;--line-3:#2a3144;
+  --fg:#f6f8fb;--fg-2:#dde1ee;--fg-3:#8893ad;
+  --muted:#7d7898;--dim:#6a7385;
+  --violet:#aa9cff;--violet-2:#d4c8ff;--cyan:#65d4ff;--emerald:#5be8b6;
   --maxw:1180px;--pad-x:max(28px,env(safe-area-inset-left));
 }
 html{scroll-behavior:smooth;scroll-padding-top:80px}
@@ -28,14 +28,14 @@ h1,h2,h3,h4{font-family:inherit;font-feature-settings:"ss01","ss03","cv11","calt
 a{color:inherit;text-decoration:none}
 ul,ol{list-style:none}
 code,pre,.mono,kbd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace}
-::selection{background:rgba(167, 139, 250,0.32);color:var(--fg)}
+::selection{background:rgba(170, 156, 255,0.32);color:var(--fg)}
 
 .bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
 .bg-stage::before{content:"";position:absolute;inset:-10%;background-image:url('/aurora.svg');background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0.22;filter:blur(40px)}
-.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(7, 9, 15,0) 0%,rgba(7, 9, 15,0.7) 45%,rgba(7, 9, 15,0.97) 100%)}
+.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(5, 6, 10,0) 0%,rgba(5, 6, 10,0.7) 45%,rgba(5, 6, 10,0.97) 100%)}
 .aurora{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 
-nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(7, 9, 15,0.62);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(5, 6, 10,0.62);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
 nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:21px;line-height:1}
 nav.top ul.links{display:flex;gap:28px}
 nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
@@ -52,13 +52,13 @@ aside.toc{position:sticky;top:80px;height:fit-content;align-self:start}
 aside.toc h4{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:14px;font-weight:500}
 aside.toc nav{display:flex;flex-direction:column;gap:1px}
 aside.toc nav a{padding:8px 12px;font-size:13.5px;color:var(--fg-3);border-radius:6px;transition:background .15s,color .15s;border-left:2px solid transparent}
-aside.toc nav a:hover{background:rgba(167, 139, 250,0.06);color:var(--fg)}
+aside.toc nav a:hover{background:rgba(170, 156, 255,0.06);color:var(--fg)}
 aside.toc nav a.section{margin-top:14px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;color:var(--dim);letter-spacing:0.16em;text-transform:uppercase;padding:8px 12px 4px;cursor:default}
 aside.toc nav a.section:hover{background:transparent;color:var(--dim)}
 
 main{min-width:0}
 .head{margin-bottom:48px}
-.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);letter-spacing:0.16em;text-transform:uppercase;padding:6px 13px;border-radius:6px;background:linear-gradient(180deg,rgba(167, 139, 250,0.10),rgba(167, 139, 250,0.04));border:1px solid rgba(167, 139, 250,0.22);margin-bottom:22px}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);letter-spacing:0.16em;text-transform:uppercase;padding:6px 13px;border-radius:6px;background:linear-gradient(180deg,rgba(170, 156, 255,0.10),rgba(170, 156, 255,0.04));border:1px solid rgba(170, 156, 255,0.22);margin-bottom:22px}
 .eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--violet)}
 .head h1{font-size:clamp(34px,4.4vw,48px);font-weight:600;letter-spacing:-0.030em;line-height:1.05;margin-bottom:14px}
 .head .lede{color:var(--fg-3);font-size:16px;line-height:1.6;max-width:600px}
@@ -71,7 +71,7 @@ section.doc h2:hover .anchor{opacity:1}
 section.doc h3{font-size:18px;font-weight:600;letter-spacing:-0.018em;margin:28px 0 10px}
 section.doc h4{font-size:14px;font-weight:600;letter-spacing:-0.014em;margin:20px 0 8px;color:var(--fg-2)}
 section.doc p{color:var(--fg-2);margin-bottom:14px}
-section.doc p.note{color:var(--fg-3);font-size:14px;background:rgba(167, 139, 250,0.04);padding:12px 16px;border-left:2px solid var(--violet);border-radius:0 8px 8px 0}
+section.doc p.note{color:var(--fg-3);font-size:14px;background:rgba(170, 156, 255,0.04);padding:12px 16px;border-left:2px solid var(--violet);border-radius:0 8px 8px 0}
 section.doc ul.bullets{margin:0 0 14px;padding-left:0}
 section.doc ul.bullets li{padding:5px 0 5px 22px;position:relative;color:var(--fg-2)}
 section.doc ul.bullets li::before{content:"";position:absolute;left:6px;top:14px;width:5px;height:5px;border-radius:50%;background:var(--violet)}
@@ -80,8 +80,8 @@ pre{background:var(--bg-3);border:1px solid var(--line);border-radius:10px;paddi
 pre .c{color:var(--violet-2)}
 pre .o{color:var(--emerald)}
 pre .k{color:var(--cyan)}
-pre .s{color:var(--amber)}
-code:not(pre code){font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:0.92em;color:var(--violet-2);background:rgba(167, 139, 250,0.08);padding:1px 6px;border-radius:4px;border:1px solid rgba(167, 139, 250,0.2)}
+pre .s{color:var(--violet)}
+code:not(pre code){font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:0.92em;color:var(--violet-2);background:rgba(170, 156, 255,0.08);padding:1px 6px;border-radius:4px;border:1px solid rgba(170, 156, 255,0.2)}
 
 table.spec{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
 table.spec th,table.spec td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
@@ -187,7 +187,7 @@ $ kolm run inbox-reply-v1.kolm <span class="s">"hi, can we move to 4pm?"</span>
 <span class="c"># MCP server (any MCP client can call this)</span>
 $ kolm serve inbox-reply-v1.kolm --mcp --port 4711
 <span class="o">listening on stdio + tcp://127.0.0.1:4711</span></pre>
-      <p class="note">Every <code>run</code> verifies the artifact's signature chain before loading. If the signature fails, the artifact won't load and you'll see <code style="color:var(--rose)">SIGCHK_FAIL</code>.</p>
+      <p class="note">Every <code>run</code> verifies the artifact's signature chain before loading. If the signature fails, the artifact won't load and you'll see <code style="color:var(--violet)">SIGCHK_FAIL</code>.</p>
     </section>
 
     <section class="doc" id="sdk">

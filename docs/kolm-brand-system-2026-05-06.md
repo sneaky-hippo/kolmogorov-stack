@@ -1,88 +1,114 @@
-# Kolm brand system refresh
+# Kolm brand system
 
-Date: 2026-05-06
+Date: 2026-05-06 (revised 2026-05-07 — spine lock)
 
 ## Positioning
 
-Kolm is the verified AI artifact layer for regulated apps.
+**Kolm is the compiler cache for intelligence.**
 
-The company should not position itself as another model runtime. Core ML, LiteRT, ONNX Runtime, ExecuTorch, llama.cpp, and MLC are the execution substrate. Kolm should sit above them as the compiler, registry, policy, personalization, and receipt layer.
+It turns repeated frontier-model work into the smallest local artifact that passes the tests. Run it on a laptop, a phone, or behind your VPC. Every artifact is signed end-to-end and discoverable through MCP.
+
+The company should not position itself as another model runtime. Core ML, LiteRT, ONNX Runtime, ExecuTorch, llama.cpp, and MLC are the execution substrate. Kolm sits above them as the **compiler**, the **cache**, and the **registry** — the layer that turns "I called Claude again to do the same thing" into "I compiled that behavior once and the local artifact answers."
 
 ## Primary Message
 
-Private AI artifacts for regulated apps.
-
-Compile in the cloud. Personalize on device. Verify every artifact.
+Compile frontier behavior once. Run it locally forever.
 
 ## One-Liner
 
-Kolm compiles AI tasks into signed artifacts that run on-device, personalize locally, and produce receipts your security team can verify.
+`kolm compile <task>` produces a signed `.kolm` artifact with a visible K-score. `kolm serve --mcp` exposes it to Claude, Codex, Cursor and Zed automatically. The cache strictly grows.
 
 ## Buyer Narrative
 
-Your product team wants AI features. Your legal and security teams do not want PHI, PII, documents, emails, or customer context leaving the device. Kolm gives developers a path through that block: author the task and evals in the cloud, ship a signed `.kolm` artifact, personalize from local data on the user's device, and keep a receipt chain for audit.
+Your team is paying frontier prices for the same handful of behaviors thousands of times a day. Triage, classification, review, summarization, extraction. Each call is correct. Each call is also cacheable.
+
+Kolm compiles the behavior into a single signed file: a small base model, a personal LoRA distilled from verified frontier output, a recipe pack covering the deterministic-token subset, a multimodal recall index of the user's data. It runs unchanged on a laptop, a phone, or behind a VPC. It serves itself over MCP so the agents you already use route to it automatically. Every artifact carries a K-score (size, accuracy, latency, cost, coverage) so you can defend the swap without a meeting.
+
+The compliance wedge is downstream of this, not upstream of it. If the artifact never round-trips to the cloud, regulated workflows get the answer for free. We do not lead with the regulator; we lead with the engineer who is tired of paying twice for the same answer.
+
+## Four pillars (Sprint 1 lock)
+
+1. **`kolm compile`** produces a real `.kolm` artifact: model + LoRA + recipe pack + recall index + signed manifest.
+2. **`kolm serve --mcp`** exposes the artifact as a tool. Claude, Codex, Cursor and Zed pick it up by name.
+3. **K-score on every artifact** — visible size, accuracy, latency, cost, coverage. A single defensible number.
+4. **Compounding cache** — every compile enriches the public deterministic-pattern registry. The next compile is smaller, faster, cheaper.
 
 ## Taglines
 
-- Verified AI artifacts for every device.
-- The registry for AI your legal team can approve.
-- Compile in cloud. Personalize on device. Verify by receipt.
-- Ship AI features without shipping user data.
-- Trust layer for on-device AI.
+- Compile frontier behavior once. Run it locally forever.
+- The compiler cache for intelligence.
+- One artifact. Every device. Same receipt.
+- One number you can stare at, five you can defend.
+- The cache strictly grows.
 
 ## Homepage Tone
 
-- Enterprise, not playful.
-- Regulatory wedge first, compiler mechanics second.
-- Crisp, concrete, and evidence-oriented.
-- No unsupported compliance absolutism. Use "BAA path", "DPA path", "audit-ready", "designed for HIPAA workflows", and "evidence pack" until formal certifications exist.
+- Engineer-first, not enterprise-first. The artifact is the protagonist.
+- Spine narrative before pillars. Pillars before sub-systems. Sub-systems before pricing.
+- Crisp, concrete, evidence-oriented. K-score numbers wherever a claim is made.
+- Compliance is a downstream consequence, not the lead. Keep BAA / DPA / SOC 2 paragraphs scoped to `/security` and `/enterprise`.
+- No unsupported absolutism. Use "designed for", "audit-ready", "evidence pack" until certifications exist.
 
 ## Visual System
 
-- Base: obsidian-black infrastructure shell, warmer and deeper than generic blue-black SaaS.
-- Brand mark: bracketed K. The left bracket represents the compiler boundary and artifact package; the K stroke represents the compiled behavior crossing from cloud spec into device execution; the three short internal bars represent eval evidence, manifest, and receipt.
-- Brand energy: prismatic aurora ribbons, not decorative blobs.
-- Accent roles:
-  - Electric cyan `#04e7ff`: compile path, target matrix, platform energy.
-  - Acid emerald `#21f7b6`: verification, privacy boundary, valid receipts.
-  - Ultraviolet `#9b5cff`: intelligence layer, registry, model behavior.
-  - Signal coral `#ff6b5f`: artifact gate, release moments, brand heat.
-  - Warm amber `#ffbf6b`: policy, review, enterprise evidence.
-- Type: SF Pro/system UI for product confidence; SF Mono for receipts, artifacts, scores, targets, and CLI.
-- Shape language: 8px radius, thin borders, dense information, no oversized cards inside cards.
+- Base: obsidian black, deeper and cooler than generic blue-black SaaS. `#050610` base, `#080b18` elevation, `#0d1224` cards, `#11172a` borders.
+- Brand mark: bracketed K. The brackets represent the compile boundary and the artifact package. The K stroke represents the compiled behavior crossing from frontier into local execution. Filled with a single iridescent gradient (jade → cyan → violet → highlight) over thin steel-tone bracket strokes.
+- Brand energy: cool aurora ribbons drifting in zero gravity. No warm tones, no rainbow, no decorative blobs. Pure cool spectrum.
+- Accent roles (cool-only):
+  - Pale jade `#5be8b6`: verification, compile success, K-score wins, signed receipts.
+  - Electric cyan `#4dd1ff`: compile path, target matrix, MCP discovery, platform energy.
+  - Soft violet `#aa9cff`: intelligence layer, registry, model behavior, hero accents.
+  - Highlight `#d4c8ff`: gradient terminus only, never as a fill.
+  - No reds, no oranges, no ambers, no golds. The only red allowed is `#ff7a98` for `--bad` error states.
+- Type: SF Pro / system UI for product confidence; SF Mono for receipts, artifacts, K-score, targets, CLI. No external font loads, ever.
+- Shape language: 8px radius, hairline borders (`rgba(188, 200, 232, 0.15)`), dense information, no oversized cards inside cards, no soft shadows, no rounded pill CTAs.
 
 ## Logo Assets
 
-- `/logo-mark.svg`: transparent bracketed K mark for headers and inline use.
-- `/logo-lockup.svg`: mark plus wordmark and "Verified AI Artifacts" descriptor.
-- `/favicon.svg`: app-icon version with dark rounded square and gradient edge.
-- `/og-card.svg`: social preview card with the new mark and positioning.
-- `/brand-logo-exploration.png`: generated exploration board used to choose the final direction.
-- `/brand-hero-prism.png`: generated prism hero image used for the current richer site aesthetic.
+- `/logo-mark.svg` — transparent bracketed K mark for headers and inline use.
+- `/logo-lockup.svg` — mark + "kolm" wordmark + "COMPILER CACHE FOR INTELLIGENCE" eyebrow.
+- `/favicon.svg` — app-icon with dark rounded square and gradient K.
+- `/og-card.svg` — social preview with mark, wordmark, and the spine headline "Compile frontier behavior once. Run it locally forever."
+- `/brand-logo-exploration.png` — generated exploration board used to choose the final direction.
+- `/brand-hero-prism.png` — hero image, telescoping nested obsidian dodecahedra with subtle iridescent thin-film, cool iridescence only, against an obsidian void.
+- `/brand-aurora-field.png` — full-bleed aurora field for marketing surfaces that need horizontal motion.
+- `/aurora.svg` — pure-vector aurora ribbon used behind hero/closing sections via `background-clip:text` and as a soft layered backdrop.
 
-## Generated Hero Image Prompt
+## Generated Hero Image Prompt (v2 — cool spectrum, no warm tones)
 
-Create a premium abstract brand hero image for kolm.ai, a privacy-first on-device AI artifact compiler. Style: cinematic aurora over black glass, Silicon Valley enterprise developer tool, dense but elegant terminal energy, signed cryptographic artifact floating as a luminous translucent rectangular file shard, subtle device silhouettes for iPhone Android browser and server rack connected by thin receipt-chain lines, refined SF Pro / Swiss minimal composition. Palette: deep near-black, ultraviolet, cyan, emerald verification green, small amber highlights. Composition: wide website hero background, full-bleed, high contrast, sharp focal artifact at right-center, generous dark negative space on left for headline text. No readable text, no letters, no logos, no watermark, no UI chrome, no people. Photorealistic 3D plus tasteful generative light, premium venture-backed infrastructure brand, 16:9.
+Editorial cinematic product photography, 16:9 widescreen. Telescoping nested obsidian-glass dodecahedra against a pure obsidian midnight void (`#050608`), each shell rendered as polished volcanic glass with subtle iridescent thin-film coating — soft violet (`#aa9cff`), electric cyan (`#4dd1ff`), and pale jade (`#5be8b6`) shimmer across facets like oil-slick interference on dark water. No horizon, no ground plane, no environment reflections. Subsurface scattering reveals interior depth. Lighting: cool soft top-key, pale violet fill from below, razor-sharp specular highlights along beveled edges, no warm tones whatsoever. ABSOLUTELY NO red, NO orange, NO yellow, NO warm colors of any kind — pure cool spectrum only: deep blacks, soft violets, electric cyan, pale jade. Heavy negative space, generous breathing room. Composition centered with Apple Vision Pro launch-still restraint. Hyper-realistic 8K, razor-sharp detail, restrained editorial composition, Foster + Partners architectural visualization aesthetic, Beksinski void mood, Damien Hirst diamond meets Apple Park glass.
 
-## Homepage Structure
+Negative prompt: red, orange, yellow, warm colors, rainbow, fire, sunset, gold, brown, sepia, vintage, low quality, watermark, text, logo, signature.
 
-1. Hero: buyer pain and trust promise.
-2. Hero artifact inspector: K-score, policy boundary, targets, and receipt verification.
-3. Proof rail: privacy boundary, signed receipts, above-runtime stance, enterprise wedge.
-4. Platform: spec to registry to device to receipts.
-5. Target matrix: Core ML, LiteRT, ONNX, WebGPU/WASM, and ExecuTorch as targets rather than enemies.
-6. Registry: pre-built healthcare, fintech, and support artifacts.
-7. Positioning: why Kolm is not competing with free runtimes.
-8. Competitive comparison: runtime/gateway/model hub gaps and Kolm's artifact lifecycle wedge.
-9. Security: evidence-oriented compliance wedge.
-10. Enterprise evidence pack: architecture memo, K-score report, compatibility matrix, BAA/DPA path, signed manifest, update ledger.
-11. Pricing preview: free SDK, paid trust layer, enterprise private registry.
-12. Closing: "Ship AI features legal can approve and users can trust."
+## Homepage Structure (locked)
+
+1. Hero — spine headline + lede + dual CTA + artifact inspector with K-score and MCP discovery strip.
+2. Section 01 · Four pillars — `.kolm` artifact, MCP-native serving, K-score, compounding cache.
+3. Section 02 · Compile — terminal demo of `kolm compile "<task>" --data ./examples`.
+4. Section 03 · Serve · MCP-native — before/after comparison card (latency, cost, offline, receipt).
+5. Section 04 · K-score — five-cell breakdown with explanations and big-K display.
+6. Section 05 · Compounding — four-step loop (first call → repeat → drift → recompile).
+7. Section 06 · Install — CLI / JS / Python / Swift / Kotlin tabs.
+8. Section 07 · Targets — six-runtime grid (phones, browsers, laptops, VPC, edge, IDEs).
+9. Section 08 · Registry — three featured `.kolm` tiles with K-score, size, pulls.
+10. Section 09 · Pricing — Developer $0 · Pro · cache $49/mo · Enterprise custom.
+11. Closing — spine headline repeated + dual CTA.
+12. Footer — Product / Develop / Trust columns + RS-1 / RS-1-multimodal / RS-1-receipts attribution.
 
 ## Claims To Avoid Until Proven
 
-- "HIPAA compliant" unless backed by legal docs, BAA, controls, and customer context.
+- "HIPAA compliant" unless backed by BAA, controls, and customer context.
 - "EU AI Act compliant" as a universal claim.
 - "Runs on every device" without a public target matrix.
-- "Better than Core ML/LiteRT" without benchmarks.
+- "Better than Core ML / LiteRT" without benchmarks.
 - "On-device fine-tuning" without stating whether personalization is LoRA training, retrieval, adapter selection, cache learning, or another mechanism.
+- "K-score 1.0" — keep K-scores in plausible single-decimal range tied to the underlying inputs.
+- "Beats frontier" without a verifier and a public benchmark.
+
+## Words we do not use
+
+- "Regulated apps" as the primary frame. Compliance lives at `/security` and `/enterprise`, not on the homepage.
+- "AI Zapier" — wrong shape, deprecated.
+- "Generic AI compiler" — too vague; always say "the compiler cache for intelligence".
+- "Verified AI artifacts for regulated apps" — old descriptor; replaced by "the compiler cache for intelligence".
+- "Trust layer" — vague; we are a compiler with a cache, not a trust layer.
