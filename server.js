@@ -52,6 +52,13 @@ app.use(cookieParser());
 app.use(express.json({ limit: '4mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// /articles serves the index page directly (no 301 redirect) — must come
+// BEFORE express.static so the static directory-redirect doesn't fire.
+app.get('/articles', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=60, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'articles', 'index.html'));
+});
+
 // Static dashboard with strong caching for hashed assets, weak for HTML.
 // /sdk.js gets a versioned alias (S6) — the unversioned URL stays for
 // back-compat but we encourage `/sdk-<sha>.js` for SRI-pinned imports.
