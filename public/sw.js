@@ -1,5 +1,5 @@
 // Recipe service worker — keeps the registry available offline.
-const CACHE = 'kolm-v5-2026-05-07-10';
+const CACHE = 'kolm-v5-2026-05-07-11-aesthetic';
 const PRECACHE = [
   '/device',
   '/styles.css',
