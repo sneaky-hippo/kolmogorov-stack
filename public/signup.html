@@ -1,122 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Get a key · kolm</title>
-  <link rel="stylesheet" href="/styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sign in · kolm</title>
+<meta name="description" content="Sign in or sign up for kolm. Bring your own API key. Compile your first specialist in 30 seconds.">
+<meta name="theme-color" content="#07090f">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://kolm.ai/signup">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/aurora.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg-2:#0b1018;--bg-3:#13101f;
+  --surface:#101722;--surface-2:#162033;
+  --line:#1c2738;--line-2:#28324a;--line-3:#3a3658;
+  --fg:#f6f8fb;--fg-2:#d6d3e3;--fg-3:#a8b3c2;
+  --muted:#7d7898;--dim:#778396;
+  --violet:#a78bfa;--violet-2:#d4c2ff;--cyan:#65d4ff;--emerald:#43e6a6;--rose:#ff85a6;
+  --maxw:1180px;--pad-x:max(28px,env(safe-area-inset-left));
+}
+html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.55;letter-spacing:-0.011em;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto;overflow-x:hidden;position:relative;min-height:100vh}
+h1,h2,h3,h4{font-family:inherit;font-feature-settings:"ss01","ss03","cv11","calt"}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+code,pre,.mono,kbd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace}
+::selection{background:rgba(167, 139, 250,0.32);color:var(--fg)}
+
+.bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
+.bg-stage::before{content:"";position:absolute;inset:-10%;background-image:url('/aurora.svg');background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0.32;filter:blur(36px)}
+.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(7, 9, 15,0) 0%,rgba(7, 9, 15,0.6) 45%,rgba(7, 9, 15,0.95) 100%)}
+.aurora{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(7, 9, 15,0.55);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
+nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:21px;line-height:1}
+nav.top ul.links{display:flex;gap:28px}
+nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
+nav.top ul.links a:hover{color:var(--fg)}
+@media(max-width:880px){nav.top ul.links{display:none}}
+
+main{max-width:480px;margin:0 auto;padding:64px var(--pad-x) 96px}
+
+.card-form{padding:36px;background:linear-gradient(180deg,rgba(22,19,42,0.85),rgba(14,12,28,0.9));border:1px solid var(--line-2);border-radius:18px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 30px 60px -20px rgba(0,0,0,0.5),0 0 0 1px rgba(167, 139, 250,0.06),0 0 80px -30px rgba(167, 139, 250,0.45)}
+.card-form h1{font-size:30px;font-weight:600;letter-spacing:-0.025em;line-height:1.05;margin-bottom:8px}
+.card-form .lede{color:var(--fg-3);font-size:14.5px;margin-bottom:28px}
+
+.tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--bg-3);padding:4px;border-radius:8px;border:1px solid var(--line)}
+.tabs button{flex:1;padding:8px 12px;background:transparent;color:var(--fg-3);border:0;border-radius:6px;font-family:inherit;font-size:13.5px;font-weight:500;cursor:pointer;transition:background .15s,color .15s}
+.tabs button.active{background:var(--surface);color:var(--fg)}
+
+label{display:block;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--fg-3);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:7px;font-weight:500}
+input[type="email"],input[type="password"],input[type="text"]{display:block;width:100%;padding:11px 14px;background:var(--bg-3);border:1px solid var(--line);border-radius:8px;color:var(--fg);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13.5px;outline:0;transition:border-color .15s,box-shadow .15s;margin-bottom:14px}
+input[type="email"]:focus,input[type="password"]:focus,input[type="text"]:focus{border-color:var(--violet);box-shadow:0 0 0 3px rgba(167, 139, 250,0.18)}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:13px 22px;border-radius:8px;font-size:14.5px;font-weight:500;letter-spacing:-0.011em;border:1px solid transparent;line-height:1;transition:background .15s,border-color .15s,color .15s,box-shadow .15s;cursor:pointer;font-family:inherit}
+.btn-primary{background:linear-gradient(180deg,#fff 0%,#e3deff 100%);color:#07090f;border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,0.10),0 8px 28px -8px rgba(167, 139, 250,0.45)}
+.btn-primary:hover{box-shadow:0 0 0 1px rgba(255,255,255,0.18),0 12px 32px -6px rgba(167, 139, 250,0.55)}
+.btn-primary[disabled]{opacity:0.5;cursor:wait}
+
+.row-meta{margin-top:18px;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--fg-3);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:0.04em}
+.row-meta a{color:var(--violet-2)}
+.row-meta a:hover{color:var(--fg)}
+
+.note{margin-top:28px;padding:14px 16px;background:rgba(167, 139, 250,0.06);border:1px solid rgba(167, 139, 250,0.2);border-radius:10px;color:var(--fg-3);font-size:12.5px;line-height:1.6}
+.note strong{color:var(--fg-2);font-weight:500}
+
+.msg{padding:11px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none}
+.msg.ok{background:rgba(67, 230, 166,0.08);border:1px solid rgba(67, 230, 166,0.3);color:var(--emerald);display:block}
+.msg.err{background:rgba(255,133,166,0.08);border:1px solid rgba(255,133,166,0.3);color:var(--rose);display:block}
+
+footer{border-top:1px solid var(--line);background:rgba(14,12,28,0.4);padding:36px var(--pad-x);text-align:center;color:var(--dim);font-size:12px;margin-top:80px}
+footer a{color:var(--fg-3)}
+</style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar">
-    <h1><span class="glyph"></span> kolm<span class="sub">by Kolmogorov</span></h1>
-    <div class="tag">v0.1 · compiler cache for intelligence</div>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/compile">Compile</a>
-      <a href="/run">Run</a>
-      <a href="/recall">Recall</a>
-      <a href="/cloud">Cloud</a>
-      <a href="/manual">Manual</a>
-      <a href="/account">Account</a>
-    </nav>
-    <div class="footnote">
-      <strong>Free tier.</strong><br/>
-      1 Specialist / mo. 10k corpus rows. No card. Self-serve.
-    </div>
-  </aside>
-  <main class="main">
-    <section class="hero">
-      <div class="eyebrow"><span class="dot live"></span> kolm · sign up</div>
-      <h1>Get a <span class="grad">key</span>.</h1>
-      <p class="sub">Free tier: 1 Specialist per month, 10k corpus rows, unlimited <code>kolm run</code>. No credit card. The key is shown once and stored locally so the CLI and the cloud dashboard pick it up automatically.</p>
-    </section>
 
-    <div class="card glow" style="max-width: 540px;">
-      <div class="toolbar">
-        <input type="email" id="email" class="grow" placeholder="you@company.com" autocomplete="email" />
-      </div>
-      <div class="toolbar" style="margin-top:8px;">
-        <input type="text" id="org" class="grow" placeholder="org name (optional)" />
-      </div>
-      <div class="toolbar" style="margin-top:8px;">
-        <button class="btn accent" id="go">Generate key &rarr;</button>
-        <span id="msg" class="muted mono" style="font-size:12px;"></span>
-      </div>
+<div class="bg-stage" aria-hidden="true"></div>
+
+<nav class="top">
+  <a class="brand aurora" href="/">kolm</a>
+  <ul class="links">
+    <li><a href="/compile">Compile</a></li>
+    <li><a href="/run">Run</a></li>
+    <li><a href="/registry">Registry</a></li>
+    <li><a href="/docs">Docs</a></li>
+    <li><a href="/pricing">Pricing</a></li>
+  </ul>
+  <a href="/" style="color:var(--fg-3);font-size:13px">&larr; Home</a>
+</nav>
+
+<main>
+  <div class="card-form">
+    <h1 id="hd-title">Sign in to kolm.</h1>
+    <p class="lede" id="hd-sub">Bring your own API key. Compile your first specialist in 30 seconds.</p>
+
+    <div class="tabs" role="tablist">
+      <button id="tab-in" class="active" role="tab" aria-selected="true">Sign in</button>
+      <button id="tab-up" role="tab" aria-selected="false">Sign up</button>
     </div>
 
-    <div id="result" style="display:none; margin-top:24px;">
-      <h3>Your key</h3>
-      <pre><code id="api-key"></code></pre>
-      <p class="muted">Saved to <span class="mono">localStorage</span>. The playground and dashboard pick it up automatically. Rotate it any time from <span class="mono">POST /v1/account/rotate-key</span>.</p>
+    <div id="msg" class="msg" role="alert"></div>
 
-      <h3 style="margin-top:18px;">Try it</h3>
-      <pre><code id="curl-snippet"></code></pre>
+    <form id="form" autocomplete="on" novalidate>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@company.com">
 
-      <div class="toolbar" style="margin-top:14px;">
-        <a class="btn accent" href="/compile">Compile a Specialist &rarr;</a>
-        <a class="btn ghost" href="/account">Account</a>
-        <button class="btn ghost" id="copy-key">Copy key</button>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required minlength="10" placeholder="10+ characters">
+
+      <button id="submit" class="btn btn-primary" type="submit">Sign in <span class="ar">&rsaquo;</span></button>
+
+      <div class="row-meta">
+        <span id="meta-left">Forgot? <a href="mailto:hi@kolm.ai">Reset by email</a></span>
+        <a href="/" id="meta-right">No account &mdash; explore</a>
       </div>
+    </form>
+
+    <div class="note">
+      <strong>kolm is BYO key.</strong> Sign-up takes a name and password; you don't add an Anthropic or OpenAI key until your first compile, and we never see your model bills.
     </div>
+  </div>
+</main>
 
-    <hr class="hairline" />
-    <h3>Or call the API directly</h3>
-    <pre><code>curl -X POST {{HOST}}/v1/signup \
-  -H "Content-Type: application/json" \
-  -d '{ "email": "you@company.com" }'
-# &rarr; { "api_key": "ks_…", "tenant": { … } }</code></pre>
+<footer>
+  &copy; 2026 Kolmogorov &middot; <a href="/security">Security</a> &middot; <a href="/docs">Docs</a> &middot; <a href="/pricing">Pricing</a>
+</footer>
 
-    <h3>Or skip signup entirely</h3>
-    <p class="muted" style="font-size:13.5px; max-width:680px;">Click <a href="/playground">/playground</a> &mdash; it auto-mints an anonymous demo key the first time you click <em>build recipe</em>. The key persists in your browser. Upgrade to a real email later.</p>
-
-    <footer class="page-footer">
-      <div class="left">
-        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
-      </div>
-      <div class="right">
-        <a href="/why">Why</a>
-        <a href="/docs">Docs</a>
-        <a href="/pricing">Pricing</a>
-        <a href="/status">Status</a>
-      </div>
-    </footer>
-  </main>
-</div>
-<div id="toast" class="toast"></div>
-<script src="/app.js"></script>
 <script>
-const $ = id => document.getElementById(id);
+(function(){
+  var tabIn = document.getElementById('tab-in');
+  var tabUp = document.getElementById('tab-up');
+  var title = document.getElementById('hd-title');
+  var sub = document.getElementById('hd-sub');
+  var pwd = document.getElementById('password');
+  var sub_btn = document.getElementById('submit');
+  var meta_l = document.getElementById('meta-left');
+  var meta_r = document.getElementById('meta-right');
+  var msg = document.getElementById('msg');
+  var form = document.getElementById('form');
+  var mode = 'in';
 
-document.querySelectorAll('code').forEach(c => {
-  c.innerHTML = c.innerHTML.replaceAll('{{HOST}}', location.origin);
-});
-
-$('go').onclick = async () => {
-  const email = $('email').value.trim();
-  if (!email) { $('msg').textContent = 'email required'; return; }
-  $('msg').innerHTML = '<span class="spinner"></span> minting…';
-  try {
-    const r = await KS.api('/v1/signup', { method: 'POST', body: JSON.stringify({ email, name: $('org').value.trim() || undefined }) });
-    KS.setApiKey(r.api_key);
-    $('result').style.display = '';
-    $('api-key').textContent = r.api_key;
-    $('curl-snippet').textContent = `curl -X POST ${location.origin}/v1/run \\
-  -H "Authorization: Bearer ${r.api_key}" \\
-  -H "Content-Type: application/json" \\
-  -d '{ "concept_id": "<paste from /registry>", "input": "WIN a free reward" }'`;
-    $('msg').innerHTML = '<span class="pill good">CREATED</span> tenant <span class="mono">' + r.tenant.name + '</span>';
-  } catch (e) {
-    $('msg').innerHTML = '<span class="pill bad">ERROR</span> ' + (e.message || e);
+  // Default to "up" if URL says ?plan=...
+  if (location.search.indexOf('plan=') !== -1) {
+    mode = 'up';
+    tabUp.click();
   }
-};
 
-$('copy-key').onclick = () => {
-  navigator.clipboard?.writeText($('api-key').textContent);
-  KS.toast('key copied');
-};
+  function setMode(m){
+    mode = m;
+    var inMode = m === 'in';
+    tabIn.classList.toggle('active', inMode);
+    tabUp.classList.toggle('active', !inMode);
+    tabIn.setAttribute('aria-selected', inMode);
+    tabUp.setAttribute('aria-selected', !inMode);
+    title.textContent = inMode ? 'Sign in to kolm.' : 'Create your kolm account.';
+    sub.textContent = inMode
+      ? 'Bring your own API key. Compile your first specialist in 30 seconds.'
+      : 'Free tier. No credit card. Compile your first specialist in 30 seconds.';
+    pwd.setAttribute('autocomplete', inMode ? 'current-password' : 'new-password');
+    sub_btn.firstChild.textContent = inMode ? 'Sign in ' : 'Create account ';
+    meta_l.innerHTML = inMode
+      ? 'Forgot? <a href="mailto:hi@kolm.ai">Reset by email</a>'
+      : 'By signing up you accept the <a href="/security">terms</a>.';
+    meta_r.textContent = inMode ? 'No account — explore' : 'Have an account? Sign in';
+    meta_r.onclick = function(e){ if (!inMode) { e.preventDefault(); setMode('in'); } };
+  }
+  tabIn.onclick = function(){ setMode('in'); };
+  tabUp.onclick = function(){ setMode('up'); };
 
-$('email').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
+  function show(kind, text){
+    msg.className = 'msg ' + kind;
+    msg.textContent = text;
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var email = document.getElementById('email').value.trim();
+    var password = pwd.value;
+    if (!email || !/.+@.+\..+/.test(email)) return show('err', 'Enter a valid email.');
+    if (!password || password.length < 10) return show('err', 'Password must be 10 characters or more.');
+
+    sub_btn.setAttribute('disabled', 'disabled');
+    show('ok', mode === 'in' ? 'Signing you in…' : 'Creating your account…');
+
+    var endpoint = mode === 'in' ? '/v1/login' : '/v1/signup';
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password })
+    }).then(function(r){
+      return r.json().catch(function(){ return {}; }).then(function(j){ return { ok: r.ok, body: j, status: r.status }; });
+    }).then(function(res){
+      sub_btn.removeAttribute('disabled');
+      if (res.ok) {
+        show('ok', mode === 'in' ? 'Signed in. Redirecting…' : 'Account created. Redirecting…');
+        setTimeout(function(){ location.href = '/dashboard'; }, 700);
+      } else {
+        var hint = (res.body && res.body.error) || (res.status === 429 ? 'Rate-limited. Wait a moment and try again.' : 'Sign-in failed. Check your credentials.');
+        show('err', hint);
+      }
+    }).catch(function(){
+      sub_btn.removeAttribute('disabled');
+      show('err', 'Network error. Try again or email hi@kolm.ai.');
+    });
+  });
+})();
 </script>
+
 </body>
 </html>

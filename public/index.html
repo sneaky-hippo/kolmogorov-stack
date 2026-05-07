@@ -3,667 +3,1472 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>kolm. Compile your data into a model.</title>
-<meta name="description" content="kolm takes the data you have and the task you describe. It returns a signed artifact you can run anywhere, even offline. Yours.">
-<meta name="theme-color" content="#08090a">
-<meta property="og:title" content="kolm. Compile your data into a model.">
-<meta property="og:description" content="A signed model built from your data. Runs anywhere. Even offline. Yours.">
+<title>Kolm - Verified AI artifacts for regulated apps</title>
+<meta name="description" content="Kolm compiles AI tasks into signed artifacts that run on-device, personalize locally, and produce receipts your security team can verify.">
+<meta name="theme-color" content="#07090f">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Kolm - Verified AI artifacts for regulated apps">
+<meta property="og:description" content="Compile in the cloud. Personalize on device. Verify every artifact.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kolm.ai">
-<meta property="og:image" content="/aurora.svg">
+<meta property="og:image" content="/og-card.svg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Kolm - Verified AI artifacts">
+<meta name="twitter:description" content="The registry and compiler for AI that cannot send data to the cloud.">
+<meta name="twitter:image" content="/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/brand-hero.png">
 <link rel="preload" as="image" href="/aurora.svg">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#08090a;
-  --bg-2:#0d0e10;
-  --surface:#101113;
-  --surface-2:#15161a;
-  --line:#1f1f23;
-  --line-strong:#2a2b30;
-  --fg:#fafafa;
-  --fg-2:#e7e7ea;
-  --muted:#86868b;
-  --dim:#52525b;
-  --accent:#10b981;
-  --accent-2:#3ad6ff;
-  --link:#7cb8ff;
+<link rel="manifest" href="/manifest.webmanifest">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://kolm.ai/#organization",
+      "name": "Kolm",
+      "url": "https://kolm.ai",
+      "logo": "https://kolm.ai/favicon.svg"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://kolm.ai/#website",
+      "url": "https://kolm.ai",
+      "name": "Kolm",
+      "description": "Verified AI artifacts for regulated apps.",
+      "publisher": { "@id": "https://kolm.ai/#organization" }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "Kolm",
+      "url": "https://kolm.ai",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "iOS, Android, Web, Linux, macOS, Windows",
+      "description": "Kolm compiles AI tasks into portable signed artifacts that run locally and produce verifiable receipts."
+    }
+  ]
 }
-html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+*{margin:0}
+:root{
+  --bg:#07090f;
+  --bg-2:#0b1018;
+  --bg-3:#111722;
+  --ink:#f6f8fb;
+  --ink-2:#d9e1ec;
+  --ink-3:#a8b3c2;
+  --muted:#778396;
+  --line:rgba(213,227,255,.14);
+  --line-2:rgba(213,227,255,.22);
+  --panel:rgba(12,18,28,.78);
+  --panel-2:rgba(18,26,39,.88);
+  --violet:#a78bfa;
+  --cyan:#59d8ff;
+  --green:#43e6a6;
+  --amber:#ffc06a;
+  --rose:#ff7aa5;
+  --max:1184px;
+  --pad:24px;
+  --radius:8px;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+html{background:var(--bg);color:var(--ink);scroll-behavior:smooth}
 body{
-  font-family:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI Variable","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  font-size:16.5px;font-weight:400;line-height:1.5;letter-spacing:-0.011em;
-  font-feature-settings:"ss01","cv11","calt";
+  min-height:100vh;
   overflow-x:hidden;
+  background:
+    linear-gradient(180deg,rgba(7,9,15,.1) 0%,var(--bg) 68%),
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.55;
+  letter-spacing:0;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility;
+  font-synthesis:none;
 }
 img,svg{display:block;max-width:100%}
 a{color:inherit;text-decoration:none}
-ul,ol{list-style:none}
-code,pre,.mono{font-family:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code","Geist Mono",Menlo,Consolas,monospace;font-feature-settings:"ss02","calt"}
-
-/* aurora text effect: real image clipped through letters. only on wordmark + hero h1 + closing h2 */
-.aurora{
+a:hover{text-decoration:none}
+button,input,textarea,select{font:inherit}
+code,kbd,pre,.mono{font-family:var(--mono);font-variant-ligatures:none}
+::selection{background:rgba(89,216,255,.24);color:#fff}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{
+  outline:2px solid var(--cyan);
+  outline-offset:3px;
+}
+.skip-link{
+  position:fixed;
+  left:16px;
+  top:12px;
+  z-index:100;
+  transform:translateY(-140%);
+  border-radius:8px;
+  background:#fff;
+  color:#061014;
+  padding:10px 14px;
+  font-weight:700;
+  transition:transform .16s ease;
+}
+.skip-link:focus{transform:translateY(0)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.aurora-text{
   background-image:url('/aurora.svg');
-  background-size:cover;
+  background-size:220% 220%;
   background-position:center;
-  background-repeat:no-repeat;
   -webkit-background-clip:text;
   background-clip:text;
   color:transparent;
   -webkit-text-fill-color:transparent;
 }
-
-/* nav */
-nav.top{
-  position:sticky;top:0;z-index:50;
-  display:flex;align-items:center;justify-content:space-between;gap:32px;
-  padding:14px max(28px,env(safe-area-inset-left)) 14px max(28px,env(safe-area-inset-right));
-  background:rgba(8,9,10,0.7);
-  backdrop-filter:saturate(180%) blur(24px);
-  -webkit-backdrop-filter:saturate(180%) blur(24px);
+.site-bg{
+  position:fixed;
+  inset:0;
+  z-index:-3;
+  pointer-events:none;
+  background:
+    linear-gradient(120deg,rgba(89,216,255,.08),transparent 30%,rgba(167,139,250,.12) 58%,transparent 76%),
+    linear-gradient(180deg,#07090f 0%,#090d14 48%,#07090f 100%);
+}
+.site-bg::before{
+  content:"";
+  position:absolute;
+  inset:-18% -12%;
+  background-image:url('/aurora.svg');
+  background-size:cover;
+  background-position:center top;
+  opacity:.28;
+  filter:blur(18px) saturate(1.12);
+}
+.site-bg::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(180deg,rgba(7,9,15,.18) 0%,rgba(7,9,15,.62) 48%,#07090f 100%),
+    linear-gradient(90deg,rgba(7,9,15,.18),rgba(7,9,15,.74) 52%,rgba(7,9,15,.18));
+}
+.grid-bg{
+  position:fixed;
+  inset:0;
+  z-index:-2;
+  pointer-events:none;
+  opacity:.38;
+  background-image:
+    linear-gradient(to right,rgba(255,255,255,.035) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(255,255,255,.028) 1px,transparent 1px);
+  background-size:56px 56px;
+  mask-image:linear-gradient(180deg,#000 0%,#000 45%,transparent 96%);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 45%,transparent 96%);
+}
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:20;
+  min-height:64px;
   border-bottom:1px solid var(--line);
+  background:rgba(7,9,15,.72);
+  backdrop-filter:blur(22px) saturate(150%);
+  -webkit-backdrop-filter:blur(22px) saturate(150%);
+}
+.topbar-inner{
+  max-width:calc(var(--max) + var(--pad) * 2);
+  min-height:64px;
+  margin:0 auto;
+  padding:0 var(--pad);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:44px;
+  color:var(--ink);
+  font-weight:650;
+}
+.brand-mark{
+  width:30px;
+  height:30px;
+  border:1px solid rgba(89,216,255,.44);
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(145deg,rgba(89,216,255,.2),rgba(167,139,250,.16) 48%,rgba(67,230,166,.12));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 10px 26px rgba(0,0,0,.22);
+}
+.brand-mark svg{width:18px;height:18px}
+.brand-name{font-size:18px}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-links a,.top-actions a{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 12px;
+  border-radius:8px;
+  color:var(--ink-3);
+  font-size:14px;
+  font-weight:520;
+}
+.nav-links a:hover,.top-actions a:hover{color:var(--ink);background:rgba(255,255,255,.045)}
+.top-actions{display:flex;align-items:center;gap:8px}
+.nav-cta{
+  border:1px solid var(--line-2);
+  color:var(--ink)!important;
+  background:rgba(255,255,255,.05);
+}
+.nav-primary{
+  color:#041013!important;
+  background:linear-gradient(180deg,#f9fbff,#bff3ff 52%,#a78bfa)!important;
+  box-shadow:0 10px 30px rgba(89,216,255,.18);
+}
+@media(max-width:900px){
+  .nav-links{display:none}
+  .top-actions a:not(.nav-primary){display:none}
+}
+.hero{
+  position:relative;
+  min-height:calc(100svh - 64px);
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  border-bottom:1px solid var(--line);
+}
+.hero-media{
+  position:absolute;
+  inset:0;
+  z-index:-1;
+}
+.hero-media img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+  opacity:.74;
+  filter:saturate(1.08) contrast(1.04);
+}
+.hero-media::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  background:
+    linear-gradient(90deg,#07090f 0%,rgba(7,9,15,.94) 24%,rgba(7,9,15,.62) 52%,rgba(7,9,15,.26) 100%),
+    linear-gradient(180deg,rgba(7,9,15,.12) 0%,rgba(7,9,15,.26) 58%,#07090f 100%);
+}
+.signal-lines{
+  position:absolute;
+  inset:auto 0 0;
+  height:38%;
+  z-index:1;
+  background:
+    repeating-linear-gradient(100deg,transparent 0 42px,rgba(89,216,255,.09) 43px,transparent 44px 96px),
+    linear-gradient(180deg,transparent,rgba(7,9,15,.92));
+  opacity:.45;
+}
+.hero-inner{
+  width:100%;
+  max-width:calc(var(--max) + var(--pad) * 2);
+  margin:0 auto;
+  padding:92px var(--pad) 142px;
+  display:grid;
+  grid-template-columns:minmax(0,.92fr) minmax(360px,.48fr);
+  gap:48px;
+  align-items:center;
+}
+.eyebrow{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  min-height:32px;
+  padding:0 12px;
+  border:1px solid rgba(89,216,255,.22);
+  border-radius:8px;
+  background:rgba(7,9,15,.42);
+  color:var(--ink-3);
+  font-family:var(--mono);
+  font-size:12px;
+  text-transform:uppercase;
+}
+.eyebrow i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 18px rgba(67,230,166,.8);
+}
+h1{
+  max-width:760px;
+  margin:22px 0 0;
+  font-size:72px;
+  line-height:1;
+  letter-spacing:0;
+  font-weight:690;
+}
+.hero-lede{
+  max-width:672px;
+  margin-top:24px;
+  color:var(--ink-2);
+  font-size:21px;
+  line-height:1.48;
+}
+.hero-lede strong{color:var(--ink);font-weight:650}
+.hero-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:34px;
+}
+.btn{
+  min-height:48px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  border-radius:8px;
+  border:1px solid var(--line-2);
+  padding:0 18px;
+  color:var(--ink);
+  background:rgba(255,255,255,.055);
+  font-size:15px;
+  font-weight:620;
+  transition:transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease;
+}
+.btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.34);background:rgba(255,255,255,.08)}
+.btn-primary{
+  color:#061014;
+  border-color:rgba(255,255,255,.72);
+  background:linear-gradient(180deg,#fff,#cff7ff 46%,#b7a7ff);
+  box-shadow:0 18px 44px rgba(89,216,255,.2),0 2px 0 rgba(255,255,255,.18) inset;
+}
+.btn-primary:hover{box-shadow:0 22px 52px rgba(89,216,255,.28),0 2px 0 rgba(255,255,255,.2) inset}
+.hero-micro{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  max-width:720px;
+  margin-top:28px;
+}
+.micro-chip{
+  min-height:32px;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:0 10px;
+  border:1px solid rgba(213,227,255,.13);
+  border-radius:8px;
+  background:rgba(7,9,15,.42);
+  color:var(--ink-3);
+  font-family:var(--mono);
+  font-size:12px;
+}
+.micro-chip strong{color:var(--ink);font-weight:600}
+.hero-inspector{
+  justify-self:end;
+  width:min(100%,420px);
+  border:1px solid rgba(213,227,255,.18);
+  border-radius:8px;
+  background:linear-gradient(180deg,rgba(8,13,21,.84),rgba(8,13,21,.66));
+  box-shadow:0 28px 90px rgba(0,0,0,.36),0 0 0 1px rgba(89,216,255,.08) inset;
+  backdrop-filter:blur(20px) saturate(135%);
+  -webkit-backdrop-filter:blur(20px) saturate(135%);
+  overflow:hidden;
+}
+.inspector-head{
+  min-height:50px;
+  padding:0 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid var(--line);
+}
+.inspector-title{font-family:var(--mono);font-size:12px;color:var(--ink-3);text-transform:uppercase}
+.inspector-status{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  min-height:28px;
+  padding:0 9px;
+  border:1px solid rgba(67,230,166,.28);
+  border-radius:7px;
+  color:var(--green);
+  background:rgba(67,230,166,.08);
+  font-family:var(--mono);
+  font-size:11px;
+  text-transform:uppercase;
+}
+.inspector-status i{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 12px rgba(67,230,166,.85)}
+.inspector-body{padding:16px}
+.artifact-name{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--line);
+}
+.artifact-name h2{font-size:22px;line-height:1.1;font-weight:700}
+.artifact-name p{margin-top:6px;color:var(--ink-3);font-family:var(--mono);font-size:12px}
+.artifact-name .k{font-family:var(--mono);font-size:34px;line-height:1;color:var(--green);font-weight:700;text-align:right}
+.artifact-name .k span{display:block;margin-top:4px;color:var(--muted);font-size:10px;text-transform:uppercase}
+.inspector-list{display:grid;gap:10px;margin-top:14px}
+.inspector-row{
+  display:grid;
+  grid-template-columns:98px minmax(0,1fr);
+  gap:12px;
+  align-items:start;
+  min-height:38px;
+  padding:10px 0;
+  border-bottom:1px solid rgba(213,227,255,.08);
+}
+.inspector-row:last-child{border-bottom:0}
+.inspector-row span:first-child{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase}
+.inspector-row span:last-child{color:var(--ink-2);font-size:13px;line-height:1.45}
+.target-pills{display:flex;flex-wrap:wrap;gap:6px}
+.target-pills b{
+  min-height:24px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 8px;
+  border:1px solid rgba(213,227,255,.14);
+  border-radius:7px;
+  color:var(--ink-2);
+  background:rgba(255,255,255,.035);
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:500;
+}
+.receipt-preview{
+  margin-top:14px;
+  border:1px solid rgba(213,227,255,.12);
+  border-radius:8px;
+  background:#05080d;
+  padding:12px;
+  color:var(--ink-3);
+  font-family:var(--mono);
+  font-size:11.5px;
+  line-height:1.7;
+  overflow:auto;
+}
+.receipt-preview strong{color:var(--green);font-weight:600}
+@media(max-width:760px){
+  .hero{min-height:auto}
+  .hero-media img{object-position:62% center}
+  .hero-media::before{background:linear-gradient(90deg,#07090f 0%,rgba(7,9,15,.92) 58%,rgba(7,9,15,.54) 100%),linear-gradient(180deg,rgba(7,9,15,.2),#07090f 100%)}
+  .hero-inner{padding:64px var(--pad) 118px}
+  h1{font-size:44px;line-height:1.03}
+  .hero-lede{font-size:18px}
+}
+@media(max-width:980px){
+  .hero-inner{grid-template-columns:1fr;gap:30px}
+  .hero-inspector{justify-self:start;max-width:560px}
+}
+.proof-rail{
+  max-width:calc(var(--max) + var(--pad) * 2);
+  margin:-88px auto 0;
+  padding:0 var(--pad);
+  position:relative;
+  z-index:2;
+}
+.proof-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:rgba(10,15,23,.84);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  overflow:hidden;
+  box-shadow:0 24px 80px rgba(0,0,0,.28);
+}
+.proof{
+  min-height:126px;
+  padding:20px;
+  border-right:1px solid var(--line);
+}
+.proof:last-child{border-right:0}
+.proof .k{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase}
+.proof .v{margin-top:10px;font-size:24px;line-height:1.08;font-weight:680;color:var(--ink)}
+.proof .d{margin-top:8px;color:var(--ink-3);font-size:13px;line-height:1.45}
+@media(max-width:860px){.proof-grid{grid-template-columns:1fr 1fr}.proof:nth-child(2){border-right:0}.proof:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+@media(max-width:520px){.proof-grid{grid-template-columns:1fr}.proof{border-right:0;border-bottom:1px solid var(--line)}.proof:last-child{border-bottom:0}}
+.section{
+  max-width:calc(var(--max) + var(--pad) * 2);
+  margin:0 auto;
+  padding:96px var(--pad) 0;
+}
+.section-head{
+  display:grid;
+  grid-template-columns:minmax(0,.92fr) minmax(300px,.72fr);
+  gap:56px;
+  align-items:end;
+  margin-bottom:32px;
+}
+.section-kicker{
+  font-family:var(--mono);
+  color:var(--green);
+  font-size:12px;
+  text-transform:uppercase;
+}
+.section h2{
+  margin-top:12px;
+  font-size:46px;
+  line-height:1.06;
+  letter-spacing:0;
+  font-weight:680;
+}
+.section-head p{
+  color:var(--ink-3);
+  font-size:17px;
+  line-height:1.62;
+}
+@media(max-width:820px){.section-head{grid-template-columns:1fr;gap:18px}.section h2{font-size:34px}}
+.pipeline{
+  display:grid;
+  grid-template-columns:1.05fr .95fr;
+  gap:18px;
+  align-items:stretch;
+}
+@media(max-width:940px){.pipeline{grid-template-columns:1fr}}
+.terminal{
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:rgba(5,8,13,.86);
+  overflow:hidden;
+  min-height:460px;
+  box-shadow:0 22px 70px rgba(0,0,0,.26);
+}
+.terminal-head{
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 16px;
+  border-bottom:1px solid var(--line);
+  color:var(--muted);
+  font-family:var(--mono);
+  font-size:12px;
+  text-transform:uppercase;
+}
+.traffic{display:flex;gap:7px}.traffic i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.16)}.traffic i:nth-child(1){background:#ff6b6b}.traffic i:nth-child(2){background:#ffc06a}.traffic i:nth-child(3){background:#43e6a6}
+.terminal-body{
+  padding:22px;
+  font-family:var(--mono);
+  font-size:13px;
+  line-height:1.85;
+  color:#dbe7f3;
+}
+.line{display:block;opacity:0;transform:translateY(6px);transition:opacity .42s ease,transform .42s ease}
+.line.on{opacity:1;transform:translateY(0)}
+.prompt{color:var(--green)}
+.cmd{color:#fff}
+.arg{color:var(--cyan)}
+.flag{color:var(--violet)}
+.dim{color:var(--muted)}
+.ok{color:var(--green)}
+.warn{color:var(--amber)}
+.artifact-card{
+  margin-top:22px;
+  border:1px solid rgba(67,230,166,.26);
+  border-radius:8px;
+  background:linear-gradient(180deg,rgba(67,230,166,.08),rgba(89,216,255,.04));
+  padding:18px;
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:14px;
+  align-items:center;
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .5s ease,transform .5s ease;
+}
+.artifact-card.on{opacity:1;transform:translateY(0)}
+.seal{
+  width:42px;height:42px;border-radius:8px;
+  display:grid;place-items:center;
+  color:#03110e;
+  background:linear-gradient(180deg,#93ffd2,#43e6a6);
+  font-weight:800;
+}
+.artifact-card h3{font-size:16px;line-height:1.2;font-weight:650}
+.artifact-card p{color:var(--ink-3);font-family:var(--mono);font-size:12px;margin-top:3px}
+.score{text-align:right}.score strong{display:block;font-family:var(--mono);font-size:32px;color:var(--green);line-height:1}.score span{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase}
+.flow{
+  display:grid;
+  gap:12px;
+}
+.flow-step{
+  min-height:106px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:rgba(14,21,32,.7);
+  padding:18px;
+  position:relative;
+  overflow:hidden;
+}
+.flow-step::before{
+  content:"";
+  position:absolute;
+  left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--cyan),var(--violet),var(--green));
+}
+.flow-step .num{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.flow-step h3{margin-top:6px;font-size:18px;font-weight:660}
+.flow-step p{margin-top:6px;color:var(--ink-3);font-size:14px;line-height:1.5}
+.matrix-shell{
+  display:grid;
+  grid-template-columns:1.05fr .95fr;
+  gap:16px;
+  align-items:stretch;
+}
+@media(max-width:960px){.matrix-shell{grid-template-columns:1fr}}
+.matrix-card{
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:rgba(12,18,28,.76);
+  overflow:hidden;
+}
+@media(max-width:700px){
+  .matrix-card{overflow-x:auto}
+  .target-table{min-width:720px}
+}
+.matrix-card .card-head{
+  min-height:52px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:0 18px;
+  border-bottom:1px solid var(--line);
+}
+.matrix-card h3{font-size:16px;font-weight:680}
+.matrix-card .card-head span{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase}
+.target-table{width:100%;border-collapse:collapse}
+.target-table th,.target-table td{
+  padding:14px 18px;
+  border-bottom:1px solid rgba(213,227,255,.1);
+  text-align:left;
+  vertical-align:top;
+  font-size:13px;
+}
+.target-table th{
+  color:var(--muted);
+  font-family:var(--mono);
+  font-size:11px;
+  text-transform:uppercase;
+  font-weight:500;
+}
+.target-table td:first-child{font-weight:650;color:var(--ink)}
+.target-table td:nth-child(3){font-family:var(--mono);color:var(--green);font-size:12px;white-space:nowrap}
+.target-table tr:last-child td{border-bottom:0}
+.moat-list{display:grid;gap:0}
+.moat-row{
+  display:grid;
+  grid-template-columns:120px minmax(0,1fr);
+  gap:14px;
+  padding:17px 18px;
+  border-bottom:1px solid rgba(213,227,255,.1);
+}
+.moat-row:last-child{border-bottom:0}
+.moat-row span{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase}
+.moat-row strong{display:block;color:var(--ink);font-size:15px}
+.moat-row p{margin-top:5px;color:var(--ink-3);font-size:13.5px;line-height:1.5}
+@media(max-width:700px){.moat-row{grid-template-columns:1fr}}
+.registry-grid{
+  display:grid;
+  grid-template-columns:1.2fr .8fr .8fr;
+  gap:16px;
+}
+@media(max-width:960px){.registry-grid{grid-template-columns:1fr}}
+.artifact-tile{
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  min-height:276px;
+  padding:22px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  position:relative;
+  overflow:hidden;
+}
+.artifact-tile.featured{background:linear-gradient(135deg,rgba(16,25,36,.94),rgba(26,22,45,.9))}
+.artifact-tile::after{
+  content:"";
+  position:absolute;
+  inset:auto 0 0;
+  height:3px;
+  background:linear-gradient(90deg,var(--green),var(--cyan),var(--violet));
+  opacity:.84;
+}
+.tile-top{display:flex;justify-content:space-between;gap:16px}
+.tile-type{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase}
+.tile-k{font-family:var(--mono);color:var(--green);font-size:13px}
+.artifact-tile h3{margin-top:16px;font-size:28px;line-height:1.08;font-weight:680}
+.artifact-tile p{margin-top:12px;color:var(--ink-3);font-size:15px;line-height:1.55}
+.tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px}
+.tag{
+  min-height:28px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 9px;
+  border:1px solid var(--line);
+  border-radius:7px;
+  color:var(--ink-3);
+  font-family:var(--mono);
+  font-size:11px;
+}
+.install{
+  margin-top:22px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#05080d;
+  padding:13px;
+  color:var(--ink-2);
+  font-family:var(--mono);
+  font-size:12px;
+  overflow:auto;
+}
+.position{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+}
+@media(max-width:860px){.position{grid-template-columns:1fr}}
+.position-card{
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:rgba(12,18,28,.72);
+  padding:22px;
+  min-height:236px;
+}
+.position-card .label{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase}
+.position-card h3{margin-top:14px;font-size:24px;line-height:1.13;font-weight:670}
+.position-card p{margin-top:12px;color:var(--ink-3);font-size:15px;line-height:1.56}
+.position-card strong{color:var(--ink);font-weight:650}
+.comparison{
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:rgba(12,18,28,.76);
+  overflow:hidden;
+}
+.comparison table{width:100%;border-collapse:collapse}
+.comparison th,.comparison td{
+  padding:16px 18px;
+  border-bottom:1px solid rgba(213,227,255,.1);
+  text-align:left;
+  vertical-align:top;
   font-size:14px;
 }
-nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:20px;line-height:1;display:inline-block}
-nav.top ul.links{display:flex;gap:28px}
-nav.top ul.links a{color:var(--muted);transition:color .15s;font-weight:500}
-nav.top ul.links a:hover{color:var(--fg)}
-nav.top .signin{color:var(--fg);display:inline-flex;align-items:center;gap:4px;font-weight:500}
-nav.top .signin .ar{transition:transform .2s;color:var(--muted)}
-nav.top .signin:hover .ar{transform:translateX(2px);color:var(--fg)}
-@media(max-width:760px){nav.top ul.links{display:none}}
-
-/* shared section */
-.section{padding:140px 28px;max-width:1240px;margin:0 auto}
-.section h2{font-size:clamp(40px,5.6vw,72px);font-weight:600;letter-spacing:-0.034em;line-height:1.04;text-align:center}
-.section .sub{font-size:clamp(18px,1.7vw,21px);color:var(--muted);text-align:center;max-width:680px;margin:24px auto 72px;letter-spacing:-0.011em;line-height:1.45}
-
-/* hero */
-.hero{padding:140px 28px 40px;max-width:1240px;margin:0 auto;text-align:center}
-.hero .eyebrow{
-  display:inline-flex;align-items:center;gap:10px;
-  font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);
-  letter-spacing:0.18em;text-transform:uppercase;
-  padding:7px 14px;background:var(--surface);border:1px solid var(--line);border-radius:6px;
-  margin-bottom:32px;
+.comparison tr:last-child td{border-bottom:0}
+.comparison th{color:var(--muted);font-family:var(--mono);font-size:11px;text-transform:uppercase;font-weight:500}
+.comparison td:first-child{font-weight:680;color:var(--ink);white-space:nowrap}
+.comparison td:nth-child(2){color:var(--ink-3)}
+.comparison td:nth-child(3){color:var(--ink-2)}
+.comparison td:nth-child(4){color:var(--green)}
+@media(max-width:760px){
+  .comparison{overflow-x:auto}
+  .comparison table{min-width:760px}
 }
-.hero .eyebrow .pulse{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(16,185,129,0.6);animation:pulse 2.4s infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,0.5)}70%{box-shadow:0 0 0 10px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
-.hero h1{
-  font-size:clamp(56px,9.5vw,128px);
-  font-weight:700;letter-spacing:-0.045em;line-height:0.96;
-  margin-bottom:32px;
+.security-band{
+  border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);
+  margin-top:96px;
+  background:
+    linear-gradient(100deg,rgba(67,230,166,.08),rgba(89,216,255,.04) 38%,rgba(167,139,250,.08)),
+    rgba(10,15,23,.7);
 }
-.hero h1 .row{display:block}
-.hero .lede{
-  font-size:clamp(20px,2.1vw,26px);
-  color:var(--muted);
-  max-width:680px;margin:0 auto 56px;
-  line-height:1.4;letter-spacing:-0.014em;
+.security-inner{
+  max-width:calc(var(--max) + var(--pad) * 2);
+  margin:0 auto;
+  padding:56px var(--pad);
+  display:grid;
+  grid-template-columns:.85fr 1.15fr;
+  gap:48px;
+  align-items:center;
 }
-.cta-stack{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
-.btn{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:14px 22px;border-radius:8px;
-  font-size:15.5px;font-weight:500;letter-spacing:-0.011em;
-  border:1px solid transparent;line-height:1;
-  transition:background .15s,border-color .15s,color .15s,transform .15s;
-  white-space:nowrap;
+.security-inner h2{font-size:40px;line-height:1.08;font-weight:690}
+.security-inner p{margin-top:14px;color:var(--ink-3);font-size:17px;line-height:1.6}
+.checks{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
 }
-.btn .ar{transition:transform .2s}
-.btn:hover .ar{transform:translateX(3px)}
-.btn-primary{background:var(--fg);color:#000;border-color:var(--fg)}
-.btn-primary:hover{background:#fff}
-.btn-secondary{background:transparent;color:var(--fg);border-color:var(--line-strong)}
-.btn-secondary:hover{border-color:var(--fg);background:var(--surface)}
-.btn-text{color:var(--muted);padding:14px 8px}
-.btn-text:hover{color:var(--fg)}
-
-/* hero split panel */
-.hero-panel{
-  margin-top:88px;
-  display:grid;grid-template-columns:1.2fr 0.8fr;gap:0;
-  border:1px solid var(--line);border-radius:18px;
-  background:linear-gradient(180deg,var(--surface) 0%,var(--bg-2) 100%);
-  overflow:hidden;
-  box-shadow:0 40px 100px -50px rgba(124,92,255,0.25),0 0 0 1px rgba(255,255,255,0.02);
-}
-
-/* tabbed code window (left) */
-.code-pane{border-right:1px solid var(--line);background:var(--bg-2)}
-.code-tabs{display:flex;border-bottom:1px solid var(--line);padding:0 4px;background:var(--bg)}
-.code-tabs button{
-  appearance:none;background:transparent;border:0;color:var(--muted);
-  font:inherit;font-size:12.5px;font-family:ui-monospace,monospace;font-weight:500;
-  padding:14px 16px;cursor:pointer;letter-spacing:0.04em;
-  border-bottom:2px solid transparent;margin-bottom:-1px;
-  transition:color .15s,border-color .15s;
-}
-.code-tabs button:hover{color:var(--fg-2)}
-.code-tabs button.active{color:var(--fg);border-bottom-color:var(--fg)}
-.code-body{padding:24px 28px;font-family:ui-monospace,monospace;font-size:13.5px;line-height:1.75;color:var(--fg-2);min-height:380px;position:relative}
-.code-block{display:none}
-.code-block.active{display:block}
-.tok-pr{color:var(--dim)}
-.tok-cmd{color:var(--fg)}
-.tok-str{color:#a5d6a7}
-.tok-num{color:#ffd47a}
-.tok-out{color:var(--muted)}
-.tok-ok{color:var(--accent)}
-.tok-warn{color:#ffd47a}
-.tok-key{color:#c4a8ff}
-.tok-fn{color:#7cb8ff}
-.tok-c{color:var(--dim);font-style:italic}
-.cursor{display:inline-block;width:7px;height:14px;background:var(--fg);vertical-align:-2px;animation:blink 1s steps(1) infinite;margin-left:2px}
-@keyframes blink{50%{opacity:0}}
-
-/* artifact card (right). the signature visual */
-.artifact-pane{padding:32px;display:flex;flex-direction:column;justify-content:center;background:radial-gradient(120% 80% at 50% 0%,rgba(124,92,255,0.06) 0%,transparent 60%),var(--bg-2)}
-.artifact{
-  border:1px solid var(--line-strong);border-radius:14px;
-  background:linear-gradient(180deg,#13141a 0%,#0a0b0f 100%);
-  padding:28px 26px;position:relative;overflow:hidden;
-}
-.artifact::before{
-  content:"";position:absolute;inset:0;
-  background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,0.025) 1px,transparent 0);
-  background-size:14px 14px;
-  pointer-events:none;
-}
-.artifact .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;position:relative}
-.artifact .head .brand{font-size:14px;font-weight:600;letter-spacing:-0.02em;line-height:1}
-.artifact .head .brand .sub{display:block;font-family:ui-monospace,monospace;font-size:10px;color:var(--dim);letter-spacing:0.16em;font-weight:400;margin-top:6px;text-transform:uppercase}
-.artifact .head .seal{
-  width:36px;height:36px;border-radius:50%;
-  border:1px solid var(--accent);color:var(--accent);
-  display:flex;align-items:center;justify-content:center;
-  font-size:18px;font-weight:600;
-  background:radial-gradient(circle,rgba(16,185,129,0.18) 0%,rgba(16,185,129,0) 70%);
-}
-.artifact .kscore{margin:8px 0 4px;position:relative}
-.artifact .kscore .num{font-family:ui-monospace,monospace;font-size:64px;font-weight:600;letter-spacing:-0.04em;line-height:1;color:var(--fg);background-image:url('/aurora.svg');background-size:cover;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
-.artifact .kscore .lbl{font-family:ui-monospace,monospace;font-size:10px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;margin-top:6px}
-.artifact hr{border:0;border-top:1px dashed var(--line-strong);margin:22px 0;position:relative}
-.artifact dl{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;font-family:ui-monospace,monospace;font-size:12px;line-height:1.5;position:relative}
-.artifact dt{color:var(--dim);text-transform:uppercase;letter-spacing:0.1em;font-size:10.5px;align-self:center}
-.artifact dd{color:var(--fg-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.artifact dd .tag{color:var(--accent)}
-.artifact .verified{
-  margin-top:22px;display:inline-flex;align-items:center;gap:6px;
-  padding:6px 10px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.28);
-  color:var(--accent);font-family:ui-monospace,monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;
-  border-radius:5px;position:relative;
-}
-.artifact .verified .check{font-size:11px}
-
-@media(max-width:980px){
-  .hero-panel{grid-template-columns:1fr}
-  .code-pane{border-right:0;border-bottom:1px solid var(--line)}
-}
-@media(max-width:640px){
-  .hero{padding-top:96px}
-  .code-body{min-height:auto}
-  .artifact .kscore .num{font-size:48px}
-}
-
-/* big text band */
-.bigtext{padding:160px 28px;text-align:center;max-width:1240px;margin:0 auto;border-top:1px solid var(--line)}
-.bigtext h2{font-size:clamp(40px,7vw,104px);font-weight:600;letter-spacing:-0.038em;line-height:1.04}
-.bigtext h2 .accent{color:var(--muted)}
-
-/* engines grid */
-.engines{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.engine{padding:36px 28px 32px;background:var(--bg);transition:background .25s}
-.engine:hover{background:var(--bg-2)}
-.engine .num{display:inline-flex;align-items:center;gap:8px;font-family:ui-monospace,monospace;font-size:11px;color:var(--dim);letter-spacing:0.14em;margin-bottom:22px}
-.engine .num span:first-child{display:inline-block;width:18px;height:18px;border:1px solid var(--line-strong);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted)}
-.engine h3{font-size:22px;font-weight:600;letter-spacing:-0.02em;margin-bottom:8px;line-height:1.2}
-.engine p{color:var(--muted);font-size:15px;line-height:1.5}
-@media(max-width:980px){.engines{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.engines{grid-template-columns:1fr}}
-
-/* surfaces */
-.surfaces-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.surface{
+.check{
   border:1px solid var(--line);
-  border-radius:14px;
-  padding:36px 30px 30px;
-  background:linear-gradient(180deg,var(--surface) 0%,var(--bg) 100%);
-  display:flex;flex-direction:column;
-  transition:border-color .2s,transform .25s;
+  border-radius:8px;
+  background:rgba(7,9,15,.42);
+  padding:16px;
 }
-.surface:hover{border-color:var(--line-strong)}
-.surface .tag{font-family:ui-monospace,monospace;font-size:11px;color:var(--dim);letter-spacing:0.16em;margin-bottom:20px;text-transform:uppercase}
-.surface h3{font-size:26px;font-weight:600;letter-spacing:-0.024em;margin-bottom:10px;line-height:1.15}
-.surface p{color:var(--muted);font-size:15.5px;line-height:1.5;margin-bottom:24px;min-height:64px}
-.surface .terminal-mini{
-  background:var(--bg-2);border:1px solid var(--line);border-radius:8px;
-  padding:14px 16px;font-size:12.5px;color:var(--fg-2);font-family:ui-monospace,monospace;
-  overflow-x:auto;white-space:pre;line-height:1.7;
+.check span{font-family:var(--mono);font-size:12px;color:var(--green);text-transform:uppercase}
+.check strong{display:block;margin-top:8px;font-size:16px}
+@media(max-width:900px){.security-inner{grid-template-columns:1fr}.checks{grid-template-columns:1fr}}
+.evidence-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
 }
-.surface .link{color:var(--link);font-size:14px;display:inline-flex;align-items:center;gap:4px;margin-top:auto;padding-top:24px;font-weight:500}
-.surface .link:hover{text-decoration:underline}
-@media(max-width:900px){.surfaces-grid{grid-template-columns:1fr}}
-
-/* moat */
-.moat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.moat-cell{background:var(--bg);padding:36px 32px}
-.moat-cell h3{font-size:22px;font-weight:600;letter-spacing:-0.02em;margin-bottom:10px;line-height:1.2}
-.moat-cell p{color:var(--muted);font-size:15.5px;line-height:1.55}
-.moat-cell .num{display:inline-block;font-family:ui-monospace,monospace;font-size:11px;color:var(--dim);letter-spacing:0.14em;margin-bottom:18px}
-@media(max-width:760px){.moat-grid{grid-template-columns:1fr}}
-
-/* receipt strip */
-.receipt-band{padding:120px 28px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);max-width:none}
-.receipt-inner{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:1.1fr 0.9fr;gap:64px;align-items:center}
-.receipt-inner h2{text-align:left;font-size:clamp(32px,4.5vw,56px)}
-.receipt-inner p{color:var(--muted);font-size:17px;line-height:1.55;margin-top:20px;max-width:520px}
-.receipt-inner .tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px}
-.receipt-inner .tags span{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);padding:5px 10px;background:var(--surface);border:1px solid var(--line);border-radius:5px;letter-spacing:0.08em}
-.receipt-card{
-  font-family:ui-monospace,monospace;font-size:12.5px;
-  background:var(--surface);border:1px solid var(--line);border-radius:12px;
-  padding:24px 26px;color:var(--fg-2);line-height:1.95;
+@media(max-width:900px){.evidence-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.evidence-grid{grid-template-columns:1fr}}
+.evidence-card{
+  min-height:172px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:linear-gradient(180deg,rgba(16,23,34,.82),rgba(12,18,28,.72));
+  padding:18px;
 }
-.receipt-card .line{display:grid;grid-template-columns:140px 1fr;gap:16px}
-.receipt-card .k{color:var(--dim);text-transform:uppercase;font-size:10.5px;letter-spacing:0.12em;align-self:center}
-.receipt-card .v{color:var(--fg);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.receipt-card .ok{color:var(--accent)}
-.receipt-card .div{height:1px;background:var(--line);margin:10px -8px;grid-column:1/-1}
-@media(max-width:900px){.receipt-inner{grid-template-columns:1fr;gap:40px}.receipt-inner h2{text-align:center}.receipt-inner p{margin-left:auto;margin-right:auto;text-align:center}.receipt-inner .tags{justify-content:center}}
-
-/* tiers */
-.tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.tier{background:var(--bg);padding:36px 28px;display:flex;flex-direction:column}
-.tier .name{font-family:ui-monospace,monospace;font-size:11px;color:var(--dim);letter-spacing:0.14em;margin-bottom:18px}
-.tier .price{font-size:42px;font-weight:600;letter-spacing:-0.028em;margin-bottom:6px;line-height:1}
-.tier .price small{font-size:15px;color:var(--dim);font-weight:400;margin-left:4px;letter-spacing:0}
-.tier .for{color:var(--muted);font-size:14px;margin-bottom:28px;line-height:1.4;min-height:36px}
-.tier ul{font-size:14px;color:var(--fg-2);line-height:1.95;flex:1}
-.tier ul li{padding-left:22px;position:relative}
-.tier ul li::before{content:"";position:absolute;left:0;top:11px;width:12px;height:1px;background:var(--dim)}
-.tier .pick{margin-top:24px;font-size:14px;color:var(--link);font-weight:500;display:inline-flex;align-items:center;gap:4px}
-.tier .pick:hover{text-decoration:underline}
-.tier.featured{background:linear-gradient(180deg,var(--surface) 0%,var(--bg) 100%);position:relative}
-.tier.featured::before{content:"RECOMMENDED";position:absolute;top:14px;right:14px;font-family:ui-monospace,monospace;font-size:9.5px;letter-spacing:0.18em;color:var(--accent);background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);padding:3px 7px;border-radius:4px}
-@media(max-width:980px){.tiers{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.tiers{grid-template-columns:1fr}}
-
-/* closing */
-.closing{padding:200px 28px;text-align:center;border-top:1px solid var(--line);max-width:1240px;margin:0 auto}
-.closing h2{font-size:clamp(56px,10vw,144px);font-weight:700;letter-spacing:-0.045em;line-height:0.96;margin-bottom:48px}
-.closing .cta-stack{margin-top:0}
-
-/* footer */
+.evidence-card .num{font-family:var(--mono);font-size:11px;color:var(--green);text-transform:uppercase}
+.evidence-card h3{margin-top:14px;font-size:19px;line-height:1.15;font-weight:680}
+.evidence-card p{margin-top:9px;color:var(--ink-3);font-size:14px;line-height:1.52}
+.pricing-preview{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+}
+@media(max-width:880px){.pricing-preview{grid-template-columns:1fr}}
+.plan{
+  min-height:330px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:rgba(12,18,28,.78);
+  padding:24px;
+  display:flex;
+  flex-direction:column;
+}
+.plan.primary{background:linear-gradient(160deg,rgba(89,216,255,.12),rgba(167,139,250,.12) 50%,rgba(12,18,28,.84));border-color:rgba(89,216,255,.32)}
+.plan .name{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase}
+.plan .price{margin-top:14px;font-size:36px;line-height:1;font-weight:700}.plan .price small{font-size:14px;color:var(--ink-3);font-weight:500}
+.plan p{margin-top:12px;color:var(--ink-3);font-size:15px;line-height:1.55}
+.plan ul{list-style:none;padding:0;margin:22px 0 0;display:grid;gap:10px;color:var(--ink-2);font-size:14px}
+.plan li{position:relative;padding-left:18px}.plan li::before{content:"";position:absolute;left:0;top:.72em;width:7px;height:7px;border-radius:50%;background:var(--green)}
+.plan .btn{margin-top:auto}
+.closing{
+  max-width:calc(var(--max) + var(--pad) * 2);
+  margin:0 auto;
+  padding:108px var(--pad) 92px;
+}
+.closing-box{
+  border:1px solid var(--line);
+  border-radius:8px;
+  min-height:330px;
+  padding:42px;
+  background:
+    linear-gradient(110deg,rgba(7,9,15,.86),rgba(7,9,15,.42)),
+    url('/brand-hero.png');
+  background-size:cover;
+  background-position:center;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.closing h2{max-width:720px;font-size:48px;line-height:1.06;font-weight:700}
+.closing p{max-width:620px;margin-top:16px;color:var(--ink-2);font-size:18px;line-height:1.55}
+.closing .hero-actions{margin-top:30px}
 footer{
   border-top:1px solid var(--line);
-  padding:64px 28px 80px;
-  font-size:13px;color:var(--dim);
+  background:#07090f;
 }
-footer .inner{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:48px}
-footer h4{color:var(--fg);font-size:13px;font-weight:600;margin-bottom:16px;letter-spacing:-0.011em}
-footer .col a{display:block;color:var(--muted);padding:6px 0;font-size:13px;transition:color .15s}
-footer .col a:hover{color:var(--fg)}
-footer .legal{font-size:12px;line-height:1.7;color:var(--dim);margin-top:24px}
-footer .brand-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-footer .brand-row .mark{font-size:18px;font-weight:600;letter-spacing:-0.02em;color:var(--fg)}
-@media(max-width:760px){footer .inner{grid-template-columns:1fr 1fr;gap:32px}}
-@media(max-width:480px){footer .inner{grid-template-columns:1fr}}
-
-/* tab interaction (CSS-only via :checked + sibling) */
-.tab-radio{position:absolute;opacity:0;pointer-events:none}
-#tab-cli:checked ~ .code-tabs label[for="tab-cli"],
-#tab-node:checked ~ .code-tabs label[for="tab-node"],
-#tab-py:checked ~ .code-tabs label[for="tab-py"]{color:var(--fg);border-bottom-color:var(--fg)}
-#tab-cli:checked ~ .code-body .b-cli,
-#tab-node:checked ~ .code-body .b-node,
-#tab-py:checked ~ .code-body .b-py{display:block}
-.code-tabs label{
-  font:inherit;font-size:12.5px;font-family:ui-monospace,monospace;font-weight:500;
-  color:var(--muted);padding:14px 16px;cursor:pointer;letter-spacing:0.04em;
-  border-bottom:2px solid transparent;margin-bottom:-1px;
-  transition:color .15s,border-color .15s;
+.footer-inner{
+  max-width:calc(var(--max) + var(--pad) * 2);
+  margin:0 auto;
+  padding:34px var(--pad);
+  display:grid;
+  grid-template-columns:1.45fr repeat(3,1fr);
+  gap:34px;
 }
-.code-tabs label:hover{color:var(--fg-2)}
-.code-block{display:none}
+footer p{max-width:320px;color:var(--muted);font-size:13px;line-height:1.6;margin-top:12px}
+footer h4{font-size:13px;color:var(--ink);margin-bottom:10px}
+footer a{display:block;color:var(--ink-3);font-size:13px;padding:5px 0}
+footer a:hover{color:var(--ink)}
+@media(max-width:760px){.footer-inner{grid-template-columns:1fr 1fr}.closing-box{padding:28px}.closing h2{font-size:34px}}
+@media(max-width:480px){.footer-inner{grid-template-columns:1fr}.hero-actions .btn{width:100%}.topbar-inner{padding:0 16px}.hero-inner,.section,.proof-rail,.closing,.security-inner,.footer-inner{padding-left:16px;padding-right:16px}}
+@media(max-width:480px){
+  .artifact-name{display:grid;grid-template-columns:1fr;gap:14px}
+  .artifact-name .k{text-align:left}
+  .inspector-row{grid-template-columns:1fr;gap:5px}
+  .receipt-preview{font-size:10.5px}
+}
+@media(prefers-reduced-motion:no-preference){
+  .site-bg::before{animation:aurora-drift 18s ease-in-out infinite alternate}
+  .signal-lines{animation:signal-slide 12s linear infinite}
+}
+@keyframes aurora-drift{from{transform:translate3d(-1.5%,0,0) scale(1)}to{transform:translate3d(1.5%,1%,0) scale(1.03)}}
+@keyframes signal-slide{from{background-position:0 0,0 0}to{background-position:180px 0,0 0}}
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<div class="site-bg" aria-hidden="true"></div>
+<div class="grid-bg" aria-hidden="true"></div>
 
-<nav class="top">
-  <a class="brand aurora" href="/">kolm</a>
-  <ul class="links">
-    <li><a href="/compile">Compile</a></li>
-    <li><a href="/run">Run</a></li>
-    <li><a href="/registry">Registry</a></li>
-    <li><a href="/docs">Docs</a></li>
-    <li><a href="/pricing">Pricing</a></li>
-  </ul>
-  <a class="signin" href="/signup">Sign in <span class="ar">&rsaquo;</span></a>
-</nav>
-
-<main>
-
-<section class="hero">
-  <div class="eyebrow"><span class="pulse"></span> compiler.alpha &middot; live on kolm.ai</div>
-  <h1>
-    <span class="row">Compile your data</span>
-    <span class="row aurora">into a model.</span>
-  </h1>
-  <p class="lede">
-    kolm takes the data you have and the task you describe. It returns a signed artifact you run anywhere, even offline. Yours.
-  </p>
-  <div class="cta-stack">
-    <a class="btn btn-primary" href="/signup">Compile your first model <span class="ar">&rsaquo;</span></a>
-    <a class="btn btn-secondary" href="/docs">Read the docs <span class="ar">&rsaquo;</span></a>
-  </div>
-
-  <div class="hero-panel">
-    <div class="code-pane">
-      <input class="tab-radio" type="radio" name="codetab" id="tab-cli" checked>
-      <input class="tab-radio" type="radio" name="codetab" id="tab-node">
-      <input class="tab-radio" type="radio" name="codetab" id="tab-py">
-      <div class="code-tabs" role="tablist">
-        <label for="tab-cli">CLI</label>
-        <label for="tab-node">Node</label>
-        <label for="tab-py">Python</label>
-      </div>
-      <div class="code-body">
-        <div class="code-block b-cli"><span class="tok-pr">$</span> <span class="tok-cmd">npm i -g @kolmogorov/kolm</span>
-<span class="tok-pr">$</span> <span class="tok-cmd">kolm compile</span> <span class="tok-str">"answer my emails in my voice"</span> \
-<span class="tok-out">    </span><span class="tok-cmd">--corpus ./mail/</span> <span class="tok-cmd">--base qwen2.5-3b</span>
-
-<span class="tok-c"># recall      </span><span class="tok-num">1,284</span><span class="tok-out"> chunks indexed</span>
-<span class="tok-c"># distill    </span><span class="tok-num">412</span><span class="tok-out"> verified labels</span>
-<span class="tok-c"># decompose  </span><span class="tok-num">96</span><span class="tok-out"> deterministic patterns</span>
-<span class="tok-c"># package    </span><span class="tok-num">2.34 GB</span>
-<span class="tok-ok"># ok         signed</span>
-
-<span class="tok-pr">$</span> <span class="tok-cmd">kolm run</span> <span class="tok-fn">email-voice.kolm</span><span class="cursor"></span></div>
-
-        <div class="code-block b-node"><span class="tok-key">import</span> { kolm } <span class="tok-key">from</span> <span class="tok-str">"@kolmogorov/kolm"</span>;
-
-<span class="tok-key">const</span> <span class="tok-fn">artifact</span> = <span class="tok-key">await</span> kolm.<span class="tok-fn">compile</span>({
-  task: <span class="tok-str">"answer my emails in my voice"</span>,
-  corpus: <span class="tok-str">"./mail"</span>,
-  base: <span class="tok-str">"qwen2.5-3b"</span>,
-});
-
-<span class="tok-out">// </span><span class="tok-fn">artifact</span><span class="tok-out"> -> { id, k_score, signature, run() }</span>
-
-<span class="tok-key">const</span> reply = <span class="tok-key">await</span> artifact.<span class="tok-fn">run</span>(incomingEmail);
-console.<span class="tok-fn">log</span>(reply);<span class="cursor"></span></div>
-
-        <div class="code-block b-py"><span class="tok-key">from</span> kolm <span class="tok-key">import</span> compile
-
-artifact = compile(
-    task=<span class="tok-str">"answer my emails in my voice"</span>,
-    corpus=<span class="tok-str">"./mail"</span>,
-    base=<span class="tok-str">"qwen2.5-3b"</span>,
-)
-
-<span class="tok-c"># artifact.k_score == 0.93</span>
-<span class="tok-c"># artifact.signature.verified == True</span>
-
-reply = artifact.run(incoming_email)
-<span class="tok-fn">print</span>(reply)<span class="cursor"></span></div>
-      </div>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/" aria-label="Kolm home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M6 4v16M18 5l-8 7 8 7M10 12h9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="brand-name">Kolm</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary navigation">
+      <a href="#platform">Platform</a>
+      <a href="#matrix">Targets</a>
+      <a href="/registry">Registry</a>
+      <a href="#evidence">Evidence</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/docs">Docs</a>
+    </nav>
+    <div class="top-actions">
+      <a class="nav-cta" href="/registry">Artifacts</a>
+      <a class="nav-primary" href="/compile">Open compiler</a>
     </div>
+  </div>
+</header>
 
-    <div class="artifact-pane">
-      <div class="artifact" role="img" aria-label="Signed kolm artifact card">
-        <div class="head">
-          <div class="brand">
-            <span class="aurora">kolm</span>
-            <span class="sub">Signed Artifact</span>
+<main id="main">
+  <section class="hero" aria-label="Kolm">
+    <div class="hero-media" aria-hidden="true">
+      <img src="/brand-hero.png" width="1536" height="864" alt="">
+      <div class="signal-lines"></div>
+    </div>
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <span class="eyebrow"><i aria-hidden="true"></i> Verified artifact layer for regulated AI</span>
+        <h1>Private AI artifacts for regulated apps.</h1>
+        <p class="hero-lede">
+          Kolm compiles AI tasks into signed <strong>.kolm artifacts</strong> that run on-device, personalize locally, and produce receipts your security team can verify.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="/compile">Compile an artifact <span aria-hidden="true">&rsaquo;</span></a>
+          <a class="btn" href="/registry">Browse verified registry</a>
+        </div>
+        <div class="hero-micro" aria-label="Product guarantees">
+          <span class="micro-chip"><strong>Cloud:</strong> task spec only</span>
+          <span class="micro-chip"><strong>Device:</strong> private user data</span>
+          <span class="micro-chip"><strong>Receipt:</strong> signed chain</span>
+          <span class="micro-chip"><strong>Matrix:</strong> Core ML, LiteRT, ONNX</span>
+        </div>
+      </div>
+      <aside class="hero-inspector" aria-label="Artifact release inspector">
+        <div class="inspector-head">
+          <span class="inspector-title">Release inspector</span>
+          <span class="inspector-status"><i aria-hidden="true"></i> gate passed</span>
+        </div>
+        <div class="inspector-body">
+          <div class="artifact-name">
+            <div>
+              <h2>post-visit-guide.kolm</h2>
+              <p>adapter | healthcare workflow | v0.8.14</p>
+            </div>
+            <div class="k">0.94<span>K-score</span></div>
           </div>
-          <div class="seal" aria-hidden="true">k</div>
+          <div class="inspector-list">
+            <div class="inspector-row">
+              <span>Boundary</span>
+              <span>Cloud receives task spec, evals, target policy. Runtime PHI stays on the device.</span>
+            </div>
+            <div class="inspector-row">
+              <span>Targets</span>
+              <span class="target-pills"><b>iOS</b><b>Android</b><b>Web</b><b>Server</b></span>
+            </div>
+            <div class="inspector-row">
+              <span>Policy</span>
+              <span>Private registry, signed manifest, release gate, rollback channel.</span>
+            </div>
+          </div>
+          <pre class="receipt-preview">receipt.verify(<strong>"health-guide.kolm"</strong>)
+manifest: sha256:72f9...c41a
+signature: ed25519:valid
+runtime_data_uploaded: false</pre>
         </div>
-        <div class="kscore">
-          <div class="num">0.93</div>
-          <div class="lbl">K-score</div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="proof-rail" aria-label="Kolm proof points">
+    <div class="proof-grid">
+      <div class="proof">
+        <div class="k">Privacy boundary</div>
+        <div class="v">data stays local</div>
+        <div class="d">Compile in the cloud from specs and evals. Personalize from PHI, PII, files, and memories on device.</div>
+      </div>
+      <div class="proof">
+        <div class="k">Artifact trust</div>
+        <div class="v">signed receipts</div>
+        <div class="d">Every build pins versions, hashes inputs, records K-score evidence, and ships with verification metadata.</div>
+      </div>
+      <div class="proof">
+        <div class="k">Runtime stance</div>
+        <div class="v">above runtimes</div>
+        <div class="d">Kolm does not fight Core ML, LiteRT, ONNX, or ExecuTorch. It compiles and governs above them.</div>
+      </div>
+      <div class="proof">
+        <div class="k">Enterprise wedge</div>
+        <div class="v">audit-ready AI</div>
+        <div class="d">Private registries, policy gates, and artifact evidence for teams blocked by cloud-AI data rules.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="platform">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Compiler to device</div>
+        <h2>One task becomes a governed artifact.</h2>
+      </div>
+      <p>Free runtimes move tensors. Kolm owns the layer before and after runtime execution: task spec, evals, artifact packaging, registry distribution, local personalization, and verification receipts.</p>
+    </div>
+    <div class="pipeline">
+      <div class="terminal" aria-label="Live compile transcript">
+        <div class="terminal-head">
+          <div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div>
+          <span>kolm compile - health triage</span>
         </div>
-        <hr>
-        <dl>
-          <dt>Artifact</dt><dd>email-voice.kolm</dd>
-          <dt>Base</dt><dd>qwen2.5-3b-int4</dd>
-          <dt>Size</dt><dd>2.34 GB</dd>
-          <dt>Labels</dt><dd>412 <span class="tag">verified</span></dd>
-          <dt>Recipes</dt><dd>96 deterministic</dd>
-          <dt>Signed</dt><dd>2026-05-06 18:42 UTC</dd>
-          <dt>ed25519</dt><dd>a3f1&hellip;c4d7</dd>
-        </dl>
-        <div class="verified">
-          <span class="check">&#10003;</span> verified
+        <div class="terminal-body" id="terminal">
+          <span class="line on"><span class="prompt">$</span> <span class="cmd">kolm</span> <span class="arg">compile</span> "post-visit care guide"</span>
+          <span class="line" data-line><span class="dim">policy</span>   HIPAA workflow template loaded</span>
+          <span class="line" data-line><span class="dim">eval</span>     842 clinical edge cases, 0 PHI uploaded</span>
+          <span class="line" data-line><span class="dim">export</span>   Core ML, LiteRT, ONNX targets selected</span>
+          <span class="line" data-line><span class="dim">score</span>    K=0.94, drift band accepted</span>
+          <span class="line" data-line><span class="dim">sign</span>     ed25519 manifest plus receipt chain</span>
+          <span class="line ok" data-line>ok       health-guide.kolm, 42 MB, production gate passed</span>
+          <div class="artifact-card" id="artifact-card">
+            <div class="seal" aria-hidden="true">k</div>
+            <div>
+              <h3>health-guide.kolm</h3>
+              <p>adapter | 42 MB | iOS | Android | Web</p>
+            </div>
+            <div class="score">
+              <strong>0.94</strong>
+              <span>K-score</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flow" aria-label="Kolm platform surfaces">
+        <div class="flow-step">
+          <div class="num">01 / SPEC</div>
+          <h3>Author behavior, not infrastructure.</h3>
+          <p>Teams define task, constraints, target devices, eval sets, and risk policy without managing LoRA plumbing or runtime formats.</p>
+        </div>
+        <div class="flow-step">
+          <div class="num">02 / REGISTRY</div>
+          <h3>Ship from a verified artifact catalog.</h3>
+          <p>Private and public artifacts carry provenance, target compatibility, K-score evidence, version history, and install metadata.</p>
+        </div>
+        <div class="flow-step">
+          <div class="num">03 / DEVICE</div>
+          <h3>Personalize where the data lives.</h3>
+          <p>Local adapters, retrieval packs, and privacy-preserving state let the user's device improve output without sending raw data back.</p>
+        </div>
+        <div class="flow-step">
+          <div class="num">04 / RECEIPTS</div>
+          <h3>Give legal and security teams evidence.</h3>
+          <p>Every artifact update and governed run can produce a signed receipt that proves what was used, when, and under which policy.</p>
         </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="bigtext">
-  <h2>
-    An AI you own.<br>
-    <span class="accent">In a single file.</span>
-  </h2>
-</section>
+  <section class="section" id="matrix">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Target matrix</div>
+        <h2>Runtimes are targets. Kolm is the control plane.</h2>
+      </div>
+      <p>The competitive answer needs to be visible: Kolm should not ask teams to abandon native runtimes. It should package, score, sign, and govern artifacts across them.</p>
+    </div>
+    <div class="matrix-shell">
+      <article class="matrix-card">
+        <div class="card-head">
+          <h3>Device and runtime targets</h3>
+          <span>truth matrix</span>
+        </div>
+        <table class="target-table">
+          <thead>
+            <tr>
+              <th>Target</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Why it matters</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Core ML</td>
+              <td>iOS artifact export target</td>
+              <td>Adapter path</td>
+              <td>Meets Apple teams where their mobile ML stack already lives.</td>
+            </tr>
+            <tr>
+              <td>LiteRT</td>
+              <td>Android artifact export target</td>
+              <td>Adapter path</td>
+              <td>Handles Android fragmentation without pretending Kolm owns the runtime.</td>
+            </tr>
+            <tr>
+              <td>ONNX Runtime</td>
+              <td>Portable desktop and server fallback</td>
+              <td>Adapter path</td>
+              <td>Gives enterprises a standards-friendly path for internal deployment.</td>
+            </tr>
+            <tr>
+              <td>WebGPU/WASM</td>
+              <td>Browser artifact target</td>
+              <td>Lab path</td>
+              <td>Supports demos and web apps while being honest about browser limits.</td>
+            </tr>
+            <tr>
+              <td>ExecuTorch</td>
+              <td>PyTorch-native mobile target</td>
+              <td>Roadmap</td>
+              <td>Creates a credible bridge for research-heavy teams.</td>
+            </tr>
+          </tbody>
+        </table>
+      </article>
+      <article class="matrix-card">
+        <div class="card-head">
+          <h3>What Kolm owns</h3>
+          <span>moat stack</span>
+        </div>
+        <div class="moat-list">
+          <div class="moat-row">
+            <span>Format</span>
+            <div><strong>.kolm artifact package</strong><p>Manifest, eval evidence, target metadata, personalization policy, and receipt hooks.</p></div>
+          </div>
+          <div class="moat-row">
+            <span>Quality</span>
+            <div><strong>K-score release gate</strong><p>A repeatable benchmark surface that can become the trust signal for installable AI behavior.</p></div>
+          </div>
+          <div class="moat-row">
+            <span>Registry</span>
+            <div><strong>Public and private artifact distribution</strong><p>Installable artifacts, approval workflows, version channels, rollback, and marketplace path.</p></div>
+          </div>
+          <div class="moat-row">
+            <span>Receipts</span>
+            <div><strong>Cryptographic audit chain</strong><p>Signed proof of artifact version, policy gate, target build, and update lineage.</p></div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
 
-<section class="section">
-  <h2>Four engines. One command.</h2>
-  <p class="sub">A compile is the choreography of recall, distill, decompose, and run. You see one line. We do the rest.</p>
-  <div class="engines">
-    <div class="engine">
-      <div class="num"><span>01</span> RECALL</div>
-      <h3>Index your world.</h3>
-      <p>Text, image, audio, PDF, video. Embedded once. Queried by every compile.</p>
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Registry-first moat</div>
+        <h2>The fastest path is not a blank compiler.</h2>
+      </div>
+      <p>Regulated teams should be able to install a verified artifact before they train anything. The registry is the product surface that can compound into a marketplace and standard.</p>
     </div>
-    <div class="engine">
-      <div class="num"><span>02</span> DISTILL</div>
-      <h3>Borrow the frontier.</h3>
-      <p>A frontier model labels the task. Every output verified before it counts.</p>
+    <div class="registry-grid">
+      <article class="artifact-tile featured">
+        <div>
+          <div class="tile-top">
+            <span class="tile-type">Healthcare adapter</span>
+            <span class="tile-k">K=0.94</span>
+          </div>
+          <h3>post-visit-guide.kolm</h3>
+          <p>Turns discharge instructions, appointment notes, and local patient preferences into plain-language follow-up guidance without uploading PHI.</p>
+          <div class="tags">
+            <span class="tag">BAA path</span>
+            <span class="tag">on-device PHI</span>
+            <span class="tag">iOS</span>
+            <span class="tag">Android</span>
+          </div>
+        </div>
+        <pre class="install">npm i @kolmogorov/kolm
+kolm install post-visit-guide</pre>
+      </article>
+      <article class="artifact-tile">
+        <div>
+          <div class="tile-top">
+            <span class="tile-type">Fintech recipe</span>
+            <span class="tile-k">K=0.91</span>
+          </div>
+          <h3>finance-clean.kolm</h3>
+          <p>Classifies transactions and removes sensitive descriptions locally before analytics or support workflows touch them.</p>
+          <div class="tags">
+            <span class="tag">PII shield</span>
+            <span class="tag">receipt chain</span>
+          </div>
+        </div>
+        <pre class="install">kolm install finance-clean</pre>
+      </article>
+      <article class="artifact-tile">
+        <div>
+          <div class="tile-top">
+            <span class="tile-type">Support specialist</span>
+            <span class="tile-k">K=0.93</span>
+          </div>
+          <h3>support-writer.kolm</h3>
+          <p>Drafts responses from local account context and product docs with device-side retrieval and an auditable artifact manifest.</p>
+          <div class="tags">
+            <span class="tag">offline</span>
+            <span class="tag">private registry</span>
+          </div>
+        </div>
+        <pre class="install">kolm install support-writer</pre>
+      </article>
     </div>
-    <div class="engine">
-      <div class="num"><span>03</span> DECOMPOSE</div>
-      <h3>Cache the patterns.</h3>
-      <p>Deterministic outputs become a draft pack. Speculative decoding for free.</p>
-    </div>
-    <div class="engine">
-      <div class="num"><span>04</span> RUN</div>
-      <h3>Ship the artifact.</h3>
-      <p>Model, LoRA, draft pack, index. Composed at every token. Offline.</p>
-    </div>
-  </div>
-</section>
+  </section>
 
-<section class="section">
-  <h2>Use it three ways.</h2>
-  <p class="sub">Same compiler. Same artifact. Three doors in.</p>
-  <div class="surfaces-grid">
-    <div class="surface">
-      <div class="tag">CLI</div>
-      <h3>Terminal first.</h3>
-      <p>Pipe a folder. Pipe a database. Get back a .kolm. For developers who live in the shell.</p>
-<div class="terminal-mini">$ npm i -g @kolmogorov/kolm
-$ kolm compile "spot bugs"
-&gt; bugs.kolm  ready</div>
-      <a class="link" href="/docs">Install the CLI <span>&rsaquo;</span></a>
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Positioning</div>
+        <h2>Kolm wins by owning trust, not tensors.</h2>
+      </div>
+      <p>The runtime layer is being commoditized by hyperscalers and open source. Kolm becomes valuable when it is the artifact control plane developers, compliance teams, and device runtimes all trust.</p>
     </div>
-    <div class="surface">
-      <div class="tag">CLOUD</div>
-      <h3>Browser. Drag. Click.</h3>
-      <p>Drop examples. Drop a corpus. Click compile. Download the artifact, or call it by HTTPS.</p>
-<div class="terminal-mini">https://kolm.ai/compile
+    <div class="position">
+      <article class="position-card">
+        <div class="label">Against Core ML and LiteRT</div>
+        <h3>Use them as targets.</h3>
+        <p><strong>Apple and Google are runtime infrastructure.</strong> Kolm should export into them while owning registry, policy, K-score, receipts, and cross-platform release management.</p>
+      </article>
+      <article class="position-card">
+        <div class="label">Against generic AI gateways</div>
+        <h3>Govern artifacts, not prompts.</h3>
+        <p>Gateways route cloud calls. Kolm governs portable behavior that can run offline, personalize locally, and prove what artifact was active.</p>
+      </article>
+      <article class="position-card">
+        <div class="label">Against open-source runtimes</div>
+        <h3>Make trust the network effect.</h3>
+        <p>The more artifacts, evals, receipts, and private-registry policies Kolm hosts, the stronger the K-score standard becomes.</p>
+      </article>
+    </div>
+  </section>
 
-kolm.compile(task)
-    .run(input)</div>
-      <a class="link" href="/compile">Open the cloud <span>&rsaquo;</span></a>
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Why Kolm exists</div>
+        <h2>Every competitor leaves a governance gap.</h2>
+      </div>
+      <p>The site needs to answer the VC and developer objection directly. Kolm is not "better Core ML." Kolm is the missing artifact lifecycle around native runtimes.</p>
     </div>
-    <div class="surface">
-      <div class="tag">APP</div>
-      <h3>Pocket size.</h3>
-      <p>Three Specialists out of the box. Compile a new one in a tap. Frontier, on your phone.</p>
-<div class="terminal-mini">iOS · Android · PWA
+    <div class="comparison" role="region" aria-label="Kolm competitive comparison" tabindex="0">
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>What it solves</th>
+            <th>What it misses</th>
+            <th>Kolm wedge</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Core ML / LiteRT</td>
+            <td>Fast native inference on device.</td>
+            <td>Cross-platform artifact policy, registry, eval gate, receipts, and enterprise release workflow.</td>
+            <td>Compile and govern above native runtimes.</td>
+          </tr>
+          <tr>
+            <td>ONNX / ExecuTorch</td>
+            <td>Portable model execution and research-friendly deployment.</td>
+            <td>Buyer-ready artifact catalog, compliance evidence, and local personalization contract.</td>
+            <td>Turn model outputs into installable, auditable product artifacts.</td>
+          </tr>
+          <tr>
+            <td>AI gateways</td>
+            <td>Cloud routing, spend control, and prompt logs.</td>
+            <td>Offline execution, device data boundary, and signed on-device behavior.</td>
+            <td>Govern artifacts that run without a cloud roundtrip.</td>
+          </tr>
+          <tr>
+            <td>Model hubs</td>
+            <td>Discovery for weights, datasets, and demos.</td>
+            <td>Production gates, target compatibility, receipts, and regulated deployment packaging.</td>
+            <td>Registry for verified AI behavior, not just downloadable weights.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-tap Compile.
-tap Run.</div>
-      <a class="link" href="/mobile">See the app <span>&rsaquo;</span></a>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <h2>Frontier inside. Yours outside.</h2>
-  <p class="sub">A new compute compact. Borrow the frontier to teach. Own the result.</p>
-  <div class="moat-grid">
-    <div class="moat-cell">
-      <div class="num">FRONTIER &rarr; STUDENT</div>
-      <h3>Frontier teaches. You ship.</h3>
-      <p>Distill against any frontier model with your own key. The student fits in your pocket. The teacher stays at home.</p>
-    </div>
-    <div class="moat-cell">
-      <div class="num">UNDER 3 GB</div>
-      <h3>Boots on a 2021 phone.</h3>
-      <p>Quantized base, sparse LoRA, deterministic draft pack. Loads in seconds on any modern device.</p>
-    </div>
-    <div class="moat-cell">
-      <div class="num">SIGNED END TO END</div>
-      <h3>Receipts, not promises.</h3>
-      <p>Every artifact carries an HMAC chain anchored to a public registry. Every output verifiable.</p>
-    </div>
-    <div class="moat-cell">
-      <div class="num">OPEN SPEC, OPEN REGISTRY</div>
-      <h3>The format is everyone's.</h3>
-      <p>Recipe, Recall, and Receipts ship as RS-1 specs under MIT. The compiler is ours. The format is yours.</p>
-    </div>
-  </div>
-</section>
-
-<section class="receipt-band">
-  <div class="receipt-inner" style="padding:0 28px">
-    <div>
-      <h2>Every byte, accounted for.</h2>
-      <p>Every compile and every run produces a signed receipt. Inputs hashed, model versions pinned, decisions recorded. Verifiable by anyone, anywhere.</p>
-      <div class="tags">
-        <span>RS-1-receipts</span>
-        <span>HMAC chain</span>
-        <span>ed25519</span>
-        <span>MIT</span>
+  <section class="security-band" id="security">
+    <div class="security-inner">
+      <div>
+        <div class="section-kicker">Compliance wedge</div>
+        <h2>Built for teams whose data policy says no cloud AI.</h2>
+        <p>Kolm should lead with evidence: architecture docs, BAA and DPA paths, private artifact registries, audit logs, eval reports, and device-bound personalization policies.</p>
+      </div>
+      <div class="checks" aria-label="Security and compliance program">
+        <div class="check"><span>Privacy</span><strong>No raw runtime data uploaded</strong></div>
+        <div class="check"><span>Provenance</span><strong>Signed manifests and receipts</strong></div>
+        <div class="check"><span>Governance</span><strong>Policy gates before release</strong></div>
+        <div class="check"><span>Enterprise</span><strong>Private registry and BAA path</strong></div>
       </div>
     </div>
-    <div class="receipt-card" aria-hidden="true">
-      <div class="line"><span class="k">artifact</span><span class="v">email-voice.kolm</span></div>
-      <div class="line"><span class="k">k_score</span><span class="v">0.93</span></div>
-      <div class="line"><span class="k">size</span><span class="v">2.34 GB</span></div>
-      <div class="line"><span class="k">base</span><span class="v">qwen2.5-3b-int4</span></div>
-      <div class="div"></div>
-      <div class="line"><span class="k">labels</span><span class="v">412 verified</span></div>
-      <div class="line"><span class="k">drafts</span><span class="v">96 deterministic</span></div>
-      <div class="line"><span class="k">corpus</span><span class="v">1,284 chunks</span></div>
-      <div class="div"></div>
-      <div class="line"><span class="k">signed_at</span><span class="v">2026-05-06T18:42:11Z</span></div>
-      <div class="line"><span class="k">sig</span><span class="v">a3f1&hellip;c4d7</span></div>
-      <div class="line"><span class="k">status</span><span class="v ok">&#10003; verified</span></div>
-    </div>
-  </div>
-</section>
+  </section>
 
-<section class="section">
-  <h2>Pay for compute. Run is free.</h2>
-  <p class="sub">Frontier API costs are passed through with your own key. Storage and compile are ours.</p>
-  <div class="tiers">
-    <div class="tier">
-      <div class="name">FREE</div>
-      <div class="price">$0</div>
-      <div class="for">For your first compile.</div>
-      <ul>
-        <li>1 Specialist a month</li>
-        <li>10k corpus rows</li>
-        <li>4B-class open base</li>
-        <li>100k managed vectors</li>
-      </ul>
-      <a class="pick" href="/signup">Start free <span>&rsaquo;</span></a>
+  <section class="section" id="evidence">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Enterprise evidence pack</div>
+        <h2>Turn privacy claims into reviewable artifacts.</h2>
+      </div>
+      <p>Regulated buyers do not buy slogans. They need documents, logs, matrices, and signatures that legal, security, mobile, and ML teams can inspect before a pilot.</p>
     </div>
-    <div class="tier featured">
-      <div class="name">PRO</div>
-      <div class="price">$49<small>/mo</small></div>
-      <div class="for">For shippers.</div>
-      <ul>
-        <li>Unlimited Specialists</li>
-        <li>1M rows each</li>
-        <li>10M managed vectors</li>
-        <li>All open bases incl. Hermes</li>
-      </ul>
-      <a class="pick" href="/signup">Get Pro <span>&rsaquo;</span></a>
+    <div class="evidence-grid">
+      <article class="evidence-card">
+        <div class="num">01 / boundary</div>
+        <h3>Architecture memo</h3>
+        <p>Exactly what the cloud compiler receives, what the device reads, and where personalization state is stored.</p>
+      </article>
+      <article class="evidence-card">
+        <div class="num">02 / evals</div>
+        <h3>K-score report</h3>
+        <p>Dataset summary, pass/fail thresholds, drift bands, target devices, and production gate rationale.</p>
+      </article>
+      <article class="evidence-card">
+        <div class="num">03 / targets</div>
+        <h3>Compatibility matrix</h3>
+        <p>iOS, Android, web, and server status with bundle size, latency class, memory class, and known limits.</p>
+      </article>
+      <article class="evidence-card">
+        <div class="num">04 / compliance</div>
+        <h3>BAA and DPA path</h3>
+        <p>Buyer-ready legal packet for HIPAA and GDPR workflows without claiming universal compliance.</p>
+      </article>
+      <article class="evidence-card">
+        <div class="num">05 / provenance</div>
+        <h3>Signed manifest</h3>
+        <p>Artifact hash, compiler version, target adapters, dependency pins, and Ed25519 signature metadata.</p>
+      </article>
+      <article class="evidence-card">
+        <div class="num">06 / operations</div>
+        <h3>Update ledger</h3>
+        <p>Release channels, rollback, receipt storage, incident notes, and audit trail export for enterprise review.</p>
+      </article>
     </div>
-    <div class="tier">
-      <div class="name">MOBILE</div>
-      <div class="price">$9<small>/mo</small></div>
-      <div class="for">Frontier on your phone.</div>
-      <ul>
-        <li>1 personal Specialist</li>
-        <li>100k corpus rows</li>
-        <li>1M managed vectors</li>
-        <li>Unlimited on-device</li>
-      </ul>
-      <a class="pick" href="/signup">Get Mobile <span>&rsaquo;</span></a>
-    </div>
-    <div class="tier">
-      <div class="name">ENTERPRISE</div>
-      <div class="price">Custom</div>
-      <div class="for">Regulated. On-prem. SLA.</div>
-      <ul>
-        <li>Private base models</li>
-        <li>On-prem trainer bridge</li>
-        <li>Dedicated Trieve cluster</li>
-        <li>On-chain receipts</li>
-      </ul>
-      <a class="pick" href="mailto:hi@kolm.ai">Talk to us <span>&rsaquo;</span></a>
-    </div>
-  </div>
-</section>
+  </section>
 
-<section class="closing">
-  <h2><span class="aurora">Compile your first model.</span></h2>
-  <div class="cta-stack">
-    <a class="btn btn-primary" href="/signup">Start free <span class="ar">&rsaquo;</span></a>
-    <a class="btn btn-secondary" href="/docs">Read the docs <span class="ar">&rsaquo;</span></a>
-  </div>
-</section>
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Business model</div>
+        <h2>Free SDK. Paid trust layer.</h2>
+      </div>
+      <p>Compile-only pricing is too thin. The durable company charges for private registries, policy gates, managed artifact updates, evidence packs, and marketplace distribution.</p>
+    </div>
+    <div class="pricing-preview">
+      <article class="plan">
+        <div class="name">Developer</div>
+        <div class="price">$0</div>
+        <p>Open SDK, public spec, public registry installs, and sample artifacts for adoption.</p>
+        <ul>
+          <li>MIT runtime SDK</li>
+          <li>Public artifacts</li>
+          <li>Local verification</li>
+        </ul>
+        <a class="btn" href="/docs">Read docs</a>
+      </article>
+      <article class="plan primary">
+        <div class="name">Team registry</div>
+        <div class="price">$499<small>/mo+</small></div>
+        <p>Private artifacts, release channels, K-score gates, and managed receipt storage for product teams.</p>
+        <ul>
+          <li>Private registry</li>
+          <li>Artifact release gates</li>
+          <li>Device target matrix</li>
+        </ul>
+        <a class="btn btn-primary" href="/pricing">See pricing</a>
+      </article>
+      <article class="plan">
+        <div class="name">Enterprise</div>
+        <div class="price">Custom</div>
+        <p>Compliance evidence, BAA/DPA path, private deployment, dedicated support, and audit workflows.</p>
+        <ul>
+          <li>Security review packet</li>
+          <li>BAA and DPA path</li>
+          <li>Private registry mirror</li>
+        </ul>
+        <a class="btn" href="mailto:hi@kolm.ai">Talk to us</a>
+      </article>
+    </div>
+  </section>
 
+  <section class="closing">
+    <div class="closing-box">
+      <h2>Ship AI features legal can approve and users can trust.</h2>
+      <p>Start with a verified registry artifact, compile your own specialist, or bring Kolm into a private regulated workflow.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="/compile">Open compiler <span aria-hidden="true">&rsaquo;</span></a>
+        <a class="btn" href="/security">Review security</a>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>
-  <div class="inner">
+  <div class="footer-inner">
     <div>
-      <div class="brand-row"><span class="mark aurora">kolm</span></div>
-      <p style="color:var(--muted);font-size:13.5px;line-height:1.55;max-width:280px">The AI compiler. A signed model built from your data. Yours.</p>
-      <p class="legal">&copy; 2026 Kolmogorov. Built in the open.</p>
+      <a class="brand" href="/" aria-label="Kolm home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M6 4v16M18 5l-8 7 8 7M10 12h9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="brand-name">Kolm</span>
+      </a>
+      <p>The verified AI artifact layer. Compile in the cloud. Personalize on device. Verify every artifact.</p>
+      <p>&copy; 2026 Kolmogorov.</p>
     </div>
-    <div class="col">
+    <div>
       <h4>Product</h4>
-      <a href="/compile">Compile</a>
-      <a href="/run">Run</a>
+      <a href="/compile">Compiler</a>
       <a href="/registry">Registry</a>
-      <a href="/mobile">Mobile</a>
+      <a href="/run">Runtime</a>
+      <a href="/pricing">Pricing</a>
     </div>
-    <div class="col">
+    <div>
       <h4>Develop</h4>
       <a href="/docs">Docs</a>
       <a href="/playground">Playground</a>
-      <a href="/device">On-device</a>
+      <a href="/mobile">Mobile</a>
       <a href="/status">Status</a>
     </div>
-    <div class="col">
-      <h4>Open</h4>
-      <a href="/docs#rs-1">RS-1 spec</a>
-      <a href="/docs#recall">Recall spec</a>
+    <div>
+      <h4>Trust</h4>
+      <a href="/security">Security</a>
+      <a href="/docs#manifest">Manifest</a>
       <a href="/docs#receipts">Receipts</a>
-      <a href="/pricing">Pricing</a>
+      <a href="/docs#rs-1">RS-1 spec</a>
     </div>
   </div>
 </footer>
 
+<script>
+(function(){
+  var lines = Array.prototype.slice.call(document.querySelectorAll('[data-line]'));
+  var card = document.getElementById('artifact-card');
+  if (!lines.length) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    lines.forEach(function(line){ line.classList.add('on'); });
+    if (card) card.classList.add('on');
+    return;
+  }
+  lines.forEach(function(line, idx){
+    window.setTimeout(function(){ line.classList.add('on'); }, 420 + idx * 520);
+  });
+  window.setTimeout(function(){ if (card) card.classList.add('on'); }, 420 + lines.length * 520);
+})();
+</script>
 </body>
 </html>

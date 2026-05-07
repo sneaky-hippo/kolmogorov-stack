@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -14,28 +14,29 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
+<div class="bg-stage" aria-hidden="true"></div>
 <div class="app">
   <aside class="sidebar">
-    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
+    <h1><span class="glyph"></span> kolm<span class="sub">by Kolmogorov</span></h1>
     <div class="tag">on-device · live</div>
     <nav>
       <a href="/">Home</a>
-      <a href="/device" class="active">On-device</a>
-      <a href="/how-it-works">How it works</a>
-      <a href="/verified">Verified Inference</a>
-      <a href="/economics">What it makes possible</a>
-      <a href="/docs">Install &amp; SDK</a>
-      <a href="/playground">Playground</a>
+      <a href="/compile">Compile</a>
+      <a href="/run">Run</a>
       <a href="/registry">Registry</a>
-      <a href="/spec">RS-1 spec</a>
-      <a href="/receipts">Receipts</a>
+      <a href="/recall">Recall</a>
+      <a href="/cloud">Cloud</a>
+      <a href="/manual">Manual</a>
+      <a href="/device" class="active">On-device</a>
+      <a href="/playground">Playground</a>
+      <a href="/docs">Docs</a>
       <a href="/pricing">Pricing</a>
       <a href="/account">Account</a>
       <a href="/signup">Get a key</a>
     </nav>
     <div class="footnote">
-      <strong>Memory · Skills · Specialists.</strong><br/>
-      Recipe is the Skills layer of <a href="https://remlabs.ai" style="color:var(--ink-mute);">REM Labs</a>.
+      <strong>Compile · Run · Recall.</strong><br/>
+      Compile frontier behavior once, run it locally forever.
     </div>
   </aside>
 
@@ -57,8 +58,8 @@
     <!-- STATUS -->
     <div class="dev-status" id="status">
       <span><span class="lbl">Registry</span><span class="v" id="s-recipes">loading…</span></span>
-      <span><span class="lbl">Bundle size</span><span class="v" id="s-size">—</span></span>
-      <span><span class="lbl">Hash</span><span class="v mono" id="s-hash" style="font-size:11px;">—</span></span>
+      <span><span class="lbl">Bundle size</span><span class="v" id="s-size">&hellip;</span></span>
+      <span><span class="lbl">Hash</span><span class="v mono" id="s-hash" style="font-size:11px;">&hellip;</span></span>
       <span><span class="lbl">Offline-ready</span><span class="v" id="s-offline">checking…</span></span>
       <span><span class="lbl">Network calls</span><span class="v ok" id="s-network">0</span></span>
       <span><span class="lbl">Local runs</span><span class="v ok" id="s-runs">0</span></span>
@@ -164,9 +165,9 @@
       <h2>The biggest models on earth, on the smallest devices that can run a function.</h2>
       <p>Cost reduction is the proof. The product is that the registry runs anywhere a function runs.</p>
       <div class="actions" style="margin-top: 14px;">
-        <a class="btn accent lg" href="/economics">The math</a>
-        <a class="btn ghost lg" href="/how-it-works">How the wrap works</a>
-        <a class="btn ghost lg" href="/verified">Verified Inference</a>
+        <a class="btn accent lg" href="/compile">Compile a Specialist</a>
+        <a class="btn ghost lg" href="/manual">How the wrap works</a>
+        <a class="btn ghost lg" href="/cloud">Cloud &amp; tiers</a>
       </div>
     </section>
 
@@ -193,6 +194,79 @@ const COST_PER_CLOUD_CALL_USD = 0.001;
 let registry = null;
 let totalRuns = 0;
 let lastRunSig = '';
+
+// ---- HMAC trust gate ----
+// We refuse to execute any recipe whose source hash we can't verify against
+// the recipe's declared signature. The trust root is hardcoded here for
+// Sprint 1; TODO: move to /v1/registry/trust-root once that endpoint ships.
+// Two layers of verification are accepted:
+//   1. HMAC-SHA256(canonical(recipe-without-signature), TRUST_ROOT) === recipe.signature.hmac
+//   2. fallback: SHA-256(source) === recipe.source_hash (anti-tamper baseline)
+// If neither passes, the recipe is marked unsigned and `recipe.run` is gated.
+const TRUST_ROOT_PUBLIC = 'kolm_public_verifier_v1_2026-05-06';
+const verifiedRecipes = new Set();
+const refusedRecipes = new Map(); // name -> reason
+
+async function _sha256Hex(s) {
+  const buf = new TextEncoder().encode(s);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function _hmacSha256Hex(secret, msg) {
+  const k = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function _canonicalJson(v) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(_canonicalJson).join(',') + ']';
+  const keys = Object.keys(v).sort();
+  return '{' + keys.map(k => JSON.stringify(k) + ':' + _canonicalJson(v[k])).join(',') + '}';
+}
+
+async function verifyRecipeMeta(meta) {
+  if (!meta || !meta.source) return { ok: false, reason: 'no source' };
+  // Layer 1: source_hash anti-tamper. The export ships sha256-16 (first 16 hex
+  // chars). Both forms (16 or 64 hex) are accepted.
+  if (meta.source_hash) {
+    try {
+      const computed = await _sha256Hex(meta.source);
+      const declared = String(meta.source_hash);
+      const matches = declared.length === 16
+        ? computed.startsWith(declared)
+        : computed === declared;
+      if (!matches) return { ok: false, reason: 'source_hash mismatch' };
+    } catch (e) {
+      return { ok: false, reason: 'hash compute failed' };
+    }
+  } else {
+    return { ok: false, reason: 'no source_hash' };
+  }
+  // Layer 2: optional HMAC envelope. If meta.signature.hmac is present, recompute.
+  if (meta.signature && meta.signature.hmac) {
+    try {
+      const { signature, ...payload } = meta;
+      const expected = await _hmacSha256Hex(TRUST_ROOT_PUBLIC, _canonicalJson(payload));
+      if (expected !== signature.hmac) return { ok: false, reason: 'hmac mismatch' };
+    } catch (e) {
+      return { ok: false, reason: 'hmac verify failed' };
+    }
+  }
+  return { ok: true };
+}
+
+async function verifyAllRecipes(list) {
+  for (const meta of list) {
+    const v = await verifyRecipeMeta(meta);
+    if (v.ok) verifiedRecipes.add(meta.name);
+    else refusedRecipes.set(meta.name, v.reason);
+  }
+}
 
 function fmt(out) {
   if (out === undefined) return 'undefined';
@@ -224,7 +298,7 @@ function renderEmpty(meta) {
         <div class="desc">${r.description || ''}</div>
         <div class="out" style="margin-top:6px;color:var(--ink-faint);">(type to run)</div>
       </div>
-      <div class="lat">—</div>
+      <div class="lat">&hellip;</div>
     `;
     resultsEl.appendChild(el);
   }
@@ -240,7 +314,7 @@ async function runAll(text) {
       const out = el.querySelector('.out');
       const lat = el.querySelector('.lat');
       if (out) { out.textContent = '(type to run)'; out.style.color = 'var(--ink-faint)'; }
-      if (lat) lat.textContent = '—';
+      if (lat) lat.textContent = '…';
     }
     return;
   }
@@ -249,8 +323,12 @@ async function runAll(text) {
     const name = el.dataset.name;
     if (!name) continue;
     let res;
-    try { res = await recipe.run(name, text); }
-    catch (e) { res = { error: String(e.message || e), latency_us: 0 }; }
+    if (!verifiedRecipes.has(name)) {
+      res = { error: 'Refusing to execute unsigned recipe (' + (refusedRecipes.get(name) || 'unverified') + ')', latency_us: 0 };
+    } else {
+      try { res = await recipe.run(name, text); }
+      catch (e) { res = { error: String(e.message || e), latency_us: 0 }; }
+    }
     totalRuns++;
     const out = el.querySelector('.out');
     const lat = el.querySelector('.lat');
@@ -294,15 +372,22 @@ document.querySelectorAll('[data-demo]').forEach((b) => {
   try {
     const env = await recipe.load();
     registry = env;
-    sRecipes.textContent = recipe.list().length + ' recipes';
+    const list = recipe.list();
+    // Verify every recipe in the bundle against the trust root before any
+    // source can ever reach a Function constructor. Unverified recipes still
+    // render but their row will show "Refusing to execute unsigned recipe".
+    await verifyAllRecipes(list);
+    const verifiedN = verifiedRecipes.size;
+    const refusedN = refusedRecipes.size;
+    sRecipes.textContent = list.length + ' recipes' + (refusedN ? ` (${refusedN} unsigned)` : '');
     sSize.textContent = (env.total_bytes ? Math.round(env.total_bytes / 102.4) / 10 : Math.round(JSON.stringify(env).length / 102.4) / 10) + ' KB';
-    sHash.textContent = env.registry_hash || '—';
+    sHash.textContent = env.registry_hash || '…';
     sNetwork.textContent = '1 (registry)';
-    renderEmpty(recipe.list());
+    renderEmpty(list);
   } catch (e) {
     document.getElementById('status').classList.add('bad');
     sRecipes.textContent = 'failed';
-    sSize.textContent = '—';
+    sSize.textContent = '…';
     sHash.textContent = String(e.message || e);
     resultsEl.innerHTML = '<div class="dev-result errored" style="grid-template-columns:1fr;">Could not hydrate registry: ' + String(e.message || e) + '</div>';
   }

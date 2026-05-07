@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kolm.ai/docs/receipt-v0.1.json",
+  "title": "RS-1 receipt, v0.1",
+  "description": "Schema for a kolm receipt. A receipt binds (artifact_hash, eval_set_hash, eval_score, judge_id) via an HMAC chain so that any third party can re-verify, offline, that this artifact passed these evals at this score under this judge.",
+  "type": "object",
+  "required": [
+    "kolm_version",
+    "receipt_id",
+    "artifact_hash",
+    "eval_set_hash",
+    "eval_score",
+    "judge_id",
+    "tier",
+    "chain",
+    "anchors",
+    "signature_alg",
+    "signature",
+    "signed_at",
+    "signed_by"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "kolm_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "receipt_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "artifact_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256 hex of the canonicalized .kolm artifact (zip contents)."
+    },
+    "eval_set_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256 hex of canonicalized evals.json."
+    },
+    "eval_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "judge_id": {
+      "type": "string",
+      "description": "Identifier for the judge that produced eval_score."
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["recipe", "adapter", "specialist", "bundle"]
+    },
+    "chain": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of HMAC steps. Each step's input_hash MUST equal the previous step's output_hash, anchoring the chain.",
+      "items": {
+        "type": "object",
+        "required": ["step", "input_hash", "output_hash", "hmac"],
+        "properties": {
+          "step": {
+            "type": "string",
+            "description": "Named pipeline stage, e.g. 'task', 'seeds', 'recipes', 'adapter', 'evals', 'package'."
+          },
+          "input_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "output_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "hmac": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "description": "HMAC-SHA256 over canonical-JSON({step, input_hash, output_hash}) under the receipt secret."
+          }
+        }
+      }
+    },
+    "anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "id"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["public_registry", "arweave", "onchain"]
+          },
+          "id": {
+            "type": "string",
+            "description": "Anchor-specific id (registry row id, arweave tx, on-chain hash, etc.)."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      }
+    },
+    "signature_alg": {
+      "type": "string",
+      "enum": ["ed25519"]
+    },
+    "signature": {
+      "type": "string",
+      "description": "Base64-encoded ed25519 signature over canonical-JSON of the receipt body sans the signature field."
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "signed_by": {
+      "type": "string",
+      "description": "Public key id of the signer."
+    }
+  }
+}

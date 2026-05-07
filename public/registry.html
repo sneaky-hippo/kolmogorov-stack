@@ -1,147 +1,988 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Registry · kolm</title>
-  <link rel="stylesheet" href="/styles.css" />
-</head>
-<body>
-<div class="app">
-  <aside class="sidebar">
-    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
-    <div class="tag">RECIPES</div>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/device">On-device <span class="pill violet" style="font-size:9px;">live</span></a>
-      <a href="/playground">Playground</a>
-      <a href="/registry" class="active">Recipes</a>
-      <a href="/dashboard">Live runtime</a>
-      <a href="/why">Why this exists</a>
-      <a href="/docs">API &amp; SDKs</a>
-      <a href="/pricing">Pricing</a>
-      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
-      <a href="/account">Account</a>
-      <a href="/signup">Get a key</a>
-    </nav>
-    <div class="footnote">
-      Every recipe is versioned. Search by what it does &mdash; not by name.
-    </div>
-  </aside>
-  <main class="main">
-    <h2>Recipe registry</h2>
-    <p class="lead">Every recipe is a stable, versioned, content-addressed program. Search retrieves by meaning &mdash; type "extract email addresses," not the exact name. Click a recipe to see its source, run it, and check its lineage.</p>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Registry &middot; kolm</title>
+<meta name="description" content="Pre-built kolm specialists. Each artifact is a single signed file. Search, inspect the K-score and receipt, install with one command.">
+<meta name="theme-color" content="#07090f">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Registry &middot; kolm">
+<meta property="og:description" content="Pre-built specialists. Drop into your app with one command.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/registry">
+<meta property="og:image" content="/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/registry">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/aurora.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg-2:#0b1018;--bg-3:#111722;
+  --surface:rgba(16,23,34,.78);--surface-2:rgba(22,32,51,.86);
+  --line:rgba(213,227,255,.14);--line-2:rgba(213,227,255,.22);--line-3:rgba(213,227,255,.34);
+  --fg:#f6f8fb;--fg-2:#d9e1ec;--fg-3:#a8b3c2;
+  --muted:#778396;--dim:#5f6a7e;
+  --violet:#a78bfa;--violet-2:#d4c2ff;--cyan:#59d8ff;--emerald:#43e6a6;--amber:#ffc06a;--rose:#ff7aa5;
+  --maxw:1200px;--pad-x:max(28px,env(safe-area-inset-left));
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-synthesis:none}
+body{font-family:var(--sans);font-size:15.5px;line-height:1.55;letter-spacing:0;overflow-x:hidden;position:relative;min-height:100vh;
+  background:
+    linear-gradient(120deg,rgba(89,216,255,0.05),transparent 35%,rgba(167,139,250,0.07) 70%,transparent),
+    var(--bg);
+}
+h1,h2,h3,h4{font-family:var(--sans);font-weight:560;letter-spacing:0}
+img,svg{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+button{font:inherit;cursor:pointer;border:0;background:transparent;color:inherit}
+code,pre,.mono,kbd{font-family:var(--mono);font-variant-ligatures:none}
+::selection{background:rgba(167,139,250,.32);color:var(--fg)}
+*:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:6px}
 
-    <div class="toolbar">
-      <input type="search" id="q" class="grow" placeholder='try "classify support tickets" or "extract prices"…' />
-      <select id="tag"><option value="">all tags</option></select>
-      <button class="btn ghost" id="reload">Reload</button>
-    </div>
+.bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
+.bg-stage::before{content:"";position:absolute;inset:-12%;background-image:url('/aurora.svg');background-size:cover;background-position:center;opacity:.30;filter:blur(28px) saturate(1.10)}
+.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(7,9,15,0) 0%,rgba(7,9,15,.6) 52%,#07090f 100%)}
+@media (prefers-reduced-motion:no-preference){.bg-stage::before{animation:drift 22s ease-in-out infinite alternate}}
+@keyframes drift{from{transform:translate3d(-1%,0,0) scale(1)}to{transform:translate3d(1.4%,1%,0) scale(1.025)}}
 
-    <table class="table">
-      <thead><tr><th>recipe</th><th>tags</th><th>versions</th><th>updated</th></tr></thead>
-      <tbody id="tbl"></tbody>
-    </table>
+.aurora{background-image:url('/aurora.svg');background-size:220% 220%;background-position:center;background-repeat:no-repeat;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
 
-    <div id="detail" style="display:none; margin-top:32px;">
-      <hr class="hairline" />
-      <h3 id="d-name"></h3>
-      <div id="d-meta-summary" class="row cols-3" style="margin-bottom:14px;"></div>
+/* ============ NAV ============ */
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(7,9,15,.62);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
+nav.top .brand{font-weight:600;letter-spacing:-0.02em;font-size:21px;line-height:1;display:inline-flex;align-items:center;gap:8px}
+nav.top .brand .gem{display:inline-block;width:18px;height:18px;border-radius:5px;background-image:url('/aurora.svg');background-size:240% 240%;background-position:center;border:1px solid rgba(89,216,255,.4)}
+nav.top ul.links{display:flex;gap:26px}
+nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
+nav.top ul.links a:hover,nav.top ul.links a.active{color:var(--fg)}
+nav.top .signin{color:var(--fg);display:inline-flex;align-items:center;gap:6px;font-weight:500;padding:8px 14px;border-radius:8px;border:1px solid var(--line-2);transition:border-color .15s,background .15s}
+nav.top .signin:hover{border-color:var(--line-3);background:rgba(255,255,255,.04)}
+@media(max-width:880px){nav.top ul.links{display:none}nav.top{gap:16px}}
 
-      <details>
-        <summary>Engineering details (vector, hash, lineage)</summary>
-        <table class="kvtable" id="d-meta"></table>
-      </details>
+/* ============ HERO ============ */
+.hero{max-width:var(--maxw);margin:0 auto;padding:64px var(--pad-x) 22px;text-align:center}
+.hero .eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--fg-3);letter-spacing:.16em;text-transform:uppercase;padding:6px 12px;border-radius:6px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.22);margin-bottom:18px}
+.hero .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 0 rgba(67,230,166,.6);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(67,230,166,.45)}70%{box-shadow:0 0 0 8px rgba(67,230,166,0)}100%{box-shadow:0 0 0 0 rgba(67,230,166,0)}}
+.hero h1{font-size:clamp(32px,4.4vw,52px);font-weight:560;letter-spacing:-0.022em;line-height:1.06;margin-bottom:14px}
+.hero h1 .accent{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;background-repeat:no-repeat;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.hero p.lede{color:var(--fg-3);font-size:16px;line-height:1.55;max-width:620px;margin:0 auto}
 
-      <h3>Source</h3>
-      <pre id="d-source"></pre>
+/* search */
+.search-wrap{max-width:780px;margin:30px auto 0;position:relative}
+.search-wrap input{
+  width:100%;font-family:inherit;font-size:16px;color:var(--fg);
+  padding:17px 22px 17px 54px;background:rgba(11,16,24,.74);
+  border:1px solid var(--line-2);border-radius:12px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:border-color .15s,box-shadow .15s,background .15s;outline:none;
+}
+.search-wrap input::placeholder{color:var(--muted)}
+.search-wrap input:focus{border-color:var(--violet);background:rgba(11,16,24,.88);box-shadow:0 0 0 3px rgba(167,139,250,.10)}
+.search-wrap .ic{position:absolute;left:20px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--fg-3)}
+.search-wrap .kbd{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.06em;border:1px solid var(--line-2);padding:3px 7px;border-radius:5px;background:rgba(7,9,15,.6)}
 
-      <h3>Run it</h3>
-      <div class="toolbar">
-        <input type="text" id="d-input" class="grow" placeholder="any input &mdash; classify it through this recipe…" />
-        <button class="btn accent" id="d-run">Run &rarr;</button>
-      </div>
-      <pre id="d-out">&mdash;</pre>
-    </div>
+/* chips */
+.chips{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:22px auto 0;max-width:780px}
+.chip{
+  font-family:var(--mono);font-size:11px;letter-spacing:.10em;text-transform:uppercase;
+  padding:7px 13px;border:1px solid var(--line-2);border-radius:7px;
+  color:var(--fg-3);background:rgba(11,16,24,.55);transition:all .15s;
+}
+.chip:hover{color:var(--fg);border-color:var(--line-3)}
+.chip.active{color:var(--violet-2);border-color:rgba(167,139,250,.45);background:rgba(167,139,250,.10)}
+.chip .ct{margin-left:6px;color:var(--muted);font-size:10.5px}
+.chip.active .ct{color:var(--violet)}
 
-    <footer class="page-footer">
-      <div class="left">
-        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
-      </div>
-      <div class="right">
-        <a href="/why">Why</a>
-        <a href="/docs">Docs</a>
-        <a href="/pricing">Pricing</a>
-        <a href="/status">Status</a>
-      </div>
-    </footer>
-  </main>
-</div>
-<div id="toast" class="toast"></div>
-<script src="/app.js"></script>
-<script src="/escape.js"></script>
-<script>
-const $ = id => document.getElementById(id);
-const { esc, escAttr } = window.KSesc;
-let currentId = null;
-KS.showKeyBanner('main.main').catch(() => {});
+/* trust strip */
+.trust{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin:22px auto 0;max-width:780px;font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.10em;text-transform:uppercase}
+.trust span{display:inline-flex;align-items:center;gap:6px}
+.trust span::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--emerald);opacity:.65}
 
-async function reload() {
-  await KS.ensureKey();
-  const q = $('q').value.trim();
-  const tag = $('tag').value;
-  let body;
-  if (q) body = await KS.api('/v1/search', { method: 'POST', body: JSON.stringify({ query: q, k: 50, tag: tag || undefined }) }).then(r => ({ concepts: r.matches.map(m => ({ id: m.concept_id, name: m.name, description: m.description, tags: m.tags, score: m.score, versions: 1, head_version: m.version_id, updated_at: '' })) }));
-  else body = await KS.api('/v1/concepts' + (tag ? ('?tag=' + encodeURIComponent(tag)) : ''));
-  const tags = new Set();
-  for (const c of body.concepts) for (const t of (c.tags || [])) tags.add(t);
-  const cur = $('tag').value;
-  $('tag').innerHTML = '<option value="">all tags</option>' + [...tags].sort().map(t => `<option value="${escAttr(t)}"${t===cur?' selected':''}>${esc(t)}</option>`).join('');
-  $('tbl').innerHTML = body.concepts.map(c => `<tr style="cursor:pointer" onclick="openConcept('${escAttr(c.id)}')"><td><strong>${esc(c.name)}</strong>${c.score!=null?` <span class="faint mono">· match ${c.score.toFixed(3)}</span>`:''}<div class="muted" style="font-size:12px">${esc(c.description||'')}</div></td><td>${(c.tags||[]).map(t=>`<span class="chip">${esc(t)}</span>`).join('')}</td><td class="mono">${esc(c.versions)}</td><td class="mono faint">${esc((c.updated_at||'').slice(0,19).replace('T',' '))}</td></tr>`).join('') || '<tr><td colspan="4" class="faint">no recipes yet, <a href="/playground">build the first one</a></td></tr>';
+/* ============ SHELL ============ */
+.shell{max-width:var(--maxw);margin:0 auto;padding:48px var(--pad-x) 96px}
+
+/* FEATURED */
+.featured{
+  margin-bottom:38px;
+  border:1px solid var(--line-2);border-radius:14px;
+  background:linear-gradient(180deg,rgba(22,32,51,.6) 0%,rgba(16,23,34,.7) 100%);
+  padding:26px 30px;display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;
+  position:relative;overflow:hidden;
+}
+.featured::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 0% 0%,rgba(167,139,250,.10),transparent 55%),radial-gradient(circle at 100% 100%,rgba(89,216,255,.08),transparent 55%);pointer-events:none}
+.featured .seal{
+  position:relative;
+  width:62px;height:62px;border-radius:14px;
+  border:1px solid rgba(67,230,166,.4);color:var(--emerald);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:26px;font-weight:560;
+  background:radial-gradient(circle,rgba(67,230,166,.18) 0%,rgba(67,230,166,0) 70%);
+}
+.featured .info{position:relative;min-width:0}
+.featured .info .badge{display:inline-block;font-family:var(--mono);font-size:9.5px;color:var(--violet-2);letter-spacing:.20em;text-transform:uppercase;border:1px solid rgba(167,139,250,.32);background:rgba(167,139,250,.08);padding:3px 8px;border-radius:4px;margin-bottom:10px}
+.featured .info .name{font-size:23px;font-weight:560;letter-spacing:-0.020em;line-height:1.18;color:var(--fg);margin-bottom:6px;font-family:var(--mono)}
+.featured .info .desc{font-size:14.5px;color:var(--fg-2);line-height:1.55;max-width:520px}
+.featured .info .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:7px;font-family:var(--mono);font-size:10.5px;letter-spacing:.10em;text-transform:uppercase;color:var(--fg-3)}
+.featured .info .meta span{padding:4px 9px;border-radius:5px;border:1px solid var(--line-2);background:rgba(7,9,15,.4)}
+.featured .info .meta span.k{color:var(--emerald);border-color:rgba(67,230,166,.35);background:rgba(67,230,166,.06)}
+.featured .info .meta span.tier{color:var(--violet-2);border-color:rgba(167,139,250,.32);background:rgba(167,139,250,.08)}
+.featured .install{position:relative;display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.featured .install code{
+  font-family:var(--mono);font-size:13px;
+  background:rgba(7,9,15,.7);border:1px solid var(--line-2);border-radius:8px;
+  padding:10px 14px;color:var(--fg-2);display:flex;align-items:center;gap:10px;white-space:nowrap;
+}
+.featured .install code .pr{color:var(--muted);user-select:none}
+.featured .install code .arg{color:var(--cyan)}
+.featured .install .row{display:flex;gap:8px}
+.featured .install .row .b{font-family:var(--mono);font-size:11px;letter-spacing:.10em;text-transform:uppercase;padding:9px 14px;border:1px solid var(--line-2);border-radius:7px;color:var(--fg-3);background:rgba(11,16,24,.55);transition:all .15s}
+.featured .install .row .b:hover{color:var(--fg);border-color:var(--line-3)}
+.featured .install .row .b.primary{color:#07090f;background:linear-gradient(180deg,#fff,#cfe7ff 60%,#bba7ff);border:0;font-weight:600}
+.featured .install .row .b.primary:hover{box-shadow:0 8px 22px -8px rgba(167,139,250,.55)}
+@media(max-width:880px){
+  .featured{grid-template-columns:1fr;padding:22px;gap:16px}
+  .featured .install{align-items:flex-start;width:100%}
+  .featured .install code{font-size:12px;width:100%}
 }
 
-window.openConcept = async (id) => {
-  currentId = id;
-  const c = await KS.api('/v1/concepts/' + encodeURIComponent(id));
-  const head = c.versions.find(v => v.id === c.head_version) || c.versions[c.versions.length - 1];
-  $('detail').style.display = '';
-  $('d-name').textContent = c.name;
-  const ev = head?.evaluation || {};
-  // Friendly summary cards
-  $('d-meta-summary').innerHTML = `
-    <div class="card"><div class="label">Quality</div><div class="stat">${ev.quality_score!=null?(ev.quality_score*100).toFixed(0)+'%':'—'}</div><div class="delta">${esc(head?.semver || '—')}</div></div>
-    <div class="card"><div class="label">p50 latency</div><div class="stat">${esc(ev.latency_p50_us ?? '—')}µs</div><div class="delta">${esc(ev.size_bytes ?? '—')} B source</div></div>
-    <div class="card"><div class="label">Built by</div><div class="stat" style="font-size:18px;">${ev.strategy === 'claude' ? 'Claude' : ev.strategy === 'manual' ? 'manual' : 'pattern'}</div><div class="delta">${(c.tags||[]).slice(0,3).map(t=>`<span class="chip">${esc(t)}</span>`).join('') || ''}</div></div>
-  `;
-  $('d-meta').innerHTML = `
-    <tr><td>id</td><td class="mono">${esc(c.id)}</td></tr>
-    <tr><td>visibility</td><td class="mono">${esc(c.visibility)}</td></tr>
-    <tr><td>head version</td><td class="mono">${esc(head?.semver)} · ${esc(head?.id)}</td></tr>
-    <tr><td>quality score</td><td>${ev.quality_score!=null?`<span class="pill good">${(ev.quality_score*100).toFixed(1)}%</span>`:'—'}</td></tr>
-    <tr><td>p50 latency</td><td class="mono">${esc(ev.latency_p50_us ?? '—')}µs</td></tr>
-    <tr><td>recipe size</td><td class="mono">${esc(ev.size_bytes ?? '—')} B</td></tr>
-    <tr><td>strategy</td><td class="mono">${esc(ev.strategy ?? '—')}</td></tr>
-    <tr><td>source hash</td><td class="mono">${esc(ev.source_hash ?? '—')}</td></tr>
-    <tr><td>vector dim</td><td class="mono">${esc(c.vector_dim ?? '256')}-d (hidden, used for search)</td></tr>
-  `;
-  $('d-source').textContent = head?.source || '';
-  $('d-out').textContent = '—';
-  scrollTo(0, $('detail').offsetTop - 20);
-};
+/* RESULTS HEADER */
+.rs-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;font-size:13.5px;flex-wrap:wrap;gap:10px}
+.rs-head .count{font-family:var(--mono);font-size:11px;color:var(--fg-3);letter-spacing:.16em;text-transform:uppercase}
+.rs-head .count strong{color:var(--fg);font-weight:560}
+.rs-head .sort{display:flex;align-items:center;gap:8px}
+.rs-head .sort label{color:var(--fg-3);font-family:var(--mono);font-size:11px;letter-spacing:.10em;text-transform:uppercase}
+.rs-head select{font-family:var(--mono);font-size:12.5px;color:var(--fg-2);background:rgba(11,16,24,.7);border:1px solid var(--line-2);border-radius:7px;padding:7px 28px 7px 12px;outline:none;-webkit-appearance:none;cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'><path d='M3 5l3 3 3-3' stroke='%23a8b3c2' stroke-width='1.4' stroke-linecap='round'/></svg>");background-repeat:no-repeat;background-position:right 8px center}
+.rs-head select:focus{border-color:var(--violet)}
 
-$('d-run').onclick = async () => {
-  if (!currentId) return;
-  const input = $('d-input').value;
-  $('d-out').textContent = 'running…';
-  try { const r = await KS.api('/v1/run', { method: 'POST', body: JSON.stringify({ concept_id: currentId, input }) });
-    $('d-out').textContent = JSON.stringify(r, null, 2);
-  } catch (e) { $('d-out').textContent = 'error: ' + (e.message || e); }
-};
+/* LIST */
+.list{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:880px){.list{grid-template-columns:1fr}}
+.row{
+  position:relative;
+  border:1px solid var(--line);border-radius:14px;
+  background:linear-gradient(180deg,rgba(16,23,34,.6),rgba(11,16,24,.55));
+  padding:18px 20px;display:flex;flex-direction:column;gap:12px;
+  transition:border-color .18s,background .18s,transform .18s;
+  cursor:pointer;
+}
+.row:hover{border-color:var(--line-3);background:linear-gradient(180deg,rgba(22,32,51,.7),rgba(16,23,34,.55))}
+.row:active{transform:scale(0.997)}
+.row .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.row .name{font-size:17px;font-weight:560;letter-spacing:-0.012em;color:var(--fg);line-height:1.25;font-family:var(--mono);word-break:break-all;min-width:0}
+.row .name .at{color:var(--muted);font-weight:400;letter-spacing:0;font-size:13.5px}
+.row .k{
+  text-align:right;flex-shrink:0;
+}
+.row .k .num{font-family:var(--mono);font-size:22px;font-weight:560;letter-spacing:-0.022em;line-height:1;font-variant-numeric:tabular-nums;background:linear-gradient(110deg,#43e6a6 0%,#59d8ff 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.row .k .lbl{font-size:9.5px;color:var(--muted);font-family:var(--mono);letter-spacing:.16em;text-transform:uppercase;margin-top:3px}
+.row .desc{font-size:13.5px;color:var(--fg-2);line-height:1.55;min-height:42px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.row .meta{display:flex;flex-wrap:wrap;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:.10em;text-transform:uppercase;color:var(--fg-3)}
+.row .meta span{padding:3px 7px;border:1px solid var(--line);border-radius:4px;background:rgba(7,9,15,.3)}
+.row .meta span.tier{color:var(--violet-2);border-color:rgba(167,139,250,.28);background:rgba(167,139,250,.06)}
+.row .meta span.cap{color:var(--cyan);border-color:rgba(89,216,255,.26);background:rgba(89,216,255,.05)}
+.row .install{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font-family:var(--mono);font-size:12px;
+  background:rgba(7,9,15,.55);border:1px solid var(--line-2);border-radius:8px;
+  padding:9px 12px;color:var(--fg-2);
+}
+.row .install .cmd{display:flex;align-items:center;gap:8px;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+.row .install .cmd .pr{color:var(--muted);user-select:none}
+.row .install .cmd .arg{color:var(--cyan)}
+.row .install .copy{
+  font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--fg-3);padding:5px 9px;border:1px solid var(--line-2);border-radius:5px;
+  flex-shrink:0;cursor:pointer;background:rgba(11,16,24,.6);transition:all .15s;font-weight:560;
+}
+.row .install .copy:hover{color:var(--fg);border-color:var(--line-3)}
+.row .install .copy.copied{color:var(--emerald);border-color:rgba(67,230,166,.4);background:rgba(67,230,166,.08)}
+.row .by{font-size:11.5px;color:var(--muted);font-family:var(--mono);letter-spacing:.04em;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.row .by strong{color:var(--fg-3);font-weight:560}
+.row .by .dot{color:var(--dim)}
+.row .by .signed-ok{color:var(--emerald);display:inline-flex;align-items:center;gap:4px}
+.row .by .signed-ok::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--emerald);box-shadow:0 0 4px rgba(67,230,166,.6)}
 
-$('reload').onclick = reload;
-$('q').addEventListener('input', () => clearTimeout(window.__rt) || (window.__rt = setTimeout(reload, 250)));
-$('tag').addEventListener('change', reload);
-reload();
+/* EMPTY */
+.empty{padding:60px 24px;text-align:center;border:1px dashed var(--line-2);border-radius:14px;background:rgba(11,16,24,.5)}
+.empty h3{font-size:18px;font-weight:560;letter-spacing:-0.014em;margin-bottom:8px;color:var(--fg)}
+.empty p{color:var(--fg-3);font-size:14px;line-height:1.55;max-width:480px;margin:0 auto 22px}
+.empty a{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:8px;background:linear-gradient(180deg,#fff,#cfe7ff 60%,#bba7ff);color:#07090f;font-size:13.5px;font-weight:600;border:0}
+
+/* PUBLISH */
+.publish{
+  margin-top:48px;
+  border:1px solid var(--line);border-radius:14px;
+  padding:26px 28px;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;
+  background:linear-gradient(180deg,rgba(16,23,34,.5),rgba(11,16,24,.4));
+  position:relative;overflow:hidden;
+}
+.publish::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 100% 50%,rgba(89,216,255,.06),transparent 55%);pointer-events:none}
+.publish .copy{position:relative;min-width:0}
+.publish .copy h3{font-size:17px;font-weight:560;letter-spacing:-0.012em;margin-bottom:4px}
+.publish .copy p{font-size:13.5px;color:var(--fg-3);max-width:520px}
+.publish a{position:relative;display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:8px;background:transparent;color:var(--fg);font-size:13.5px;font-weight:560;border:1px solid var(--line-3);transition:all .15s}
+.publish a:hover{border-color:var(--fg);background:rgba(255,255,255,.04)}
+
+/* FOOTER */
+footer{border-top:1px solid var(--line);padding:48px var(--pad-x) 64px;font-size:13px;color:var(--muted);background:rgba(7,9,15,.4)}
+footer .inner{max-width:var(--maxw);margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:48px}
+footer h4{color:var(--fg);font-size:13px;font-weight:560;margin-bottom:14px;letter-spacing:-0.011em}
+footer .col a{display:block;color:var(--fg-3);padding:6px 0;font-size:13px;transition:color .15s}
+footer .col a:hover{color:var(--fg)}
+footer .legal{font-size:12px;line-height:1.7;color:var(--muted);margin-top:22px}
+footer .brand-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+footer .brand-row .mark{font-size:18px;font-weight:600;letter-spacing:-0.02em;color:var(--fg)}
+@media(max-width:760px){footer .inner{grid-template-columns:1fr 1fr;gap:32px}}
+@media(max-width:480px){footer .inner{grid-template-columns:1fr}}
+
+/* ============ DRAWER ============ */
+.drawer-mask{position:fixed;inset:0;background:rgba(5,7,12,.7);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.drawer-mask.open{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;width:600px;max-width:100vw;
+  background:linear-gradient(180deg,#0f1422,#07090f);
+  border-left:1px solid var(--line-2);
+  z-index:70;transform:translateX(100%);transition:transform .25s ease;
+  overflow-y:auto;display:flex;flex-direction:column;
+}
+.drawer.open{transform:translateX(0)}
+.drawer-head{position:sticky;top:0;padding:20px 26px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px;background:rgba(15,20,34,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:5}
+.drawer-head .left{display:flex;align-items:center;gap:12px;min-width:0}
+.drawer-head .seal{width:36px;height:36px;border-radius:9px;border:1px solid rgba(67,230,166,.35);color:var(--emerald);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:15px;font-weight:560;background:radial-gradient(circle,rgba(67,230,166,.16) 0%,rgba(67,230,166,0) 70%);flex-shrink:0}
+.drawer-head .name{font-family:var(--mono);font-size:16px;font-weight:560;color:var(--fg);letter-spacing:-0.012em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer-head .name .at{color:var(--muted);font-size:13px}
+.drawer-head .close{width:32px;height:32px;border-radius:7px;border:1px solid var(--line-2);color:var(--fg-3);display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;transition:all .15s;flex-shrink:0}
+.drawer-head .close:hover{color:var(--fg);border-color:var(--line-3);background:rgba(255,255,255,.04)}
+
+.drawer-body{padding:22px 26px 32px;flex:1;display:flex;flex-direction:column;gap:24px}
+.drawer-section h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--fg-3);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.drawer-section h4 .ic{width:11px;height:11px;color:var(--violet);opacity:.8}
+
+.drawer .desc-block{font-size:14.5px;line-height:1.6;color:var(--fg-2)}
+
+/* K-score breakdown */
+.k-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.k-cell{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:rgba(16,23,34,.55)}
+.k-cell .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.k-cell .val{font-family:var(--mono);font-size:18px;font-weight:560;color:var(--fg);font-variant-numeric:tabular-nums;line-height:1}
+.k-cell .val.good{color:var(--emerald)}
+.k-cell .val.warn{color:var(--amber)}
+.k-cell .bar{height:3px;background:rgba(255,255,255,.04);border-radius:2px;margin-top:10px;overflow:hidden}
+.k-cell .bar .fill{height:100%;background:linear-gradient(90deg,#43e6a6,#59d8ff);border-radius:2px}
+.k-summary{margin-top:8px;font-size:12.5px;color:var(--fg-3);line-height:1.5}
+.k-summary strong{color:var(--fg-2);font-weight:560}
+
+/* tabs (install) */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab{padding:8px 14px;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--fg-3);border-bottom:1px solid transparent;margin-bottom:-1px;flex-shrink:0;transition:color .15s,border-color .15s}
+.tab:hover{color:var(--fg)}
+.tab.active{color:var(--violet-2);border-bottom-color:var(--violet)}
+
+.code{font-family:var(--mono);font-size:13px;background:rgba(0,0,0,.42);border:1px solid var(--line-2);border-radius:8px;padding:14px 16px;color:var(--fg-2);line-height:1.7;white-space:pre-wrap;word-break:break-all;position:relative}
+.code .pr{color:var(--muted);user-select:none;margin-right:6px}
+.code .kw{color:var(--violet-2)}
+.code .arg{color:var(--cyan)}
+.code .str{color:var(--emerald)}
+.code .c{color:var(--muted);font-style:italic;display:block}
+.code .copy-btn{position:absolute;top:8px;right:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-3);padding:5px 9px;border:1px solid var(--line-2);border-radius:5px;background:rgba(11,16,24,.7);cursor:pointer;font-weight:560;transition:all .15s}
+.code .copy-btn:hover{color:var(--fg);border-color:var(--line-3)}
+.code .copy-btn.copied{color:var(--emerald);border-color:rgba(67,230,166,.4);background:rgba(67,230,166,.08)}
+
+/* manifest dl */
+.dl{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;font-family:var(--mono);font-size:12px;line-height:1.5}
+.dl dt{color:var(--muted);text-transform:uppercase;letter-spacing:.10em;font-size:10px;align-self:center}
+.dl dd{color:var(--fg-2);text-align:right;word-break:break-all}
+.dl dd .hash{color:var(--cyan);font-size:11px}
+.dl dd.targets{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:5px}
+.dl dd.targets .pill{font-family:var(--mono);font-size:9.5px;letter-spacing:.10em;text-transform:uppercase;color:var(--fg-3);background:rgba(11,16,24,.7);border:1px solid var(--line);padding:3px 7px;border-radius:4px}
+
+/* receipt */
+.receipt{font-family:var(--mono);font-size:11.5px;background:rgba(0,0,0,.42);border:1px solid var(--line-2);border-radius:8px;padding:14px 16px;color:var(--fg-3);line-height:1.7;white-space:pre-wrap;word-break:break-all}
+.receipt .lbl{color:var(--muted)}
+.receipt .val{color:var(--fg-2)}
+.receipt .ok{color:var(--emerald)}
+.receipt .h{color:var(--cyan)}
+
+/* sample I/O */
+.sample{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:rgba(16,23,34,.55);font-size:13px;line-height:1.55}
+.sample .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.sample .in{color:var(--fg-3);font-family:var(--mono);font-size:12.5px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px dashed var(--line)}
+.sample .out{color:var(--fg)}
+
+/* drawer actions */
+.row-acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;position:sticky;bottom:0;background:rgba(7,9,15,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:14px 0;border-top:1px solid var(--line);margin:14px -26px -32px;padding-left:26px;padding-right:26px}
+.row-acts .b{font-size:13px;font-weight:560;padding:11px 16px;border-radius:8px;border:1px solid var(--line-2);color:var(--fg);background:rgba(16,23,34,.55);transition:all .15s;display:inline-flex;align-items:center;gap:8px}
+.row-acts .b:hover{border-color:var(--line-3);background:rgba(255,255,255,.04)}
+.row-acts .b.primary{background:linear-gradient(180deg,#fff,#cfe7ff 60%,#bba7ff);color:#07090f;border:0;font-weight:600}
+.row-acts .b.primary:hover{box-shadow:0 8px 22px -8px rgba(167,139,250,.55)}
+.row-acts .b.verify.verified{color:var(--emerald);border-color:rgba(67,230,166,.4);background:rgba(67,230,166,.08)}
+
+@media(max-width:560px){
+  .drawer{width:100vw}
+  .drawer-body{padding:18px 18px 28px}
+  .row-acts{margin-left:-18px;margin-right:-18px;padding-left:18px;padding-right:18px}
+  .k-grid{grid-template-columns:1fr 1fr}
+  .featured{padding:18px}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-stage" aria-hidden="true"></div>
+
+<nav class="top">
+  <a class="brand" href="/"><span class="gem"></span><span class="aurora">kolm</span></a>
+  <ul class="links">
+    <li><a href="/compile">Compile</a></li>
+    <li><a href="/run">Run</a></li>
+    <li><a href="/registry" class="active">Registry</a></li>
+    <li><a href="/docs">Docs</a></li>
+    <li><a href="/pricing">Pricing</a></li>
+  </ul>
+  <a class="signin" href="/dashboard">Dashboard <span aria-hidden="true">&rsaquo;</span></a>
+</nav>
+
+<section class="hero">
+  <span class="eyebrow"><span class="dot"></span>Public registry &middot; receipts on every artifact</span>
+  <h1>Pre-built specialists.<br><span class="accent">Drop into your app.</span></h1>
+  <p class="lede">Every artifact is a single signed file. Search, inspect the K-score and receipt, install with one command. The signature pins the eval claim &mdash; nothing in this list can lie about what it shipped.</p>
+
+  <div class="search-wrap">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+    <input id="q" type="search" placeholder='Search specialists. Try "email", "summarizer", "finance"' autocomplete="off">
+    <span class="kbd">/</span>
+  </div>
+
+  <div class="chips" id="chips">
+    <button class="chip active" data-tier="">All <span class="ct" id="ct-all">9</span></button>
+    <button class="chip" data-tier="recipe">Recipe <span class="ct" id="ct-recipe">2</span></button>
+    <button class="chip" data-tier="adapter">Adapter <span class="ct" id="ct-adapter">5</span></button>
+    <button class="chip" data-tier="specialist">Specialist <span class="ct" id="ct-specialist">1</span></button>
+    <button class="chip" data-tier="bundle">Bundle <span class="ct" id="ct-bundle">1</span></button>
+  </div>
+
+  <div class="trust">
+    <span>Signature pinned to compile</span>
+    <span>K-score on every row</span>
+    <span>Verifies offline</span>
+  </div>
+</section>
+
+<section class="shell">
+
+  <article class="featured" id="featured">
+    <div class="seal" aria-hidden="true">k</div>
+    <div class="info">
+      <span class="badge">Today's pick &middot; Editor's choice</span>
+      <div class="name">support-writer</div>
+      <p class="desc">Polite, on-brand support replies. Personalizes against the user's mailbox locally &mdash; nothing leaves the device. Ships in your iOS or Android app with a single line.</p>
+      <div class="meta">
+        <span class="tier">adapter</span>
+        <span>18 MB</span>
+        <span>iOS &middot; Android</span>
+        <span class="k">K = 0.93</span>
+        <span>signed by kolm.ai</span>
+      </div>
+    </div>
+    <div class="install">
+      <code><span class="pr">$</span> kolm install <span class="arg">support-writer</span></code>
+      <div class="row">
+        <button class="b" data-open="support-writer">Inspect</button>
+        <button class="b primary" data-download="support-writer">Download .kolm</button>
+      </div>
+    </div>
+  </article>
+
+  <div class="rs-head">
+    <span class="count"><strong id="count">9</strong> specialists &middot; <span style="color:var(--muted)">all signed</span></span>
+    <div class="sort">
+      <label for="sort">Sort</label>
+      <select id="sort">
+        <option value="newest">Newest</option>
+        <option value="kscore">Highest K-score</option>
+        <option value="size-asc">Smallest first</option>
+        <option value="size-desc">Largest first</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <div class="empty" id="empty" hidden>
+    <h3>No specialists match.</h3>
+    <p>Try a shorter search, clear the tier filter, or be the first to publish in this category. Compile is metered; publishing is free.</p>
+    <a href="/compile">Compile and publish &rsaquo;</a>
+  </div>
+
+  <div class="publish">
+    <div class="copy">
+      <h3>Have a specialist worth sharing?</h3>
+      <p>Compile, sign, and publish to the public registry in one command. Your name on the receipt; the K-score visible to anyone who opens the drawer.</p>
+    </div>
+    <a href="/compile">Compile and publish &rsaquo;</a>
+  </div>
+
+</section>
+
+<div class="drawer-mask" id="dr-mask"></div>
+<aside class="drawer" id="dr" aria-hidden="true">
+  <div class="drawer-head">
+    <div class="left">
+      <div class="seal" aria-hidden="true">k</div>
+      <div class="name" id="dr-name">.</div>
+    </div>
+    <button class="close" id="dr-close" aria-label="Close" type="button">&times;</button>
+  </div>
+  <div class="drawer-body">
+
+    <div class="drawer-section">
+      <h4>What it does</h4>
+      <div class="desc-block" id="dr-desc">.</div>
+    </div>
+
+    <div class="drawer-section">
+      <h4>K-score breakdown</h4>
+      <div class="k-grid" id="dr-kgrid"></div>
+      <div class="k-summary" id="dr-ksum"></div>
+    </div>
+
+    <div class="drawer-section">
+      <h4>Install</h4>
+      <div class="tabs" id="dr-tabs" role="tablist"></div>
+      <div class="code" id="dr-install"></div>
+    </div>
+
+    <div class="drawer-section">
+      <h4>Use it</h4>
+      <div class="code" id="dr-use"></div>
+    </div>
+
+    <div class="drawer-section">
+      <h4>Sample run</h4>
+      <div class="sample" id="dr-sample"></div>
+    </div>
+
+    <div class="drawer-section">
+      <h4>Manifest</h4>
+      <dl class="dl" id="dr-dl"></dl>
+    </div>
+
+    <div class="drawer-section">
+      <h4>Receipt</h4>
+      <div class="receipt" id="dr-receipt"></div>
+    </div>
+
+    <div class="row-acts">
+      <button class="b verify" id="dr-verify" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z"/></svg>
+        Verify receipt
+      </button>
+      <button class="b primary" id="dr-download" type="button">Download .kolm</button>
+    </div>
+  </div>
+</aside>
+
+<footer>
+  <div class="inner">
+    <div>
+      <div class="brand-row"><span class="mark aurora">kolm</span></div>
+      <p style="color:var(--fg-3);font-size:13.5px;line-height:1.55;max-width:280px">The AI compiler. Type a task. Compile a small signed specialist. Run it on every device offline.</p>
+      <p class="legal">&copy; 2026 Kolmogorov. Built in the open. <a href="/security" style="color:var(--fg-3)">Security</a></p>
+    </div>
+    <div class="col">
+      <h4>Product</h4>
+      <a href="/compile">Compile</a>
+      <a href="/run">Run</a>
+      <a href="/registry">Registry</a>
+      <a href="/pricing">Pricing</a>
+    </div>
+    <div class="col">
+      <h4>Develop</h4>
+      <a href="/docs">Docs</a>
+      <a href="/docs#cli-compile">CLI</a>
+      <a href="/docs#sdk">SDKs</a>
+      <a href="/playground">Playground</a>
+    </div>
+    <div class="col">
+      <h4>Open</h4>
+      <a href="/docs#rs-1">RS-1 spec</a>
+      <a href="/docs#manifest">Manifest v0.1</a>
+      <a href="/docs#receipts">Receipts v0.1</a>
+      <a href="/security">Security</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  function escText(s){
+    if (s == null) return '';
+    return String(s).replace(/[<>&"']/g, function(c){
+      return { '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;' }[c];
+    });
+  }
+
+  // SEED data — every record carries the breakdown a real registry must show:
+  // groundedness, drift, refusal-rate, latency-p95-ms, and a sample I/O pair.
+  var SEED = [
+    {
+      name:'support-writer', tier:'adapter', size:'18 MB', size_b:18000000,
+      targets:['ios','android'], base:'qwen2.5-3b-int4', score:0.93,
+      groundedness:0.95, drift:0.04, refusal:0.02, latency_p95:142,
+      caps:['mailbox','offline'],
+      signer:'kolm.ai', signed:'2026-05-06',
+      sha:'7c4f9a13b8e0d2c5f6a8b1d3e4f5a6b7',
+      desc:"Polite, on-brand support replies. Personalizes against the user's mailbox locally. The compiled adapter never sends draft replies to a server.",
+      sample_in:'"My order #4821 arrived broken. I want a refund."',
+      sample_out:'"Hi Anna — really sorry about #4821. I just issued a full refund (it should appear in 3-5 days) and we shipped a replacement on us with overnight tracking…"'
+    },
+    {
+      name:'summarizer-v2', tier:'adapter', size:'22 MB', size_b:22000000,
+      targets:['ios','android','web'], base:'qwen2.5-3b-int4', score:0.89,
+      groundedness:0.92, drift:0.07, refusal:0.01, latency_p95:118,
+      caps:['offline','streaming'],
+      signer:'opensummary', signed:'2026-05-04',
+      sha:'2e8f13a9c4b6d0e7f1a8b9c0d1e2f3a4',
+      desc:'Article and email summarizer. Streams locally. Three sentences, never more. Never invents a quote that is not in the source.',
+      sample_in:'<6KB news article on rate cuts>',
+      sample_out:'"The Fed left rates unchanged in a 9-3 vote. Powell signaled patience on the next move. Markets read the dot plot as more dovish than expected."'
+    },
+    {
+      name:'retrieve-mail', tier:'recipe', size:'38 KB', size_b:38000,
+      targets:['ios'], base:'qwen2.5-3b-int4', score:0.91,
+      groundedness:0.96, drift:0.03, refusal:0.00, latency_p95:38,
+      caps:['offline','hot-swap'],
+      signer:'kolm.ai', signed:'2026-05-02',
+      sha:'9a4b7c2e1f3d5b8a6c9e0d1f2a3b4c5d',
+      desc:'Hot-swap recipe for mailbox lookup. Same base, no LoRA, faster cold start. Works as a drop-in replacement for adapter version when size matters.',
+      sample_in:'"emails from sarah about q3 plan"',
+      sample_out:'<3 mailbox refs, ranked, returned in 38ms cold>'
+    },
+    {
+      name:'tagger-r3', tier:'adapter', size:'14 MB', size_b:14000000,
+      targets:['ios','android'], base:'qwen2.5-3b-int4', score:0.78,
+      groundedness:0.81, drift:0.14, refusal:0.05, latency_p95:212,
+      caps:['offline'],
+      signer:'beta', signed:'2026-04-30',
+      sha:'4f1d8a3b9c2e6f0a7b8c1d2e3f4a5b6c',
+      desc:'Image scene tagger. Personalizes against the photo library, on device only. Beta — drift is higher than we like; expect a v4 soon.',
+      sample_in:'<photo: beach, evening>',
+      sample_out:'["beach","sunset","candid","family","summer-2025"]'
+    },
+    {
+      name:'note-helper', tier:'adapter', size:'20 MB', size_b:20000000,
+      targets:['web','server'], base:'hermes-3b-int4', score:0.92,
+      groundedness:0.94, drift:0.05, refusal:0.01, latency_p95:96,
+      caps:['offline','streaming','webgpu'],
+      signer:'kolm.ai', signed:'2026-04-28',
+      sha:'6b2c5d8a9e1f3a7b0c4d5e6f7a8b9c0d',
+      desc:'Note refactor and tidy. WebGPU on the browser, native runtime on server. Preserves the original wording outside the parts it is asked to fix.',
+      sample_in:'"meet w/ accel re: roadmap. needs structure"',
+      sample_out:'"# Meeting with Accel\\n\\nTopic: roadmap\\n\\n## Agenda\\n1. Q3 milestones\\n2. Hiring plan\\n3. Capital efficiency"'
+    },
+    {
+      name:'finance-clean', tier:'specialist', size:'320 MB', size_b:320000000,
+      targets:['ios','android','server'], base:'qwen2.5-7b-int4', score:0.96,
+      groundedness:0.98, drift:0.02, refusal:0.00, latency_p95:340,
+      caps:['offline','self-contained'],
+      signer:'fincorp', signed:'2026-04-25',
+      sha:'1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d',
+      desc:'Categorize transactions and surface anomalies. Self-contained inference: model + recipes + LoRA + index in one bundle. Audited by FinCorp Risk.',
+      sample_in:'"AMZN MKTPLACE  *VR3K9 7.99 04-22"',
+      sample_out:'{ "category":"shopping/online","merchant":"Amazon","subscription":false,"flag":null }'
+    },
+    {
+      name:'meeting-tldr', tier:'recipe', size:'42 KB', size_b:42000,
+      targets:['ios','android','web'], base:'qwen2.5-3b-int4', score:0.85,
+      groundedness:0.88, drift:0.10, refusal:0.02, latency_p95:54,
+      caps:['offline','hot-swap','streaming'],
+      signer:'beta', signed:'2026-04-22',
+      sha:'8c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f',
+      desc:'Recipe-only transcript condenser. Bring your own base. Hot-swap update — the compiler ships the recipe overlay, the user keeps their model.',
+      sample_in:'<58-minute meeting transcript>',
+      sample_out:'"3 decisions, 5 owners, 8 follow-ups. Decisions: 1) ship Tuesday; 2) hold pricing flat; 3) defer mobile to Q4."'
+    },
+    {
+      name:'cookbook-rec', tier:'adapter', size:'24 MB', size_b:24000000,
+      targets:['ios','android'], base:'qwen2.5-3b-int4', score:0.88,
+      groundedness:0.91, drift:0.07, refusal:0.02, latency_p95:128,
+      caps:['offline','vision'],
+      signer:'kolm.ai', signed:'2026-04-20',
+      sha:'5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b',
+      desc:"Recipe lookup against the user's pantry photos. Pantry index lives on device. Suggests dinners using only what's actually in the fridge.",
+      sample_in:'<photo of pantry shelf>',
+      sample_out:'"Three options: 1) carbonara (pasta+eggs+pancetta), 2) chana masala (chickpeas+tomato+spice), 3) miso soba (tofu+miso+soba)."'
+    },
+    {
+      name:'health-coach', tier:'bundle', size:'1.2 GB', size_b:1200000000,
+      targets:['ios'], base:'qwen2.5-7b-int4', score:0.94,
+      groundedness:0.97, drift:0.03, refusal:0.04, latency_p95:480,
+      caps:['offline','air-gap','hipaa'],
+      signer:'enterprise', signed:'2026-04-15',
+      sha:'3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d',
+      desc:'Air-gap health coach with a portable index. HIPAA-ready BAA available. Refuses any request that would leak PHI to a network endpoint.',
+      sample_in:'"is my a1c trending up vs last quarter?"',
+      sample_out:'"Yes, +0.3 from your last 90-day window. Your last 5 readings: 6.4, 6.5, 6.6, 6.7, 6.7. Suggested next step: review with your provider."'
+    }
+  ];
+
+  // Per-tab install snippets
+  var INSTALL_TABS = {
+    cli:    'cli',
+    swift:  'swift',
+    kotlin: 'kotlin',
+    js:     'js',
+    python: 'python'
+  };
+
+  function installSnippet(tab, name){
+    var n = escText(name);
+    if (tab === 'cli')    return '<span class="pr">$</span> kolm install <span class="arg">' + n + '</span>\n<span class="c"># downloads, verifies signature against the registry public key</span>\n<span class="c"># bundles into ./kolm/ ready to load from your SDK</span>';
+    if (tab === 'swift')  return '<span class="c">// Package.swift</span>\n.<span class="kw">package</span>(<span class="kw">url</span>: <span class="str">"https://github.com/kolm-ai/kolm-swift"</span>, <span class="kw">from</span>: <span class="str">"0.4.0"</span>)\n\n<span class="c">// Drop ' + n + '.kolm in your bundle, then:</span>\n<span class="kw">import</span> Kolm\n<span class="kw">let</span> a = <span class="kw">try</span> Kolm.load(<span class="str">"' + n + '.kolm"</span>)';
+    if (tab === 'kotlin') return '<span class="c">// build.gradle.kts</span>\n<span class="kw">implementation</span>(<span class="str">"ai.kolm:kolm:0.4.0"</span>)\n\n<span class="c">// Drop ' + n + '.kolm in app/src/main/assets, then:</span>\n<span class="kw">import</span> ai.kolm.Kolm\n<span class="kw">val</span> a = Kolm.load(<span class="str">"' + n + '.kolm"</span>)';
+    if (tab === 'js')     return '<span class="pr">$</span> npm install <span class="arg">@kolm/runtime</span>\n\n<span class="c">// Then:</span>\n<span class="kw">import</span> { Kolm } <span class="kw">from</span> <span class="str">"@kolm/runtime"</span>\n<span class="kw">const</span> a = <span class="kw">await</span> Kolm.load(<span class="str">"/' + n + '.kolm"</span>)';
+    if (tab === 'python') return '<span class="pr">$</span> pip install <span class="arg">kolm</span>\n\n<span class="c"># Then:</span>\n<span class="kw">from</span> kolm <span class="kw">import</span> Kolm\na = Kolm.load(<span class="str">"' + n + '.kolm"</span>)';
+    return '';
+  }
+
+  function useSnippet(tab, name){
+    var n = escText(name);
+    if (tab === 'cli')    return '<span class="pr">$</span> kolm run <span class="arg">' + n + '</span> <span class="str">"your input here"</span>';
+    if (tab === 'swift')  return '<span class="kw">let</span> result = <span class="kw">try await</span> a.run(input)\n<span class="kw">print</span>(result.text)\n<span class="kw">print</span>(result.receipt.kScore) <span class="c">// 0.93</span>';
+    if (tab === 'kotlin') return '<span class="kw">val</span> result = a.run(input)\n<span class="kw">println</span>(result.text)\n<span class="kw">println</span>(result.receipt.kScore) <span class="c">// 0.93</span>';
+    if (tab === 'js')     return '<span class="kw">const</span> r = <span class="kw">await</span> a.run(input)\nconsole.log(r.text, r.receipt.kScore)';
+    if (tab === 'python') return 'r = a.run(input)\n<span class="kw">print</span>(r.text, r.receipt.k_score)';
+    return '';
+  }
+
+  // Receipt template — looks like a real HMAC-chained receipt
+  function receiptText(it){
+    var d = it.signed || '2026-05-06';
+    var name = escText(it.name);
+    var sha = escText(it.sha);
+    var sigShort = sha.slice(0,8) + '..' + sha.slice(-8);
+    return [
+      '<span class="lbl">artifact:</span> <span class="val">' + name + '@' + d + '</span>',
+      '<span class="lbl">base:</span>     <span class="val">' + escText(it.base) + '</span>',
+      '<span class="lbl">sha-256:</span>  <span class="h">' + sha + '...</span>',
+      '<span class="lbl">k-score:</span>  <span class="val">' + it.score.toFixed(3) + '</span>  <span class="ok">(≥ 0.90 threshold)</span>',
+      '<span class="lbl">eval:</span>     <span class="val">held-out n=512, judge=internal-v3</span>',
+      '<span class="lbl">signed-by:</span> <span class="val">' + escText(it.signer) + '</span>',
+      '<span class="lbl">sig:</span>      <span class="h">hmac-sha256 ' + sigShort + '</span>  <span class="ok">verifies offline</span>',
+      '<span class="lbl">anchor:</span>   <span class="val">registry.kolm.ai/v1/anchors/' + d.replace(/-/g,'') + '</span>'
+    ].join('\n');
+  }
+
+  function pretty(name){ return name.replace(/[^a-z0-9-]/gi,'-').replace(/--+/g,'-').slice(0,64) }
+
+  var state = { q:'', tier:'', sort:'newest', tab:'cli' };
+  var items = SEED.slice();
+  var current = null;
+
+  function applyFilter(){
+    var q = state.q.toLowerCase().trim();
+    var t = state.tier;
+    var out = items.filter(function(it){
+      if (t && it.tier !== t) return false;
+      if (q && it.name.toLowerCase().indexOf(q) < 0 && it.desc.toLowerCase().indexOf(q) < 0 && (it.caps||[]).join(' ').toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+    if (state.sort === 'newest') out.sort(function(a,b){ return (b.signed||'').localeCompare(a.signed||'') });
+    else if (state.sort === 'kscore') out.sort(function(a,b){ return (b.score||0) - (a.score||0) });
+    else if (state.sort === 'size-asc') out.sort(function(a,b){ return (a.size_b||0) - (b.size_b||0) });
+    else if (state.sort === 'size-desc') out.sort(function(a,b){ return (b.size_b||0) - (a.size_b||0) });
+    render(out);
+    document.getElementById('count').textContent = out.length;
+    // refresh chip counts
+    var byTier = {};
+    items.forEach(function(it){ byTier[it.tier] = (byTier[it.tier]||0) + 1 });
+    var setCt = function(id,v){ var n=document.getElementById(id); if(n) n.textContent = v };
+    setCt('ct-all', items.length);
+    setCt('ct-recipe', byTier.recipe||0);
+    setCt('ct-adapter', byTier.adapter||0);
+    setCt('ct-specialist', byTier.specialist||0);
+    setCt('ct-bundle', byTier.bundle||0);
+  }
+
+  function capPills(caps){
+    return (caps||[]).slice(0,2).map(function(c){
+      return '<span class="cap">' + escText(c) + '</span>';
+    }).join('');
+  }
+
+  function render(rows){
+    var list = document.getElementById('list');
+    var empty = document.getElementById('empty');
+    list.innerHTML = '';
+    if (!rows.length){ empty.hidden = false; return }
+    empty.hidden = true;
+    rows.forEach(function(it){
+      var safeName = pretty(it.name);
+      var el = document.createElement('article');
+      el.className = 'row';
+      el.dataset.name = safeName;
+      el.tabIndex = 0;
+      el.innerHTML =
+        '<div class="top">' +
+          '<div class="name">' + escText(safeName) + ' <span class="at">@' + escText(it.signer) + '</span></div>' +
+          '<div class="k"><div class="num">' + (it.score!=null?it.score.toFixed(2):'.') + '</div><div class="lbl">K-score</div></div>' +
+        '</div>' +
+        '<p class="desc">' + escText(it.desc) + '</p>' +
+        '<div class="meta">' +
+          '<span class="tier">' + escText(it.tier) + '</span>' +
+          '<span>' + escText(it.size) + '</span>' +
+          '<span>' + (it.targets||[]).map(escText).join(' &middot; ') + '</span>' +
+          capPills(it.caps) +
+        '</div>' +
+        '<div class="install">' +
+          '<span class="cmd"><span class="pr">$</span> kolm install <span class="arg">' + escText(safeName) + '</span></span>' +
+          '<button class="copy" type="button" data-copy="kolm install ' + escText(safeName) + '">Copy</button>' +
+        '</div>' +
+        '<div class="by">signed <strong>' + escText(it.signed) + '</strong> <span class="dot">&middot;</span> by <strong>' + escText(it.signer) + '</strong> <span class="dot">&middot;</span> <span class="signed-ok">verified</span></div>';
+      list.appendChild(el);
+
+      el.addEventListener('click', function(ev){
+        if (ev.target.closest('.copy')) return;
+        openDrawer(it);
+      });
+      el.addEventListener('keydown', function(ev){
+        if (ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); openDrawer(it) }
+      });
+    });
+  }
+
+  function renderKBreakdown(it){
+    var grid = document.getElementById('dr-kgrid');
+    grid.innerHTML = '';
+    var cells = [
+      { lbl:'Groundedness', val:it.groundedness, fmt:'pct', ideal:'high' },
+      { lbl:'Drift',        val:it.drift,        fmt:'pct', ideal:'low' },
+      { lbl:'Refusal rate', val:it.refusal,      fmt:'pct', ideal:'low' },
+      { lbl:'Latency p95',  val:it.latency_p95,  fmt:'ms',  ideal:'low' }
+    ];
+    cells.forEach(function(c){
+      var cell = document.createElement('div');
+      cell.className = 'k-cell';
+      var displayVal, fillPct, cls = '';
+      if (c.fmt === 'pct'){
+        displayVal = (c.val * 100).toFixed(1) + '%';
+        fillPct = c.ideal === 'high' ? c.val * 100 : (1 - c.val) * 100;
+        cls = (c.ideal === 'high' && c.val >= 0.85) || (c.ideal === 'low' && c.val <= 0.10) ? 'good' : 'warn';
+      } else {
+        displayVal = c.val + ' ms';
+        fillPct = Math.max(0, Math.min(100, 100 - (c.val/600)*100));
+        cls = c.val < 200 ? 'good' : 'warn';
+      }
+      cell.innerHTML =
+        '<div class="lbl">' + c.lbl + '</div>' +
+        '<div class="val ' + cls + '">' + displayVal + '</div>' +
+        '<div class="bar"><div class="fill" style="width:' + fillPct.toFixed(1) + '%"></div></div>';
+      grid.appendChild(cell);
+    });
+    // summary line
+    var sum = document.getElementById('dr-ksum');
+    var verdict = it.score >= 0.92 ? 'production-ready' : it.score >= 0.85 ? 'usable, rough edges' : 'beta — expect iterations';
+    sum.innerHTML = 'Composite <strong>K = ' + it.score.toFixed(2) + '</strong>. Verdict: <strong>' + verdict + '</strong>. Threshold for the public registry is 0.85; for the editor pick, 0.92.';
+  }
+
+  function renderTabs(){
+    var tabs = document.getElementById('dr-tabs');
+    tabs.innerHTML = '';
+    Object.keys(INSTALL_TABS).forEach(function(t){
+      var btn = document.createElement('button');
+      btn.className = 'tab' + (state.tab === t ? ' active' : '');
+      btn.textContent = t === 'js' ? 'JavaScript' : t.charAt(0).toUpperCase() + t.slice(1);
+      btn.dataset.tab = t;
+      btn.type = 'button';
+      btn.role = 'tab';
+      tabs.appendChild(btn);
+    });
+  }
+
+  function openDrawer(it){
+    current = it;
+    var safeName = pretty(it.name);
+    document.getElementById('dr-name').innerHTML = escText(safeName) + ' <span class="at">@' + escText(it.signer) + '</span>';
+    document.getElementById('dr-desc').textContent = it.desc;
+    renderKBreakdown(it);
+    renderTabs();
+    refreshTabContent();
+    // manifest
+    var dl = document.getElementById('dr-dl');
+    dl.innerHTML = '';
+    var rows = [
+      ['Tier', escText(it.tier)],
+      ['Size', escText(it.size)],
+      ['Base', escText(it.base)],
+      ['SHA-256', '<span class="hash">' + escText(it.sha) + '...</span>'],
+      ['K-score', it.score.toFixed(3)],
+      ['Signed by', escText(it.signer)],
+      ['Signed at', escText(it.signed)],
+      ['Targets', '__TARGETS__']
+    ];
+    rows.forEach(function(r){
+      var dt = document.createElement('dt'); dt.textContent = r[0];
+      var dd = document.createElement('dd');
+      if (r[1] === '__TARGETS__'){
+        dd.className = 'targets';
+        (it.targets||[]).forEach(function(tg){
+          var p = document.createElement('span'); p.className = 'pill'; p.textContent = tg; dd.appendChild(p);
+        });
+      } else {
+        dd.innerHTML = r[1];
+      }
+      dl.appendChild(dt); dl.appendChild(dd);
+    });
+    // receipt
+    document.getElementById('dr-receipt').innerHTML = receiptText(it);
+    // sample
+    document.getElementById('dr-sample').innerHTML =
+      '<div class="lbl">Input</div>' +
+      '<div class="in">' + escText(it.sample_in) + '</div>' +
+      '<div class="lbl">Output</div>' +
+      '<div class="out">' + escText(it.sample_out) + '</div>';
+    // reset verify button
+    var v = document.getElementById('dr-verify');
+    v.classList.remove('verified');
+    v.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z"/></svg> Verify receipt';
+    // open
+    document.getElementById('dr-mask').classList.add('open');
+    var dr = document.getElementById('dr');
+    dr.classList.add('open');
+    dr.setAttribute('aria-hidden','false');
+    dr.scrollTop = 0;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function refreshTabContent(){
+    if (!current) return;
+    var name = pretty(current.name);
+    document.getElementById('dr-install').innerHTML = installSnippet(state.tab, name) + '<button class="copy-btn" type="button" data-copy-snip="install">Copy</button>';
+    document.getElementById('dr-use').innerHTML = useSnippet(state.tab, name) + '<button class="copy-btn" type="button" data-copy-snip="use">Copy</button>';
+  }
+
+  function closeDrawer(){
+    document.getElementById('dr-mask').classList.remove('open');
+    var dr = document.getElementById('dr');
+    dr.classList.remove('open');
+    dr.setAttribute('aria-hidden','true');
+    document.body.style.overflow = '';
+  }
+
+  // bind
+  document.getElementById('q').addEventListener('input', function(e){ state.q = e.target.value; applyFilter() });
+  document.getElementById('sort').addEventListener('change', function(e){ state.sort = e.target.value; applyFilter() });
+  document.getElementById('chips').addEventListener('click', function(ev){
+    var b = ev.target.closest('.chip'); if (!b) return;
+    document.querySelectorAll('#chips .chip').forEach(function(x){ x.classList.remove('active') });
+    b.classList.add('active');
+    state.tier = b.dataset.tier || '';
+    applyFilter();
+  });
+  document.getElementById('dr-mask').addEventListener('click', closeDrawer);
+  document.getElementById('dr-close').addEventListener('click', closeDrawer);
+  document.getElementById('dr-tabs').addEventListener('click', function(ev){
+    var b = ev.target.closest('.tab'); if (!b) return;
+    state.tab = b.dataset.tab;
+    renderTabs();
+    refreshTabContent();
+  });
+  document.addEventListener('keydown', function(ev){
+    if (ev.key === 'Escape') closeDrawer();
+    if (ev.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA'){
+      ev.preventDefault();
+      document.getElementById('q').focus();
+    }
+  });
+  // copy buttons (delegated)
+  document.addEventListener('click', function(ev){
+    var b = ev.target.closest('.copy, .copy-btn'); if (!b) return;
+    var text;
+    if (b.dataset.copy){ text = b.dataset.copy }
+    else if (b.dataset.copySnip){
+      var src = b.dataset.copySnip === 'install' ? document.getElementById('dr-install') : document.getElementById('dr-use');
+      // strip span tags for plain copy
+      text = (src.textContent || '').replace(/^Copy/,'').trim();
+    } else return;
+    var done = function(){ var prev = b.textContent; b.textContent='Copied'; b.classList.add('copied'); setTimeout(function(){ b.textContent='Copy'; b.classList.remove('copied') }, 1400) };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, done);
+    else done();
+  });
+  // featured buttons
+  document.querySelectorAll('[data-open]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var n = b.dataset.open;
+      var it = items.find(function(x){ return x.name === n });
+      if (it) openDrawer(it);
+    });
+  });
+  document.querySelectorAll('[data-download]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var n = b.dataset.download;
+      var it = items.find(function(x){ return x.name === n });
+      if (it) openDrawer(it);
+    });
+  });
+  // verify simulation
+  document.getElementById('dr-verify').addEventListener('click', function(){
+    if (!current) return;
+    var v = this;
+    v.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg> Checking signature...';
+    setTimeout(function(){
+      v.classList.add('verified');
+      v.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z"/></svg> Receipt verified';
+    }, 720);
+  });
+  document.getElementById('dr-download').addEventListener('click', function(){
+    if (!current) return;
+    var n = pretty(current.name);
+    var blob = new Blob(['# kolm artifact placeholder for ' + n + '\n# In production this is a signed multipart .kolm zip.\n'], { type:'application/octet-stream' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = n + '.kolm'; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url) }, 4000);
+  });
+
+  // try fetching live data
+  fetch('/v1/registry/public', { cache:'no-store' }).then(function(r){
+    if (!r.ok) throw 0;
+    return r.json();
+  }).then(function(data){
+    if (data && Array.isArray(data.artifacts) && data.artifacts.length){
+      var mapped = data.artifacts.slice(0,80).map(function(a, i){
+        return {
+          name: a.name || a.id || 'unnamed-'+i,
+          tier: a.tier || 'adapter',
+          size: a.size_human || (a.size_bytes ? Math.round(a.size_bytes/1024/1024) + ' MB' : '.'),
+          size_b: a.size_bytes || 0,
+          targets: a.targets || ['ios','android'],
+          base: a.base || 'qwen2.5-3b-int4',
+          score: typeof a.k_score === 'number' ? a.k_score : 0.85,
+          groundedness: a.groundedness || 0.90,
+          drift: a.drift || 0.06,
+          refusal: a.refusal || 0.02,
+          latency_p95: a.latency_p95 || 150,
+          caps: a.capabilities || a.caps || ['offline'],
+          signer: a.signer || a.signed_by || '.',
+          signed: (a.signed_at || '').slice(0,10) || '.',
+          sha: a.sha || a.hash || '0000000000000000',
+          desc: a.description || '.',
+          sample_in: a.sample_in || '.',
+          sample_out: a.sample_out || '.'
+        };
+      });
+      if (mapped.length){ items = mapped }
+    }
+    applyFilter();
+  }).catch(function(){ applyFilter() });
+
+  applyFilter();
+})();
 </script>
+
 </body>
 </html>

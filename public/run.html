@@ -1,163 +1,739 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Run · kolm</title>
-  <meta name="description" content="A .kolm artifact is a portable, signed bundle. kolm run executes it locally; kolm serve --mcp exposes it to any frontier agent." />
-  <link rel="stylesheet" href="/styles.css" />
-  <style>
-    .codebox { background:#0a0a0a; border:1px solid #222; border-radius:10px;
-      padding:14px 16px; font:12px ui-monospace,monospace; color:#bbb;
-      overflow-x:auto; margin:8px 0; }
-    .codebox .c { color:#7c5cff; }
-    .codebox .o { color:#22c55e; }
-    .codebox .k { color:#f59e0b; }
-    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:14px 0; }
-    @media (max-width: 720px) { .grid2 { grid-template-columns:1fr; } }
-    .card { background:#0d0d0d; border:1px solid #222; border-radius:10px; padding:16px; }
-    .card h3 { margin:0 0 6px; font-size:14px; color:#ddd; }
-    .card p { margin:0; color:#999; font-size:13px; line-height:1.55; }
-    .card code { color:#7c5cff; }
-    .file-tree { font:12px ui-monospace,monospace; color:#aaa; line-height:1.7; }
-    .file-tree .f { color:#7c5cff; }
-    .file-tree .d { color:#666; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Run &middot; kolm</title>
+<meta name="description" content="Run a .kolm artifact on iOS, Android, web, or as an MCP server. One command. Offline. Signed. Their data stays on their device.">
+<meta name="theme-color" content="#07090f">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Run &middot; kolm">
+<meta property="og:description" content="One command turns a .kolm into a local MCP server. Drop the same file into your iOS, Android, or web app.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/run">
+<meta property="og:image" content="/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/run">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/aurora.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg-2:#0b1018;--bg-3:#13101f;
+  --surface:#101722;--surface-2:#162033;
+  --line:#1c2738;--line-2:#28324a;--line-3:#3a3658;
+  --fg:#f6f8fb;--fg-2:#d6d3e3;--fg-3:#a8b3c2;
+  --muted:#7d7898;--dim:#778396;
+  --violet:#a78bfa;--violet-2:#d4c2ff;--cyan:#65d4ff;--emerald:#43e6a6;--amber:#ffb084;--rose:#ff85a6;
+  --maxw:1180px;--pad-x:max(28px,env(safe-area-inset-left));
+}
+html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-synthesis:none}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:15.5px;font-weight:400;line-height:1.55;letter-spacing:-0.011em;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto;overflow-x:hidden;position:relative}
+h1,h2,h3,h4{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",sans-serif;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto}
+img,svg{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+button{font:inherit;cursor:pointer;border:0;background:transparent;color:inherit}
+code,pre,.mono,kbd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;font-feature-settings:"ss02","calt","zero";font-variant-ligatures:none}
+::selection{background:rgba(167, 139, 250,0.32);color:var(--fg)}
+
+.bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
+.bg-stage::before{content:"";position:absolute;inset:-10%;background-image:url('/aurora.svg');background-size:cover;background-position:center;opacity:0.30;filter:blur(36px) saturate(1.05)}
+.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(7, 9, 15,0) 0%,rgba(7, 9, 15,0.65) 50%,rgba(7, 9, 15,0.95) 100%)}
+
+.aurora{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;background-repeat:no-repeat;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(7, 9, 15,0.55);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
+nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:21px;line-height:1;display:inline-block}
+nav.top ul.links{display:flex;gap:28px}
+nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
+nav.top ul.links a:hover,nav.top ul.links a.active{color:var(--fg)}
+nav.top .signin{color:var(--fg);display:inline-flex;align-items:center;gap:4px;font-weight:500}
+nav.top .signin .ar{transition:transform .2s;color:var(--fg-3)}
+nav.top .signin:hover .ar{transform:translateX(2px);color:var(--fg)}
+@media(max-width:880px){nav.top ul.links{display:none}}
+
+/* hero */
+.hero{max-width:var(--maxw);margin:0 auto;padding:84px var(--pad-x) 36px}
+.hero .lay{display:grid;grid-template-columns:1.05fr 1fr;gap:60px;align-items:center}
+@media(max-width:1040px){.hero .lay{grid-template-columns:1fr;gap:40px}}
+.hero .copy .eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);letter-spacing:0.16em;text-transform:uppercase;padding:6px 13px;border-radius:6px;background:linear-gradient(180deg,rgba(67, 230, 166,0.10),rgba(67, 230, 166,0.04));border:1px solid rgba(67, 230, 166,0.22);margin-bottom:24px}
+.hero .copy .eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 3px rgba(67, 230, 166,0.15)}
+.hero h1{font-size:clamp(38px,5vw,64px);font-weight:600;letter-spacing:-0.032em;line-height:1.05;margin-bottom:20px}
+.hero h1 .accent{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;background-repeat:no-repeat;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+
+.hero .lede{font-size:17px;color:var(--fg-3);max-width:540px;line-height:1.55;margin-bottom:30px}
+.hero .lede strong{color:var(--fg-2);font-weight:500}
+.hero .lede code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:0.92em;color:var(--violet-2);background:rgba(167, 139, 250,0.08);padding:1px 6px;border-radius:4px;border:1px solid rgba(167, 139, 250,0.20)}
+
+.cta-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:9px;padding:13px 22px;border-radius:8px;font-size:14.5px;font-weight:500;letter-spacing:-0.011em;border:1px solid transparent;line-height:1;transition:background .15s,border-color .15s,color .15s,transform .15s,box-shadow .15s;white-space:nowrap;cursor:pointer;font-family:inherit}
+.btn .ar{transition:transform .2s}
+.btn:hover .ar{transform:translateX(3px)}
+.btn-primary{background:linear-gradient(180deg,#fff 0%,#e3deff 100%);color:#07090f;border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,0.10),0 8px 28px -8px rgba(167, 139, 250,0.45)}
+.btn-primary:hover{box-shadow:0 0 0 1px rgba(255,255,255,0.18),0 12px 32px -6px rgba(167, 139, 250,0.55)}
+.btn-ghost{background:transparent;color:var(--fg);border-color:var(--line-3)}
+.btn-ghost:hover{border-color:var(--fg);background:rgba(255,255,255,0.04)}
+
+/* hero terminal — the action shot */
+.term{
+  position:relative;border:1px solid var(--line-2);border-radius:18px;
+  background:linear-gradient(180deg,rgba(22,19,42,0.85),rgba(14,12,28,0.85));
+  backdrop-filter:blur(8px);overflow:hidden;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,0.5),0 0 0 1px rgba(67, 230, 166,0.06),0 0 80px -30px rgba(67, 230, 166,0.45);
+}
+.term::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 100% 0%,rgba(67, 230, 166,0.10),transparent 50%),radial-gradient(circle at 0% 100%,rgba(101,212,255,0.10),transparent 50%);pointer-events:none}
+.term .hd{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);position:relative}
+.term .hd .dots{display:flex;gap:7px}
+.term .hd .dots i{width:11px;height:11px;border-radius:50%;background:var(--line-2);display:block}
+.term .hd .dots i:nth-child(1){background:#ff5f57}
+.term .hd .dots i:nth-child(2){background:#ffbd2e}
+.term .hd .dots i:nth-child(3){background:#28c941}
+.term .hd .lbl{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--fg-3);letter-spacing:0.14em;text-transform:uppercase}
+.term .body{padding:22px 24px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13.5px;line-height:1.85;color:var(--fg-2);position:relative;min-height:332px}
+.term .ln{display:block;opacity:0;transform:translateY(4px);transition:opacity .35s ease,transform .35s ease}
+.term .ln.show{opacity:1;transform:translateY(0)}
+.term .pr{color:var(--violet-2);user-select:none;margin-right:6px}
+.term .cmd{color:var(--fg)}
+.term .arg{color:var(--cyan)}
+.term .flag{color:var(--violet-2)}
+.term .out{color:var(--fg-3)}
+.term .ok{color:var(--emerald)}
+.term .num{color:var(--amber)}
+.term .com{color:var(--dim);font-style:italic}
+.term .url{color:var(--cyan);text-decoration:underline;text-decoration-color:rgba(101,212,255,0.4)}
+.term .cur{display:inline-block;width:8px;height:14px;background:var(--fg);vertical-align:-2px;margin-left:1px;animation:blink 1.05s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* SECTION shell */
+.sec{max-width:var(--maxw);margin:0 auto;padding:64px var(--pad-x)}
+.sec .head{margin-bottom:36px}
+.sec .head h2{font-size:clamp(28px,3.4vw,40px);font-weight:600;letter-spacing:-0.026em;line-height:1.08;margin-bottom:10px}
+.sec .head .sub{font-size:15.5px;color:var(--fg-3);max-width:620px;line-height:1.55}
+.sec .head .sub code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:0.92em;color:var(--violet-2);background:rgba(167, 139, 250,0.08);padding:1px 6px;border-radius:4px;border:1px solid rgba(167, 139, 250,0.20)}
+
+/* INSPECT — drop / paste a .kolm to see what's inside */
+.inspect{
+  border:1px solid var(--line-2);border-radius:16px;
+  background:linear-gradient(180deg,rgba(22,19,42,0.55),rgba(14,12,28,0.45));
+  display:grid;grid-template-columns:1fr 1.2fr;gap:0;overflow:hidden;
+}
+@media(max-width:880px){.inspect{grid-template-columns:1fr}}
+.inspect .left{padding:28px 30px;border-right:1px solid var(--line)}
+@media(max-width:880px){.inspect .left{border-right:0;border-bottom:1px solid var(--line)}}
+.inspect .left h3{font-size:18px;font-weight:600;letter-spacing:-0.018em;line-height:1.25;margin-bottom:8px}
+.inspect .left p{font-size:13.5px;color:var(--fg-3);line-height:1.55;margin-bottom:18px}
+.inspect .url-row{display:flex;gap:8px;margin-bottom:10px}
+.inspect .url-row input{flex:1;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13px;color:var(--fg);padding:11px 14px;background:rgba(7, 9, 15,0.6);border:1px solid var(--line-2);border-radius:8px;outline:none;transition:border-color .15s,box-shadow .15s}
+.inspect .url-row input:focus{border-color:var(--violet);box-shadow:0 0 0 3px rgba(167, 139, 250,0.10)}
+.inspect .url-row input::placeholder{color:var(--muted)}
+.inspect .url-row button{padding:11px 18px;font-size:13px;font-weight:500;background:var(--fg);color:#07090f;border-radius:8px;transition:background .15s}
+.inspect .url-row button:hover{background:#fff}
+.inspect .samples{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.inspect .samples span{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--dim);letter-spacing:0.04em;align-self:center;margin-right:4px}
+.inspect .samples button{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;padding:5px 10px;border:1px solid var(--line-2);border-radius:5px;color:var(--fg-3);background:rgba(7, 9, 15,0.4);transition:all .15s}
+.inspect .samples button:hover{border-color:var(--line-3);color:var(--fg);background:rgba(167, 139, 250,0.06)}
+.inspect .right{padding:28px 30px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;line-height:1.7;color:var(--fg-2);min-height:280px;position:relative}
+.inspect .right .empty{display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:13px;font-family:-apple-system,"SF Pro Text","Inter","Segoe UI",sans-serif;height:100%;text-align:center}
+.inspect .right pre{white-space:pre-wrap;word-break:break-word}
+.inspect .right .k{color:var(--violet-2)}
+.inspect .right .s{color:var(--cyan)}
+.inspect .right .v{color:var(--fg)}
+.inspect .right .b{color:var(--emerald)}
+.inspect .right .c{color:var(--dim)}
+
+/* SURFACES — 4 ways to run */
+.surfaces{margin-top:42px}
+.surfaces .tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--line);padding-bottom:0;margin-bottom:24px}
+.surfaces .tabs button{
+  padding:13px 22px;font-size:13.5px;font-weight:500;color:var(--fg-3);
+  border-bottom:2px solid transparent;margin-bottom:-1px;letter-spacing:-0.008em;
+  display:inline-flex;align-items:center;gap:9px;transition:color .15s,border-color .15s;
+}
+.surfaces .tabs button .ic{width:16px;height:16px;color:currentColor}
+.surfaces .tabs button:hover{color:var(--fg-2)}
+.surfaces .tabs button.active{color:var(--fg);border-bottom-color:var(--violet)}
+.surfaces .tabs button .ic-cap{width:24px;height:24px;border-radius:6px;border:1px solid var(--line-2);display:inline-flex;align-items:center;justify-content:center;color:var(--fg-3)}
+.surfaces .tabs button.active .ic-cap{border-color:rgba(167, 139, 250,0.45);color:var(--violet-2);background:rgba(167, 139, 250,0.08)}
+
+.pane{display:none;grid-template-columns:1fr 1.4fr;gap:32px;align-items:start}
+@media(max-width:980px){.pane{grid-template-columns:1fr}}
+.pane.show{display:grid}
+.pane .desc h3{font-size:21px;font-weight:600;letter-spacing:-0.020em;line-height:1.22;margin-bottom:10px}
+.pane .desc p{font-size:14.5px;color:var(--fg-3);line-height:1.55;margin-bottom:14px}
+.pane .desc p code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:0.9em;color:var(--violet-2);background:rgba(167, 139, 250,0.08);padding:1px 6px;border-radius:4px;border:1px solid rgba(167, 139, 250,0.20)}
+.pane .desc ul{margin-top:14px;font-size:13.5px;color:var(--fg-2)}
+.pane .desc ul li{display:flex;align-items:flex-start;gap:10px;padding:5px 0}
+.pane .desc ul li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--violet);flex-shrink:0;margin-top:9px}
+.pane .install{display:flex;align-items:center;gap:10px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;color:var(--fg-3);margin-top:16px;padding:10px 14px;background:rgba(7, 9, 15,0.5);border:1px solid var(--line);border-radius:8px}
+.pane .install .pr{color:var(--dim)}
+.pane .install .v{color:var(--fg-2)}
+
+.code-block{
+  position:relative;border:1px solid var(--line-2);border-radius:14px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(14,12,28,0.95),rgba(7, 9, 15,0.95));
+}
+.code-block .head{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid var(--line);background:rgba(22,19,42,0.5)}
+.code-block .head .file{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--fg-3);letter-spacing:0.06em}
+.code-block .head .copy{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--dim);letter-spacing:0.10em;text-transform:uppercase;padding:4px 8px;border-radius:4px;border:1px solid var(--line-2);transition:all .15s}
+.code-block .head .copy:hover{color:var(--fg);border-color:var(--line-3)}
+.code-block .head .copy.done{color:var(--emerald);border-color:rgba(67, 230, 166,0.32);background:rgba(67, 230, 166,0.06)}
+.code-block pre{padding:18px 20px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;line-height:1.75;color:var(--fg-2);overflow-x:auto;white-space:pre}
+.code-block pre .kw{color:var(--violet-2)}
+.code-block pre .str{color:var(--cyan)}
+.code-block pre .num{color:var(--amber)}
+.code-block pre .com{color:var(--dim);font-style:italic}
+.code-block pre .fn{color:var(--emerald)}
+.code-block pre .ty{color:var(--rose)}
+
+/* contract — the 5 things kolm does */
+.contract{
+  border:1px solid var(--line);border-radius:16px;
+  background:linear-gradient(180deg,rgba(22,19,42,0.55),rgba(14,12,28,0.4));
+  padding:0;overflow:hidden;
+}
+.contract .row{
+  display:grid;grid-template-columns:60px 200px 1fr;gap:24px;
+  padding:18px 28px;border-bottom:1px solid var(--line);align-items:center;
+}
+@media(max-width:760px){.contract .row{grid-template-columns:40px 1fr;gap:16px;padding:16px 22px}.contract .row .desc{grid-column:1/-1;padding-left:56px;margin-top:-4px}}
+.contract .row:last-child{border-bottom:0}
+.contract .row .num{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--violet-2);letter-spacing:0.18em;font-weight:500}
+.contract .row .step{font-size:15px;font-weight:500;color:var(--fg);letter-spacing:-0.014em}
+.contract .row .desc{font-size:13.5px;color:var(--fg-3);line-height:1.55}
+.contract .row .desc code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:0.9em;color:var(--violet-2);background:rgba(167, 139, 250,0.06);padding:1px 5px;border-radius:3px}
+
+/* trust strip */
+.trust{
+  margin-top:42px;border:1px solid rgba(67, 230, 166,0.22);border-radius:16px;
+  background:linear-gradient(180deg,rgba(67, 230, 166,0.05),rgba(14,12,28,0.4));
+  padding:24px 30px;display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center;
+}
+@media(max-width:760px){.trust{grid-template-columns:1fr;text-align:center}}
+.trust .seal{
+  width:48px;height:48px;border-radius:12px;
+  border:1px solid rgba(67, 230, 166,0.4);color:var(--emerald);
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle,rgba(67, 230, 166,0.18) 0%,rgba(67, 230, 166,0) 70%);
+}
+.trust .seal svg{width:22px;height:22px}
+.trust .body h4{font-size:16px;font-weight:600;letter-spacing:-0.014em;margin-bottom:4px;color:var(--fg)}
+.trust .body p{font-size:13px;color:var(--fg-3);line-height:1.55}
+.trust .body p strong{color:var(--fg-2);font-weight:500}
+.trust .check{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--emerald);letter-spacing:0.14em;text-transform:uppercase;display:flex;align-items:center;gap:7px}
+.trust .check::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 4px rgba(67, 230, 166,0.18)}
+
+/* CTA tail */
+.tail{max-width:var(--maxw);margin:0 auto;padding:80px var(--pad-x) 110px;text-align:center}
+.tail h2{font-size:clamp(30px,4.4vw,52px);font-weight:600;letter-spacing:-0.030em;line-height:1.06;margin-bottom:22px}
+.tail h2 .accent{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;background-repeat:no-repeat;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.tail .row{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
+
+/* footer */
+footer{border-top:1px solid var(--line);padding:48px var(--pad-x) 64px;font-size:13px;color:var(--dim);background:rgba(7, 9, 15,0.4)}
+footer .inner{max-width:var(--maxw);margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:48px}
+footer h4{color:var(--fg);font-size:13px;font-weight:600;margin-bottom:14px;letter-spacing:-0.011em}
+footer .col a{display:block;color:var(--fg-3);padding:6px 0;font-size:13px;transition:color .15s}
+footer .col a:hover{color:var(--fg)}
+footer .legal{font-size:12px;line-height:1.7;color:var(--dim);margin-top:22px}
+footer .brand-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+footer .brand-row .mark{font-size:18px;font-weight:600;letter-spacing:-0.02em;color:var(--fg)}
+@media(max-width:760px){footer .inner{grid-template-columns:1fr 1fr;gap:32px}}
+@media(max-width:480px){footer .inner{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar">
-    <h1><span class="glyph"></span> kolm<span class="sub">by Kolmogorov</span></h1>
-    <div class="tag">v0.1 · compiler cache for intelligence</div>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/compile">Compile</a>
-      <a href="/run" class="active">Run</a>
-      <a href="/recall">Recall</a>
-      <a href="/cloud">Cloud</a>
-      <a href="/manual">Manual</a>
-      <a href="/account">Account</a>
-    </nav>
-    <div class="footnote">
-      <strong>Compile · Run · Recall.</strong><br/>
-      Compile frontier behavior once, run it locally forever.
-    </div>
-  </aside>
 
-  <main class="main">
-    <section class="hero">
-      <div class="eyebrow"><span class="dot live"></span> kolm run · the local execution leg</div>
-      <h1>Open the box. <span class="grad">Run anywhere.</span></h1>
-      <p class="sub">
-        A <code>.kolm</code> file is a sealed, signed zip. <code>kolm run</code> opens it on any laptop, server,
-        or edge box and executes deterministic recipes against your input, no frontier API call, no network,
-        no telemetry. Or expose every local artifact as an MCP tool with one command and let
-        Claude, Codex, or Cursor pick the right one for each turn.
+<div class="bg-stage" aria-hidden="true"></div>
+
+<nav class="top">
+  <a class="brand aurora" href="/">kolm</a>
+  <ul class="links">
+    <li><a href="/compile">Compile</a></li>
+    <li><a class="active" href="/run">Run</a></li>
+    <li><a href="/registry">Registry</a></li>
+    <li><a href="/docs">Docs</a></li>
+    <li><a href="/pricing">Pricing</a></li>
+  </ul>
+  <a class="signin" href="/signup">Sign in <span class="ar">&rsaquo;</span></a>
+</nav>
+
+<main>
+
+<section class="hero">
+  <div class="lay">
+    <div class="copy">
+      <span class="eyebrow"><span class="dot"></span> kolm runtime &middot; offline first</span>
+      <h1>One file. <br><span class="accent">Every device.</span></h1>
+      <p class="lede">
+        A <code>.kolm</code> is a single signed file. <strong>The kolm runtime parses it, verifies the signature, indexes the user's local data, and runs the model on device.</strong> No telemetry. No round trip. No copy of their data leaves.
       </p>
-    </section>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#quick">Run one in 30 seconds <span class="ar">&rsaquo;</span></a>
+        <a class="btn btn-ghost" href="/registry">Pick from the registry</a>
+      </div>
+    </div>
 
-    <section class="block">
-      <h2>Run a single artifact.</h2>
-      <div class="codebox">
-<span class="c"># execute against a string input</span>
-$ kolm run support-triage.kolm <span class="o">"my login is failing after the update"</span>
+    <div class="term" aria-label="kolm serve demo">
+      <div class="hd">
+        <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <span class="lbl">kolm serve &middot; live</span>
+      </div>
+      <div class="body" id="term">
+<span class="ln com" data-step="0"># turn any .kolm into a local MCP server</span>
+<span class="ln" data-step="1"><span class="pr">$</span> <span class="cmd">kolm</span> <span class="arg">serve</span> <span class="arg">support-writer.kolm</span> <span class="flag">--mcp</span><span class="cur" id="cur"></span></span>
+<span class="ln out" data-step="2">  <span style="color:var(--violet-2)">parse</span>       manifest v0.1, 8 tools declared</span>
+<span class="ln out" data-step="3">  <span style="color:var(--violet-2)">verify</span>      ed25519 ok &middot; receipt chain ok</span>
+<span class="ln out" data-step="4">  <span style="color:var(--violet-2)">load</span>        base 1.34 GB &middot; adapter 38 MB</span>
+<span class="ln out" data-step="5">  <span style="color:var(--violet-2)">index</span>       142 local files in 0.41 s</span>
+<span class="ln ok" data-step="6">  ok          listening on <span class="url">http://127.0.0.1:7464/mcp</span></span>
+<span class="ln com" data-step="7">  </span>
+<span class="ln com" data-step="8"># claude desktop, cursor, your agent, anything that speaks MCP</span>
+<span class="ln out" data-step="9">  <span style="color:var(--cyan)">mcp.servers.kolm = http://127.0.0.1:7464/mcp</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="quick">
+  <div class="head">
+    <h2>Inspect a <code>.kolm</code>.</h2>
+    <p class="sub">Drop in a registry slug or paste a URL. The runtime parses the manifest and shows you what the artifact declares before you run it.</p>
+  </div>
+
+  <div class="inspect">
+    <div class="left">
+      <h3>What's in the box?</h3>
+      <p>Every <code style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.92em;color:var(--violet-2)">.kolm</code> declares a manifest, a signature, a base, an adapter or recipe pack, and a list of tools. You can read it before running it.</p>
+      <div class="url-row">
+        <input id="ksrc" type="text" placeholder="support-writer  or  https://kolm.ai/r/support-writer.kolm" autocomplete="off">
+        <button id="kgo">Inspect</button>
+      </div>
+      <div class="samples">
+        <span>try:</span>
+        <button data-s="support-writer">support-writer</button>
+        <button data-s="meeting-tldr">meeting-tldr</button>
+        <button data-s="finance-clean">finance-clean</button>
+      </div>
+    </div>
+    <div class="right" id="kout">
+      <div class="empty">A manifest will appear here.</div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="head">
+    <h2>Pick a surface.</h2>
+    <p class="sub">The same <code>.kolm</code> file runs in all four. The kolm runtime takes care of the model, the index, the receipt, and the permission checks.</p>
+  </div>
+
+  <div class="surfaces">
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-pane="server" role="tab">
+        <span class="ic-cap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><circle cx="7" cy="7" r="0.7" fill="currentColor"/><circle cx="7" cy="17" r="0.7" fill="currentColor"/></svg>
+        </span>
+        Server / MCP
+      </button>
+      <button class="tab" data-pane="ios" role="tab">
+        <span class="ic-cap">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><circle cx="12" cy="18" r="0.9" fill="currentColor"/></svg>
+        </span>
+        iOS
+      </button>
+      <button class="tab" data-pane="android" role="tab">
+        <span class="ic-cap">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2.5" width="12" height="19" rx="1.5"/><line x1="9" y1="18" x2="15" y2="18"/></svg>
+        </span>
+        Android
+      </button>
+      <button class="tab" data-pane="web" role="tab">
+        <span class="ic-cap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18"/></svg>
+        </span>
+        Web
+      </button>
+    </div>
+
+    <div class="pane show" id="pane-server" role="tabpanel">
+      <div class="desc">
+        <h3>Plug it into Claude, Cursor, your agent.</h3>
+        <p>The fastest path. <code>kolm serve</code> exposes the artifact as a local <strong>MCP server</strong>. Anything that speaks the protocol can call it.</p>
+        <ul>
+          <li>One command. No SDK install.</li>
+          <li>The artifact's tools become MCP tools.</li>
+          <li>Receipts on every call.</li>
+        </ul>
+        <div class="install"><span class="pr">$</span> <span class="v">brew install kolm</span> <span style="margin:0 8px;color:var(--dim)">&middot;</span> <span class="v">curl kolm.ai/install | sh</span></div>
+      </div>
+      <div class="code-block">
+        <div class="head"><span class="file">terminal</span><button class="copy" data-c="server">Copy</button></div>
+        <pre id="src-server"><span class="com"># 1. one command. you're done.</span>
+$ <span class="kw">kolm</span> serve support-writer.kolm <span class="kw">--mcp</span>
+  ok    listening on <span class="str">http://127.0.0.1:7464/mcp</span>
+
+<span class="com"># 2. wire it into Claude Desktop</span>
+$ <span class="kw">cat</span> ~/.claude/mcp.json
 {
-  <span class="c">"output":</span> <span class="o">"category=auth severity=high suggested_owner=identity-team"</span>,
-  <span class="c">"recipe_id":</span> <span class="o">"r_class_v3"</span>,
-  <span class="c">"latency_us":</span> <span class="k">1480</span>,
-  <span class="c">"k_score":</span> { <span class="c">"composite":</span> <span class="k">412.7</span>, ... },
-  <span class="c">"receipt":</span> { <span class="c">"spec":</span> <span class="o">"rs-1-run"</span>, <span class="c">"recipe_id":</span> <span class="o">"r_class_v3"</span>, ... }
+  <span class="str">"servers"</span>: {
+    <span class="str">"kolm"</span>: { <span class="str">"url"</span>: <span class="str">"http://127.0.0.1:7464/mcp"</span> }
+  }
 }
 
-<span class="c"># or pipe JSON</span>
-$ echo '{<span class="o">"text"</span>:<span class="o">"..."</span>}' | kolm run support-triage.kolm
-
-<span class="c"># inspect without running</span>
-$ kolm inspect support-triage.kolm
-$ kolm score   support-triage.kolm   <span class="c"># show K-score only</span>
-$ kolm eval    support-triage.kolm   <span class="c"># re-run embedded eval suite</span></div>
-    </section>
-
-    <section class="block">
-      <h2>Or expose every artifact as an MCP tool.</h2>
-      <p class="lede">
-        One command turns <code>~/.kolm/artifacts/</code> into a live MCP server. Claude Desktop, Cursor,
-        Codex, and any other frontier agent that speaks Model Context Protocol auto-discover every
-        compiled skill, no per-tool integration code, ever.
-      </p>
-      <div class="codebox">
-<span class="c"># stdio transport (what most MCP clients want)</span>
-$ kolm serve --mcp
-
-┌─ kolm MCP server ─────────────────────────────────────────
-│  artifacts: ~/.kolm/artifacts
-│  tools:     7
-│    • support-triage  , classify support tickets · k=412.7, signed
-│    • email-reply     , draft replies in user's voice · k=389.4, signed
-│    • pr-review       , spot bugs in React PRs · k=441.2, signed
-│    • code-style      , review Python style · k=355.9, signed
-│    …and 3 more
-│
-│  Add to your MCP client config:
-│    {
-│      "kolm": {
-│        "command": "kolm",
-│        "args": ["serve", "--mcp"]
-│      }
-│    }
-└────────────────────────────────────────────────────────────
-
-<span class="c"># or HTTP for network agents</span>
-$ kolm serve --mcp --http --port 8765
-$ curl http://127.0.0.1:8765/health
-{ <span class="c">"ok":</span> <span class="o">true</span>, <span class="c">"tools":</span> <span class="k">7</span> }</div>
-    </section>
-
-    <section class="block">
-      <h2>What's inside a .kolm.</h2>
-      <div class="grid2">
-        <div class="card">
-          <h3>The bundle</h3>
-          <div class="file-tree">
-            <span class="d">support-triage.kolm/</span><br/>
-            ├── <span class="f">manifest.json</span>     <span class="d">— task, K-score, hashes</span><br/>
-            ├── <span class="f">recipes.json</span>      <span class="d">— deterministic draft pack</span><br/>
-            ├── <span class="f">model.gguf</span>        <span class="d">— base model pointer</span><br/>
-            ├── <span class="f">lora.bin</span>          <span class="d">— task-specific delta</span><br/>
-            ├── <span class="f">index.sqlite-vec</span>  <span class="d">— corpus index</span><br/>
-            ├── <span class="f">evals.json</span>        <span class="d">— embedded eval suite</span><br/>
-            └── <span class="f">signature.sig</span>     <span class="d">— HMAC chain</span>
-          </div>
-        </div>
-        <div class="card">
-          <h3>The contract</h3>
-          <p>Open the zip. Verify <code>signature.sig</code> against the canonical JSON of <code>manifest.json</code>. If valid, every other file is anchored, including the model pointer, the LoRA delta, every recipe, the corpus index, and the eval suite that produced the K-score. One signature, every byte covered.</p>
-        </div>
+<span class="com"># 3. or run headless on a server</span>
+$ <span class="kw">kolm</span> serve support-writer.kolm <span class="kw">--mcp</span> <span class="kw">--port</span> <span class="num">7464</span> <span class="kw">--bind</span> <span class="num">0.0.0.0</span></pre>
       </div>
-    </section>
+    </div>
 
-    <section class="block">
-      <h2>The receipt.</h2>
-      <p class="lede">
-        Every <code>kolm run</code> emits a structured receipt: which artifact ran, which recipe inside fired,
-        the version pin, the timing, and the K-score the artifact was packaged with. Save it, ship it, audit it,
-        chain it to whatever upstream system you run.
-      </p>
-      <div class="codebox">
-{
-  <span class="c">"spec":</span>            <span class="o">"rs-1-run"</span>,
-  <span class="c">"artifact_job_id":</span> <span class="o">"job_abc"</span>,
-  <span class="c">"recipe_id":</span>       <span class="o">"r_class_v3"</span>,
-  <span class="c">"version_id":</span>      <span class="o">"v3.2.1"</span>,
-  <span class="c">"latency_us":</span>      <span class="k">1480</span>,
-  <span class="c">"ran_at":</span>          <span class="o">"2026-05-06T18:42:11Z"</span>
-}</div>
-    </section>
+    <div class="pane" id="pane-ios" role="tabpanel">
+      <div class="desc">
+        <h3>Bundle into your iOS app.</h3>
+        <p>Drop the <code>.kolm</code> into your app bundle or download it lazily. The Swift SDK loads it, indexes the user's chosen folder, and gives you a single <code>generate</code> call.</p>
+        <ul>
+          <li>iOS 17+. Apple Silicon only.</li>
+          <li>Neural Engine path on supported chips.</li>
+          <li>No telemetry. No network calls.</li>
+        </ul>
+        <div class="install"><span class="pr">SPM</span> <span class="v">github.com/kolm-ai/kolm-swift</span></div>
+      </div>
+      <div class="code-block">
+        <div class="head"><span class="file">App.swift</span><button class="copy" data-c="ios">Copy</button></div>
+        <pre id="src-ios"><span class="kw">import</span> <span class="ty">Kolm</span>
 
-    <footer>
-      <a href="/compile">← Compile</a> · <a href="/recall">Recall →</a>
-    </footer>
-  </main>
-</div>
+<span class="com">// load + verify on first launch</span>
+<span class="kw">let</span> kolm = <span class="kw">try</span> <span class="ty">Kolm</span>.<span class="fn">load</span>(
+  bundle: <span class="str">"support-writer.kolm"</span>,
+  index: .documents
+)
+
+<span class="com">// generate. local. signed. cite-able.</span>
+<span class="kw">let</span> reply = <span class="kw">try await</span> kolm.<span class="fn">generate</span>(
+  task: <span class="str">"draft a polite reply to the latest email"</span>,
+  recall: <span class="num">8</span>
+)
+
+<span class="fn">print</span>(reply.text)        <span class="com">// the reply</span>
+<span class="fn">print</span>(reply.sources)     <span class="com">// which local files it used</span>
+<span class="fn">print</span>(reply.receipt)     <span class="com">// HMAC chain you can verify</span></pre>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-android" role="tabpanel">
+      <div class="desc">
+        <h3>Drop into your Android app.</h3>
+        <p>The Kotlin SDK uses NNAPI on supported devices, falls back to the CPU runtime otherwise. Same <code>.kolm</code> file as iOS, identical signature.</p>
+        <ul>
+          <li>Android 10+. ARM64 / x86_64.</li>
+          <li>Storage Access Framework for the local index.</li>
+          <li>Background-safe. Survives process death.</li>
+        </ul>
+        <div class="install"><span class="pr">gradle</span> <span class="v">implementation("ai.kolm:kolm-runtime:0.1.0")</span></div>
+      </div>
+      <div class="code-block">
+        <div class="head"><span class="file">MainActivity.kt</span><button class="copy" data-c="android">Copy</button></div>
+        <pre id="src-android"><span class="kw">import</span> ai.kolm.<span class="ty">Kolm</span>
+
+<span class="com">// load + verify on first launch</span>
+<span class="kw">val</span> kolm = <span class="ty">Kolm</span>.<span class="fn">load</span>(
+  context = <span class="kw">this</span>,
+  asset   = <span class="str">"support-writer.kolm"</span>,
+  index   = <span class="ty">Index</span>.<span class="fn">files</span>(<span class="ty">Environment</span>.DIRECTORY_DOCUMENTS)
+)
+
+<span class="com">// generate. local. signed. cite-able.</span>
+<span class="kw">val</span> reply = kolm.<span class="fn">generate</span>(
+  task   = <span class="str">"draft a polite reply to the latest email"</span>,
+  recall = <span class="num">8</span>
+)
+
+println(reply.text)        <span class="com">// the reply</span>
+println(reply.sources)     <span class="com">// which local files it used</span>
+println(reply.receipt)     <span class="com">// HMAC chain you can verify</span></pre>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-web" role="tabpanel">
+      <div class="desc">
+        <h3>Run it in the browser.</h3>
+        <p>The web runtime uses WebGPU on Chrome and Edge, falls back to <code>wasm</code> simd. The <code>.kolm</code> is fetched once and cached by the service worker.</p>
+        <ul>
+          <li>WebGPU first. WASM SIMD fallback.</li>
+          <li>Indexes <code>FileSystemHandle</code> trees locally.</li>
+          <li>Works offline after first load (PWA).</li>
+        </ul>
+        <div class="install"><span class="pr">npm</span> <span class="v">npm i @kolm-ai/runtime</span></div>
+      </div>
+      <div class="code-block">
+        <div class="head"><span class="file">app.ts</span><button class="copy" data-c="web">Copy</button></div>
+        <pre id="src-web"><span class="kw">import</span> { <span class="ty">Kolm</span> } <span class="kw">from</span> <span class="str">"@kolm-ai/runtime"</span>;
+
+<span class="com">// load + verify. cached by the service worker.</span>
+<span class="kw">const</span> kolm = <span class="kw">await</span> <span class="ty">Kolm</span>.<span class="fn">load</span>(<span class="str">"/artifacts/support-writer.kolm"</span>, {
+  index: <span class="kw">await</span> showDirectoryPicker()
+});
+
+<span class="com">// generate. local. signed. cite-able.</span>
+<span class="kw">const</span> reply = <span class="kw">await</span> kolm.<span class="fn">generate</span>({
+  task: <span class="str">"draft a polite reply to the latest email"</span>,
+  recall: <span class="num">8</span>
+});
+
+console.log(reply.text);      <span class="com">// the reply</span>
+console.log(reply.sources);   <span class="com">// which local files it used</span>
+console.log(reply.receipt);   <span class="com">// HMAC chain you can verify</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="head">
+    <h2>What the runtime does. In order.</h2>
+    <p class="sub">Five steps. Every one of them is verifiable, and every one of them is offline once the artifact has been downloaded.</p>
+  </div>
+
+  <div class="contract">
+    <div class="row">
+      <div class="num">01</div>
+      <div class="step">Parse manifest</div>
+      <div class="desc">Read the declared base, adapter, recipe pack, tools, and permissions from the <code>manifest.json</code> at the root of the zip. Reject if any required field is missing.</div>
+    </div>
+    <div class="row">
+      <div class="num">02</div>
+      <div class="step">Verify signature</div>
+      <div class="desc">ed25519 over each component hash, anchored to the kolm public registry. Receipt chain over <code>(artifact_hash, eval_set_hash, eval_score, judge_id)</code>. Refuse to load on mismatch.</div>
+    </div>
+    <div class="row">
+      <div class="num">03</div>
+      <div class="step">Load locally</div>
+      <div class="desc">Map the base into the platform's tensor runtime (Metal, NNAPI, WebGPU, llama.cpp). Stream the adapter delta. Open the <code>sqlite-vec</code> index in read-only.</div>
+    </div>
+    <div class="row">
+      <div class="num">04</div>
+      <div class="step">Index private data</div>
+      <div class="desc">If the user has granted access to a folder, the runtime embeds new files into the local index. The corpus never leaves the device.</div>
+    </div>
+    <div class="row">
+      <div class="num">05</div>
+      <div class="step">Generate</div>
+      <div class="desc">Recall <code>k</code> chunks. Draft tokens from the recipe pack where possible. Generate. Cite the chunks. Stamp the output with a verifiable receipt.</div>
+    </div>
+  </div>
+
+  <div class="trust">
+    <div class="seal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 L4 6v6c0 4.4 3.4 8.4 8 10 4.6-1.6 8-5.6 8-10V6L12 2z"/><path d="M9 12l2 2 4-4" stroke-linecap="round"/></svg>
+    </div>
+    <div class="body">
+      <h4>Their data does not leave.</h4>
+      <p>Step 04 happens on device. <strong>The kolm cloud never sees</strong> the user's emails, photos, files, transcripts, or messages. Compile in the cloud. Run on the edge.</p>
+    </div>
+    <div class="check">on-device</div>
+  </div>
+</section>
+
+<section class="tail">
+  <h2><span class="accent">Compile once.</span><br>Run forever.</h2>
+  <div class="row">
+    <a class="btn btn-primary" href="/compile">Compile your first <span class="ar">&rsaquo;</span></a>
+    <a class="btn btn-ghost" href="/registry">Or pick from the registry</a>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="inner">
+    <div>
+      <div class="brand-row"><span class="mark aurora">kolm</span></div>
+      <p style="color:var(--fg-3);font-size:13.5px;line-height:1.55;max-width:280px">The AI compiler. Type a task. Compile a small signed specialist. Run it on every device offline.</p>
+      <p class="legal">&copy; 2026 Kolmogorov. Built in the open. <a href="/security" style="color:var(--fg-3)">Security</a></p>
+    </div>
+    <div class="col">
+      <h4>Product</h4>
+      <a href="/compile">Compile</a>
+      <a href="/run">Run</a>
+      <a href="/registry">Registry</a>
+      <a href="/pricing">Pricing</a>
+    </div>
+    <div class="col">
+      <h4>Develop</h4>
+      <a href="/docs">Docs</a>
+      <a href="/docs#cli-compile">CLI</a>
+      <a href="/docs#sdk">SDKs</a>
+      <a href="/playground">Playground</a>
+    </div>
+    <div class="col">
+      <h4>Open</h4>
+      <a href="/docs#rs-1">RS-1 spec</a>
+      <a href="/docs#manifest">Manifest v0.1</a>
+      <a href="/docs#receipts">Receipts v0.1</a>
+      <a href="/security">Security</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // animate the hero terminal
+  var t = document.getElementById('term');
+  if (t) {
+    var lines = t.querySelectorAll('[data-step]');
+    var cur = document.getElementById('cur');
+    lines[0].classList.add('show');
+    lines[1].classList.add('show');
+    var i = 2;
+    function next(){
+      if (i < lines.length) {
+        lines[i].classList.add('show');
+        i++;
+        setTimeout(next, 380);
+      } else {
+        if (cur) cur.style.display = 'none';
+      }
+    }
+    setTimeout(next, 700);
+  }
+
+  // tabs
+  var tabs = document.querySelectorAll('.surfaces .tab');
+  var panes = document.querySelectorAll('.surfaces .pane');
+  tabs.forEach(function(b){
+    b.addEventListener('click', function(){
+      tabs.forEach(function(x){ x.classList.remove('active'); });
+      panes.forEach(function(x){ x.classList.remove('show'); });
+      b.classList.add('active');
+      var p = document.getElementById('pane-' + b.getAttribute('data-pane'));
+      if (p) p.classList.add('show');
+    });
+  });
+
+  // copy buttons
+  document.querySelectorAll('.code-block .copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var k = btn.getAttribute('data-c');
+      var src = document.getElementById('src-' + k);
+      if (!src) return;
+      var text = src.textContent;
+      try {
+        navigator.clipboard.writeText(text);
+        var orig = btn.textContent;
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(function(){ btn.textContent = orig; btn.classList.remove('done'); }, 1400);
+      } catch (e) {}
+    });
+  });
+
+  // inspect — show a sample manifest
+  var SAMPLES = {
+    'support-writer': {
+      name: 'support-writer@kolm',
+      tier: 'adapter',
+      base: 'qwen2.5-3b-instruct',
+      adapter_size_mb: 38,
+      total_size_mb: 1376,
+      kscore: 0.93,
+      compiled_at: '2026-05-04T18:22:11Z',
+      targets: ['ios', 'android', 'web', 'server'],
+      signer: 'ed25519:0x9f3c...c4a1',
+      tools: ['draft_reply', 'classify_intent', 'extract_order_id'],
+      permissions: ['fs.read.documents', 'index.read'],
+      eval: { set: 'kolm/support-50.eval', score: 0.93, n: 50 },
+      receipt: 'rcpt:0x4a1b...8e2c'
+    },
+    'meeting-tldr': {
+      name: 'meeting-tldr@kolm',
+      tier: 'recipe',
+      base: 'phi-3-mini',
+      total_size_mb: 412,
+      kscore: 0.91,
+      compiled_at: '2026-05-03T11:08:44Z',
+      targets: ['ios', 'android', 'web'],
+      signer: 'ed25519:0x12af...091e',
+      tools: ['summarize', 'extract_action_items'],
+      permissions: ['fs.read.audio', 'asr.local'],
+      eval: { set: 'kolm/transcripts-30.eval', score: 0.91, n: 30 },
+      receipt: 'rcpt:0x6e2f...a30b'
+    },
+    'finance-clean': {
+      name: 'finance-clean@kolm',
+      tier: 'specialist',
+      base: 'qwen2.5-7b-instruct',
+      adapter_size_mb: 96,
+      total_size_mb: 4288,
+      kscore: 0.96,
+      compiled_at: '2026-05-05T07:51:02Z',
+      targets: ['server', 'web'],
+      signer: 'ed25519:0xaa10...3c7f',
+      tools: ['categorize_tx', 'detect_dupes', 'monthly_summary'],
+      permissions: ['fs.read.documents'],
+      eval: { set: 'kolm/finance-bench-100.eval', score: 0.96, n: 100 },
+      receipt: 'rcpt:0xb1c4...e80a'
+    }
+  };
+
+  function escText(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+
+  function render(key) {
+    var out = document.getElementById('kout');
+    if (!out) return;
+    var m = SAMPLES[key];
+    if (!m) {
+      out.innerHTML = '<div class="empty">no manifest found for "' + escText(key) + '". try one of the samples.</div>';
+      return;
+    }
+    var lines = [
+      '<span class="c">// manifest.json</span>',
+      '{',
+      '  <span class="k">name</span>:        <span class="s">"' + escText(m.name) + '"</span>,',
+      '  <span class="k">tier</span>:        <span class="s">"' + escText(m.tier) + '"</span>,',
+      '  <span class="k">base</span>:        <span class="s">"' + escText(m.base) + '"</span>,',
+      m.adapter_size_mb ? '  <span class="k">adapter</span>:     <span class="v">' + m.adapter_size_mb + ' MB</span>,' : null,
+      '  <span class="k">total</span>:       <span class="v">' + m.total_size_mb + ' MB</span>,',
+      '  <span class="k">kscore</span>:      <span class="b">' + m.kscore.toFixed(2) + '</span>,',
+      '  <span class="k">targets</span>:     [' + m.targets.map(function(t){ return '<span class="s">"' + escText(t) + '"</span>'; }).join(', ') + '],',
+      '  <span class="k">tools</span>:       [' + m.tools.map(function(t){ return '<span class="s">"' + escText(t) + '"</span>'; }).join(', ') + '],',
+      '  <span class="k">permissions</span>: [' + m.permissions.map(function(p){ return '<span class="s">"' + escText(p) + '"</span>'; }).join(', ') + '],',
+      '  <span class="k">eval</span>:        { set: <span class="s">"' + escText(m.eval.set) + '"</span>, score: <span class="b">' + m.eval.score.toFixed(2) + '</span>, n: <span class="v">' + m.eval.n + '</span> },',
+      '  <span class="k">compiled_at</span>: <span class="s">"' + escText(m.compiled_at) + '"</span>,',
+      '  <span class="k">signer</span>:      <span class="s">"' + escText(m.signer) + '"</span>,',
+      '  <span class="k">receipt</span>:     <span class="s">"' + escText(m.receipt) + '"</span>',
+      '}',
+      '',
+      '<span class="c">// install:</span>',
+      '<span class="c">$</span> kolm install ' + escText(m.name.split('@')[0]),
+      '<span class="c">// run:</span>',
+      '<span class="c">$</span> kolm serve ' + escText(m.name.split('@')[0]) + '.kolm <span class="k">--mcp</span>'
+    ].filter(Boolean);
+    out.innerHTML = '<pre>' + lines.join('\n') + '</pre>';
+  }
+
+  document.querySelectorAll('.inspect .samples button').forEach(function(b){
+    b.addEventListener('click', function(){
+      var s = b.getAttribute('data-s');
+      var inp = document.getElementById('ksrc');
+      if (inp) inp.value = s;
+      render(s);
+    });
+  });
+  var go = document.getElementById('kgo');
+  var inp = document.getElementById('ksrc');
+  if (go && inp) {
+    function fire(){
+      var v = (inp.value || '').trim();
+      if (!v) return;
+      // strip any URL
+      var m = v.match(/([a-z0-9-]+)\.kolm/i);
+      var key = m ? m[1] : v.split('@')[0].toLowerCase();
+      render(key);
+    }
+    go.addEventListener('click', fire);
+    inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') fire(); });
+  }
+})();
+</script>
+
 </body>
 </html>

@@ -175,6 +175,9 @@ export async function runJob(job, ctx) {
       artifact_path: built.outPath,
       artifact_bytes: built.bytes,
       manifest: built.manifest,
+      receipt: built.receipt,
+      artifact_hash: built.artifact_hash,
+      eval_set_hash: built.eval_set_hash,
       k_score: built.k_score,
       completed_at: new Date().toISOString(),
     });

@@ -1,249 +1,222 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Live runtime · kolm</title>
-  <link rel="stylesheet" href="/styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dashboard · kolm</title>
+<meta name="description" content="Your kolm dashboard. Recent compiles, signed artifacts, verified receipts.">
+<meta name="theme-color" content="#07090f">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://kolm.ai/dashboard">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/aurora.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg-2:#0b1018;--bg-3:#13101f;
+  --surface:#101722;--surface-2:#162033;
+  --line:#1c2738;--line-2:#28324a;--line-3:#3a3658;
+  --fg:#f6f8fb;--fg-2:#d6d3e3;--fg-3:#a8b3c2;
+  --muted:#7d7898;--dim:#778396;
+  --violet:#a78bfa;--violet-2:#d4c2ff;--cyan:#65d4ff;--emerald:#43e6a6;--amber:#ffb084;
+  --maxw:1180px;--pad-x:max(28px,env(safe-area-inset-left));
+  --r-sm:6px;--r:10px;--r-lg:14px;
+}
+html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.55;letter-spacing:-0.011em;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto;overflow-x:hidden;position:relative}
+h1,h2,h3,h4{font-family:inherit;font-feature-settings:"ss01","ss03","cv11","calt"}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+code,pre,.mono,kbd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;font-feature-settings:"ss02","calt","zero";font-variant-ligatures:none}
+::selection{background:rgba(167, 139, 250,0.32);color:var(--fg)}
+
+.bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
+.bg-stage::before{content:"";position:absolute;inset:-10%;background-image:url('/aurora.svg');background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0.30;filter:blur(36px) saturate(1.05)}
+.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(7, 9, 15,0) 0%,rgba(7, 9, 15,0.6) 45%,rgba(7, 9, 15,0.94) 100%)}
+.aurora{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(7, 9, 15,0.55);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
+nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:21px;line-height:1}
+nav.top ul.links{display:flex;gap:28px}
+nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
+nav.top ul.links a:hover,nav.top ul.links a.active{color:var(--fg)}
+nav.top .signin{color:var(--fg);display:inline-flex;align-items:center;gap:4px;font-weight:500}
+nav.top .signin .ar{color:var(--fg-3);transition:transform .2s}
+nav.top .signin:hover .ar{transform:translateX(2px);color:var(--fg)}
+@media(max-width:880px){nav.top ul.links{display:none}}
+
+main{max-width:var(--maxw);margin:0 auto;padding:64px var(--pad-x) 96px}
+.head{margin-bottom:36px}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);letter-spacing:0.16em;text-transform:uppercase;padding:6px 13px;border-radius:6px;background:linear-gradient(180deg,rgba(167, 139, 250,0.10),rgba(167, 139, 250,0.04));border:1px solid rgba(167, 139, 250,0.22);margin-bottom:22px}
+.eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 3px rgba(67, 230, 166,0.18)}
+h1{font-size:clamp(34px,4.4vw,52px);font-weight:600;letter-spacing:-0.030em;line-height:1.04;margin-bottom:14px}
+.lede{color:var(--fg-3);font-size:16px;line-height:1.55;max-width:600px}
+
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:36px}
+.cards .c{padding:22px;background:var(--bg-2)}
+.cards .c .lbl{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:10px}
+.cards .c .v{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:30px;font-weight:600;letter-spacing:-0.024em;line-height:1}
+.cards .c .note{color:var(--muted);font-size:12px;margin-top:8px}
+@media(max-width:760px){.cards{grid-template-columns:repeat(2,1fr)}}
+
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin:48px 0 14px}
+.sec-h h2{font-size:22px;font-weight:600;letter-spacing:-0.02em}
+.sec-h .actions{display:flex;gap:10px}
+
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:8px;font-size:13.5px;font-weight:500;letter-spacing:-0.011em;border:1px solid transparent;line-height:1;transition:background .15s,border-color .15s,color .15s,box-shadow .15s;white-space:nowrap;cursor:pointer;font-family:inherit}
+.btn .ar{transition:transform .2s}
+.btn:hover .ar{transform:translateX(2px)}
+.btn-primary{background:linear-gradient(180deg,#fff 0%,#e3deff 100%);color:#07090f;border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,0.10),0 6px 20px -6px rgba(167, 139, 250,0.45)}
+.btn-primary:hover{box-shadow:0 0 0 1px rgba(255,255,255,0.18),0 10px 28px -4px rgba(167, 139, 250,0.55)}
+.btn-ghost{background:transparent;color:var(--fg);border-color:var(--line-3)}
+.btn-ghost:hover{border-color:var(--fg);background:rgba(255,255,255,0.04)}
+
+.list{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg-2)}
+.list .row{display:grid;grid-template-columns:1fr 110px 110px 130px 24px;gap:14px;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line);transition:background .15s}
+.list .row:last-child{border-bottom:0}
+.list .row:hover{background:var(--bg-3)}
+.list .name{display:flex;align-items:center;gap:12px;min-width:0}
+.list .name .mark{width:8px;height:8px;border-radius:50%;background:var(--emerald);flex-shrink:0;box-shadow:0 0 0 3px rgba(67, 230, 166,0.15)}
+.list .name .t{font-weight:500;font-size:15px;letter-spacing:-0.011em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list .name .s{color:var(--muted);font-size:12px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;margin-top:2px}
+.list .col{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;color:var(--fg-2)}
+.list .col .lbl{display:block;font-size:10px;color:var(--dim);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:3px}
+.list .ar{color:var(--fg-3);text-align:right}
+
+.empty{padding:80px 22px;text-align:center}
+.empty h3{font-size:20px;font-weight:600;letter-spacing:-0.018em;margin-bottom:8px}
+.empty p{color:var(--fg-3);font-size:14.5px;margin-bottom:24px;max-width:440px;margin-left:auto;margin-right:auto}
+
+.acct{margin-top:48px;padding:22px;border:1px solid var(--line);border-radius:14px;background:var(--bg-2);display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}
+@media(max-width:760px){.acct{grid-template-columns:1fr}}
+.acct h3{font-size:15px;font-weight:600;letter-spacing:-0.011em;margin-bottom:4px}
+.acct p{color:var(--fg-3);font-size:13.5px}
+.acct .actions{display:flex;gap:10px}
+
+footer{border-top:1px solid var(--line);background:rgba(14,12,28,0.4);padding:48px var(--pad-x) 40px;margin-top:80px}
+footer .inner{max-width:var(--maxw);margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:36px}
+@media(max-width:760px){footer .inner{grid-template-columns:1fr 1fr;gap:28px}}
+footer .mark{font-size:18px;font-weight:600;letter-spacing:-0.025em;margin-bottom:10px;display:inline-block}
+footer .legal{color:var(--dim);font-size:12px;margin-top:14px}
+footer h4{color:var(--fg-2);font-size:12.5px;font-weight:600;letter-spacing:-0.011em;margin-bottom:12px}
+footer .col a{display:block;color:var(--fg-3);font-size:13px;padding:5px 0;transition:color .15s}
+footer .col a:hover{color:var(--fg)}
+</style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar">
-    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
-    <div class="tag">LIVE RUNTIME</div>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/device">On-device <span class="pill violet" style="font-size:9px;">live</span></a>
-      <a href="/playground">Playground</a>
-      <a href="/registry">Recipes</a>
-      <a href="/dashboard" class="active">Live runtime</a>
-      <a href="/why">Why this exists</a>
-      <a href="/docs">API &amp; SDKs</a>
-      <a href="/pricing">Pricing</a>
-      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
-      <a href="/account">Account</a>
-      <a href="/signup">Get a key</a>
-    </nav>
-    <div class="footnote">
-      Refreshes every 2s. Every row is a recipe-call.<br/><br/>
-      Point: prove these run free, latency-wise.
+
+<div class="bg-stage" aria-hidden="true"></div>
+
+<nav class="top">
+  <a class="brand aurora" href="/">kolm</a>
+  <ul class="links">
+    <li><a href="/compile">Compile</a></li>
+    <li><a href="/run">Run</a></li>
+    <li><a href="/registry">Registry</a></li>
+    <li><a href="/docs">Docs</a></li>
+    <li><a href="/pricing">Pricing</a></li>
+  </ul>
+  <a class="signin" href="/account">Account <span class="ar">&rsaquo;</span></a>
+</nav>
+
+<main>
+  <section class="head">
+    <span class="eyebrow"><span class="dot"></span> live tenant</span>
+    <h1>Your compiles.</h1>
+    <p class="lede">Every <code style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;color:var(--violet-2);background:rgba(167, 139, 250,0.08);padding:1px 6px;border-radius:4px;border:1px solid rgba(167, 139, 250,0.2)">.kolm</code> artifact you've shipped, with K-score, signature, and a one-click rerun.</p>
+  </section>
+
+  <div class="cards">
+    <div class="c"><div class="lbl">Compiles</div><div class="v" id="m-compiles">0</div><div class="note">Lifetime</div></div>
+    <div class="c"><div class="lbl">Live artifacts</div><div class="v" id="m-live">0</div><div class="note">Currently signed</div></div>
+    <div class="c"><div class="lbl">Avg K-score</div><div class="v" id="m-k">&mdash;</div><div class="note">Across compiles</div></div>
+    <div class="c"><div class="lbl">Plan</div><div class="v" id="m-plan" style="font-size:18px;letter-spacing:0">Free</div><div class="note"><a href="/pricing" style="color:var(--violet-2)">Upgrade &rsaquo;</a></div></div>
+  </div>
+
+  <div class="sec-h">
+    <h2>Recent compiles</h2>
+    <div class="actions">
+      <a class="btn btn-ghost" href="/registry">Browse registry</a>
+      <a class="btn btn-primary" href="/compile">New compile <span class="ar">&rsaquo;</span></a>
     </div>
-  </aside>
-  <main class="main">
-    <h2>Live runtime</h2>
-    <p class="lead">Every row below is a recipe-call. The whole point of this page is to prove that &mdash; once a recipe is built &mdash; serving it is free, latency-wise. Compare any number on this page to your current AI bill.</p>
+  </div>
 
-    <div class="banner">
-      <span class="ico">⏱</span>
-      <span><strong>Claude Sonnet 4.6 typical:</strong> ~600 ms per call &middot; <strong>Recipe (this page, right now):</strong> see p50 below &mdash; usually 30&ndash;50 µs.</span>
+  <div class="list" id="list-compiles">
+    <div class="empty">
+      <h3>No compiles yet.</h3>
+      <p>Type a task. We'll synthesize examples, evaluate against your rubric, and ship a signed artifact under <code style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--violet-2)">.kolm</code>.</p>
+      <a class="btn btn-primary" href="/compile">Compile your first <span class="ar">&rsaquo;</span></a>
     </div>
+  </div>
 
-    <div class="card glow" id="empty-state" style="display:none; margin-top:14px;">
-      <div class="label">Nothing's running yet</div>
-      <h3 style="margin:8px 0 4px;">This page comes alive when you call a recipe.</h3>
-      <p class="muted" style="margin:0 0 14px;">Three minutes from here to a live µs-latency timeline. Pick the path you like.</p>
-      <div class="actions">
-        <a class="btn accent" href="/playground">Open the playground &rarr;</a>
-        <a class="btn ghost" href="/onboarding">5-step onboarding</a>
-        <a class="btn ghost" href="/registry">Browse the registry</a>
-      </div>
-    </div>
-
-    <div class="row cols-3" style="margin-top:18px;">
-      <div class="card"><div class="label">Recipes</div><div class="stat" id="c-concepts">&mdash;</div><div class="delta" id="c-versions"></div></div>
-      <div class="card"><div class="label">Recipe-calls</div><div class="stat" id="c-invocations">&mdash;</div><div class="delta" id="c-avg-lat"></div></div>
-      <div class="card"><div class="label">Cache hit rate</div><div class="stat" id="c-cache-rate">&mdash;</div><div class="delta" id="c-l1"></div></div>
-    </div>
-
-    <div class="row cols-3" style="margin-top:14px;">
-      <div class="card"><div class="label">p50 latency</div><div class="stat" id="c-p50">&mdash;</div><div class="delta">µs &middot; median run</div></div>
-      <div class="card"><div class="label">p95 latency</div><div class="stat" id="c-p95">&mdash;</div><div class="delta">µs &middot; 95th percentile</div></div>
-      <div class="card"><div class="label">p99 latency</div><div class="stat" id="c-p99">&mdash;</div><div class="delta">µs &middot; tail</div></div>
-    </div>
-
-    <div class="card" style="margin-top:14px;">
-      <div class="label">Latency, last 60 recipe-calls</div>
-      <svg id="spark" viewBox="0 0 600 90" preserveAspectRatio="none" style="width:100%; height:90px; margin-top:6px;"></svg>
-      <div class="delta" style="display:flex; justify-content:space-between;"><span id="spark-min">&mdash;</span><span id="spark-max">&mdash;</span></div>
-    </div>
-
-    <div class="row cols-3" style="margin-top:14px;">
-      <div class="card"><div class="label">Synthesis backend</div><div class="stat mono" id="c-backend" style="font-size:14px;">&mdash;</div><div class="delta" id="c-model"></div></div>
-      <div class="card"><div class="label">Warm recipes (compiled)</div><div class="stat" id="c-warm">&mdash;</div><div class="delta">10-min idle TTL</div></div>
-      <div class="card"><div class="label">Library version</div><div class="stat mono" id="c-lib" style="font-size:14px;">&mdash;</div><div class="delta">subroutine pinning</div></div>
-    </div>
-
-    <hr class="hairline" />
-
-    <div class="split">
-      <div>
-        <h3>Recent recipe-calls</h3>
-        <table class="table">
-          <thead><tr><th>ts</th><th>recipe</th><th>µs</th><th>cache</th></tr></thead>
-          <tbody id="tbl-inv"></tbody>
-        </table>
-      </div>
-      <div>
-        <h3>Top recipes <span class="faint" style="font-weight:400;font-size:12px;">(last 200 calls)</span></h3>
-        <table class="table">
-          <thead><tr><th>recipe</th><th>calls</th><th>avg µs</th><th>cache</th></tr></thead>
-          <tbody id="tbl-top"></tbody>
-        </table>
-        <h3 style="margin-top:18px;">Recent errors</h3>
-        <table class="table">
-          <thead><tr><th>ts</th><th>recipe</th><th>message</th></tr></thead>
-          <tbody id="tbl-err"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <hr class="hairline" />
-
+  <div class="acct">
     <div>
-      <h3>Quick compose</h3>
-      <p class="muted" style="font-size:13px;">Pick a topic, dispatch the top-K relevant recipes, and watch the composer merge their outputs.</p>
-      <div class="toolbar">
-        <input type="text" id="q-query" class="grow" placeholder="topic / query (e.g. 'classify support tickets')" />
-        <select id="q-strategy">
-          <option value="attention">attention</option>
-          <option value="voting">voting</option>
-          <option value="top1">top-1</option>
-          <option value="sequential">sequential</option>
-        </select>
-      </div>
-      <input type="text" id="q-input" placeholder="input passed to each recipe" style="margin-top:8px;" />
-      <div style="margin-top:8px;"><button class="btn accent" id="q-run">Compose &rarr;</button></div>
-      <pre id="q-output" style="margin-top:14px;">&mdash;</pre>
+      <h3>Account</h3>
+      <p>Edit keys, billing, and danger-zone settings.</p>
     </div>
+    <div class="actions">
+      <a class="btn btn-ghost" href="/account">Open account</a>
+      <a class="btn btn-ghost" href="/security">Security</a>
+    </div>
+  </div>
+</main>
 
-    <footer class="page-footer">
-      <div class="left">
-        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
-      </div>
-      <div class="right">
-        <a href="/why">Why</a>
-        <a href="/docs">Docs</a>
-        <a href="/pricing">Pricing</a>
-        <a href="/status">Status</a>
-      </div>
-    </footer>
-  </main>
-</div>
-<div id="toast" class="toast"></div>
-<script src="/app.js"></script>
-<script src="/escape.js"></script>
+<footer>
+  <div class="inner">
+    <div>
+      <span class="mark aurora">kolm</span>
+      <p style="color:var(--fg-3);font-size:13.5px;line-height:1.55;max-width:280px">The AI compiler. Type a task. Compile a small signed specialist. Run it on every device offline.</p>
+      <p class="legal">&copy; 2026 Kolmogorov. <a href="/security" style="color:var(--fg-3)">Security</a></p>
+    </div>
+    <div class="col"><h4>Product</h4><a href="/compile">Compile</a><a href="/run">Run</a><a href="/registry">Registry</a><a href="/pricing">Pricing</a></div>
+    <div class="col"><h4>Develop</h4><a href="/docs">Docs</a><a href="/docs#cli-compile">CLI</a><a href="/docs#sdk">SDKs</a><a href="/playground">Playground</a></div>
+    <div class="col"><h4>Open</h4><a href="/docs#rs-1">RS-1 spec</a><a href="/docs#manifest">Manifest</a><a href="/docs#receipts">Receipts</a><a href="/security">Security</a></div>
+  </div>
+</footer>
+
 <script>
-const $ = id => document.getElementById(id);
-KS.showKeyBanner('main.main').catch(() => {});
-
-function paintSpark(values) {
-  const svg = $('spark');
-  svg.innerHTML = '';
-  if (!values || values.length === 0) {
-    svg.innerHTML = '<text x="300" y="48" fill="#5b6478" font-family="ui-monospace" font-size="11" text-anchor="middle">no calls yet, try the playground</text>';
-    $('spark-min').textContent = '—'; $('spark-max').textContent = '—';
-    return;
-  }
-  const W = 600, H = 90, pad = 4;
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const span = max - min || 1;
-  const stepX = (W - pad * 2) / Math.max(values.length - 1, 1);
-  const pts = values.map((v, i) => {
-    const x = pad + i * stepX;
-    const y = H - pad - ((v - min) / span) * (H - pad * 2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
+(function(){
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  var keys = Object.keys(localStorage || {}).filter(function(k){ return k.indexOf('kolm:artifact:') === 0; });
+  if (keys.length === 0) return;
+  var rows = [];
+  var kSum = 0, kCount = 0, live = 0;
+  keys.forEach(function(k){
+    try {
+      var raw = localStorage.getItem(k);
+      if (!raw) return;
+      var a = JSON.parse(raw);
+      if (a && typeof a === 'object') {
+        rows.push(a);
+        if (typeof a.k === 'number') { kSum += a.k; kCount++; }
+        if (a.live) live++;
+      }
+    } catch(e){}
   });
-  const path = 'M ' + pts.join(' L ');
-  const fillPath = path + ` L ${pad + (values.length - 1) * stepX},${H - pad} L ${pad},${H - pad} Z`;
-  svg.innerHTML = `
-    <defs>
-      <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="rgba(125,211,252,0.45)"/>
-        <stop offset="100%" stop-color="rgba(125,211,252,0)"/>
-      </linearGradient>
-    </defs>
-    <path d="${fillPath}" fill="url(#g1)" stroke="none"/>
-    <path d="${path}" fill="none" stroke="#7dd3fc" stroke-width="1.4"/>
-  `;
-  $('spark-min').textContent = `min ${Math.round(min)}µs`;
-  $('spark-max').textContent = `max ${Math.round(max)}µs`;
-}
+  if (rows.length === 0) return;
+  rows.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
 
-let conceptNameMap = {};
-async function refreshConceptNames() {
-  try {
-    const r = await KS.api('/v1/concepts?limit=200');
-    conceptNameMap = Object.fromEntries((r.concepts || []).map(c => [c.id, c.name]));
-  } catch { /* swallow, keep prior map */ }
-}
+  document.getElementById('m-compiles').textContent = String(rows.length);
+  document.getElementById('m-live').textContent = String(live || rows.length);
+  document.getElementById('m-k').textContent = kCount ? (kSum/kCount).toFixed(2) : '—';
 
-function nameOf(id) {
-  if (!id) return '—';
-  return conceptNameMap[id] || id.slice(0, 16);
-}
-
-async function refresh() {
-  try {
-    const [h, t] = await Promise.all([
-      fetch('/health').then(r => r.json()),
-      KS.api('/v1/telemetry'),
-    ]);
-    $('c-concepts').textContent = h.stats.concepts;
-    $('c-versions').textContent = h.stats.versions + ' versions';
-    $('c-invocations').textContent = t.total_invocations.toLocaleString();
-    $('empty-state').style.display = (t.total_invocations === 0) ? 'block' : 'none';
-    $('c-avg-lat').textContent = 'avg ' + t.avg_latency_us + 'µs';
-    $('c-cache-rate').textContent = (t.cache_hit_rate * 100).toFixed(1) + '%';
-    $('c-l1').textContent = `L1: ${t.cache.l1_size}/${t.cache.l1_capacity}, L2 hits: ${t.cache.l2_hits}`;
-    $('c-p50').textContent = (t.p50_us || 0) + 'µs';
-    $('c-p95').textContent = (t.p95_us || 0) + 'µs';
-    $('c-p99').textContent = (t.p99_us || 0) + 'µs';
-    $('c-backend').textContent = h.has_anthropic_key ? 'Claude + Pattern' : 'Pattern only';
-    $('c-model').textContent = h.has_anthropic_key ? '(Claude writes recipes)' : 'set ANTHROPIC_API_KEY for Claude';
-    $('c-warm').textContent = t.compiled_cache_size;
-    $('c-lib').textContent = h.library_version;
-    paintSpark(t.sparkline || []);
-
-    const recent = t.recent || [];
-    const tb = $('tbl-inv');
-    tb.innerHTML = recent.slice(0, 25).map(i => `<tr><td class="mono faint">${KSesc.esc(i.ts.split('T')[1].slice(0,8))}</td><td class="mono">${KSesc.esc(nameOf(i.concept_id))}</td><td class="mono">${KSesc.esc(i.latency_us ?? '-')}</td><td>${i.cache_hit ? '<span class="pill accent">' + KSesc.esc(i.cache_hit) + '</span>' : '<span class="faint">miss</span>'}</td></tr>`).join('') || '<tr><td colspan="4" class="faint">no calls yet, try the playground</td></tr>';
-
-    const agg = new Map();
-    for (const i of recent) {
-      if (!i.concept_id) continue;
-      const a = agg.get(i.concept_id) || { calls: 0, totLat: 0, latN: 0, cacheHits: 0 };
-      a.calls += 1;
-      if (i.latency_us) { a.totLat += i.latency_us; a.latN += 1; }
-      if (i.cache_hit) a.cacheHits += 1;
-      agg.set(i.concept_id, a);
-    }
-    const top = [...agg.entries()].sort((a, b) => b[1].calls - a[1].calls).slice(0, 8);
-    $('tbl-top').innerHTML = top.length === 0
-      ? '<tr><td colspan="4" class="faint">no usage yet</td></tr>'
-      : top.map(([cid, a]) => `<tr><td class="mono">${KSesc.esc(nameOf(cid))}</td><td class="mono">${KSesc.esc(a.calls)}</td><td class="mono">${a.latN ? Math.round(a.totLat / a.latN) : '—'}</td><td class="mono">${KSesc.esc(a.cacheHits)}/${KSesc.esc(a.calls)}</td></tr>`).join('');
-
-    const errs = recent.filter(i => i.error).slice(0, 8);
-    $('tbl-err').innerHTML = errs.length === 0
-      ? '<tr><td colspan="3" class="faint">none, clean run</td></tr>'
-      : errs.map(i => `<tr><td class="mono faint">${KSesc.esc(i.ts.split('T')[1].slice(0,8))}</td><td class="mono">${KSesc.esc(nameOf(i.concept_id))}</td><td class="mono" style="color:#f87171;">${KSesc.esc((i.error || '').slice(0, 60))}</td></tr>`).join('');
-  } catch (e) { /* swallow */ }
-}
-
-$('q-run').onclick = async () => {
-  await KS.ensureKey();
-  $('q-output').textContent = 'composing…';
-  try {
-    const r = await KS.api('/v1/compose', { method: 'POST', body: JSON.stringify({
-      query: $('q-query').value, input: $('q-input').value, strategy: $('q-strategy').value, k: 5,
-    })});
-    $('q-output').textContent = JSON.stringify(r, null, 2);
-  } catch (e) { $('q-output').textContent = 'error: ' + (e.message || e); }
-};
-
-refreshConceptNames().then(refresh);
-setInterval(refresh, 2000);
-setInterval(refreshConceptNames, 30000);
+  var html = '';
+  rows.slice(0,12).forEach(function(a){
+    var name = (a.task || 'untitled').toString().slice(0,80);
+    var sig = (a.sig || '0000000000000000').toString().slice(0,12);
+    var k = (typeof a.k === 'number') ? a.k.toFixed(2) : '—';
+    var size = a.size || '—';
+    html += '<a class="row" href="/run">'
+         +   '<div class="name"><span class="mark"></span><div><div class="t">'+esc(name)+'</div><div class="s">sig:'+esc(sig)+'</div></div></div>'
+         +   '<div class="col"><span class="lbl">K-score</span>'+esc(k)+'</div>'
+         +   '<div class="col"><span class="lbl">Size</span>'+esc(size)+'</div>'
+         +   '<div class="col"><span class="lbl">Status</span><span style="color:var(--emerald)">live</span></div>'
+         +   '<div class="ar">&rsaquo;</div>'
+         + '</a>';
+  });
+  document.getElementById('list-compiles').innerHTML = html;
+})();
 </script>
+
 </body>
 </html>

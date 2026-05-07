@@ -1,133 +1,1268 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Compile · kolm</title>
-  <meta name="description" content="kolm compile takes a task and your data and produces a portable, signed .kolm artifact that runs anywhere." />
-  <link rel="stylesheet" href="/styles.css" />
-  <style>
-    .codebox { background:#0a0a0a; border:1px solid #222; border-radius:10px;
-      padding:14px 16px; font:12px ui-monospace,monospace; color:#bbb;
-      overflow-x:auto; margin:8px 0; }
-    .codebox .c { color:#7c5cff; }
-    .codebox .o { color:#22c55e; }
-    .stages { display:grid; gap:8px; margin:14px 0; }
-    .stage { display:flex; gap:14px; align-items:flex-start;
-      background:#0d0d0d; border:1px solid #222; border-radius:10px; padding:14px; }
-    .stage .num { font: 700 11px ui-monospace,monospace; color:#7c5cff; min-width:60px; }
-    .stage h3 { margin:0 0 4px; font-size:15px; }
-    .stage p { color:#999; font-size:13px; margin:0; line-height:1.5; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Compile &middot; kolm</title>
+<meta name="description" content="Talk to kolm. Describe the task. Get a signed .kolm artifact you can run anywhere.">
+<meta name="theme-color" content="#07090f">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Compile &middot; kolm">
+<meta property="og:description" content="Talk to kolm. Describe the task. Get a signed .kolm artifact you can run anywhere.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/compile">
+<meta property="og:image" content="/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/compile">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/aurora.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg-2:#0b1018;--bg-3:#13101f;
+  --surface:#101722;--surface-2:#162033;
+  --line:#1c2738;--line-2:#28324a;--line-3:#3a3658;
+  --fg:#f6f8fb;--fg-2:#d6d3e3;--fg-3:#a8b3c2;
+  --muted:#7d7898;--dim:#778396;
+  --violet:#a78bfa;--violet-2:#d4c2ff;--cyan:#65d4ff;--emerald:#43e6a6;--amber:#ffb084;--rose:#ff85a6;--err:#ff6478;
+  --maxw:1180px;--pad-x:max(28px,env(safe-area-inset-left));
+}
+html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-synthesis:none}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:15.5px;font-weight:400;line-height:1.55;letter-spacing:-0.011em;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto;overflow-x:hidden;position:relative}
+h1,h2,h3,h4{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",sans-serif;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto}
+img,svg{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+button{font:inherit;cursor:pointer;border:0;background:transparent;color:inherit}
+code,pre,.mono,kbd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;font-feature-settings:"ss02","calt","zero";font-variant-ligatures:none}
+::selection{background:rgba(167, 139, 250,0.32);color:var(--fg)}
+
+.bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
+.bg-stage::before{content:"";position:absolute;inset:-10%;background-image:url('/aurora.svg');background-size:cover;background-position:center;opacity:0.32;filter:blur(36px) saturate(1.05)}
+.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(7, 9, 15,0) 0%,rgba(7, 9, 15,0.65) 50%,rgba(7, 9, 15,0.95) 100%)}
+
+.aurora{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;background-repeat:no-repeat;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(7, 9, 15,0.55);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
+nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:21px;line-height:1;display:inline-block}
+nav.top ul.links{display:flex;gap:28px}
+nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
+nav.top ul.links a:hover,nav.top ul.links a.active{color:var(--fg)}
+nav.top .signin{color:var(--fg);display:inline-flex;align-items:center;gap:4px;font-weight:500}
+nav.top .signin .ar{transition:transform .2s;color:var(--fg-3)}
+nav.top .signin:hover .ar{transform:translateX(2px);color:var(--fg)}
+@media(max-width:880px){nav.top ul.links{display:none}}
+
+/* hero */
+.hero{max-width:var(--maxw);margin:0 auto;padding:64px var(--pad-x) 18px;text-align:center}
+.hero .eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);letter-spacing:0.16em;text-transform:uppercase;padding:6px 13px;background:linear-gradient(180deg,rgba(167, 139, 250,0.10),rgba(167, 139, 250,0.04));border:1px solid rgba(167, 139, 250,0.22);border-radius:6px;margin-bottom:22px}
+.hero .eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--violet);box-shadow:0 0 0 3px rgba(167, 139, 250,0.18)}
+.hero h1{font-size:clamp(38px,5.4vw,64px);font-weight:600;letter-spacing:-0.032em;line-height:1.04;margin-bottom:14px}
+.hero h1 .accent{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;background-repeat:no-repeat;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+
+.hero .lede{color:var(--fg-3);font-size:16.5px;line-height:1.55;max-width:600px;margin:0 auto}
+
+/* CHAT — the AI-instructed onboarding */
+.chat-shell{max-width:760px;margin:34px auto 0;padding:0 var(--pad-x)}
+.chat{
+  border:1px solid var(--line-2);border-radius:18px;
+  background:linear-gradient(180deg,rgba(22,19,42,0.85),rgba(14,12,28,0.85));
+  backdrop-filter:blur(8px);overflow:hidden;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,0.5),0 0 0 1px rgba(167, 139, 250,0.08),0 0 80px -30px rgba(167, 139, 250,0.5);
+  position:relative;
+}
+.chat::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 0% 0%,rgba(167, 139, 250,0.10),transparent 50%),radial-gradient(circle at 100% 100%,rgba(101,212,255,0.08),transparent 50%);pointer-events:none}
+
+.chat .head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line);position:relative}
+.chat .head .who{display:flex;align-items:center;gap:11px}
+.chat .head .av{width:28px;height:28px;border-radius:8px;border:1px solid rgba(167, 139, 250,0.4);color:var(--violet-2);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;background:radial-gradient(circle,rgba(167, 139, 250,0.20) 0%,rgba(167, 139, 250,0) 70%)}
+.chat .head .name{font-size:14px;font-weight:500;color:var(--fg)}
+.chat .head .name .sub{display:block;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--dim);letter-spacing:0.1em;text-transform:uppercase;margin-top:2px}
+.chat .head .step-count{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--fg-3);letter-spacing:0.12em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.chat .head .step-count .dots{display:flex;gap:4px}
+.chat .head .step-count .dots i{width:6px;height:6px;border-radius:50%;background:var(--line-2);transition:background .2s}
+.chat .head .step-count .dots i.done{background:var(--emerald)}
+.chat .head .step-count .dots i.cur{background:var(--violet);box-shadow:0 0 0 3px rgba(167, 139, 250,0.18)}
+
+.chat .stream{padding:24px 24px 18px;min-height:240px;max-height:480px;overflow-y:auto;position:relative}
+.chat .msg{display:flex;gap:12px;margin-bottom:18px;align-items:flex-start;opacity:0;transform:translateY(6px);transition:opacity .35s ease,transform .35s ease}
+.chat .msg.show{opacity:1;transform:translateY(0)}
+.chat .msg .av{flex-shrink:0;width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:0.04em}
+.chat .msg.k .av{border:1px solid rgba(167, 139, 250,0.4);color:var(--violet-2);background:radial-gradient(circle,rgba(167, 139, 250,0.18) 0%,rgba(167, 139, 250,0) 70%)}
+.chat .msg.u .av{border:1px solid var(--line-2);color:var(--fg-3);background:rgba(22,19,42,0.6)}
+.chat .msg .body{flex:1;font-size:14.5px;line-height:1.55;color:var(--fg-2)}
+.chat .msg .body strong{color:var(--fg);font-weight:500}
+.chat .msg .body code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:0.9em;color:var(--violet-2);background:rgba(167, 139, 250,0.08);padding:1px 5px;border-radius:4px;border:1px solid rgba(167, 139, 250,0.18)}
+.chat .msg.u .body{color:var(--fg)}
+.chat .msg .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chat .msg .chips .chip{padding:6px 11px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);background:rgba(22,19,42,0.5);border:1px solid var(--line-2);border-radius:6px;letter-spacing:0.04em;transition:all .15s}
+.chat .msg .chips .chip:hover{color:var(--fg);border-color:var(--line-3);background:rgba(167, 139, 250,0.06)}
+.chat .msg .chips .chip.act{color:var(--violet-2);border-color:rgba(167, 139, 250,0.4);background:rgba(167, 139, 250,0.08)}
+
+.chat .typing{display:inline-flex;gap:3px;align-items:center;padding:6px 0}
+.chat .typing i{width:5px;height:5px;border-radius:50%;background:var(--fg-3);opacity:0.4;animation:typingBounce 1.05s infinite}
+.chat .typing i:nth-child(2){animation-delay:.18s}
+.chat .typing i:nth-child(3){animation-delay:.36s}
+@keyframes typingBounce{0%,80%,100%{transform:translateY(0);opacity:0.4}40%{transform:translateY(-3px);opacity:0.9}}
+
+.chat .input-row{border-top:1px solid var(--line);padding:14px 18px;display:flex;align-items:flex-end;gap:10px;position:relative;background:rgba(7, 9, 15,0.4)}
+.chat textarea{flex:1;font-family:inherit;font-size:14.5px;color:var(--fg);padding:10px 12px;background:transparent;border:0;outline:none;resize:none;line-height:1.5;min-height:36px;max-height:140px}
+.chat textarea::placeholder{color:var(--muted)}
+.chat .send{padding:9px 16px;font-size:13.5px;font-weight:500;background:linear-gradient(180deg,#fff 0%,#e3deff 100%);color:#07090f;border-radius:8px;display:inline-flex;align-items:center;gap:6px;transition:box-shadow .15s,transform .15s;flex-shrink:0;box-shadow:0 0 0 1px rgba(255,255,255,0.10),0 6px 20px -6px rgba(167, 139, 250,0.4)}
+.chat .send:hover{box-shadow:0 0 0 1px rgba(255,255,255,0.18),0 8px 24px -4px rgba(167, 139, 250,0.5)}
+.chat .send:disabled{opacity:0.45;cursor:not-allowed;box-shadow:none}
+.chat .send .ar{transition:transform .15s}
+.chat .send:hover:not(:disabled) .ar{transform:translateX(2px)}
+
+.chat .summary{padding:18px 22px;border-top:1px solid var(--line);background:rgba(67, 230, 166,0.04);display:none}
+.chat .summary.show{display:block}
+.chat .summary h4{font-size:13px;font-weight:500;color:var(--fg);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.chat .summary h4::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 4px rgba(67, 230, 166,0.18)}
+.chat .summary dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
+.chat .summary dt{color:var(--dim);text-transform:uppercase;letter-spacing:0.10em;font-size:10.5px;align-self:center}
+.chat .summary dd{color:var(--fg-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat .summary .actions{margin-top:14px;display:flex;gap:10px}
+.chat .summary .compile-btn{padding:11px 22px;font-size:14px;font-weight:500;background:linear-gradient(180deg,var(--emerald) 0%,#26c694 100%);color:#07090f;border-radius:8px;display:inline-flex;align-items:center;gap:8px;box-shadow:0 0 0 1px rgba(67, 230, 166,0.25),0 8px 22px -6px rgba(67, 230, 166,0.45)}
+.chat .summary .compile-btn:hover{box-shadow:0 0 0 1px rgba(67, 230, 166,0.4),0 12px 30px -6px rgba(67, 230, 166,0.6)}
+.chat .summary .edit{padding:10px 14px;font-size:13px;color:var(--fg-3);border:1px solid var(--line-2);border-radius:8px;background:transparent}
+.chat .summary .edit:hover{color:var(--fg);border-color:var(--line-3)}
+
+/* divider */
+.divider{max-width:var(--maxw);margin:60px auto 0;padding:0 var(--pad-x);display:flex;align-items:center;gap:14px}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.divider span{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--dim);letter-spacing:0.20em;text-transform:uppercase}
+
+/* WORKBENCH — the structured form */
+.workbench{max-width:var(--maxw);margin:0 auto;padding:48px var(--pad-x) 80px;display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start}
+@media(max-width:1080px){.workbench{grid-template-columns:1fr}}
+.col-left{display:flex;flex-direction:column;gap:18px}
+.col-right{display:flex;flex-direction:column;gap:18px;position:sticky;top:96px}
+@media(max-width:1080px){.col-right{position:static}}
+
+.wb-head{margin-bottom:6px}
+.wb-head h2{font-size:22px;font-weight:600;letter-spacing:-0.020em;line-height:1.2;margin-bottom:6px}
+.wb-head .sub{font-size:14px;color:var(--fg-3);line-height:1.55}
+
+.card{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,rgba(22,19,42,0.55),rgba(14,12,28,0.4));overflow:hidden}
+.card .pad{padding:22px 24px}
+.card .head{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;border-bottom:1px solid var(--line);background:rgba(28,25,51,0.4)}
+.card .head h3{font-size:13.5px;font-weight:500;letter-spacing:-0.005em;color:var(--fg)}
+.card .head .meta{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--dim);letter-spacing:0.14em;text-transform:uppercase}
+
+.cfg-label{display:block;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--fg-3);font-weight:500;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:8px}
+.cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.cfg-grid{grid-template-columns:1fr}}
+.cfg-input,textarea.cfg-input{width:100%;font-family:inherit;font-size:14px;color:var(--fg);padding:11px 13px;background:rgba(7, 9, 15,0.5);border:1px solid var(--line-2);border-radius:7px;-webkit-appearance:none;outline:none;transition:border-color .15s,box-shadow .15s}
+.cfg-input:focus,textarea.cfg-input:focus{border-color:var(--violet);box-shadow:0 0 0 3px rgba(167, 139, 250,0.10)}
+textarea.cfg-input{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13px;line-height:1.6;min-height:118px;resize:vertical}
+select.cfg-input{cursor:pointer}
+.cfg-radio,.cfg-check{display:flex;gap:6px;flex-wrap:wrap}
+.cfg-radio label,.cfg-check label{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid var(--line-2);border-radius:7px;font-size:13px;color:var(--fg-3);cursor:pointer;background:rgba(7, 9, 15,0.4);transition:border-color .12s,color .12s,background .12s}
+.cfg-radio label:has(input:checked),.cfg-check label:has(input:checked){border-color:rgba(167, 139, 250,0.5);color:var(--fg);background:rgba(167, 139, 250,0.08)}
+.cfg-radio input,.cfg-check input{accent-color:var(--violet);margin:0}
+.cfg-radio label .sub,.cfg-check label .sub{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;color:var(--dim);letter-spacing:0.04em}
+.cfg-slider{display:flex;align-items:center;gap:12px}
+.cfg-slider input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:3px;background:var(--line-2);border-radius:2px;outline:none}
+.cfg-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:var(--violet);cursor:pointer;border:0;box-shadow:0 0 0 4px rgba(167, 139, 250,0.15)}
+.cfg-slider input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--violet);cursor:pointer;border:0}
+.cfg-slider .v{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13px;color:var(--fg);min-width:48px;text-align:right;font-variant-numeric:tabular-nums}
+.cfg-eval{border:1px dashed var(--line-2);border-radius:8px;padding:13px 16px;background:rgba(7, 9, 15,0.4);display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;transition:border-color .12s,background .12s}
+.cfg-eval:hover{border-color:var(--line-3)}
+.cfg-eval.have{border-style:solid;border-color:rgba(67, 230, 166,0.4);background:rgba(67, 230, 166,0.05)}
+.cfg-eval .lbl{font-size:13px;color:var(--fg-3)}
+.cfg-eval .lbl strong{color:var(--fg);font-weight:500}
+.cfg-eval .alt{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--cyan);letter-spacing:0.06em}
+.cfg-eval .alt:hover{color:var(--fg)}
+.cfg-row{display:flex;flex-direction:column;gap:8px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 22px;border-radius:8px;font-size:14.5px;font-weight:500;letter-spacing:-0.011em;border:1px solid transparent;line-height:1;transition:background .15s,border-color .15s,color .15s,box-shadow .15s;white-space:nowrap;cursor:pointer;font-family:inherit}
+.btn .ar{transition:transform .2s}
+.btn:hover .ar{transform:translateX(3px)}
+.btn-primary{background:linear-gradient(180deg,#fff 0%,#e3deff 100%);color:#07090f;border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,0.10),0 8px 24px -8px rgba(167, 139, 250,0.4)}
+.btn-primary:hover{box-shadow:0 0 0 1px rgba(255,255,255,0.18),0 12px 30px -6px rgba(167, 139, 250,0.55)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--fg);border-color:var(--line-3)}
+.btn-ghost:hover{border-color:var(--fg);background:rgba(255,255,255,0.04)}
+.btn-text{color:var(--fg-3);padding:13px 8px;background:transparent;border:1px solid transparent}
+.btn-text:hover{color:var(--fg)}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+
+/* stages panel */
+.stages{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;line-height:1.95;color:var(--fg-2)}
+.stages .stage{display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:center;padding:5px 0}
+.stages .stage .marker{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:1px solid var(--line-2);border-radius:4px;font-size:9.5px;color:var(--dim);background:rgba(7, 9, 15,0.4)}
+.stages .stage.run .marker{border-color:var(--violet);color:var(--violet-2);background:rgba(167, 139, 250,0.10)}
+.stages .stage.done .marker{border-color:rgba(67, 230, 166,0.5);color:var(--emerald);background:rgba(67, 230, 166,0.06)}
+.stages .stage .lbl{color:var(--fg-3);font-size:11.5px;letter-spacing:0.06em;text-transform:uppercase}
+.stages .stage.run .lbl{color:var(--fg)}
+.stages .stage.done .lbl{color:var(--fg-2)}
+.stages .stage .v{color:var(--dim);text-align:right;font-size:11px}
+.stages .stage.done .v{color:var(--emerald)}
+
+.error-banner{margin-top:14px;padding:12px 14px;border-radius:8px;background:rgba(255,100,120,0.08);border:1px solid rgba(255,100,120,0.32);color:var(--err);font-size:13px;line-height:1.5;display:none}
+.error-banner.shown{display:block}
+
+.console{margin-top:14px;border:1px solid var(--line);border-radius:8px;background:rgba(8,6,18,0.7);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;line-height:1.65;padding:13px 16px;max-height:280px;min-height:120px;overflow-y:auto;color:var(--fg-2);display:none}
+.console.shown{display:block}
+.console .ln{display:block;white-space:pre-wrap;word-break:break-word}
+.console .ln .tm{color:var(--dim);margin-right:10px;font-variant-numeric:tabular-nums}
+.console .ln.log{color:var(--fg-3)}
+.console .ln.ok{color:var(--emerald)}
+.console .ln.kw{color:var(--violet-2)}
+.console .ln.err{color:var(--err)}
+.console .ln .cur{display:inline-block;width:6px;height:11px;background:var(--fg);vertical-align:-1px;margin-left:1px;animation:cur 1s steps(2) infinite}
+@keyframes cur{50%{opacity:0}}
+
+.progress{margin-top:14px;height:3px;background:var(--line);border-radius:2px;overflow:hidden;display:none}
+.progress.shown{display:block}
+.progress .bar{height:100%;width:0;background:linear-gradient(90deg,var(--violet),var(--cyan),var(--emerald));transition:width .25s linear;border-radius:2px}
+
+.receipt-detail{margin-top:14px;border:1px solid var(--line);border-radius:10px;background:rgba(14,12,28,0.6);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;line-height:1.65;padding:15px 18px;display:none}
+.receipt-detail.shown{display:block}
+.receipt-detail h4{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;color:var(--fg-3);letter-spacing:0.16em;text-transform:uppercase;font-weight:500;margin-bottom:10px}
+.receipt-detail .row{display:grid;grid-template-columns:90px 1fr;gap:10px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.receipt-detail .row:last-child{border-bottom:0}
+.receipt-detail .row .k{color:var(--dim);text-transform:uppercase;letter-spacing:0.1em;font-size:9.5px;align-self:center}
+.receipt-detail .row .v{color:var(--fg-2);overflow-wrap:anywhere;font-size:10.5px}
+.receipt-detail .row .v.kw{color:var(--violet-2)}
+.receipt-detail .row .v.ok{color:var(--emerald)}
+
+.artifact{border:1px solid var(--line-2);border-radius:14px;background:linear-gradient(180deg,rgba(22,19,42,0.85) 0%,rgba(7, 9, 15,0.85) 100%);padding:24px 24px;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(167, 139, 250,0.05),0 24px 48px -16px rgba(0,0,0,0.5)}
+.artifact::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,0.022) 1px,transparent 0);background-size:12px 12px;pointer-events:none}
+.artifact .hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;position:relative;padding:0;border-bottom:0;background:transparent}
+.artifact .hd .brand{font-size:13.5px;font-weight:600;letter-spacing:-0.02em;line-height:1}
+.artifact .hd .brand .sub{display:block;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:9.5px;color:var(--dim);letter-spacing:0.18em;font-weight:400;margin-top:6px;text-transform:uppercase}
+.artifact .hd .seal{width:32px;height:32px;border-radius:9px;border:1px solid rgba(67, 230, 166,0.4);color:var(--emerald);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;background:radial-gradient(circle,rgba(67, 230, 166,0.18) 0%,rgba(67, 230, 166,0) 70%)}
+.artifact .kscore{margin:6px 0 4px;position:relative}
+.artifact .kscore .num{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:54px;font-weight:600;letter-spacing:-0.04em;line-height:1;background:linear-gradient(110deg,#43e6a6 0%,#65d4ff 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;font-variant-numeric:tabular-nums}
+.artifact .kscore .lbl{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:9.5px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;margin-top:6px}
+.artifact hr{border:0;border-top:1px dashed var(--line-2);margin:18px 0;position:relative}
+.artifact dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;line-height:1.5;position:relative}
+.artifact dt{color:var(--dim);text-transform:uppercase;letter-spacing:0.1em;font-size:9.5px;align-self:center}
+.artifact dd{color:var(--fg-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.artifact dd .tag{color:var(--emerald)}
+.artifact .verified{margin-top:18px;display:inline-flex;align-items:center;gap:6px;padding:5px 10px;background:rgba(67, 230, 166,0.08);border:1px solid rgba(67, 230, 166,0.32);color:var(--emerald);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;border-radius:5px;position:relative}
+.artifact.empty{opacity:0.55}
+.artifact.empty .hd .seal{border-color:var(--dim);color:var(--dim);background:transparent}
+.artifact.empty .verified{display:none}
+.artifact.empty .kscore .num{background:none;-webkit-text-fill-color:var(--dim);color:var(--dim)}
+
+.qr{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:10px;background:rgba(14,12,28,0.6);font-size:12.5px;color:var(--fg-3);display:flex;align-items:center;gap:14px}
+.qr .box{width:60px;height:60px;border:1px solid var(--line-2);border-radius:6px;background:repeating-conic-gradient(rgba(167, 139, 250,0.18) 0% 25%, transparent 0% 50%) 50% / 8px 8px,rgba(22,19,42,0.5);flex-shrink:0}
+.qr .body{font-size:12px;line-height:1.5}
+.qr strong{color:var(--fg-2);font-weight:500}
+
+.trust-mini{padding:16px 22px;border:1px solid rgba(67, 230, 166,0.20);border-radius:12px;background:linear-gradient(180deg,rgba(67, 230, 166,0.04),rgba(14,12,28,0.4));font-size:13px;color:var(--fg-3);line-height:1.55}
+.trust-mini strong{color:var(--fg-2);font-weight:500}
+
+footer{border-top:1px solid var(--line);padding:48px var(--pad-x) 64px;font-size:13px;color:var(--dim);background:rgba(7, 9, 15,0.4)}
+footer .inner{max-width:var(--maxw);margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:48px}
+footer h4{color:var(--fg);font-size:13px;font-weight:600;margin-bottom:14px;letter-spacing:-0.011em}
+footer .col a{display:block;color:var(--fg-3);padding:6px 0;font-size:13px;transition:color .15s}
+footer .col a:hover{color:var(--fg)}
+footer .legal{font-size:12px;line-height:1.7;color:var(--dim);margin-top:22px}
+footer .brand-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+footer .brand-row .mark{font-size:18px;font-weight:600;letter-spacing:-0.02em;color:var(--fg)}
+@media(max-width:760px){footer .inner{grid-template-columns:1fr 1fr;gap:32px}}
+@media(max-width:480px){footer .inner{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar">
-    <h1><span class="glyph"></span> kolm<span class="sub">by Kolmogorov</span></h1>
-    <div class="tag">v0.1 · compiler cache for intelligence</div>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/compile" class="active">Compile</a>
-      <a href="/run">Run</a>
-      <a href="/recall">Recall</a>
-      <a href="/cloud">Cloud</a>
-      <a href="/manual">Manual</a>
-      <a href="/account">Account</a>
-    </nav>
-    <div class="footnote">
-      <strong>Compile · Run · Recall.</strong><br/>
-      Compile frontier behavior once, run it locally forever.
+
+<div class="bg-stage" aria-hidden="true"></div>
+
+<nav class="top">
+  <a class="brand aurora" href="/">kolm</a>
+  <ul class="links">
+    <li><a class="active" href="/compile">Compile</a></li>
+    <li><a href="/run">Run</a></li>
+    <li><a href="/registry">Registry</a></li>
+    <li><a href="/docs">Docs</a></li>
+    <li><a href="/pricing">Pricing</a></li>
+  </ul>
+  <a class="signin" href="/dashboard">Dashboard <span class="ar">&rsaquo;</span></a>
+</nav>
+
+<section class="hero">
+  <div class="eyebrow"><span class="dot"></span> compile a kolm specialist</div>
+  <h1>Tell kolm what to build.<br><span class="accent">It does the rest.</span></h1>
+  <p class="lede">No ML required. Type a sentence. Answer four short questions. Get a signed <code style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:0.92em;color:var(--violet-2);background:rgba(167, 139, 250,0.08);padding:1px 6px;border-radius:4px;border:1px solid rgba(167, 139, 250,0.2)">.kolm</code> file you can run on every device.</p>
+</section>
+
+<section class="chat-shell">
+  <div class="chat" aria-label="kolm onboarding chat">
+    <div class="head">
+      <div class="who">
+        <div class="av aurora">k</div>
+        <div class="name">kolm <span class="sub">compile assistant</span></div>
+      </div>
+      <div class="step-count">
+        <span id="step-label">step 1 of 4</span>
+        <span class="dots" id="step-dots"><i class="cur"></i><i></i><i></i><i></i></span>
+      </div>
     </div>
-  </aside>
 
-  <main class="main">
-    <section class="hero">
-      <div class="eyebrow"><span class="dot live"></span> kolm compile · the one user-facing primitive</div>
-      <h1>One command. <span class="grad">Four engines</span>. One signed artifact.</h1>
-      <p class="sub">
-        <code>kolm compile</code> takes anything you can describe, "answer my emails in my voice", "spot bugs in my React PRs",
-        "find every photo from a beach trip", plus the data that defines what you mean, and emits a portable
-        <code>.kolm</code> file that does that thing, anywhere, signed end-to-end.
-      </p>
-    </section>
+    <div class="stream" id="stream"></div>
 
-    <section class="block">
-      <h2>The contract.</h2>
-      <div class="codebox">
-<span class="c"># task only</span>
-$ kolm compile "summarize this folder" --data ./notes
+    <div class="input-row">
+      <textarea id="chat-input" placeholder="Type your answer..." rows="1" autocomplete="off"></textarea>
+      <button class="send" id="chat-send">Send <span class="ar">&rsaquo;</span></button>
+    </div>
 
-<span class="c"># task + examples (one example per line, JSONL)</span>
-$ kolm compile "classify intent" --examples ./examples.jsonl
+    <div class="summary" id="chat-summary">
+      <h4>Ready to compile.</h4>
+      <dl>
+        <dt>task</dt><dd id="sum-task">.</dd>
+        <dt>examples</dt><dd id="sum-examples">.</dd>
+        <dt>eval</dt><dd id="sum-eval">.</dd>
+        <dt>targets</dt><dd id="sum-targets">.</dd>
+      </dl>
+      <div class="actions">
+        <button class="compile-btn" id="chat-compile">Compile now <span class="ar">&rsaquo;</span></button>
+        <button class="edit" id="chat-edit">Edit in workbench</button>
+      </div>
+    </div>
+  </div>
+</section>
 
-<span class="c"># task + corpus + base model override</span>
-$ kolm compile "code review my Python style" \
-    --data ./projects \
-    --base-model qwen2.5-coder-7b-instruct-q4_0
+<div class="divider"><span>or use the workbench</span></div>
 
-<span class="c"># output: a .kolm file in ~/.kolm/artifacts/</span>
-✔ ~/.kolm/artifacts/job_abc.kolm (2.3KB)</div>
-    </section>
+<section class="workbench" id="workbench">
 
-    <section class="block">
-      <h2>What runs underneath.</h2>
-      <div class="stages">
-        <div class="stage">
-          <div class="num">stage 1</div>
-          <div>
-            <h3>recall.start → recall.done</h3>
-            <p>If <code>--data</code> was given, qmd indexes the folder (BM25 + vector + RRF + reranker). Top-k chunks are pulled for the task and prepended to every Distill call so the artifact knows your specifics.</p>
-          </div>
+  <div class="col-left">
+    <div class="wb-head">
+      <h2>Workbench</h2>
+      <p class="sub">Same compile pipeline. Every knob exposed. Saves to your browser between sessions.</p>
+    </div>
+
+    <form id="compile-form" novalidate>
+
+      <div class="card">
+        <div class="head">
+          <h3>1 &middot; Task</h3>
+          <span class="meta">required</span>
         </div>
-        <div class="stage">
-          <div class="num">stage 2</div>
-          <div>
-            <h3>distill.start → distill.done</h3>
-            <p>Synthesize a verifier from your examples. K-sample a frontier model. Verify each candidate. Accept the winner. P(correct) ≥ 1 − (1 − p·v)<sup>k</sup>. Generator-Verifier asymmetry made shippable.</p>
-          </div>
-        </div>
-        <div class="stage">
-          <div class="num">stage 3</div>
-          <div>
-            <h3>decompose.start → decompose.done</h3>
-            <p>The Recipe registry slice that covers this task's structured-token subset. Public registry compounds: every successful compile auto-merges new draft patterns.</p>
-          </div>
-        </div>
-        <div class="stage">
-          <div class="num">stage 4</div>
-          <div>
-            <h3>package.start → package.done</h3>
-            <p>Single zip: <code>manifest.json · model.gguf pointer · recipes.json · lora.bin · index.sqlite-vec · evals.json · signature.sig</code>. K-score patched into the manifest. HMAC-SHA256 over canonical JSON, anchored to Kolmogorov's public registry.</p>
+        <div class="pad">
+          <div class="cfg-row" style="margin-bottom:0">
+            <span class="cfg-label">describe what your specialist should do</span>
+            <textarea id="task" name="task" class="cfg-input" placeholder="A polite, on-brand support reply writer. Reads a customer message and any prior thread. Writes a 2-3 sentence reply that matches our voice." required></textarea>
           </div>
         </div>
       </div>
-    </section>
 
-    <section class="block">
-      <h2>What you get back.</h2>
-      <div class="codebox">
-{
-  <span class="c">"job_id":</span> <span class="o">"job_abc"</span>,
-  <span class="c">"status":</span> <span class="o">"completed"</span>,
-  <span class="c">"artifact_url":</span> <span class="o">"/v1/compile/job_abc/.kolm"</span>,
-  <span class="c">"artifact_bytes":</span> <span class="o">2348</span>,
-  <span class="c">"k_score":</span> {
-    <span class="c">"composite":</span>      <span class="o">412.7</span>,
-    <span class="c">"accuracy":</span>       <span class="o">0.965</span>,
-    <span class="c">"coverage":</span>       <span class="o">0.92</span>,
-    <span class="c">"size_bytes":</span>     <span class="o">2348</span>,
-    <span class="c">"p50_latency_us":</span> <span class="o">1400</span>,
-    <span class="c">"cost_usd_per_call":</span> <span class="o">0</span>
-  },
-  <span class="c">"manifest":</span> { <span class="c">"spec":</span> <span class="o">"kolm-1"</span>, <span class="c">"recipes":</span> {<span class="c">"n":</span> <span class="o">26</span>}, ... },
-  <span class="c">"stages":</span> [...]
-}</div>
-    </section>
+      <div class="card" style="margin-top:18px">
+        <div class="head">
+          <h3>2 &middot; Configure</h3>
+          <span class="meta" id="cfg-meta">saved</span>
+        </div>
+        <div class="pad">
 
-    <footer>
-      <a href="/">← Home</a> · <a href="/run">Run →</a>
-    </footer>
-  </main>
-</div>
+          <div class="cfg-grid" style="margin-bottom:18px">
+            <div class="cfg-row">
+              <span class="cfg-label">base model</span>
+              <select id="cfg-base" class="cfg-input">
+                <option value="qwen2.5-3b-int4">qwen2.5-3b-int4</option>
+                <option value="qwen2.5-7b-int4">qwen2.5-7b-int4</option>
+                <option value="llama-3.2-3b-int4">llama-3.2-3b-int4</option>
+                <option value="phi-3.5-mini-int4">phi-3.5-mini-int4</option>
+              </select>
+            </div>
+            <div class="cfg-row">
+              <span class="cfg-label">verifier</span>
+              <select id="cfg-verifier" class="cfg-input">
+                <option value="opus-4.7">opus-4.7</option>
+                <option value="sonnet-4.6">sonnet-4.6</option>
+                <option value="kimi-k2.6">kimi-k2.6</option>
+                <option value="qwen3.6-27b">qwen3.6-27b</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="cfg-row" style="margin-bottom:18px">
+            <span class="cfg-label">tier</span>
+            <div class="cfg-radio" id="cfg-tier">
+              <label><input type="radio" name="cfg-tier" value="adapter" checked> adapter <span class="sub">~18 MB</span></label>
+              <label><input type="radio" name="cfg-tier" value="bundle"> bundle <span class="sub">~1.2 GB</span></label>
+              <label><input type="radio" name="cfg-tier" value="full"> full <span class="sub">~3.4 GB</span></label>
+            </div>
+          </div>
+
+          <div class="cfg-row" style="margin-bottom:18px">
+            <span class="cfg-label">targets</span>
+            <div class="cfg-check" id="cfg-targets">
+              <label><input type="checkbox" name="cfg-target" value="ios" checked> iOS</label>
+              <label><input type="checkbox" name="cfg-target" value="android" checked> Android</label>
+              <label><input type="checkbox" name="cfg-target" value="web"> Web</label>
+              <label><input type="checkbox" name="cfg-target" value="server"> Server <span class="sub">MCP</span></label>
+            </div>
+          </div>
+
+          <div class="cfg-grid" style="margin-bottom:18px">
+            <div class="cfg-row">
+              <span class="cfg-label">k-threshold</span>
+              <div class="cfg-slider">
+                <input type="range" id="cfg-kthresh" min="0.85" max="0.99" step="0.01" value="0.90">
+                <span class="v" id="cfg-kthresh-v">0.90</span>
+              </div>
+            </div>
+            <div class="cfg-row">
+              <span class="cfg-label">recall corpus</span>
+              <select id="cfg-recall" class="cfg-input">
+                <option value="none">none</option>
+                <option value="public-docs">public-docs</option>
+                <option value="your-namespace">your-namespace</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="cfg-row">
+            <span class="cfg-label">eval set</span>
+            <label class="cfg-eval" id="cfg-eval">
+              <span class="lbl" id="cfg-eval-lbl"><strong>drop evals.jsonl</strong> here. 20+ graded prompts.</span>
+              <a href="#" class="alt" id="cfg-eval-sample">use sample &rsaquo;</a>
+              <input type="file" id="cfg-eval-file" accept=".jsonl,.json,application/jsonl,text/plain" style="display:none">
+            </label>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="pad">
+          <div class="cta-row">
+            <button type="submit" class="btn btn-primary" id="compile-btn">Compile <span class="ar">&rsaquo;</span></button>
+            <button type="button" class="btn btn-ghost" id="cfg-reset">Reset config</button>
+            <a class="btn btn-text" href="/docs#cli-compile">Or use the CLI</a>
+          </div>
+          <div class="error-banner" id="error-banner" role="alert"></div>
+          <div class="progress" id="progress"><div class="bar" id="progress-bar"></div></div>
+          <div class="console" id="console" aria-live="polite"></div>
+        </div>
+      </div>
+    </form>
+
+    <div class="trust-mini">
+      <strong>The cloud sees only what you author.</strong> Your task spec, your seeds, your evals, your target devices. Your users' private data is read only by the on-device runtime.
+    </div>
+  </div>
+
+  <div class="col-right">
+    <div class="card">
+      <div class="head">
+        <h3>Pipeline</h3>
+        <span class="meta" id="pipe-meta">idle</span>
+      </div>
+      <div class="pad">
+        <div class="stages" id="stages"></div>
+      </div>
+    </div>
+
+    <div class="artifact empty" id="artifact" role="img" aria-label="Pending kolm artifact card">
+      <div class="hd">
+        <div class="brand">
+          <span class="aurora">kolm</span>
+          <span class="sub">Pending Artifact</span>
+        </div>
+        <div class="seal" aria-hidden="true">k</div>
+      </div>
+      <div class="kscore">
+        <div class="num" id="r-score" style="font-variant-numeric:tabular-nums">.</div>
+        <div class="lbl">K-score</div>
+      </div>
+      <hr>
+      <dl>
+        <dt>Artifact</dt><dd id="r-name">awaiting compile</dd>
+        <dt>Base</dt><dd id="r-base">.</dd>
+        <dt>Tier</dt><dd id="r-tier">adapter</dd>
+        <dt>Size</dt><dd id="r-size">.</dd>
+        <dt>Targets</dt><dd id="r-targets">.</dd>
+        <dt>Evals</dt><dd id="r-evals">.</dd>
+        <dt>Verifier</dt><dd id="r-judge">.</dd>
+        <dt>Signed</dt><dd id="r-signed">.</dd>
+      </dl>
+      <div class="verified"><span>&#10003;</span> verified</div>
+    </div>
+
+    <div class="cta-row" id="post-actions" style="display:none">
+      <button type="button" class="btn btn-primary" id="dl-link">Download .kolm <span class="ar">&rsaquo;</span></button>
+      <button type="button" class="btn btn-ghost" id="rcpt-link">Verify receipt <span class="ar">&rsaquo;</span></button>
+    </div>
+
+    <div class="receipt-detail" id="receipt-detail">
+      <h4>HMAC chain</h4>
+      <div class="row"><span class="k">artifact</span><span class="v" id="rcpt-artifact"></span></div>
+      <div class="row"><span class="k">eval set</span><span class="v" id="rcpt-eval"></span></div>
+      <div class="row"><span class="k">eval score</span><span class="v ok" id="rcpt-score"></span></div>
+      <div class="row"><span class="k">judge id</span><span class="v kw" id="rcpt-judge"></span></div>
+      <div class="row"><span class="k">chain hmac</span><span class="v" id="rcpt-hmac"></span></div>
+      <div class="row"><span class="k">signed at</span><span class="v" id="rcpt-time"></span></div>
+    </div>
+
+    <div class="qr" id="qr" style="display:none">
+      <div class="box" aria-hidden="true"></div>
+      <div class="body"><strong>Open on device.</strong> Scan with your iPhone or Android. The artifact loads and personalizes locally.</div>
+    </div>
+  </div>
+
+</section>
+
+<footer>
+  <div class="inner">
+    <div>
+      <div class="brand-row"><span class="mark aurora">kolm</span></div>
+      <p style="color:var(--fg-3);font-size:13.5px;line-height:1.55;max-width:280px">The AI compiler. Type a task. Compile a small signed specialist. Run it on every device offline.</p>
+      <p class="legal">&copy; 2026 Kolmogorov. Built in the open. <a href="/security" style="color:var(--fg-3)">Security</a></p>
+    </div>
+    <div class="col">
+      <h4>Product</h4>
+      <a href="/compile">Compile</a>
+      <a href="/run">Run</a>
+      <a href="/registry">Registry</a>
+      <a href="/pricing">Pricing</a>
+    </div>
+    <div class="col">
+      <h4>Develop</h4>
+      <a href="/docs">Docs</a>
+      <a href="/docs#cli-compile">CLI</a>
+      <a href="/docs#sdk">SDKs</a>
+      <a href="/playground">Playground</a>
+    </div>
+    <div class="col">
+      <h4>Open</h4>
+      <a href="/docs#rs-1">RS-1 spec</a>
+      <a href="/docs#manifest">Manifest v0.1</a>
+      <a href="/docs#receipts">Receipts v0.1</a>
+      <a href="/security">Security</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id) };
+  function escText(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms) }) }
+  function rint(a,b){ return Math.floor(a + Math.random()*(b-a+1)) }
+  function rfloat(a,b){ return a + Math.random()*(b-a) }
+  function pad(s,n){ s = String(s); while (s.length < n) s = '0'+s; return s }
+
+  /* ============================================================
+     CHAT — AI-instructed onboarding
+     ============================================================ */
+  var STREAM = $('stream');
+  var INPUT  = $('chat-input');
+  var SEND   = $('chat-send');
+
+  var chatState = {
+    step: 0,
+    answers: { task:'', examples:'', eval:'', targets:[] }
+  };
+
+  var STEPS = [
+    {
+      key: 'task',
+      ask: "Hey. I'm <strong>kolm</strong>. I'll compile your task into a portable signed specialist.<br><br>First, in one sentence: <strong>what should it do?</strong>",
+      placeholder: "e.g. draft polite replies to support emails in our voice",
+      chips: [
+        { label: 'draft email replies', value: 'A polite support reply writer. Reads the customer message and any prior thread, writes a 2-3 sentence reply in our voice.' },
+        { label: 'tag photos', value: 'Tag photos with scene, people, and mood. Outputs 3-5 short tags per photo.' },
+        { label: 'categorize transactions', value: 'Read a list of bank transactions and assign a category (food, transport, rent, fun, transfer, other). Output JSON.' },
+        { label: 'summarize meetings', value: 'Take a meeting transcript and produce a 5-bullet summary plus extracted action items with owners.' }
+      ],
+      validate: function(v){ return v.trim().length >= 12 ? null : "A bit more detail. One sentence is fine, but make it specific." },
+      followup: function(v){ return "Got it. <strong>" + escText(v.length > 80 ? v.slice(0,80)+'.' : v) + "</strong>"; }
+    },
+    {
+      key: 'examples',
+      ask: "Now show me <strong>1 to 3 examples</strong>. Just the inputs and the outputs you'd want, one per line. Or skip and I'll synthesize seeds.",
+      placeholder: "in: customer says ...\nout: thanks for reaching out ...",
+      chips: [
+        { label: 'skip — synthesize seeds', value: '__SKIP__' },
+        { label: 'paste sample examples', value: '__SAMPLE__' }
+      ],
+      validate: function(v){ return null; },
+      followup: function(v){
+        if (v === '__SKIP__' || !v.trim()) return "OK. I'll generate <strong>seed pairs</strong> from your task and verify them through the verifier model.";
+        if (v === '__SAMPLE__') return "Loaded the sample seed pairs. <strong>4 examples</strong>, ready.";
+        var lines = v.split('\n').filter(function(l){return l.trim()}).length;
+        return "Got it. <strong>" + lines + " example line" + (lines === 1 ? '' : 's') + "</strong>. I'll expand these into a verified seed set.";
+      }
+    },
+    {
+      key: 'eval',
+      ask: "How should I <strong>measure success</strong>? Pick one or describe it.",
+      placeholder: "e.g. tone matches our voice, no made-up facts, replies under 80 words",
+      chips: [
+        { label: 'use the sample eval set', value: '__SAMPLE__' },
+        { label: 'I\'ll write the rubric', value: 'rubric' },
+        { label: 'pass an LLM-judge with score >= 0.9', value: 'LLM judge with score >= 0.9' }
+      ],
+      validate: function(v){ return null; },
+      followup: function(v){
+        if (v === '__SAMPLE__') return "Loaded <strong>kolm/sample-412.eval</strong> &middot; 412 prompts, opus-4.7 as judge.";
+        if (v === 'rubric' || !v.trim()) return "OK. Workbench has the rubric editor &middot; you can fill it in there.";
+        return "Noted. <strong>" + escText(v.length > 80 ? v.slice(0,80)+'.' : v) + "</strong> &middot; judge defaults to opus-4.7.";
+      }
+    },
+    {
+      key: 'targets',
+      ask: "Last one. <strong>Where will it run?</strong> Pick everywhere it should ship.",
+      placeholder: "(or just click chips above)",
+      chips: [
+        { label: 'iOS',     value: 'ios',     toggle: true },
+        { label: 'Android', value: 'android', toggle: true },
+        { label: 'Web',     value: 'web',     toggle: true },
+        { label: 'Server / MCP', value: 'server', toggle: true }
+      ],
+      validate: function(v){ return chatState.answers.targets.length ? null : "Pick at least one device or surface."; },
+      followup: function(v){
+        var ts = chatState.answers.targets;
+        return "Ready. Compiling for <strong>" + ts.map(function(t){return t}).join(', ') + "</strong>.";
+      }
+    }
+  ];
+
+  function autoresize(){
+    INPUT.style.height = 'auto';
+    INPUT.style.height = Math.min(140, INPUT.scrollHeight) + 'px';
+  }
+  INPUT.addEventListener('input', autoresize);
+
+  function setStepDots(){
+    var c = $('step-dots');
+    var n = chatState.step;
+    c.innerHTML = '';
+    for (var i = 0; i < STEPS.length; i++) {
+      var d = document.createElement('i');
+      if (i < n) d.className = 'done';
+      else if (i === n) d.className = 'cur';
+      c.appendChild(d);
+    }
+    $('step-label').textContent = n >= STEPS.length ? 'ready' : 'step ' + (n+1) + ' of ' + STEPS.length;
+  }
+
+  function appendMsg(role, html, chips){
+    var m = document.createElement('div');
+    m.className = 'msg ' + (role === 'k' ? 'k' : 'u');
+    var av = role === 'k' ? '<div class="av aurora">k</div>' : '<div class="av">y</div>';
+    var c = chips ? '<div class="chips">' + chips.map(function(c){
+      return '<button class="chip" data-v="' + escText(c.value) + '"' + (c.toggle ? ' data-toggle="1"' : '') + '>' + escText(c.label) + '</button>';
+    }).join('') + '</div>' : '';
+    m.innerHTML = av + '<div class="body">' + html + c + '</div>';
+    STREAM.appendChild(m);
+    requestAnimationFrame(function(){ m.classList.add('show'); STREAM.scrollTop = STREAM.scrollHeight; });
+    return m;
+  }
+
+  function showTyping(){
+    var t = document.createElement('div');
+    t.className = 'msg k typing-msg';
+    t.innerHTML = '<div class="av aurora">k</div><div class="body"><span class="typing"><i></i><i></i><i></i></span></div>';
+    STREAM.appendChild(t);
+    requestAnimationFrame(function(){ t.classList.add('show'); STREAM.scrollTop = STREAM.scrollHeight; });
+    return t;
+  }
+  function removeTyping(t){ if (t && t.parentNode) t.parentNode.removeChild(t); }
+
+  async function askStep(){
+    setStepDots();
+    if (chatState.step >= STEPS.length) {
+      finishChat();
+      return;
+    }
+    var s = STEPS[chatState.step];
+    var t = showTyping();
+    await sleep(550 + Math.random()*250);
+    removeTyping(t);
+    var msg = appendMsg('k', s.ask, s.chips);
+    INPUT.placeholder = s.placeholder || '';
+    if (s.key === 'targets') {
+      INPUT.value = '';
+      INPUT.disabled = false;
+    } else {
+      INPUT.disabled = false;
+    }
+    INPUT.focus();
+    autoresize();
+    wireChips(msg, s);
+  }
+
+  function wireChips(msg, step){
+    var chips = msg.querySelectorAll('.chip');
+    chips.forEach(function(c){
+      c.addEventListener('click', function(){
+        var v = c.getAttribute('data-v');
+        if (c.getAttribute('data-toggle')) {
+          // toggle in the answers.targets array
+          var arr = chatState.answers.targets;
+          var idx = arr.indexOf(v);
+          if (idx >= 0) { arr.splice(idx,1); c.classList.remove('act'); }
+          else { arr.push(v); c.classList.add('act'); }
+          INPUT.value = arr.join(', ');
+        } else {
+          // direct submit
+          INPUT.value = v;
+          autoresize();
+          submitTurn();
+        }
+      });
+    });
+  }
+
+  async function submitTurn(){
+    if (chatState.step >= STEPS.length) return;
+    var s = STEPS[chatState.step];
+    var v = (INPUT.value || '').trim();
+
+    // For targets step, value is the comma-joined chip list — validate against the array
+    if (s.key === 'targets' && !chatState.answers.targets.length) {
+      // try to parse free-text as targets
+      var t = v.toLowerCase().split(/[,\s]+/).filter(Boolean);
+      var allowed = ['ios','android','web','server','mcp'];
+      var picked = t.filter(function(x){ return allowed.indexOf(x) >= 0; });
+      picked = picked.map(function(x){ return x === 'mcp' ? 'server' : x; });
+      chatState.answers.targets = Array.from(new Set(picked));
+    }
+
+    var err = s.validate(v);
+    if (err) {
+      var t2 = showTyping(); await sleep(360); removeTyping(t2);
+      appendMsg('k', '<span style="color:var(--rose)">' + escText(err) + '</span>');
+      return;
+    }
+
+    // append user msg
+    var disp = v;
+    if (s.key === 'targets') disp = chatState.answers.targets.join(', ');
+    if (v === '__SKIP__') disp = '(skip)';
+    if (v === '__SAMPLE__') disp = '(sample)';
+    appendMsg('u', escText(disp || '(skipped)').replace(/\n/g,'<br>'));
+    chatState.answers[s.key] = v;
+
+    INPUT.value = ''; autoresize(); INPUT.disabled = true;
+
+    // bot ack
+    var t3 = showTyping();
+    await sleep(680 + Math.random()*260);
+    removeTyping(t3);
+    appendMsg('k', s.followup(v));
+
+    chatState.step++;
+    setStepDots();
+    await sleep(420);
+    askStep();
+  }
+
+  SEND.addEventListener('click', submitTurn);
+  INPUT.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitTurn();
+    }
+  });
+
+  function finishChat(){
+    INPUT.disabled = true;
+    SEND.disabled  = true;
+    INPUT.placeholder = "compiled — see summary below";
+    var sum = $('chat-summary');
+    $('sum-task').textContent     = (chatState.answers.task || '').slice(0, 64) + ((chatState.answers.task||'').length > 64 ? '.' : '');
+    var ex = chatState.answers.examples;
+    $('sum-examples').textContent = ex === '__SKIP__' || !ex ? 'synthesize from task' : ex === '__SAMPLE__' ? 'sample (4 pairs)' : (ex.split('\n').filter(Boolean).length + ' lines');
+    var ev = chatState.answers.eval;
+    $('sum-eval').textContent     = ev === '__SAMPLE__' || !ev ? 'kolm/sample-412.eval' : ev === 'rubric' ? 'rubric (in workbench)' : ev.slice(0, 50);
+    $('sum-targets').textContent  = chatState.answers.targets.join(' &middot; ');
+    sum.classList.add('show');
+    sum.scrollIntoView({behavior:'smooth', block:'center'});
+
+    // Push answers into the workbench form
+    if (chatState.answers.task) $('task').value = chatState.answers.task;
+    // mark eval as sample by default
+    var evalLabel = $('cfg-eval');
+    if (!evalLabel.classList.contains('have')) {
+      evalLabel.classList.add('have');
+      evalLabel.dataset.kind = 'sample';
+      $('cfg-eval-lbl').innerHTML = '<strong>sample evals.jsonl</strong> &middot; 412 graded prompts';
+    }
+    // sync targets
+    var ts = chatState.answers.targets;
+    Array.prototype.forEach.call(document.querySelectorAll('input[name=cfg-target]'), function(c){
+      c.checked = ts.indexOf(c.value) >= 0;
+    });
+    persistAll && persistAll();
+  }
+
+  // kick off
+  setTimeout(askStep, 280);
+
+  // chat actions
+  $('chat-compile').addEventListener('click', function(){
+    document.getElementById('workbench').scrollIntoView({behavior:'smooth', block:'start'});
+    setTimeout(function(){
+      $('compile-form').dispatchEvent(new Event('submit', {cancelable:true}));
+    }, 460);
+  });
+  $('chat-edit').addEventListener('click', function(){
+    document.getElementById('workbench').scrollIntoView({behavior:'smooth', block:'start'});
+    setTimeout(function(){ $('task').focus() }, 500);
+  });
+
+  /* ============================================================
+     WORKBENCH — original compile pipeline
+     ============================================================ */
+  var KEY = 'kolm:workbench:';
+
+  function lsGet(k, fb){ try { var v = localStorage.getItem(KEY+k); return v == null ? fb : v } catch(e){ return fb } }
+  function lsSet(k, v){ try { localStorage.setItem(KEY+k, v) } catch(e){} }
+  function lsDel(k){ try { localStorage.removeItem(KEY+k) } catch(e){} }
+
+  function readConfig(){
+    var targets = Array.prototype.map.call(
+      document.querySelectorAll('input[name=cfg-target]:checked'),
+      function(c){ return c.value }
+    );
+    return {
+      task: $('task').value.trim(),
+      base: $('cfg-base').value,
+      verifier: $('cfg-verifier').value,
+      tier: (document.querySelector('input[name=cfg-tier]:checked') || {}).value || 'adapter',
+      targets: targets,
+      kthresh: parseFloat($('cfg-kthresh').value),
+      recall: $('cfg-recall').value,
+      evalSet: $('cfg-eval').classList.contains('have') ? ($('cfg-eval').dataset.kind || 'sample') : null
+    };
+  }
+
+  function flashSaved(){
+    var m = $('cfg-meta'); if (!m) return;
+    m.textContent = 'saved'; m.style.color = 'var(--emerald)';
+    clearTimeout(flashSaved._t);
+    flashSaved._t = setTimeout(function(){ m.style.color = '' }, 800);
+  }
+
+  function persistAll(){
+    lsSet('task', $('task').value);
+    lsSet('base', $('cfg-base').value);
+    lsSet('verifier', $('cfg-verifier').value);
+    lsSet('tier', (document.querySelector('input[name=cfg-tier]:checked') || {}).value || 'adapter');
+    var ts = Array.prototype.map.call(document.querySelectorAll('input[name=cfg-target]:checked'), function(c){ return c.value });
+    lsSet('targets', ts.join(','));
+    lsSet('kthresh', $('cfg-kthresh').value);
+    lsSet('recall', $('cfg-recall').value);
+    var have = $('cfg-eval').classList.contains('have') ? ($('cfg-eval').dataset.kind || 'sample') : '';
+    lsSet('evalSet', have);
+    flashSaved();
+  }
+  window.persistAll = persistAll;
+
+  function restoreAll(){
+    var task = lsGet('task', null); if (task != null) $('task').value = task;
+    var base = lsGet('base', null); if (base) $('cfg-base').value = base;
+    var verifier = lsGet('verifier', null); if (verifier) $('cfg-verifier').value = verifier;
+    var tier = lsGet('tier', null);
+    if (tier) { var r = document.querySelector('input[name=cfg-tier][value="'+tier+'"]'); if (r) r.checked = true; }
+    var targets = lsGet('targets', null);
+    if (targets != null) {
+      var set = targets.split(',').filter(Boolean);
+      Array.prototype.forEach.call(document.querySelectorAll('input[name=cfg-target]'), function(c){
+        c.checked = set.indexOf(c.value) >= 0;
+      });
+    }
+    var kt = lsGet('kthresh', null);
+    if (kt != null) { $('cfg-kthresh').value = kt; $('cfg-kthresh-v').textContent = parseFloat(kt).toFixed(2) }
+    var recall = lsGet('recall', null); if (recall) $('cfg-recall').value = recall;
+    var evalSet = lsGet('evalSet', null);
+    if (evalSet) {
+      $('cfg-eval').classList.add('have');
+      $('cfg-eval').dataset.kind = evalSet;
+      $('cfg-eval-lbl').innerHTML = evalSet === 'sample'
+        ? '<strong>sample evals.jsonl</strong> &middot; 412 graded prompts'
+        : '<strong>'+evalSet+'</strong> ready';
+    }
+  }
+
+  $('cfg-kthresh').addEventListener('input', function(){
+    $('cfg-kthresh-v').textContent = parseFloat($('cfg-kthresh').value).toFixed(2);
+    persistAll();
+  });
+  ['cfg-base','cfg-verifier','cfg-recall','task'].forEach(function(id){
+    $(id).addEventListener('change', persistAll);
+    $(id).addEventListener('input', persistAll);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name=cfg-tier],input[name=cfg-target]'), function(el){
+    el.addEventListener('change', persistAll);
+  });
+
+  var evalLabel = $('cfg-eval');
+  var evalLblText = $('cfg-eval-lbl');
+  var evalFile = $('cfg-eval-file');
+  evalFile.addEventListener('change', function(){
+    if (evalFile.files && evalFile.files[0]) {
+      evalLabel.classList.add('have');
+      evalLabel.dataset.kind = evalFile.files[0].name;
+      evalLblText.innerHTML = '<strong>'+escText(evalFile.files[0].name)+'</strong> &middot; ready';
+      persistAll();
+    }
+  });
+  ['dragenter','dragover'].forEach(function(ev){ evalLabel.addEventListener(ev, function(e){ e.preventDefault(); evalLabel.style.borderColor = 'var(--violet)' }) });
+  ['dragleave','drop'].forEach(function(ev){ evalLabel.addEventListener(ev, function(e){ e.preventDefault(); evalLabel.style.borderColor = '' }) });
+  evalLabel.addEventListener('drop', function(e){
+    var dt = e.dataTransfer;
+    if (dt && dt.files && dt.files[0]) {
+      evalFile.files = dt.files;
+      evalLabel.classList.add('have');
+      evalLabel.dataset.kind = dt.files[0].name;
+      evalLblText.innerHTML = '<strong>'+escText(dt.files[0].name)+'</strong> &middot; ready';
+      persistAll();
+    }
+  });
+  $('cfg-eval-sample').addEventListener('click', function(e){
+    e.preventDefault(); e.stopPropagation();
+    evalLabel.classList.add('have');
+    evalLabel.dataset.kind = 'sample';
+    evalLblText.innerHTML = '<strong>sample evals.jsonl</strong> &middot; 412 graded prompts';
+    persistAll();
+  });
+
+  $('cfg-reset').addEventListener('click', function(){
+    ['task','base','verifier','tier','targets','kthresh','recall','evalSet'].forEach(lsDel);
+    location.reload();
+  });
+
+  restoreAll();
+
+  function buildStages(cfg){
+    var s = [];
+    if (cfg.recall && cfg.recall !== 'none') s.push({k:'recall', l:'recall corpus'});
+    s.push({k:'distill', l:'distill seeds'});
+    s.push({k:'decompose', l:'decompose patterns'});
+    s.push({k:'quantize', l:'quantize adapter'});
+    if (cfg.tier === 'full') s.push({k:'index', l:'build sqlite-vec index'});
+    s.push({k:'package', l:'package .kolm'});
+    if (cfg.targets.indexOf('server') >= 0) s.push({k:'mcp', l:'emit MCP tool schema'});
+    s.push({k:'verify', l:'verify k-score'});
+    s.push({k:'sign', l:'sign receipt'});
+    return s;
+  }
+  function renderStages(stages){
+    var c = $('stages'); c.innerHTML = '';
+    stages.forEach(function(st, i){
+      var row = document.createElement('div');
+      row.className = 'stage'; row.dataset.s = st.k;
+      var n = (i+1).toString().padStart(2,'0');
+      row.innerHTML = '<span class="marker">'+n+'</span><span class="lbl">'+st.l+'</span><span class="v">waiting</span>';
+      c.appendChild(row);
+    });
+  }
+  function setStage(k, state, v){
+    var el = document.querySelector('[data-s="'+k+'"]'); if (!el) return;
+    el.classList.remove('done','run'); el.classList.add(state);
+    el.querySelector('.v').textContent = v || (state==='done'?'ok':state==='run'?'running':'waiting');
+  }
+
+  var consoleEl = $('console');
+  function clearConsole(){ consoleEl.innerHTML = ''; consoleEl.classList.remove('shown') }
+  function showConsole(){ consoleEl.classList.add('shown') }
+  function nowStamp(start){ var ms = (Date.now() - start); var s = (ms/1000).toFixed(2); while (s.length < 6) s = '0'+s; return s+'s'; }
+  function logLine(role, text, start){
+    var d = document.createElement('div');
+    d.className = 'ln ' + (role || 'log');
+    d.innerHTML = '<span class="tm">'+nowStamp(start)+'</span>' + (text || '');
+    consoleEl.appendChild(d);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+    return d;
+  }
+  function typeLine(role, text, start, msPerChar){
+    return new Promise(function(resolve){
+      var d = document.createElement('div');
+      d.className = 'ln ' + (role || 'log');
+      d.innerHTML = '<span class="tm">'+nowStamp(start)+'</span>';
+      var span = document.createElement('span'); d.appendChild(span);
+      var cur = document.createElement('span'); cur.className = 'cur'; d.appendChild(cur);
+      consoleEl.appendChild(d);
+      var i = 0; var per = msPerChar || 14;
+      var t = setInterval(function(){
+        if (i >= text.length) { clearInterval(t); cur.remove(); resolve(); return; }
+        span.textContent += text.charAt(i++);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+      }, per);
+    });
+  }
+
+  function stageSubs(k, cfg){
+    var b = cfg.base; var quant = b.indexOf('7b') >= 0 ? '7B' : '3B';
+    switch (k) {
+      case 'recall': return [
+        ['log','resolving corpus :: '+cfg.recall],
+        ['kw','open(corpus="'+cfg.recall+'") -> 1 shard'],
+        ['log','tokenize :: bge-small-en-v1.5'],
+        ['log','knn k=12 over 18,432 chunks'],
+        ['log','retrieved '+rint(180,260)+' chunks @ '+rint(12,28)+'ms p50'],
+        ['log','dedup (cos>0.93): -'+rint(8,22)],
+        ['log','rerank :: cross-encoder ms-marco-mini'],
+        ['ok','ok :: '+rint(160,220)+' chunks bound to seeds']
+      ];
+      case 'distill': return [
+        ['log','load '+rint(28,52)+' seed pairs'],
+        ['log','schema check :: pass'],
+        ['kw','distill loop :: '+cfg.verifier+' (passthrough)'],
+        ['log','draft 1 :: '+rint(40,60)+' tokens'],
+        ['log','draft 2 :: '+rint(50,80)+' tokens'],
+        ['log','draft 3 :: '+rint(60,90)+' tokens'],
+        ['log','contradiction sweep :: 0 found'],
+        ['ok','distilled '+rint(380,440)+' high-grounding pairs']
+      ];
+      case 'decompose': return [
+        ['log','tokenizer :: '+b],
+        ['log','cluster prompts (HDBSCAN)'],
+        ['kw','found '+rint(28,46)+' patterns'],
+        ['log','build LoRA targets :: r=8, alpha=16'],
+        ['log','attach '+rint(7,11)+' modules'],
+        ['log','warmup '+rint(120,180)+' steps'],
+        ['log','train '+rint(800,1400)+' steps :: loss '+rfloat(0.18,0.42).toFixed(3)],
+        ['ok','adapter delta :: '+rfloat(11,24).toFixed(1)+' MB']
+      ];
+      case 'quantize': return [
+        ['log','quantize :: int4 awq groupsize=128'],
+        ['log','calibrate on '+rint(96,160)+' samples'],
+        ['log','outlier handling :: SmoothQuant'],
+        ['log','base '+quant+' :: ppl '+rfloat(5.6,7.8).toFixed(2)],
+        ['log','quant '+quant+' :: ppl '+rfloat(5.9,8.4).toFixed(2)],
+        ['kw','delta vs base :: +'+rfloat(0.18,0.62).toFixed(2)+' ppl'],
+        ['ok','quantized weights :: ok']
+      ];
+      case 'index': return [
+        ['log','init sqlite-vec @ /tmp/kolm/idx.db'],
+        ['log','embed :: bge-small-en-v1.5'],
+        ['log','batch '+rint(8,16)+' :: '+rint(160,220)+' rows'],
+        ['log','batch '+rint(17,28)+' :: '+rint(280,380)+' rows'],
+        ['log','batch '+rint(29,40)+' :: '+rint(420,520)+' rows'],
+        ['log','build IVF :: nlist=64'],
+        ['log','VACUUM :: 218 ms'],
+        ['ok','index :: '+rfloat(180,540).toFixed(0)+' MB on disk']
+      ];
+      case 'package': return [
+        ['log','collect :: weights, lora, recipes'],
+        ['log','manifest :: kolm-manifest-0.1'],
+        ['log','add /target/ios.plan'],
+        ['log','add /target/android.plan'],
+        ['log','zstd level 19'],
+        ['log','tarball '+pad(rint(0,9999),4)+'.kolm'],
+        ['ok','sealed :: '+(cfg.tier==='adapter'?'18 MB':cfg.tier==='bundle'?'1.2 GB':'3.4 GB')]
+      ];
+      case 'mcp': return [
+        ['log','introspect task contract'],
+        ['kw','tool :: '+(cfg.task ? 'task_run' : 'inference')],
+        ['log','schema :: input '+rint(2,5)+' fields'],
+        ['log','schema :: output 1 field'],
+        ['log','transports :: stdio, http+sse'],
+        ['log','register :: kolm.mcp/v1'],
+        ['ok','mcp tool schema :: emitted']
+      ];
+      case 'verify': return [
+        ['log','load eval set :: '+(cfg.evalSet || 'sample')],
+        ['log','eval count :: 412'],
+        ['kw','judge :: '+cfg.verifier],
+        ['log','batch 1/4 :: 103 prompts'],
+        ['log','batch 2/4 :: 103 prompts'],
+        ['log','batch 3/4 :: 103 prompts'],
+        ['log','batch 4/4 :: 103 prompts'],
+        ['ok','passed :: 412 / 412']
+      ];
+      case 'sign': return [
+        ['log','hash artifact :: sha256'],
+        ['log','hash eval set :: sha256'],
+        ['log','hash judge id :: sha256'],
+        ['kw','HMAC chain :: HMAC-SHA256'],
+        ['log','attach signed_at :: '+new Date().toISOString()],
+        ['log','seal receipt-v0.1.json'],
+        ['ok','receipt :: signed']
+      ];
+      default: return [['log','...']];
+    }
+  }
+
+  function fakeSha(seed){
+    var s = (seed || '') + Date.now() + Math.random();
+    var h = ''; var x = 0;
+    for (var i = 0; i < s.length; i++) x = (x*31 + s.charCodeAt(i)) >>> 0;
+    var rng = function(){ x = (x*1664525 + 1013904223) >>> 0; return x };
+    while (h.length < 64) h += rng().toString(16).padStart(8,'0');
+    return h.slice(0,64);
+  }
+  function tierSize(tier){
+    if (tier === 'adapter') return rfloat(16.4, 19.8).toFixed(1) + ' MB';
+    if (tier === 'bundle') return rfloat(1.05, 1.32).toFixed(2) + ' GB';
+    return rfloat(3.18, 3.62).toFixed(2) + ' GB';
+  }
+  function tierDuration(tier){
+    if (tier === 'adapter') return 8000;
+    if (tier === 'bundle') return 14000;
+    return 22000;
+  }
+
+  var btn = $('compile-btn');
+  var banner = $('error-banner');
+  var artifact = $('artifact');
+  var pipeMeta = $('pipe-meta');
+  var progressBar = $('progress-bar');
+  var progressEl = $('progress');
+  var lastReceipt = null;
+
+  async function runCompile(cfg){
+    banner.classList.remove('shown');
+    btn.disabled = true; btn.textContent = 'Compiling...';
+    pipeMeta.textContent = 'running';
+    artifact.classList.add('empty');
+    $('post-actions').style.display = 'none';
+    $('receipt-detail').classList.remove('shown');
+    $('qr').style.display = 'none';
+
+    var stages = buildStages(cfg);
+    renderStages(stages);
+    clearConsole(); showConsole();
+    progressEl.classList.add('shown'); progressBar.style.width = '0';
+
+    var totalMs = tierDuration(cfg.tier);
+    var weights = stages.map(function(s){
+      if (s.k === 'index') return 4.0;
+      if (s.k === 'distill' || s.k === 'decompose') return 2.0;
+      if (s.k === 'quantize') return 1.6;
+      if (s.k === 'package') return 1.2;
+      if (s.k === 'verify') return 1.4;
+      return 1.0;
+    });
+    var wSum = weights.reduce(function(a,b){return a+b},0);
+    var perStage = stages.map(function(_,i){ return totalMs * weights[i] / wSum });
+
+    var start = Date.now();
+    logLine('kw','kolm compile :: tier='+cfg.tier+' base='+cfg.base+' verifier='+cfg.verifier, start);
+    logLine('log','targets='+cfg.targets.join(',')+' k>='+cfg.kthresh.toFixed(2)+' recall='+cfg.recall, start);
+
+    var progressTimer = setInterval(function(){
+      var elapsed = Date.now() - start;
+      var pct = Math.min(99, (elapsed / totalMs) * 100);
+      progressBar.style.width = pct.toFixed(1) + '%';
+    }, 80);
+
+    for (var si = 0; si < stages.length; si++) {
+      var st = stages[si];
+      setStage(st.k, 'run');
+      var subs = stageSubs(st.k, cfg);
+      var stageMs = perStage[si];
+      var perSub = stageMs / subs.length;
+
+      for (var li = 0; li < subs.length; li++) {
+        var role = subs[li][0]; var text = subs[li][1];
+        var shouldType = (role === 'kw') || (role === 'log' && li < 3 && st.k !== 'verify');
+        await sleep(perSub * 0.35);
+        if (shouldType) await typeLine(role, text, start, 8);
+        else logLine(role, text, start);
+        await sleep(perSub * 0.55);
+      }
+      var doneLabel = subs[subs.length-1][1].replace(/^ok :: /,'').slice(0,32);
+      setStage(st.k, 'done', doneLabel);
+    }
+
+    clearInterval(progressTimer);
+    progressBar.style.width = '100%';
+    pipeMeta.textContent = 'complete';
+
+    var kFloor = cfg.kthresh;
+    var kCeil = Math.min(0.999, kFloor + 0.07);
+    var k = (kFloor + Math.random() * (kCeil - kFloor));
+    var kStr = k.toFixed(3);
+
+    var artifactHash = fakeSha('artifact-'+cfg.task);
+    var evalHash = fakeSha('eval-'+(cfg.evalSet||'sample'));
+    var judgeId = fakeSha('judge-'+cfg.verifier).slice(0,16);
+    var chainHmac = fakeSha('hmac-'+artifactHash+evalHash+judgeId+kStr);
+    var signedAt = new Date().toISOString();
+
+    lastReceipt = {
+      kolm: {
+        version: '0.1', artifact_name: 'support-writer.kolm',
+        base: cfg.base, tier: cfg.tier, targets: cfg.targets,
+        verifier: cfg.verifier, recall: cfg.recall,
+        k_threshold: cfg.kthresh, k_score: parseFloat(kStr)
+      },
+      receipt: {
+        artifact_hash: 'sha256:'+artifactHash,
+        eval_set_hash: 'sha256:'+evalHash,
+        eval_score: parseFloat(kStr),
+        judge_id: 'sha256:'+judgeId,
+        chain: 'hmac-sha256:'+chainHmac,
+        signed_at: signedAt
+      }
+    };
+
+    artifact.classList.remove('empty');
+    artifact.querySelector('.hd .brand .sub').textContent = 'Signed Artifact';
+    $('r-score').textContent = kStr;
+    $('r-name').textContent = 'support-writer.kolm';
+    $('r-base').textContent = cfg.base;
+    $('r-tier').textContent = cfg.tier;
+    $('r-size').textContent = tierSize(cfg.tier);
+    $('r-targets').textContent = cfg.targets.map(function(t){ return t.charAt(0).toUpperCase()+t.slice(1) }).join(' · ');
+    $('r-evals').innerHTML = '412 <span class="tag">verified</span>';
+    $('r-judge').textContent = cfg.verifier;
+    $('r-signed').textContent = signedAt.slice(0,10);
+
+    $('rcpt-artifact').textContent = lastReceipt.receipt.artifact_hash;
+    $('rcpt-eval').textContent = lastReceipt.receipt.eval_set_hash;
+    $('rcpt-score').textContent = lastReceipt.receipt.eval_score.toFixed(3);
+    $('rcpt-judge').textContent = lastReceipt.receipt.judge_id;
+    $('rcpt-hmac').textContent = lastReceipt.receipt.chain;
+    $('rcpt-time').textContent = lastReceipt.receipt.signed_at;
+
+    $('post-actions').style.display = 'flex';
+    $('qr').style.display = 'flex';
+
+    logLine('ok','done. k-score '+kStr+' >= threshold '+cfg.kthresh.toFixed(2), start);
+    logLine('log','total '+((Date.now()-start)/1000).toFixed(2)+'s', start);
+
+    setTimeout(function(){ progressEl.classList.remove('shown') }, 800);
+    btn.disabled = false; btn.textContent = 'Compile another';
+  }
+
+  $('compile-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    banner.classList.remove('shown');
+    var cfg = readConfig();
+    if (!cfg.task) { banner.textContent = 'Task is required.'; banner.classList.add('shown'); return; }
+    if (!cfg.targets.length) { banner.textContent = 'Pick at least one target.'; banner.classList.add('shown'); return; }
+    if (!cfg.evalSet) { banner.textContent = 'Drop an evals.jsonl or use the sample.'; banner.classList.add('shown'); return; }
+    runCompile(cfg).catch(function(err){
+      banner.textContent = (err && err.message) || 'Compile failed.';
+      banner.classList.add('shown');
+      btn.disabled = false; btn.textContent = 'Compile';
+      pipeMeta.textContent = 'idle';
+    });
+  });
+
+  $('rcpt-link').addEventListener('click', function(){
+    var pane = $('receipt-detail');
+    pane.classList.toggle('shown');
+    pane.scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+
+  $('dl-link').addEventListener('click', function(){
+    if (!lastReceipt) return;
+    try {
+      var blob = new Blob([JSON.stringify(lastReceipt, null, 2)], {type:'application/json'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'support-writer.kolm.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url) }, 1500);
+    } catch(e){
+      banner.textContent = 'Browser blocked the download.'; banner.classList.add('shown');
+    }
+  });
+
+  renderStages(buildStages(readConfig()));
+})();
+</script>
+
 </body>
 </html>

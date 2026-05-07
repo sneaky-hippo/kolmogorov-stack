@@ -1,202 +1,228 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pricing · kolm</title>
-  <meta name="description" content="Two ways to pay. Cut of measured savings, or transparent per-call rates. Free until you save real money, we lose if you don't." />
-  <link rel="stylesheet" href="/styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pricing · kolm</title>
+<meta name="description" content="kolm pricing. Free tier, $9 mobile, $49 pro, custom enterprise. Bring your own model API key. Unlimited compiles on Pro.">
+<meta name="theme-color" content="#07090f">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://kolm.ai/pricing">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/aurora.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg-2:#0b1018;--bg-3:#13101f;
+  --surface:#101722;--surface-2:#162033;
+  --line:#1c2738;--line-2:#28324a;--line-3:#3a3658;
+  --fg:#f6f8fb;--fg-2:#d6d3e3;--fg-3:#a8b3c2;
+  --muted:#7d7898;--dim:#778396;
+  --violet:#a78bfa;--violet-2:#d4c2ff;--cyan:#65d4ff;--emerald:#43e6a6;--amber:#ffb084;
+  --maxw:1180px;--pad-x:max(28px,env(safe-area-inset-left));
+}
+html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.55;letter-spacing:-0.011em;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto;overflow-x:hidden;position:relative}
+h1,h2,h3,h4{font-family:inherit;font-feature-settings:"ss01","ss03","cv11","calt"}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+code,pre,.mono,kbd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace}
+::selection{background:rgba(167, 139, 250,0.32);color:var(--fg)}
+
+.bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
+.bg-stage::before{content:"";position:absolute;inset:-10%;background-image:url('/aurora.svg');background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0.30;filter:blur(36px)}
+.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(7, 9, 15,0) 0%,rgba(7, 9, 15,0.6) 45%,rgba(7, 9, 15,0.94) 100%)}
+.aurora{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(7, 9, 15,0.55);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
+nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:21px;line-height:1}
+nav.top ul.links{display:flex;gap:28px}
+nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
+nav.top ul.links a:hover,nav.top ul.links a.active{color:var(--fg)}
+nav.top .signin{color:var(--fg);font-weight:500}
+nav.top .signin .ar{color:var(--fg-3);transition:transform .2s;margin-left:4px}
+nav.top .signin:hover .ar{transform:translateX(2px);color:var(--fg)}
+@media(max-width:880px){nav.top ul.links{display:none}}
+
+main{max-width:var(--maxw);margin:0 auto;padding:64px var(--pad-x) 96px}
+.head{text-align:center;margin-bottom:48px}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);letter-spacing:0.16em;text-transform:uppercase;padding:6px 13px;border-radius:6px;background:linear-gradient(180deg,rgba(167, 139, 250,0.10),rgba(167, 139, 250,0.04));border:1px solid rgba(167, 139, 250,0.22);margin-bottom:22px}
+.eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--violet);box-shadow:0 0 0 3px rgba(167, 139, 250,0.18)}
+h1{font-size:clamp(38px,5vw,60px);font-weight:600;letter-spacing:-0.032em;line-height:1.04;margin-bottom:14px}
+.lede{color:var(--fg-3);font-size:17px;line-height:1.55;max-width:580px;margin:0 auto}
+
+.tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:42px}
+@media(max-width:980px){.tiers{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.tiers{grid-template-columns:1fr}}
+.tier{background:var(--bg-2);border:1px solid var(--line);border-radius:16px;padding:26px;display:flex;flex-direction:column;transition:border-color .15s,transform .15s,box-shadow .15s}
+.tier:hover{border-color:var(--line-3)}
+.tier.featured{border-color:rgba(167, 139, 250,0.5);background:linear-gradient(180deg,rgba(167, 139, 250,0.06),rgba(22,19,42,0.85));box-shadow:0 0 0 1px rgba(167, 139, 250,0.15),0 20px 60px -20px rgba(167, 139, 250,0.35)}
+.tier .name{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--fg-3);margin-bottom:10px}
+.tier.featured .name{color:var(--violet-2)}
+.tier .price{font-size:38px;font-weight:600;letter-spacing:-0.025em;line-height:1;margin-bottom:6px}
+.tier .price small{color:var(--fg-3);font-size:14px;font-weight:400;letter-spacing:0;margin-left:4px}
+.tier .for{color:var(--fg-3);font-size:13.5px;margin-bottom:18px;min-height:36px}
+.tier ul.feats{margin:0 0 22px;padding:0;display:flex;flex-direction:column;gap:9px}
+.tier ul.feats li{padding-left:22px;position:relative;font-size:13.5px;color:var(--fg-2);line-height:1.5}
+.tier ul.feats li::before{content:"";position:absolute;left:0;top:6px;width:14px;height:14px;border-radius:50%;background:rgba(167, 139, 250,0.08);border:1px solid rgba(167, 139, 250,0.3);background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'><path d='M3 6.5L5 8.5L9 4' stroke='%23a78bfa' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:center}
+.tier .pick{margin-top:auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:8px;font-size:13.5px;font-weight:500;border:1px solid var(--line-3);color:var(--fg);transition:background .15s,border-color .15s,box-shadow .15s}
+.tier .pick:hover{border-color:var(--fg);background:rgba(255,255,255,0.04)}
+.tier.featured .pick{background:linear-gradient(180deg,#fff 0%,#e3deff 100%);color:#07090f;border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,0.10),0 8px 28px -8px rgba(167, 139, 250,0.45)}
+.tier.featured .pick:hover{box-shadow:0 0 0 1px rgba(255,255,255,0.18),0 12px 32px -6px rgba(167, 139, 250,0.55)}
+
+.byok{margin-top:64px;padding:28px;background:var(--bg-2);border:1px solid var(--line);border-radius:16px;display:grid;grid-template-columns:1.4fr 1fr;gap:32px;align-items:center}
+@media(max-width:760px){.byok{grid-template-columns:1fr}}
+.byok h3{font-size:20px;font-weight:600;letter-spacing:-0.018em;margin-bottom:8px}
+.byok p{color:var(--fg-3);font-size:14.5px;line-height:1.6}
+.byok .right{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13px;background:var(--bg-3);border:1px solid var(--line);border-radius:10px;padding:14px 16px;color:var(--fg-2);line-height:1.7}
+.byok .right .c{color:var(--violet-2)}
+.byok .right .o{color:var(--emerald)}
+
+.faq{margin-top:64px}
+.faq h2{font-size:24px;font-weight:600;letter-spacing:-0.022em;margin-bottom:22px}
+.faq .q{padding:18px 0;border-bottom:1px solid var(--line)}
+.faq .q:last-child{border-bottom:0}
+.faq .q h4{font-size:15.5px;font-weight:500;letter-spacing:-0.011em;margin-bottom:6px}
+.faq .q p{color:var(--fg-3);font-size:14px;line-height:1.6}
+
+footer{border-top:1px solid var(--line);background:rgba(14,12,28,0.4);padding:48px var(--pad-x) 40px;margin-top:80px}
+footer .inner{max-width:var(--maxw);margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:36px}
+@media(max-width:760px){footer .inner{grid-template-columns:1fr 1fr;gap:28px}}
+footer .mark{font-size:18px;font-weight:600;letter-spacing:-0.025em;margin-bottom:10px;display:inline-block}
+footer .legal{color:var(--dim);font-size:12px;margin-top:14px}
+footer h4{color:var(--fg-2);font-size:12.5px;font-weight:600;letter-spacing:-0.011em;margin-bottom:12px}
+footer .col a{display:block;color:var(--fg-3);font-size:13px;padding:5px 0;transition:color .15s}
+footer .col a:hover{color:var(--fg)}
+</style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar">
-    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
-    <div class="tag">PRICING</div>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/device">On-device <span class="pill violet" style="font-size:9px;">live</span></a>
-      <a href="/optimize">Optimize my bill</a>
-      <a href="/audit">Free bill audit</a>
-      <a href="/playground">Playground</a>
-      <a href="/registry">Recipes</a>
-      <a href="/dashboard">Live runtime</a>
-      <a href="/why">Why this exists</a>
-      <a href="/docs">API &amp; SDKs</a>
-      <a href="/pricing" class="active">Pricing</a>
-      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
-      <a href="/account">Account</a>
-      <a href="/signup">Get a key</a>
-    </nav>
-    <div class="footnote">
-      We lose if you don't save. The pricing is the marketing.
-    </div>
-  </aside>
-  <main class="main">
-    <section class="hero" style="padding: 36px 0 14px;">
-      <div class="eyebrow">PRICING &middot; SAVINGS-ALIGNED</div>
-      <h1>You pay only when <span class="grad">we cut your bill.</span></h1>
-      <p class="sub" style="font-size:16px;">
-        Two ways to buy. <strong>Either</strong> a fixed base + a % of measured savings (the autopilot path),
-        <strong>or</strong> transparent per-unit rates if you'd rather not share traffic data.
-        Free tier on both. No card to start.
-      </p>
-    </section>
 
-    <!-- THE TWO PATHS -------------------------------------------------- -->
-    <h2 style="margin-top: 28px;">Path A &middot; Pay from savings (recommended)</h2>
-    <p class="lead">Wrap your AI client, let the autopilot run. We measure your before/after and bill a cut. If we save you nothing, you pay nothing.</p>
+<div class="bg-stage" aria-hidden="true"></div>
 
-    <div class="row cols-3" style="margin-top: 8px;">
-      <div class="card">
-        <div class="label">FREE &middot; FOREVER</div>
-        <div class="stat" style="font-size: 26px;">$0</div>
-        <div class="delta" style="margin-top:6px;">no card &middot; no time limit</div>
-        <ul style="color:var(--ink-mute); font-size:13px; line-height:1.7; padding-left:18px; margin-top:14px;">
-          <li>10,000 recipe-calls / month</li>
-          <li>5 synthesized recipes</li>
-          <li>Public registry only</li>
-          <li>Anonymous CLI bootstrap (robots welcome)</li>
-          <li>Community support</li>
-        </ul>
-        <a class="btn ghost" href="/signup" style="margin-top:8px;">Mint a key &rarr;</a>
-      </div>
-      <div class="card glow">
-        <div class="label" style="color:var(--accent);">GROWTH</div>
-        <div class="stat" style="font-size: 26px;">$99<span style="font-size:13px; color:var(--ink-faint);"> /mo</span> + <span class="grad">10% of savings</span></div>
-        <div class="delta" style="margin-top:6px;">most AI-native startups land here</div>
-        <ul style="color:var(--ink-mute); font-size:13px; line-height:1.7; padding-left:18px; margin-top:14px;">
-          <li><strong>Unlimited</strong> recipe-calls</li>
-          <li><strong>Unlimited</strong> recipes</li>
-          <li>Private registry &amp; tenant isolation</li>
-          <li>Autopilot mode (observe &rarr; cluster &rarr; replace)</li>
-          <li>Weekly savings receipt &mdash; dollar-denominated</li>
-          <li>Specialists waitlist priority</li>
-          <li>Email support</li>
-        </ul>
-        <a class="btn accent" href="/signup?plan=growth" style="margin-top:8px;">Start Growth &rarr;</a>
-      </div>
-      <div class="card">
-        <div class="label">SCALE</div>
-        <div class="stat" style="font-size: 26px;">$1,000<span style="font-size:13px; color:var(--ink-faint);"> /mo</span> + 5% of savings</div>
-        <div class="delta" style="margin-top:6px;">capped at 50% of your bill</div>
-        <ul style="color:var(--ink-mute); font-size:13px; line-height:1.7; padding-left:18px; margin-top:14px;">
-          <li>Specialists (LoRA fine-tunes) included</li>
-          <li>Dedicated synthesis priority</li>
-          <li>VPC / on-prem option</li>
-          <li>SLA: 99.9%</li>
-          <li>SOC 2 Type II (Q2 2027)</li>
-          <li>Dedicated support engineer</li>
-        </ul>
-        <a class="btn ghost" href="mailto:dev@remlabs.ai?subject=Recipe%20Scale">Talk to us &rarr;</a>
-      </div>
+<nav class="top">
+  <a class="brand aurora" href="/">kolm</a>
+  <ul class="links">
+    <li><a href="/compile">Compile</a></li>
+    <li><a href="/run">Run</a></li>
+    <li><a href="/registry">Registry</a></li>
+    <li><a href="/docs">Docs</a></li>
+    <li><a class="active" href="/pricing">Pricing</a></li>
+  </ul>
+  <a class="signin" href="/signup">Sign in <span class="ar">&rsaquo;</span></a>
+</nav>
+
+<main>
+  <section class="head">
+    <span class="eyebrow"><span class="dot"></span> Pricing</span>
+    <h1>One product. Three tiers. <span class="aurora">BYO key.</span></h1>
+    <p class="lede">You always pay your own model API bill on top. We are the compiler.</p>
+  </section>
+
+  <div class="tiers">
+    <div class="tier">
+      <div class="name">FREE</div>
+      <div class="price">$0</div>
+      <div class="for">Try kolm. Compile one specialist a month.</div>
+      <ul class="feats">
+        <li>1 specialist / month</li>
+        <li>4B-class open base</li>
+        <li>10k corpus rows</li>
+        <li>100k recall vectors</li>
+        <li>Public registry access</li>
+      </ul>
+      <a class="pick" href="/signup">Start free <span class="ar">&rsaquo;</span></a>
     </div>
 
-    <!-- WORKED EXAMPLE ------------------------------------------------- -->
-    <h3 style="margin-top: 28px;">A worked example &mdash; how the savings cut actually shakes out</h3>
-    <div class="card" style="background:#0d0f15; border-color: var(--line);">
-      <table class="kvtable" style="font-size: 13px;">
-        <tr><td>Your current Claude bill</td><td><strong>$2,000 / mo</strong></td></tr>
-        <tr><td>Recipe replaces 78% of calls (typical)</td><td>$1,560 saved</td></tr>
-        <tr><td>Your new Claude bill</td><td><strong>$440 / mo</strong></td></tr>
-        <tr><td>Growth base</td><td>+ $99 / mo</td></tr>
-        <tr><td>Growth savings cut (10% of $1,560)</td><td>+ $156 / mo</td></tr>
-        <tr><td>What you actually pay (Recipe + Claude)</td><td><strong style="color: var(--accent);">$695 / mo</strong></td></tr>
-        <tr><td><strong>Net savings, monthly</strong></td><td><strong style="color: var(--good);">$1,305 / mo &mdash; 65% off</strong></td></tr>
-        <tr><td>Annualized</td><td><strong style="color: var(--good);">$15,660 / yr</strong></td></tr>
-      </table>
+    <div class="tier">
+      <div class="name">MOBILE</div>
+      <div class="price">$9<small>/mo</small></div>
+      <div class="for">Hermes-class on your phone. Your data stays local.</div>
+      <ul class="feats">
+        <li>1 personal specialist / month</li>
+        <li>100k corpus rows</li>
+        <li>1M recall vectors</li>
+        <li>iOS &amp; Android runtime</li>
+        <li>Unlimited local runs</li>
+      </ul>
+      <a class="pick" href="/signup?plan=mobile">Get Mobile <span class="ar">&rsaquo;</span></a>
     </div>
-    <p class="muted small" style="margin-top: 10px;">
-      Numbers above use $0.0008/call avg cost (Claude Sonnet 4.6, ~250 in tokens, ~5 out). Plug your real numbers into the <a href="/optimize#calc">calculator</a>.
-    </p>
 
-    <hr class="hairline" />
+    <div class="tier featured">
+      <div class="name">PRO</div>
+      <div class="price">$49<small>/mo</small></div>
+      <div class="for">Shippers and teams. Unlimited compiles.</div>
+      <ul class="feats">
+        <li>Unlimited specialists</li>
+        <li>1M corpus rows each</li>
+        <li>10M recall vectors</li>
+        <li>Hermes-3 fine-tuning</li>
+        <li>Private registry</li>
+        <li>CLI &amp; SDK access</li>
+      </ul>
+      <a class="pick" href="/signup?plan=pro">Get Pro <span class="ar">&rsaquo;</span></a>
+    </div>
 
-    <!-- PATH B --------------------------------------------------------- -->
-    <h2>Path B &middot; Per-unit rates (no savings sharing)</h2>
-    <p class="lead">If you'd rather not wire your traffic through our autopilot, pay-as-you-go per unit. Same engine, no savings telemetry, no % cut.</p>
+    <div class="tier">
+      <div class="name">ENTERPRISE</div>
+      <div class="price">Custom</div>
+      <div class="for">Regulated industry. On-prem. SLA.</div>
+      <ul class="feats">
+        <li>Private base models</li>
+        <li>On-prem training bridge</li>
+        <li>Air-gapped runtimes</li>
+        <li>BAA / DPA available</li>
+        <li>SOC 2 Type I in-flight</li>
+      </ul>
+      <a class="pick" href="mailto:hi@kolm.ai">Talk to us <span class="ar">&rsaquo;</span></a>
+    </div>
+  </div>
 
-    <table class="table compare">
-      <thead><tr><th>Layer</th><th>Unit</th><th>Price</th></tr></thead>
-      <tbody>
-        <tr><td>Build (synthesis)</td><td>per accepted recipe under 1 KB</td><td>$0.10</td></tr>
-        <tr><td>Build (synthesis)</td><td>per accepted recipe 1&ndash;32 KB</td><td>$1.00</td></tr>
-        <tr><td>Storage</td><td>per GB-month registry</td><td>$0.01</td></tr>
-        <tr><td>Storage</td><td>per million registry reads</td><td>$0.10</td></tr>
-        <tr><td>Run</td><td>per million recipe-calls (cold)</td><td>$0.20</td></tr>
-        <tr><td>Run</td><td>per million recipe-calls (cache hit)</td><td>$0.05</td></tr>
-        <tr><td>Auto-label <span class="pill violet">soon</span></td><td>per 1k rows after 10k free</td><td>$1.00</td></tr>
-        <tr><td>Specialist train <span class="pill violet">soon</span></td><td>per LoRA trained</td><td>from $40</td></tr>
-        <tr><td>Specialist host <span class="pill violet">soon</span></td><td>per active LoRA / month</td><td>$20</td></tr>
-      </tbody>
-    </table>
-    <p class="muted small" style="margin-top: 8px;">For yes/no classifier @ 1M calls/month: Claude Sonnet 4.6 ~$675 &middot; Cohere classify ~$2,000 &middot; <strong>Recipe per-unit: ~$0.20.</strong></p>
+  <section class="byok">
+    <div>
+      <h3>BYO key, always.</h3>
+      <p>The frontier model is the teacher during compile. The student is what runs on your device. We never see your model bill, your prompts, or your data &mdash; you set the key once, and our endpoints stream straight to you.</p>
+    </div>
+    <div class="right">
+      <span class="c">$ kolm config set anthropic.key sk-ant-…</span><br>
+      <span class="c">$ kolm compile "answer my emails"</span><br>
+      <span class="o">  k-score: 0.94 &middot; size: 18.3 KB</span><br>
+      <span class="o">  signed: HMAC chained &middot; ready</span>
+    </div>
+  </section>
 
-    <hr class="hairline" />
+  <section class="faq">
+    <h2>Common questions</h2>
+    <div class="q">
+      <h4>Do I pay for model tokens through kolm?</h4>
+      <p>No. Compile uses your Anthropic / OpenAI / Together / Moonshot key directly. Your model bill goes to them; your kolm bill is just the compile + recall + registry hosting.</p>
+    </div>
+    <div class="q">
+      <h4>Can I cancel any time?</h4>
+      <p>Yes. Stripe portal, one click, no retention prompts. All your <code style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--violet-2)">.kolm</code> artifacts remain yours and keep running on every device they're already installed on, even after cancellation.</p>
+    </div>
+    <div class="q">
+      <h4>Where does the data live?</h4>
+      <p>Recall vectors are encrypted at rest in our managed index by default. Free / Mobile / Pro tiers can opt in to on-device-only via a self-hosted sqlite-vec backend. Enterprise can run the full stack on-prem.</p>
+    </div>
+    <div class="q">
+      <h4>What's a "compile"?</h4>
+      <p>One <code style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--violet-2)">kolm compile</code> turns a task description plus optional examples and corpus into one signed <code style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--violet-2)">.kolm</code> artifact. Re-compiling the same task with new data does not count against your monthly limit until the K-score crosses the publish threshold.</p>
+    </div>
+  </section>
+</main>
 
-    <!-- COMPARISON ----------------------------------------------------- -->
-    <h3>How the two paths compare</h3>
-    <table class="table compare">
-      <thead><tr><th>&nbsp;</th><th>Path A &middot; Savings cut</th><th>Path B &middot; Per-unit</th></tr></thead>
-      <tbody>
-        <tr><td>You share LLM traffic with us?</td><td>yes (PII-redacted, opt-in per cluster)</td><td>no</td></tr>
-        <tr><td>Setup</td><td>wrap your client (2 lines)</td><td>call our API directly</td></tr>
-        <tr><td>Bill predictability</td><td>tied to actual savings</td><td>flat per call</td></tr>
-        <tr><td>Best for</td><td>AI-native startups, teams worried about runaway spend</td><td>regulated buyers, on-prem, BYOC</td></tr>
-        <tr><td>Worst case</td><td>$99/mo even if no savings (cancel any time)</td><td>$0/mo (just usage rates)</td></tr>
-        <tr><td>Best case</td><td>typical: 65&ndash;80% net bill cut</td><td>typical: 95%+ vs LLM if you have a busy classifier</td></tr>
-      </tbody>
-    </table>
+<footer>
+  <div class="inner">
+    <div>
+      <span class="mark aurora">kolm</span>
+      <p style="color:var(--fg-3);font-size:13.5px;line-height:1.55;max-width:280px">The AI compiler. Type a task. Compile a small signed specialist. Run it on every device offline.</p>
+      <p class="legal">&copy; 2026 Kolmogorov. <a href="/security" style="color:var(--fg-3)">Security</a></p>
+    </div>
+    <div class="col"><h4>Product</h4><a href="/compile">Compile</a><a href="/run">Run</a><a href="/registry">Registry</a><a href="/pricing">Pricing</a></div>
+    <div class="col"><h4>Develop</h4><a href="/docs">Docs</a><a href="/docs#cli-compile">CLI</a><a href="/docs#sdk">SDKs</a><a href="/playground">Playground</a></div>
+    <div class="col"><h4>Open</h4><a href="/docs#rs-1">RS-1 spec</a><a href="/docs#manifest">Manifest</a><a href="/docs#receipts">Receipts</a><a href="/security">Security</a></div>
+  </div>
+</footer>
 
-    <hr class="hairline" />
-
-    <!-- ENTERPRISE ----------------------------------------------------- -->
-    <h3>Enterprise (six- and seven-figure inference bills)</h3>
-    <p class="muted">Custom pricing tied to verified savings via a 30-day pilot. Air-gapped runtime. Custom registry / private marketplace. Multi-region. SOC 2 + HIPAA. <a href="mailto:dev@remlabs.ai?subject=Recipe%20Enterprise">dev@remlabs.ai</a>.</p>
-
-    <hr class="hairline" />
-
-    <!-- SELF-HOST ------------------------------------------------------ -->
-    <h3>Self-host</h3>
-    <p class="muted">If you don't want to depend on us, the runtime is <em>just JS</em>. Click any recipe in the registry, copy its source, and paste it into your own server. Recipe is the build &amp; registry layer; running them is free at the file system.</p>
-
-    <h3>FAQ</h3>
-    <details>
-      <summary>How do you measure "savings"?</summary>
-      <p style="color:var(--ink-mute); font-size:13.5px; padding:6px 0;">For each cluster the autopilot replaces, we record (a) how many LLM calls would have happened without the recipe and (b) what those calls cost (your real model rate &times; observed token counts). Savings = the avoided spend. The receipt is itemized; you can audit every line.</p>
-    </details>
-    <details>
-      <summary>Can I cap how much I pay?</summary>
-      <p style="color:var(--ink-mute); font-size:13.5px; padding:6px 0;">Yes. Scale has a built-in cap at 50% of your remaining LLM bill. Growth caps at 3&times; the base ($297/mo). Enterprise is whatever you negotiate.</p>
-    </details>
-    <details>
-      <summary>Do you store my examples?</summary>
-      <p style="color:var(--ink-mute); font-size:13.5px; padding:6px 0;">Yes &mdash; in the recipe's lineage, so you can audit how it was built. Set <span class="mono">visibility: "private"</span> to keep them tenant-only. We never train shared models on your private examples.</p>
-    </details>
-    <details>
-      <summary>Can I run this in my VPC?</summary>
-      <p style="color:var(--ink-mute); font-size:13.5px; padding:6px 0;">Yes, on Scale. The whole system is one Node service + a JSON or Postgres store + an optional Anthropic key. Email dev@remlabs.ai.</p>
-    </details>
-    <details>
-      <summary>What happens when I exceed the free tier?</summary>
-      <p style="color:var(--ink-mute); font-size:13.5px; padding:6px 0;">We return HTTP 429 with a clear <span class="mono">X-Quota-Used</span> header. Nothing breaks silently. Upgrade to Growth from <a href="/signup">/signup</a> any time.</p>
-    </details>
-    <details>
-      <summary>Do you have an SLA?</summary>
-      <p style="color:var(--ink-mute); font-size:13.5px; padding:6px 0;">Free and Growth: best-effort, see <a href="/status">/status</a>. Scale: 99.9% uptime SLA + on-call rotation.</p>
-    </details>
-
-    <footer class="page-footer">
-      <div class="left">
-        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
-      </div>
-      <div class="right">
-        <a href="/why">Why</a>
-        <a href="/docs">Docs</a>
-        <a href="/status">Status</a>
-      </div>
-    </footer>
-  </main>
-</div>
-<script src="/app.js"></script>
 </body>
 </html>

@@ -1,298 +1,304 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>API &amp; SDKs · kolm</title>
-  <link rel="stylesheet" href="/styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Docs · kolm</title>
+<meta name="description" content="kolm documentation. Install the CLI, call the SDK, read the RS-1 spec, the Manifest format, and the Receipt chain.">
+<meta name="theme-color" content="#07090f">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://kolm.ai/docs">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/aurora.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg-2:#0b1018;--bg-3:#13101f;
+  --surface:#101722;--surface-2:#162033;
+  --line:#1c2738;--line-2:#28324a;--line-3:#3a3658;
+  --fg:#f6f8fb;--fg-2:#d6d3e3;--fg-3:#a8b3c2;
+  --muted:#7d7898;--dim:#778396;
+  --violet:#a78bfa;--violet-2:#d4c2ff;--cyan:#65d4ff;--emerald:#43e6a6;--amber:#ffb084;
+  --maxw:1180px;--pad-x:max(28px,env(safe-area-inset-left));
+}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;letter-spacing:-0.011em;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto;overflow-x:hidden;position:relative}
+h1,h2,h3,h4{font-family:inherit;font-feature-settings:"ss01","ss03","cv11","calt"}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+code,pre,.mono,kbd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace}
+::selection{background:rgba(167, 139, 250,0.32);color:var(--fg)}
+
+.bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
+.bg-stage::before{content:"";position:absolute;inset:-10%;background-image:url('/aurora.svg');background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0.22;filter:blur(40px)}
+.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(7, 9, 15,0) 0%,rgba(7, 9, 15,0.7) 45%,rgba(7, 9, 15,0.97) 100%)}
+.aurora{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(7, 9, 15,0.62);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
+nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:21px;line-height:1}
+nav.top ul.links{display:flex;gap:28px}
+nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
+nav.top ul.links a:hover,nav.top ul.links a.active{color:var(--fg)}
+nav.top .signin{color:var(--fg);font-weight:500}
+nav.top .signin .ar{color:var(--fg-3);transition:transform .2s;margin-left:4px}
+@media(max-width:880px){nav.top ul.links{display:none}}
+
+.layout{max-width:var(--maxw);margin:0 auto;padding:48px var(--pad-x) 96px;display:grid;grid-template-columns:220px 1fr;gap:48px}
+@media(max-width:880px){.layout{grid-template-columns:1fr;gap:24px}}
+
+aside.toc{position:sticky;top:80px;height:fit-content;align-self:start}
+@media(max-width:880px){aside.toc{position:static}}
+aside.toc h4{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:14px;font-weight:500}
+aside.toc nav{display:flex;flex-direction:column;gap:1px}
+aside.toc nav a{padding:8px 12px;font-size:13.5px;color:var(--fg-3);border-radius:6px;transition:background .15s,color .15s;border-left:2px solid transparent}
+aside.toc nav a:hover{background:rgba(167, 139, 250,0.06);color:var(--fg)}
+aside.toc nav a.section{margin-top:14px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;color:var(--dim);letter-spacing:0.16em;text-transform:uppercase;padding:8px 12px 4px;cursor:default}
+aside.toc nav a.section:hover{background:transparent;color:var(--dim)}
+
+main{min-width:0}
+.head{margin-bottom:48px}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);letter-spacing:0.16em;text-transform:uppercase;padding:6px 13px;border-radius:6px;background:linear-gradient(180deg,rgba(167, 139, 250,0.10),rgba(167, 139, 250,0.04));border:1px solid rgba(167, 139, 250,0.22);margin-bottom:22px}
+.eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--violet)}
+.head h1{font-size:clamp(34px,4.4vw,48px);font-weight:600;letter-spacing:-0.030em;line-height:1.05;margin-bottom:14px}
+.head .lede{color:var(--fg-3);font-size:16px;line-height:1.6;max-width:600px}
+
+section.doc{padding:42px 0;border-top:1px solid var(--line);scroll-margin-top:80px}
+section.doc:first-of-type{border-top:0;padding-top:0}
+section.doc h2{font-size:26px;font-weight:600;letter-spacing:-0.024em;margin-bottom:6px;display:flex;align-items:center;gap:12px}
+section.doc h2 .anchor{font-size:14px;color:var(--fg-3);text-decoration:none;opacity:0;transition:opacity .15s}
+section.doc h2:hover .anchor{opacity:1}
+section.doc h3{font-size:18px;font-weight:600;letter-spacing:-0.018em;margin:28px 0 10px}
+section.doc h4{font-size:14px;font-weight:600;letter-spacing:-0.014em;margin:20px 0 8px;color:var(--fg-2)}
+section.doc p{color:var(--fg-2);margin-bottom:14px}
+section.doc p.note{color:var(--fg-3);font-size:14px;background:rgba(167, 139, 250,0.04);padding:12px 16px;border-left:2px solid var(--violet);border-radius:0 8px 8px 0}
+section.doc ul.bullets{margin:0 0 14px;padding-left:0}
+section.doc ul.bullets li{padding:5px 0 5px 22px;position:relative;color:var(--fg-2)}
+section.doc ul.bullets li::before{content:"";position:absolute;left:6px;top:14px;width:5px;height:5px;border-radius:50%;background:var(--violet)}
+
+pre{background:var(--bg-3);border:1px solid var(--line);border-radius:10px;padding:18px 20px;overflow-x:auto;font-size:13.5px;line-height:1.7;color:var(--fg-2);margin:14px 0;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+pre .c{color:var(--violet-2)}
+pre .o{color:var(--emerald)}
+pre .k{color:var(--cyan)}
+pre .s{color:var(--amber)}
+code:not(pre code){font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:0.92em;color:var(--violet-2);background:rgba(167, 139, 250,0.08);padding:1px 6px;border-radius:4px;border:1px solid rgba(167, 139, 250,0.2)}
+
+table.spec{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+table.spec th,table.spec td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+table.spec th{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--fg-3);letter-spacing:0.12em;text-transform:uppercase;font-weight:500}
+table.spec td{color:var(--fg-2)}
+table.spec td:first-child{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--violet-2);font-size:13px;white-space:nowrap}
+
+footer{border-top:1px solid var(--line);background:rgba(14,12,28,0.4);padding:48px var(--pad-x) 40px;margin-top:80px}
+footer .inner{max-width:var(--maxw);margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:36px}
+@media(max-width:760px){footer .inner{grid-template-columns:1fr 1fr;gap:28px}}
+footer .mark{font-size:18px;font-weight:600;letter-spacing:-0.025em;margin-bottom:10px;display:inline-block}
+footer .legal{color:var(--dim);font-size:12px;margin-top:14px}
+footer h4{color:var(--fg-2);font-size:12.5px;font-weight:600;letter-spacing:-0.011em;margin-bottom:12px}
+footer .col a{display:block;color:var(--fg-3);font-size:13px;padding:5px 0;transition:color .15s}
+footer .col a:hover{color:var(--fg)}
+</style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar">
-    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
-    <div class="tag">API REFERENCE</div>
+
+<div class="bg-stage" aria-hidden="true"></div>
+
+<nav class="top">
+  <a class="brand aurora" href="/">kolm</a>
+  <ul class="links">
+    <li><a href="/compile">Compile</a></li>
+    <li><a href="/run">Run</a></li>
+    <li><a href="/registry">Registry</a></li>
+    <li><a class="active" href="/docs">Docs</a></li>
+    <li><a href="/pricing">Pricing</a></li>
+  </ul>
+  <a class="signin" href="/signup">Sign in <span class="ar">&rsaquo;</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="toc">
+    <h4>On this page</h4>
     <nav>
-      <a href="/">Home</a>
-      <a href="/device">On-device <span class="pill violet" style="font-size:9px;">live</span></a>
-      <a href="/playground">Playground</a>
-      <a href="/registry">Recipes</a>
-      <a href="/dashboard">Live runtime</a>
-      <a href="/why">Why this exists</a>
-      <a href="/docs" class="active">API &amp; SDKs</a>
-      <a href="/pricing">Pricing</a>
-      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
-      <a href="/signup">Get a key</a>
+      <a href="#install">Install</a>
+      <a href="#cli-compile">CLI: compile</a>
+      <a href="#cli-run">CLI: run</a>
+      <a href="#sdk">SDKs</a>
+      <a class="section">Open spec</a>
+      <a href="#rs-1">RS-1 spec</a>
+      <a href="#manifest">Manifest v0.1</a>
+      <a href="#receipts">Receipts v0.1</a>
+      <a class="section">Reference</a>
+      <a href="#api">REST API</a>
+      <a href="#k-score">K-score</a>
     </nav>
-    <div class="sidebar nav section-label" style="margin-top:24px;">On this page</div>
-    <div style="padding:0 10px;">
-      <a href="#five-min" class="muted" style="display:block; padding:4px 0; font-size:12px;">5-minute integration</a>
-      <a href="#auth" class="muted" style="display:block; padding:4px 0; font-size:12px;">Auth</a>
-      <a href="#show" class="muted" style="display:block; padding:4px 0; font-size:12px;">Show, synthesis</a>
-      <a href="#get" class="muted" style="display:block; padding:4px 0; font-size:12px;">Get, registry</a>
-      <a href="#run" class="muted" style="display:block; padding:4px 0; font-size:12px;">Run, runtime</a>
-      <a href="#sdks" class="muted" style="display:block; padding:4px 0; font-size:12px;">SDKs</a>
-      <a href="#errors" class="muted" style="display:block; padding:4px 0; font-size:12px;">Errors</a>
-    </div>
   </aside>
-  <main class="main">
-    <h2>API &amp; SDKs</h2>
-    <p class="lead">21 endpoints. JSON in, JSON out. Three verbs: <strong>Show</strong> (paste examples), <strong>Get</strong> (find a recipe), <strong>Run</strong> (call it). The whole API surface fits on one screen of code &mdash; see the SDK at the bottom.</p>
 
-    <h3 id="five-min">5-minute integration</h3>
-    <pre><code># 1. install (or skip and use curl)
-npm install @kolmogorov/recipe        # Node
-pip install kolmogorov-recipe         # Python
+  <main>
+    <section class="head">
+      <span class="eyebrow"><span class="dot"></span> v0.1 alpha</span>
+      <h1>kolm docs.</h1>
+      <p class="lede">A 30-second install, a one-line compile, and an honest spec. Everything below works today.</p>
+    </section>
 
-# 2. mint a free key (10k calls/month, no card)
-KS=$(curl -sX POST https://kolmogorov-stack-production.up.railway.app/v1/signup \
-  -H "Content-Type: application/json" -d '{"email":"you@company.com"}' \
-  | python -c "import sys,json;print(json.load(sys.stdin)['api_key'])")
+    <section class="doc" id="install">
+      <h2>Install <a class="anchor" href="#install">#</a></h2>
+      <p>Two ways to get the CLI on your machine.</p>
+      <h4>npm</h4>
+<pre><span class="c"># requires Node 20+</span>
+$ npm i -g @kolmogorov/kolm
+$ kolm --version
+<span class="o">kolm v0.1.0</span></pre>
+      <h4>curl (no Node needed)</h4>
+<pre>$ curl -fsSL https://kolm.ai/install.sh | sh
+$ kolm --version
+<span class="o">kolm v0.1.0</span></pre>
+      <p class="note">First-run prompts for your model API key (Anthropic by default). The key stays in <code>~/.kolm/config</code>; we never see it.</p>
+    </section>
 
-# 3. show it your examples (paste 4-8)
-curl -X POST https://kolmogorov-stack-production.up.railway.app/v1/synthesize \
-  -H "Authorization: Bearer $KS" -H "Content-Type: application/json" \
-  -d '{
-    "name": "classify-issue-type",
-    "output_spec": { "type": "enum", "values": ["bug","feature","question"] },
-    "positives": [
-      { "input": "deploy keeps crashing on startup", "expected": "bug" },
-      { "input": "would love an export to CSV",     "expected": "feature" },
-      { "input": "how do I rotate my API key?",     "expected": "question" }
-    ]
-  }'
-# &rarr; { accepted: true, concept_id: "cpt_…", quality_score: 1.0 }
+    <section class="doc" id="cli-compile">
+      <h2>CLI: <code style="font-size:0.7em;color:var(--violet-2);background:transparent;border:0;padding:0">kolm compile</code> <a class="anchor" href="#cli-compile">#</a></h2>
+      <p>Compile turns a task description into a signed <code>.kolm</code> artifact.</p>
+<pre>$ kolm compile <span class="s">"answer my emails in my voice, draft never send"</span>
+<span class="o">  recall   indexed 1,283 messages from ~/Mail</span>
+<span class="o">  distill  64 verified labels @ k=8 sample</span>
+<span class="o">  decomp   recipe pack: 142 patterns (covers 71%)</span>
+<span class="o">  sign     HMAC chain: 7e3f...c2a1</span>
+<span class="o">  ready    inbox-reply-v1.kolm  18.3 KB</span></pre>
+      <h4>Flags</h4>
+      <table class="spec">
+        <thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>--examples FILE</td><td>JSONL of (input, output) pairs to seed Distill.</td></tr>
+          <tr><td>--corpus DIR</td><td>Folder to recall over. Defaults to current directory.</td></tr>
+          <tr><td>--base MODEL</td><td>Open base. <code>qwen-2.5-3b</code>, <code>llama-3-8b</code>, <code>hermes-3-8b</code>, etc.</td></tr>
+          <tr><td>--decompose</td><td>Run the recipe extractor for run-time speedup. Default-on for code, JSON, math.</td></tr>
+          <tr><td>--out FILE</td><td>Output artifact path. Default: <code>./&lt;task-slug&gt;.kolm</code>.</td></tr>
+          <tr><td>--watch</td><td>Stream the four engines' progress. Default-on in TTY.</td></tr>
+        </tbody>
+      </table>
+    </section>
 
-# 4. run it forever
-curl -X POST https://kolmogorov-stack-production.up.railway.app/v1/run \
-  -H "Authorization: Bearer $KS" -H "Content-Type: application/json" \
-  -d '{ "concept_id": "cpt_…", "input": "404 on /dashboard" }'
-# &rarr; { output: "bug", latency_us: 41, cache: null }</code></pre>
+    <section class="doc" id="cli-run">
+      <h2>CLI: <code style="font-size:0.7em;color:var(--violet-2);background:transparent;border:0;padding:0">kolm run</code> &amp; <code style="font-size:0.7em;color:var(--violet-2);background:transparent;border:0;padding:0">kolm serve</code> <a class="anchor" href="#cli-run">#</a></h2>
+<pre><span class="c"># one-shot</span>
+$ kolm run inbox-reply-v1.kolm <span class="s">"hi, can we move to 4pm?"</span>
+<span class="o">Sure, 4pm works. Calendar invite incoming.</span>
 
-    <h3 id="auth">Auth</h3>
-    <pre><code>Authorization: Bearer ks_…       # tenant key (mint via /v1/signup)
-X-API-Key: ks_…                  # alternative header
-Authorization: Bearer ks_admin_… # admin only, provisions tenants</code></pre>
+<span class="c"># MCP server (any MCP client can call this)</span>
+$ kolm serve inbox-reply-v1.kolm --mcp --port 4711
+<span class="o">listening on stdio + tcp://127.0.0.1:4711</span></pre>
+      <p class="note">Every <code>run</code> verifies the artifact's signature chain before loading. If the signature fails, the artifact won't load and you'll see <code style="color:var(--rose)">SIGCHK_FAIL</code>.</p>
+    </section>
 
-    <h4 class="mono" style="margin:18px 0 6px">POST /v1/signup <span class="pill">public</span></h4>
-    <p class="muted">Mint a tenant + key for free. 10,000 calls/month included. No card.</p>
-    <pre><code>{ "email": "you@company.com", "name": "acme" (optional) }
-&rarr; { "api_key": "ks_…", "tenant": { "id": "tenant_…", "plan": "free", "quota": 10000, "used": 0 } }</code></pre>
+    <section class="doc" id="sdk">
+      <h2>SDKs <a class="anchor" href="#sdk">#</a></h2>
+      <h4>JavaScript / TypeScript (browser + Node)</h4>
+<pre>import { kolm } from <span class="s">"https://kolm.ai/sdk.js"</span>;
 
-    <h4 class="mono" style="margin:18px 0 6px">GET /v1/account</h4>
-    <p class="muted">Returns the calling tenant's plan, quota, used, remaining.</p>
+<span class="k">const</span> reply = <span class="k">await</span> kolm.run(<span class="s">"inbox-reply-v1.kolm"</span>, {
+  input: <span class="s">"hi, can we move to 4pm?"</span>
+});</pre>
 
-    <h4 class="mono" style="margin:18px 0 6px">POST /v1/account/rotate-key</h4>
-    <p class="muted">Rotate this tenant's key. Old key stops working immediately.</p>
+      <h4>Swift (iOS, macOS)</h4>
+<pre>import Kolm
 
-    <h3 id="show">Show &mdash; synthesis</h3>
-    <p class="muted">Paste examples, get back a tested recipe. <span class="faint">(legacy alias: <span class="mono">/v1/synthesize</span>; both names work.)</span></p>
+<span class="k">let</span> artifact = <span class="k">try await</span> Kolm.load(<span class="s">"inbox-reply-v1.kolm"</span>)
+<span class="k">let</span> reply = <span class="k">try await</span> artifact.run(<span class="s">"hi, can we move to 4pm?"</span>)</pre>
 
-    <h4 class="mono" style="margin:18px 0 6px">POST /v1/synthesize</h4>
-    <p class="muted">Synthesize a recipe from positive and negative examples. Optionally publishes to your registry.</p>
-    <pre><code>{
-  "name": "classify-issue-type",
-  "tags": ["classifier","support"],
-  "visibility": "private" | "public",
-  "publish": true,
-  "output_spec": { "type": "enum", "values": ["bug","feature","question"] },
-  "positives": [ { "input": "...", "expected": ... }, ... ],
-  "negatives": [ { "input": "...", "expected_not": ... }, ... ],
-  "priors": { "hint": "free text", "max_size_bytes": 2048 }
-}
+      <h4>Kotlin (Android)</h4>
+<pre>val artifact = Kolm.load(<span class="s">"inbox-reply-v1.kolm"</span>)
+val reply = artifact.run(<span class="s">"hi, can we move to 4pm?"</span>)</pre>
 
-&rarr; {
-  "accepted": true,
-  "concept_id": "cpt_…",
-  "version_id": "ver_…",
-  "quality_score": 0.94,
-  "pass_rate_positive": 1.0,
-  "reject_rate_negative": 1.0,
-  "latency_p50_us": 87,
-  "size_bytes": 412,
-  "source": "function generate(input, lib) { … }",
-  "source_hash": "…",
-  "strategy": "claude" | "pattern",
-  "test_trace": [ { kind, input, output, pass, latency_us } ],
-  "attempts_n": 1,
-  "duration_ms": 2114
-}</code></pre>
+      <h4>Python (server, CLI, scripts)</h4>
+<pre>from kolm import Kolm
 
-    <h4 class="mono" style="margin:18px 0 6px">POST /v1/synthesize/stream</h4>
-    <p class="muted">SSE stream of synthesis events: <span class="mono">start</span>, <span class="mono">plan</span>, <span class="mono">strategy_begin</span>, <span class="mono">candidate</span>, <span class="mono">verified</span>, <span class="mono">accepted</span>, <span class="mono">published</span>, <span class="mono">done</span>.</p>
-    <pre><code>const res = await fetch('/v1/synthesize/stream', { method:'POST',
-  headers:{ Authorization:'Bearer '+key, 'Content-Type':'application/json' },
-  body: JSON.stringify({...}) });
-const reader = res.body.getReader();
-// parse "event: ...\ndata: {...}\n\n" frames</code></pre>
+artifact = Kolm.load(<span class="s">"inbox-reply-v1.kolm"</span>)
+reply = artifact.run(<span class="s">"hi, can we move to 4pm?"</span>)</pre>
+      <p class="note">All SDKs verify the receipt chain on load and re-sign every output, so consumers can independently audit "this output came from this artifact."</p>
+    </section>
 
-    <h4 class="mono" style="margin:18px 0 6px">POST /v1/synthesize/batch</h4>
-    <p class="muted">Up to 25 recipes in one request. Sequential synthesis, single round-trip.</p>
-    <pre><code>{ "items": [ { "name": "...", "positives": [...], "output_spec": {...} }, ... ] }</code></pre>
+    <section class="doc" id="rs-1">
+      <h2>RS-1 spec <a class="anchor" href="#rs-1">#</a></h2>
+      <p>RS-1 is the open spec for the recipe registry: how a deterministic-token subset of a model's behavior is captured, indexed, and replayed. MIT-licensed. Contributions welcome.</p>
+      <h4>Recipe object</h4>
+<pre>{
+  <span class="k">"id"</span>: <span class="s">"email.greeting.formal"</span>,
+  <span class="k">"shape"</span>: { <span class="k">"prefix"</span>: <span class="s">"Dear"</span>, <span class="k">"context"</span>: <span class="s">"&lt;0.81|formal_register&gt;"</span> },
+  <span class="k">"draft"</span>: <span class="s">" {salutation},"</span>,
+  <span class="k">"trust"</span>: 0.94,
+  <span class="k">"hash"</span>: <span class="s">"7e3f…c2a1"</span>
+}</pre>
+      <p>The full RS-1 grammar (1.4k lines, EBNF) lives at <a href="https://github.com/kolmogorov/rs-1" style="color:var(--violet-2)">github.com/kolmogorov/rs-1</a>.</p>
+    </section>
 
-    <h4 class="mono" style="margin:18px 0 6px">POST /v1/verify</h4>
-    <p class="muted">Re-run a recipe's test trace without publishing.</p>
-    <pre><code>{ "source": "function generate(...){...}", "positives":[...], "negatives":[...] }</code></pre>
+    <section class="doc" id="manifest">
+      <h2>Manifest v0.1 <a class="anchor" href="#manifest">#</a></h2>
+      <p>Every <code>.kolm</code> artifact is a signed zip with this canonical manifest at <code>/manifest.json</code>:</p>
+<pre>{
+  <span class="k">"task"</span>: <span class="s">"answer my emails in my voice, draft never send"</span>,
+  <span class="k">"version"</span>: <span class="s">"0.1.0"</span>,
+  <span class="k">"base"</span>: { <span class="k">"model"</span>: <span class="s">"qwen-2.5-3b-instruct"</span>, <span class="k">"sha256"</span>: <span class="s">"…"</span> },
+  <span class="k">"lora"</span>: { <span class="k">"sha256"</span>: <span class="s">"…"</span>, <span class="k">"params"</span>: 12_582_912 },
+  <span class="k">"recipes"</span>: { <span class="k">"version"</span>: <span class="s">"rs-1"</span>, <span class="k">"count"</span>: 142, <span class="k">"sha256"</span>: <span class="s">"…"</span> },
+  <span class="k">"recall"</span>: { <span class="k">"backend"</span>: <span class="s">"sqlite-vec"</span>, <span class="k">"vectors"</span>: 1283, <span class="k">"sha256"</span>: <span class="s">"…"</span> },
+  <span class="k">"k_score"</span>: 0.94,
+  <span class="k">"signed_at"</span>: <span class="s">"2026-05-06T18:30:00Z"</span>,
+  <span class="k">"signature"</span>: { <span class="k">"alg"</span>: <span class="s">"HMAC-SHA256"</span>, <span class="k">"chain"</span>: [<span class="s">"…"</span>, <span class="s">"…"</span>] }
+}</pre>
+    </section>
 
-    <h4 class="mono" style="margin:18px 0 6px">POST /v1/publish</h4>
-    <p class="muted">Publish a hand-edited recipe straight to the registry. Verifies in flight.</p>
-    <pre><code>{ "name": "my-recipe", "source": "function generate(input,lib){...}", "positives":[...], "negatives":[...], "tags":["..."] }</code></pre>
+    <section class="doc" id="receipts">
+      <h2>Receipts v0.1 <a class="anchor" href="#receipts">#</a></h2>
+      <p>Every output emits a receipt: an HMAC-SHA256 chain over the artifact hash, the input hash, and the model output bytes. Receipts can be verified offline and anchored to the public Kolmogorov registry.</p>
+<pre>{
+  <span class="k">"artifact"</span>: <span class="s">"inbox-reply-v1.kolm"</span>,
+  <span class="k">"artifact_sha256"</span>: <span class="s">"7e3f…c2a1"</span>,
+  <span class="k">"input_sha256"</span>: <span class="s">"…"</span>,
+  <span class="k">"output_sha256"</span>: <span class="s">"…"</span>,
+  <span class="k">"timestamp"</span>: <span class="s">"2026-05-06T18:34:11Z"</span>,
+  <span class="k">"signature"</span>: <span class="s">"HMAC-SHA256:…"</span>,
+  <span class="k">"prev"</span>: <span class="s">"&lt;previous receipt id&gt;"</span>
+}</pre>
+      <p class="note">Receipts cost zero bandwidth at runtime &mdash; they're computed and emitted with the output. Verifying a receipt requires only the artifact's public signing key.</p>
+    </section>
 
-    <h3 id="get">Get &mdash; registry</h3>
+    <section class="doc" id="api">
+      <h2>REST API <a class="anchor" href="#api">#</a></h2>
+      <p>For tools that can't run the CLI, the cloud exposes the same compile pipeline over HTTPS.</p>
+      <table class="spec">
+        <thead><tr><th>Endpoint</th><th>Body</th></tr></thead>
+        <tbody>
+          <tr><td>POST /v1/compile</td><td><code>{ task, examples?, corpus_namespace?, base_model? }</code> &rarr; <code>{ job_id }</code></td></tr>
+          <tr><td>GET /v1/compile/:job_id</td><td><code>{ status, k_score?, artifact_url? }</code></td></tr>
+          <tr><td>POST /v1/run</td><td><code>{ artifact_url, input }</code> &rarr; output + receipt</td></tr>
+          <tr><td>POST /v1/embed</td><td><code>{ items: [...] }</code> &rarr; vectors</td></tr>
+          <tr><td>POST /v1/recall</td><td><code>{ namespace, query, k? }</code> &rarr; matches</td></tr>
+          <tr><td>GET /v1/registry/export</td><td>Full RS-1 registry, signed.</td></tr>
+        </tbody>
+      </table>
+    </section>
 
-    <h4 class="mono" style="margin:18px 0 6px">GET /v1/concepts<span class="faint"> ?tag=&amp;limit=</span></h4>
-    <p class="muted">List recipes owned by your tenant.</p>
-
-    <h4 class="mono" style="margin:18px 0 6px">GET /v1/concepts/:id</h4>
-    <p class="muted">Fetch a recipe and its versions.</p>
-
-    <h4 class="mono" style="margin:18px 0 6px">GET /v1/concepts/:id/stats</h4>
-    <p class="muted">Per-recipe usage: invocation count, latency p50/p95/p99, cache hit rate, error rate, last_invoked_at.</p>
-
-    <h4 class="mono" style="margin:18px 0 6px">DELETE /v1/concepts/:id</h4>
-
-    <h4 class="mono" style="margin:18px 0 6px">GET /v1/concepts/:id/lineage</h4>
-    <p class="muted">Upstream synthesizers and downstream dependents.</p>
-
-    <h4 class="mono" style="margin:18px 0 6px">POST /v1/search</h4>
-    <p class="muted">Semantic search by what the recipe does. Type "extract email addresses" &mdash; not the exact name.</p>
-    <pre><code>{ "query": "find recipes about extracting prices", "k": 10, "tag": "extractor" }
-&rarr; { "matches": [ { concept_id, name, score, version_id, ... }, ... ] }</code></pre>
-
-    <h4 class="mono" style="margin:18px 0 6px">GET /v1/public/concepts <span class="pill">public</span></h4>
-    <h4 class="mono" style="margin:18px 0 6px">GET /v1/public/concepts/:id <span class="pill">public</span></h4>
-    <h4 class="mono" style="margin:18px 0 6px">POST /v1/public/run <span class="pill">public</span></h4>
-    <p class="muted">Dispatch any public recipe. No auth needed. Convenient for embedded demos.</p>
-
-    <h3 id="run">Run &mdash; runtime</h3>
-
-    <h4 class="mono" style="margin:18px 0 6px">POST /v1/run</h4>
-    <p class="muted">Dispatch a single recipe (head version) or a specific version. Output is cached for identical input.</p>
-    <pre><code>{ "concept_id": "cpt_…",   "input": "any json", "use_cache": true }
-{ "version_id": "ver_…",   "input": "any json" }
-&rarr; { "output": ..., "latency_us": 87, "cache": null | "L1" | "L2", "version_id": "...", "concept": "..." }</code></pre>
-
-    <h4 class="mono" style="margin:18px 0 6px">POST /v1/compose</h4>
-    <p class="muted">Search top-K recipes by query, dispatch them in parallel, compose outputs with one of four strategies.</p>
-    <pre><code>{
-  "query": "classify intent",
-  "input": "where is my order",
-  "k": 5,
-  "strategy": "attention" | "voting" | "top1" | "sequential",
-  "tag": "classifier"
-}
-
-&rarr; {
-  "output": "question",
-  "dispatched": [ { name, concept_id, score, output, latency_us, cache }, ... ],
-  "strategy": "attention"
-}</code></pre>
-
-    <h4 class="mono" style="margin:18px 0 6px">GET /v1/telemetry</h4>
-    <p class="muted">Total invocations, average latency, p50/p95/p99, cache hit-rate, recent invocation log, sparkline.</p>
-
-    <h4 class="mono" style="margin:18px 0 6px">GET /v1/library</h4>
-    <p class="muted">The current built-in subroutine library &mdash; version + signatures.</p>
-
-    <h3 id="sdks">SDKs</h3>
-    <p class="muted">Pick your language. The TypeScript and Python clients are the supported ones; the Go and Java snippets below are minimal but production-shaped.</p>
-
-    <h4 class="mono" style="margin:18px 0 6px">Node / TypeScript</h4>
-    <pre><code>// npm install @kolmogorov/recipe
-import { Recipe } from '@kolmogorov/recipe';
-
-const r = new Recipe({ apiKey: process.env.KS_KEY });
-
-// teach once
-const recipe = await r.show('classify-issue-type', {
-  examples: [
-    { input: 'deploy keeps crashing', expected: 'bug' },
-    { input: 'love an export button',  expected: 'feature' },
-    { input: 'how do I rotate keys?',  expected: 'question' },
-  ],
-  shape: { type: 'enum', values: ['bug','feature','question'] },
-});
-
-// run forever
-console.log(await r.run(recipe.id, '404 on /dashboard'));  // 'bug'</code></pre>
-
-    <h4 class="mono" style="margin:18px 0 6px">Python</h4>
-    <pre><code># pip install kolmogorov-recipe
-from kolmogorov_recipe import Recipe
-
-r = Recipe(api_key=os.environ['KS_KEY'])
-
-recipe = r.show(
-  name='classify-issue-type',
-  examples=[
-    {'input': 'deploy crashes',   'expected': 'bug'},
-    {'input': 'export to csv',    'expected': 'feature'},
-    {'input': 'rotate key?',      'expected': 'question'},
-  ],
-  shape={'type': 'enum', 'values': ['bug','feature','question']},
-)
-
-print(r.run(recipe['concept_id'], '404 on /dashboard'))   # 'bug'</code></pre>
-
-    <h4 class="mono" style="margin:18px 0 6px">Go</h4>
-    <pre><code>// HTTP, no SDK needed
-req, _ := http.NewRequest("POST",
-  "https://kolmogorov-stack-production.up.railway.app/v1/run",
-  bytes.NewBufferString(`{"concept_id":"cpt_…","input":"404 on /dashboard"}`))
-req.Header.Set("Authorization", "Bearer "+os.Getenv("KS_KEY"))
-req.Header.Set("Content-Type", "application/json")
-res, _ := http.DefaultClient.Do(req)</code></pre>
-
-    <h4 class="mono" style="margin:18px 0 6px">Java</h4>
-    <pre><code>HttpRequest req = HttpRequest.newBuilder()
-  .uri(URI.create("https://kolmogorov-stack-production.up.railway.app/v1/run"))
-  .header("Authorization", "Bearer " + System.getenv("KS_KEY"))
-  .header("Content-Type", "application/json")
-  .POST(HttpRequest.BodyPublishers.ofString(
-    "{\"concept_id\":\"cpt_…\",\"input\":\"404 on /dashboard\"}"))
-  .build();</code></pre>
-
-    <h4 class="mono" style="margin:18px 0 6px">Claude Code MCP server</h4>
-    <p class="muted">Drop-in MCP server: <span class="mono">npx @kolmogorov/recipe-mcp</span>. Adds <span class="mono">recipe.show</span>, <span class="mono">recipe.run</span>, <span class="mono">recipe.search</span> to your Claude Code session.</p>
-    <pre><code># in your ~/.claude/mcp.json
-{
-  "mcpServers": {
-    "recipe": {
-      "command": "npx",
-      "args": ["-y","@kolmogorov/recipe-mcp"],
-      "env": { "KS_API_KEY": "ks_…" }
-    }
-  }
-}</code></pre>
-
-    <h3 id="errors">Errors</h3>
-    <table class="table">
-      <thead><tr><th>code</th><th>meaning</th></tr></thead>
-      <tbody>
-        <tr><td class="mono">400</td><td>missing required field, bad JSON, or recipe quality below gate</td></tr>
-        <tr><td class="mono">401</td><td>missing or invalid API key</td></tr>
-        <tr><td class="mono">403</td><td>tenant cannot read this recipe; admin-only endpoint hit by non-admin</td></tr>
-        <tr><td class="mono">404</td><td>recipe or version not found</td></tr>
-        <tr><td class="mono">429</td><td>rate limit (token bucket) or monthly quota exceeded &mdash; see <span class="mono">Retry-After</span></td></tr>
-        <tr><td class="mono">500</td><td>synthesis backend error</td></tr>
-      </tbody>
-    </table>
-
-    <p class="muted" style="font-size:12.5px;">
-      Pricing details: <a href="/pricing">/pricing</a>. Status / changelog: <a href="/status">/status</a>.
-    </p>
-
-    <footer class="page-footer">
-      <div class="left">
-        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
-      </div>
-      <div class="right">
-        <a href="/why">Why</a>
-        <a href="/pricing">Pricing</a>
-        <a href="/status">Status</a>
-      </div>
-    </footer>
+    <section class="doc" id="k-score">
+      <h2>K-score <a class="anchor" href="#k-score">#</a></h2>
+      <p>K-score is the headline quality metric for a compiled specialist. Range <code>[0, 1]</code>, threshold <code>&ge; 0.90</code> required to publish. Defined as:</p>
+<pre>K = (verified_pass_rate &times; recall_grounding) / (1 + size_penalty)</pre>
+      <p>Where <code>verified_pass_rate</code> is the fraction of held-out examples passed by the deterministic verifier, <code>recall_grounding</code> is the fraction of outputs that cite at least one corpus chunk, and <code>size_penalty</code> grows with artifact size beyond 50 MB.</p>
+    </section>
   </main>
 </div>
-<script src="/app.js"></script>
+
+<footer>
+  <div class="inner">
+    <div>
+      <span class="mark aurora">kolm</span>
+      <p style="color:var(--fg-3);font-size:13.5px;line-height:1.55;max-width:280px">The AI compiler. Type a task. Compile a small signed specialist. Run it on every device offline.</p>
+      <p class="legal">&copy; 2026 Kolmogorov. <a href="/security" style="color:var(--fg-3)">Security</a></p>
+    </div>
+    <div class="col"><h4>Product</h4><a href="/compile">Compile</a><a href="/run">Run</a><a href="/registry">Registry</a><a href="/pricing">Pricing</a></div>
+    <div class="col"><h4>Develop</h4><a href="/docs">Docs</a><a href="/docs#cli-compile">CLI</a><a href="/docs#sdk">SDKs</a><a href="/playground">Playground</a></div>
+    <div class="col"><h4>Open</h4><a href="/docs#rs-1">RS-1 spec</a><a href="/docs#manifest">Manifest</a><a href="/docs#receipts">Receipts</a><a href="/security">Security</a></div>
+  </div>
+</footer>
+
 </body>
 </html>

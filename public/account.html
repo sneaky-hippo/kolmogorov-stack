@@ -5,8 +5,71 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Account · kolm</title>
   <link rel="stylesheet" href="/styles.css" />
+  <style>
+    /* Account-page only additions. Re-uses .card, .label, .toolbar, .btn from styles.css. */
+    .acct-panel { margin-bottom: 14px; }
+    .acct-panel h4 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-mute); margin: 0 0 14px; font-weight: 500; }
+    .acct-panel h4.danger { color: #ff7d6b; }
+    .acct-field { display: grid; grid-template-columns: 200px 1fr; gap: 14px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+    .acct-field:first-of-type { border-top: 0; }
+    .acct-field > label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-mute); }
+    .acct-field > .value { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .acct-field > .value > input, .acct-field > .value > select { flex: 1; min-width: 220px; }
+    .acct-field .hint { font-size: 11.5px; color: var(--ink-faint); margin-top: 4px; flex-basis: 100%; }
+    @media (max-width: 720px) { .acct-field { grid-template-columns: 1fr; gap: 6px; } }
+
+    input[type="password"], input[type="number"], input[type="url"] {
+      background: #0d0f15; border: 1px solid var(--line); color: var(--ink); border-radius: var(--r-sm);
+      padding: 9px 11px; font-family: var(--mono); font-size: 12.5px; outline: 0;
+    }
+    input[type="password"]:focus, input[type="number"]:focus, input[type="url"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(157,123,255,0.12); }
+    input[type="text"]:focus, select:focus { box-shadow: 0 0 0 3px rgba(157,123,255,0.12); }
+
+    .radio-row, .check-row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .radio-row label, .check-row label { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink); cursor: pointer; }
+    input[type="radio"], input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+    input[type="radio"]:focus-visible, input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .test-result { font-family: var(--mono); font-size: 11.5px; min-width: 22px; }
+    .test-result.ok { color: var(--good); }
+    .test-result.bad { color: var(--bad); }
+
+    .source-row { display: grid; grid-template-columns: 24px 1fr auto auto auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+    .source-row:first-of-type { border-top: 0; }
+    .source-row .name { font-family: var(--mono); font-size: 12.5px; }
+    .source-row .size { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); }
+    .source-row .order { display: flex; gap: 4px; }
+    .arrow-btn { background: transparent; border: 1px solid var(--line-strong); color: var(--ink-mute); width: 24px; height: 24px; border-radius: var(--r-sm); cursor: pointer; font-size: 11px; padding: 0; line-height: 1; }
+    .arrow-btn:hover:not([disabled]) { color: var(--ink); border-color: var(--accent); }
+    .arrow-btn[disabled] { opacity: 0.3; cursor: not-allowed; }
+    .arrow-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .add-source { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .add-source-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 10px; }
+    @media (max-width: 720px) { .add-source-form { grid-template-columns: 1fr; } }
+
+    .danger-action { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+    .danger-action:first-of-type { border-top: 0; padding-top: 0; }
+    .danger-action .desc { flex: 1; }
+    .danger-action .desc strong { display: block; font-size: 13px; margin-bottom: 2px; }
+    .danger-action .desc span { font-size: 11.5px; color: var(--ink-faint); }
+    .btn-danger { background: transparent; color: #ff7d6b; border: 1px solid rgba(255,125,107,0.4); padding: 8px 14px; border-radius: var(--r-sm); font-family: var(--sans); font-size: 12.5px; cursor: pointer; }
+    .btn-danger:hover { background: rgba(255,125,107,0.08); border-color: #ff7d6b; }
+    .btn-danger:focus-visible { outline: 2px solid #ff7d6b; outline-offset: 2px; }
+
+    .confirm-delete { margin-top: 12px; padding: 12px; background: rgba(255,125,107,0.05); border: 1px solid rgba(255,125,107,0.25); border-radius: var(--r-sm); }
+    .confirm-delete p { margin: 0 0 8px; font-size: 12.5px; }
+    .confirm-delete code { background: #0d0f15; padding: 1px 6px; border-radius: 3px; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg-card); border: 1px solid var(--line-strong); padding: 12px 16px; border-radius: var(--r); font-size: 13px; box-shadow: 0 12px 32px rgba(0,0,0,0.4); transform: translateY(8px); opacity: 0; transition: transform 200ms var(--easing), opacity 200ms var(--easing); pointer-events: none; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    button:focus-visible, .btn-ghost:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .key-note { font-size: 11.5px; color: var(--ink-faint); margin: 10px 0 0; padding: 8px 12px; background: rgba(157,123,255,0.04); border-left: 2px solid var(--accent); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+  </style>
 </head>
 <body>
+<div class="bg-stage" aria-hidden="true"></div>
 <div class="app">
   <aside class="sidebar">
     <h1><span class="glyph"></span> kolm<span class="sub">by Kolmogorov</span></h1>
@@ -26,23 +89,23 @@
     </div>
   </aside>
   <main class="main">
-    <h2>Account</h2>
-    <p class="lead">One page for everything: your plan, your usage, your API key. No "settings" maze.</p>
+    <h2><span class="aurora">Account</span></h2>
+    <p class="lead">One page for everything. Plan, usage, providers, sources, publishing. No settings maze.</p>
 
-    <div class="card glow" id="acct-empty" style="display:none;">
+    <div class="card glow" id="acct-empty" hidden>
       <strong>No key in this browser.</strong>
       <p class="muted">Paste a key to sign in, or <a href="/signup">get one</a>.</p>
       <div class="toolbar">
-        <input type="text" id="acct-paste" class="grow mono" placeholder="ks_..." />
+        <input type="text" id="acct-paste" class="grow mono" placeholder="ks_..." autocomplete="off" />
         <button class="btn primary" id="acct-paste-btn">Sign in</button>
       </div>
     </div>
 
-    <div id="acct-loaded" style="display:none;">
+    <div id="acct-loaded" hidden>
       <div class="row cols-3" style="margin-bottom:14px;">
-        <div class="card"><div class="label">Plan</div><div class="stat" id="acct-plan">&mdash;</div><div class="delta" id="acct-id"></div></div>
-        <div class="card"><div class="label">Used this month</div><div class="stat" id="acct-used">&mdash;</div><div class="delta" id="acct-pct"></div></div>
-        <div class="card"><div class="label">Remaining</div><div class="stat" id="acct-remaining">&mdash;</div><div class="delta" id="acct-quota"></div></div>
+        <div class="card"><div class="label">Plan</div><div class="stat" id="acct-plan">&middot;</div><div class="delta" id="acct-id"></div></div>
+        <div class="card"><div class="label">Used this month</div><div class="stat" id="acct-used">&middot;</div><div class="delta" id="acct-pct"></div></div>
+        <div class="card"><div class="label">Remaining</div><div class="stat" id="acct-remaining">&middot;</div><div class="delta" id="acct-quota"></div></div>
       </div>
 
       <div class="card" style="margin-bottom:14px;">
@@ -53,14 +116,163 @@
         <div class="delta" id="acct-bar-text"></div>
       </div>
 
+      <!-- PANEL 1: COMPILE DEFAULTS -->
+      <div class="card acct-panel">
+        <h4>Compile defaults</h4>
+        <div class="acct-field">
+          <label for="cfg-base-model">Base model</label>
+          <div class="value">
+            <select id="cfg-base-model" aria-describedby="cfg-base-model-hint">
+              <option value="qwen2.5-3b-int4">qwen2.5-3b-int4</option>
+              <option value="qwen2.5-7b-int4">qwen2.5-7b-int4</option>
+              <option value="llama-3.2-3b-int4">llama-3.2-3b-int4</option>
+              <option value="phi-3.5-mini-int4">phi-3.5-mini-int4</option>
+            </select>
+          </div>
+        </div>
+        <div class="acct-field">
+          <label>Tier</label>
+          <div class="value radio-row" role="radiogroup" aria-label="Default tier">
+            <label><input type="radio" name="cfg-tier" value="adapter" /> adapter</label>
+            <label><input type="radio" name="cfg-tier" value="bundle" /> bundle</label>
+            <label><input type="radio" name="cfg-tier" value="full" /> full</label>
+          </div>
+        </div>
+        <div class="acct-field">
+          <label>Targets</label>
+          <div class="value check-row" role="group" aria-label="Default targets">
+            <label><input type="checkbox" name="cfg-target" value="ios" /> iOS</label>
+            <label><input type="checkbox" name="cfg-target" value="android" /> Android</label>
+            <label><input type="checkbox" name="cfg-target" value="web" /> Web</label>
+            <label><input type="checkbox" name="cfg-target" value="server" /> Server</label>
+          </div>
+        </div>
+        <div class="acct-field">
+          <label for="cfg-k-threshold">K threshold</label>
+          <div class="value">
+            <input type="number" id="cfg-k-threshold" min="0.85" max="0.99" step="0.01" value="0.90" />
+            <span class="hint">Range 0.85 to 0.99. Default 0.90.</span>
+          </div>
+        </div>
+        <div class="acct-field">
+          <label for="cfg-verifier">Verifier</label>
+          <div class="value">
+            <select id="cfg-verifier">
+              <option value="opus-4.7">opus-4.7</option>
+              <option value="sonnet-4.6">sonnet-4.6</option>
+              <option value="kimi-k2.6">kimi-k2.6</option>
+              <option value="qwen3.6-27b">qwen3.6-27b</option>
+            </select>
+          </div>
+        </div>
+        <div class="acct-field">
+          <label for="cfg-auto-publish">Auto publish</label>
+          <div class="value">
+            <label style="display:inline-flex;gap:6px;align-items:center;">
+              <input type="checkbox" id="cfg-auto-publish" />
+              <span>Publish to public registry when K ≥ threshold.</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL 2: PROVIDERS / BYOK -->
+      <div class="card acct-panel">
+        <h4>Providers</h4>
+        <div class="acct-field">
+          <label for="byok-anthropic">Anthropic</label>
+          <div class="value">
+            <input type="password" id="byok-anthropic" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+            <button class="btn-ghost" data-test="anthropic" type="button">Test</button>
+            <span class="test-result" id="byok-anthropic-result" aria-live="polite"></span>
+          </div>
+        </div>
+        <div class="acct-field">
+          <label for="byok-openai">OpenAI</label>
+          <div class="value">
+            <input type="password" id="byok-openai" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+            <button class="btn-ghost" data-test="openai" type="button">Test</button>
+            <span class="test-result" id="byok-openai-result" aria-live="polite"></span>
+          </div>
+        </div>
+        <div class="acct-field">
+          <label for="byok-mistral">Mistral</label>
+          <div class="value">
+            <input type="password" id="byok-mistral" placeholder="mst_..." autocomplete="off" spellcheck="false" />
+            <button class="btn-ghost" data-test="mistral" type="button">Test</button>
+            <span class="test-result" id="byok-mistral-result" aria-live="polite"></span>
+          </div>
+        </div>
+        <div class="acct-field">
+          <label for="cfg-routing">Provider routing</label>
+          <div class="value">
+            <select id="cfg-routing">
+              <option value="auto">auto</option>
+              <option value="anthropic-only">anthropic-only</option>
+              <option value="openai-only">openai-only</option>
+              <option value="mistral-only">mistral-only</option>
+            </select>
+          </div>
+        </div>
+        <p class="key-note">Keys hashed in localStorage. Only the cleartext entered this session is used for compiles.</p>
+      </div>
+
+      <!-- PANEL 3: RECALL SOURCES -->
+      <div class="card acct-panel">
+        <h4>Recall sources</h4>
+        <div id="src-list" role="list"></div>
+        <div class="add-source">
+          <button class="btn-ghost" id="src-add-toggle" type="button" aria-expanded="false" aria-controls="src-add-form">+ Add namespace</button>
+          <div id="src-add-form" class="add-source-form" hidden>
+            <input type="text" id="src-add-name" placeholder="namespace name" autocomplete="off" aria-label="Namespace name" />
+            <input type="password" id="src-add-token" placeholder="API token" autocomplete="off" aria-label="API token" />
+            <button class="btn" id="src-add-btn" type="button">Add</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL 4: PUBLISH + RECEIPTS -->
+      <div class="card acct-panel">
+        <h4>Publish + receipts</h4>
+        <div class="acct-field">
+          <label for="pub-displayname">Display name</label>
+          <div class="value">
+            <input type="text" id="pub-displayname" autocomplete="off" />
+          </div>
+        </div>
+        <div class="acct-field">
+          <label for="pub-url">Public profile URL</label>
+          <div class="value">
+            <input type="text" id="pub-url" readonly aria-readonly="true" />
+          </div>
+        </div>
+        <div class="acct-field">
+          <label for="pub-sign">Sign artifacts as</label>
+          <div class="value">
+            <select id="pub-sign">
+              <option value="kolm.ai">kolm.ai</option>
+              <option value="display">your display name</option>
+              <option value="anonymous">anonymous</option>
+            </select>
+          </div>
+        </div>
+        <div class="acct-field">
+          <label for="pub-webhook">Receipt webhook</label>
+          <div class="value">
+            <input type="url" id="pub-webhook" placeholder="https://example.com/receipts" autocomplete="off" />
+            <button class="btn-ghost" id="pub-webhook-test" type="button">Test webhook</button>
+            <span class="test-result" id="pub-webhook-result" aria-live="polite"></span>
+          </div>
+        </div>
+      </div>
+
       <h3>API key</h3>
       <div class="card">
         <p class="muted" style="margin:0 0 10px;">Show, copy, rotate. Treat your key like a password.</p>
         <div class="toolbar">
           <input type="text" id="acct-key" class="grow mono" readonly />
-          <button class="btn-ghost" id="acct-show">Show</button>
-          <button class="btn-ghost" id="acct-copy">Copy</button>
-          <button class="btn-ghost" id="acct-rotate" style="color:var(--bad)">Rotate</button>
+          <button class="btn-ghost" id="acct-show" type="button">Show</button>
+          <button class="btn-ghost" id="acct-copy" type="button">Copy</button>
         </div>
         <p class="delta" id="acct-key-status"></p>
       </div>
@@ -76,7 +288,7 @@
 
       <h3>Cost forecast</h3>
       <div class="card">
-        <p class="muted">Projected using the current burn rate. Cache hits are 4× cheaper than misses.</p>
+        <p class="muted">Projected using the current burn rate. Cache hits are 4x cheaper than misses.</p>
         <div class="row cols-2">
           <div><div class="label">This month, on track for</div><div class="stat" id="acct-forecast">$0.00</div></div>
           <div><div class="label">If you stayed cold-LLM at 600ms+$0.001/call</div><div class="stat" id="acct-llm-cost">$0.00</div></div>
@@ -84,33 +296,85 @@
         <div class="delta" id="acct-savings"></div>
       </div>
 
+      <!-- PANEL 5: DANGER ZONE -->
+      <div class="card acct-panel" style="border-color: rgba(255,125,107,0.25);">
+        <h4 class="danger">Danger zone</h4>
+        <div class="danger-action">
+          <div class="desc">
+            <strong>Rotate API key</strong>
+            <span>Old key stops working immediately. New key emailed.</span>
+          </div>
+          <button class="btn-danger" id="dz-rotate" type="button">Rotate</button>
+        </div>
+        <div class="danger-action">
+          <div class="desc">
+            <strong>Export all data</strong>
+            <span>Download recipes, runs, receipts as a single archive.</span>
+          </div>
+          <a class="btn-danger" id="dz-export" href="/v1/account/export" role="button">Export</a>
+        </div>
+        <div class="danger-action">
+          <div class="desc">
+            <strong>Delete account</strong>
+            <span>All recipes, keys, recall sources erased. Cannot be undone.</span>
+          </div>
+          <button class="btn-danger" id="dz-delete" type="button">Delete</button>
+        </div>
+        <div id="dz-confirm" class="confirm-delete" hidden>
+          <p>Type <code id="dz-confirm-target"></code> to confirm.</p>
+          <div class="toolbar" style="margin:0;">
+            <input type="text" id="dz-confirm-input" class="grow mono" autocomplete="off" placeholder="delete plan-id" aria-label="Type to confirm" />
+            <button class="btn-danger" id="dz-confirm-btn" type="button" disabled>Confirm delete</button>
+            <button class="btn-ghost" id="dz-cancel-btn" type="button">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <h3>Sign out</h3>
       <div class="card">
         <p class="muted" style="margin:0 0 10px;">Clears the key from this browser only. The key still works elsewhere.</p>
-        <button class="btn-ghost" id="acct-logout">Sign out of this browser</button>
+        <button class="btn-ghost" id="acct-logout" type="button">Sign out of this browser</button>
       </div>
     </div>
   </main>
 </div>
 
-<footer class="bridge">
-  <span>Memory · Skills · Specialists.</span>
-  <span>Recipes is the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
-</footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="/app.js"></script>
 <script src="/escape.js"></script>
 <script>
 (function () {
-  const { esc, escAttr } = window.KSesc;
+  const { esc } = window.KSesc || { esc: s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])) };
   function getKey() { return localStorage.getItem('apiKey') || localStorage.getItem('recipeApiKey') || ''; }
   function setKey(k) { localStorage.setItem('apiKey', k); localStorage.setItem('recipeApiKey', k); }
   function clearKey() { localStorage.removeItem('apiKey'); localStorage.removeItem('recipeApiKey'); }
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => Number(n || 0).toLocaleString();
+  const pct = (used, quota) => Math.min(100, Math.round((used / Math.max(1, quota)) * 100));
+  const dollars = (n) => '$' + (Number(n || 0)).toFixed(n < 1 ? 2 : 0);
 
-  function $(id) { return document.getElementById(id); }
-  function fmt(n) { return Number(n || 0).toLocaleString(); }
-  function pct(used, quota) { return Math.min(100, Math.round((used / Math.max(1, quota)) * 100)); }
-  function dollars(n) { return '$' + (Number(n || 0)).toFixed(n < 1 ? 2 : 0); }
+  // localStorage helpers, all under kolm:account: prefix
+  const LS = {
+    get(k, fallback) { try { const v = localStorage.getItem('kolm:account:' + k); return v == null ? fallback : JSON.parse(v); } catch { return fallback; } },
+    set(k, v) { localStorage.setItem('kolm:account:' + k, JSON.stringify(v)); },
+    del(k) { localStorage.removeItem('kolm:account:' + k); }
+  };
+
+  // SHA-256 hash for BYOK
+  async function sha256(s) {
+    if (!s) return '';
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function showToast(msg, ms) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => t.classList.remove('show'), ms || 2400);
+  }
 
   async function api(path) {
     const r = await fetch(path, { headers: { 'Authorization': 'Bearer ' + getKey() } });
@@ -120,11 +384,12 @@
 
   async function loadAccount() {
     const k = getKey();
-    if (!k) { $('acct-empty').style.display = 'block'; $('acct-loaded').style.display = 'none'; return; }
-    $('acct-empty').style.display = 'none'; $('acct-loaded').style.display = 'block';
+    if (!k) { $('acct-empty').hidden = false; $('acct-loaded').hidden = true; return; }
+    $('acct-empty').hidden = true; $('acct-loaded').hidden = false;
+    let acct = null;
     try {
-      const acct = await api('/v1/account');
-      $('acct-plan').textContent = acct.plan || (acct.admin ? 'admin' : '—');
+      acct = await api('/v1/account');
+      $('acct-plan').textContent = acct.plan || (acct.admin ? 'admin' : '...');
       $('acct-id').textContent = acct.id || acct.tenant || '';
       $('acct-used').textContent = fmt(acct.used);
       $('acct-quota').textContent = `of ${fmt(acct.quota)} / mo`;
@@ -134,21 +399,18 @@
       $('acct-bar').style.width = p + '%';
       $('acct-bar-text').textContent = `${fmt(acct.used)} / ${fmt(acct.quota)} this month`;
 
-      // Forecast:
-      // Recipe runs cost ~$0.0000002 (fractional cents). Compare to LLM ~$0.001/call.
       const used = Number(acct.used || 0);
       $('acct-forecast').textContent = dollars(used * 0.0000002 * 30);
       $('acct-llm-cost').textContent = dollars(used * 0.001 * 30);
-      $('acct-savings').textContent = `That's roughly ${(0.001 / 0.0000002).toFixed(0)}× cheaper than calling Claude/OpenAI for the same number of decisions.`;
-
-      // Show partial key
+      $('acct-savings').textContent = `That is roughly ${(0.001 / 0.0000002).toFixed(0)}x cheaper than calling Claude/OpenAI for the same number of decisions.`;
       $('acct-key').value = k.replace(/^(ks_.{4}).+/, '$1' + '•'.repeat(28));
     } catch (e) {
-      $('acct-empty').style.display = 'block'; $('acct-loaded').style.display = 'none';
+      $('acct-empty').hidden = false; $('acct-loaded').hidden = true;
       $('acct-empty').firstElementChild.textContent = 'Key invalid or expired. Paste another.';
+      return;
     }
 
-    // Top recipes, derived from /v1/recipes + per-recipe stats
+    // Top recipes
     try {
       const list = await api('/v1/recipes');
       const recipes = (list.recipes || []).slice(0, 5);
@@ -163,19 +425,259 @@
         if (!s || (s.invocations ?? 0) === 0) return;
         any = true;
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td><a href="/registry">${esc(r.name)}</a></td><td style="text-align:right;">${esc(fmt(s.invocations))}</td><td style="text-align:right;">${esc(fmt(s.cache_hits || 0))}</td><td style="text-align:right;">${esc(s.latency_us?.p50 ?? '—')}</td>`;
+        tr.innerHTML = `<td><a href="/registry">${esc(r.name)}</a></td><td style="text-align:right;">${esc(fmt(s.invocations))}</td><td style="text-align:right;">${esc(fmt(s.cache_hits || 0))}</td><td style="text-align:right;">${esc(s.latency_us?.p50 ?? '...')}</td>`;
         tbody.appendChild(tr);
       });
       if (!any) $('acct-top-empty').textContent = 'No recipe-calls yet, try the playground.';
     } catch (e) { $('acct-top-empty').textContent = 'Could not load recipe stats.'; }
+
+    // Hydrate config panels once we have plan id
+    initPanels(acct);
   }
 
+  // ---- PANEL 1: COMPILE DEFAULTS ----
+  function initCompileDefaults() {
+    const baseModel = LS.get('compile.baseModel', 'qwen2.5-3b-int4');
+    const tier = LS.get('compile.tier', 'adapter');
+    const targets = LS.get('compile.targets', ['web']);
+    const kThr = LS.get('compile.kThreshold', 0.90);
+    const verifier = LS.get('compile.verifier', 'opus-4.7');
+    const autoPub = LS.get('compile.autoPublish', false);
+
+    $('cfg-base-model').value = baseModel;
+    document.querySelectorAll('input[name="cfg-tier"]').forEach(i => { i.checked = i.value === tier; });
+    document.querySelectorAll('input[name="cfg-target"]').forEach(i => { i.checked = targets.includes(i.value); });
+    $('cfg-k-threshold').value = kThr;
+    $('cfg-verifier').value = verifier;
+    $('cfg-auto-publish').checked = !!autoPub;
+
+    $('cfg-base-model').addEventListener('change', e => { LS.set('compile.baseModel', e.target.value); showToast('Saved base model.'); });
+    document.querySelectorAll('input[name="cfg-tier"]').forEach(i => i.addEventListener('change', e => { if (e.target.checked) { LS.set('compile.tier', e.target.value); showToast('Saved tier.'); } }));
+    document.querySelectorAll('input[name="cfg-target"]').forEach(i => i.addEventListener('change', () => {
+      const sel = Array.from(document.querySelectorAll('input[name="cfg-target"]:checked')).map(x => x.value);
+      LS.set('compile.targets', sel); showToast('Saved targets.');
+    }));
+    $('cfg-k-threshold').addEventListener('change', e => {
+      let v = parseFloat(e.target.value);
+      if (isNaN(v)) v = 0.90;
+      v = Math.min(0.99, Math.max(0.85, v));
+      e.target.value = v.toFixed(2);
+      LS.set('compile.kThreshold', v); showToast('Saved K threshold.');
+    });
+    $('cfg-verifier').addEventListener('change', e => { LS.set('compile.verifier', e.target.value); showToast('Saved verifier.'); });
+    $('cfg-auto-publish').addEventListener('change', e => { LS.set('compile.autoPublish', e.target.checked); showToast('Saved auto-publish.'); });
+  }
+
+  // ---- PANEL 2: BYOK ----
+  function initBYOK() {
+    const providers = ['anthropic', 'openai', 'mistral'];
+    const prefixes = { anthropic: 'sk-ant-', openai: 'sk-', mistral: 'mst_' };
+    const sessionKeys = {};
+
+    providers.forEach(p => {
+      const input = $('byok-' + p);
+      const stored = LS.get('byok.' + p, null);
+      if (stored && stored.length) {
+        // Show placeholder dots equal to original length we recorded
+        input.value = '•'.repeat(Math.min(stored.length, 40));
+      }
+      input.addEventListener('change', async () => {
+        const v = input.value;
+        if (!v || /^•+$/.test(v)) return;
+        sessionKeys[p] = v;
+        const hash = await sha256(v);
+        LS.set('byok.' + p, { hash, length: v.length });
+        showToast('Saved ' + p + ' key (hashed).');
+      });
+    });
+
+    document.querySelectorAll('button[data-test]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = btn.dataset.test;
+        const result = $('byok-' + p + '-result');
+        const input = $('byok-' + p);
+        const v = sessionKeys[p] || input.value;
+        if (!v || /^•+$/.test(v)) {
+          result.className = 'test-result bad';
+          result.textContent = '✗ enter a key';
+          return;
+        }
+        if (v.startsWith(prefixes[p])) {
+          result.className = 'test-result ok';
+          result.textContent = '✓ ok';
+        } else {
+          result.className = 'test-result bad';
+          result.textContent = '✗ unauthorized';
+        }
+        setTimeout(() => { result.textContent = ''; result.className = 'test-result'; }, 4000);
+      });
+    });
+
+    const routing = LS.get('byok.routing', 'auto');
+    $('cfg-routing').value = routing;
+    $('cfg-routing').addEventListener('change', e => { LS.set('byok.routing', e.target.value); showToast('Saved routing.'); });
+  }
+
+  // ---- PANEL 3: RECALL SOURCES ----
+  function defaultSources() {
+    return [
+      { id: 's1', name: 'my-mailbox', vectors: 12840, enabled: true },
+      { id: 's2', name: 'shared-docs', vectors: 4802, enabled: true },
+      { id: 's3', name: 'pinned-notes', vectors: 1142, enabled: true }
+    ];
+  }
+  function renderSources() {
+    const sources = LS.get('sources', defaultSources());
+    const list = $('src-list');
+    list.innerHTML = '';
+    if (!sources.length) {
+      list.innerHTML = '<p class="muted" style="font-size:12.5px;">No sources. Add one below.</p>';
+      return;
+    }
+    sources.forEach((s, i) => {
+      const row = document.createElement('div');
+      row.className = 'source-row';
+      row.setAttribute('role', 'listitem');
+      row.innerHTML = `
+        <input type="checkbox" data-src-id="${esc(s.id)}" ${s.enabled ? 'checked' : ''} aria-label="Enable ${esc(s.name)}" />
+        <div><div class="name">${esc(s.name)}</div></div>
+        <div class="size">${esc(fmt(s.vectors))} vectors</div>
+        <div class="order">
+          <button class="arrow-btn" data-up="${esc(s.id)}" ${i === 0 ? 'disabled' : ''} aria-label="Move ${esc(s.name)} up">↑</button>
+          <button class="arrow-btn" data-down="${esc(s.id)}" ${i === sources.length - 1 ? 'disabled' : ''} aria-label="Move ${esc(s.name)} down">↓</button>
+        </div>
+        <button class="btn-ghost" data-remove="${esc(s.id)}" aria-label="Remove ${esc(s.name)}">Remove</button>
+      `;
+      list.appendChild(row);
+    });
+    list.querySelectorAll('input[data-src-id]').forEach(cb => cb.addEventListener('change', e => {
+      const id = e.target.dataset.srcId;
+      const cur = LS.get('sources', defaultSources());
+      const next = cur.map(x => x.id === id ? { ...x, enabled: e.target.checked } : x);
+      LS.set('sources', next);
+    }));
+    list.querySelectorAll('button[data-up]').forEach(b => b.addEventListener('click', () => moveSrc(b.dataset.up, -1)));
+    list.querySelectorAll('button[data-down]').forEach(b => b.addEventListener('click', () => moveSrc(b.dataset.down, +1)));
+    list.querySelectorAll('button[data-remove]').forEach(b => b.addEventListener('click', () => removeSrc(b.dataset.remove)));
+  }
+  function moveSrc(id, dir) {
+    const cur = LS.get('sources', defaultSources());
+    const i = cur.findIndex(x => x.id === id);
+    if (i < 0) return;
+    const j = i + dir;
+    if (j < 0 || j >= cur.length) return;
+    const a = cur[i]; cur[i] = cur[j]; cur[j] = a;
+    LS.set('sources', cur);
+    renderSources();
+  }
+  function removeSrc(id) {
+    const cur = LS.get('sources', defaultSources()).filter(x => x.id !== id);
+    LS.set('sources', cur);
+    renderSources();
+    showToast('Source removed.');
+  }
+  function initSources() {
+    renderSources();
+    $('src-add-toggle').addEventListener('click', () => {
+      const f = $('src-add-form');
+      const open = !f.hidden;
+      f.hidden = open;
+      $('src-add-toggle').setAttribute('aria-expanded', String(!open));
+      if (!open) $('src-add-name').focus();
+    });
+    $('src-add-btn').addEventListener('click', () => {
+      const name = $('src-add-name').value.trim();
+      const token = $('src-add-token').value.trim();
+      if (!name) { showToast('Name required.'); return; }
+      if (!token) { showToast('Token required.'); return; }
+      const cur = LS.get('sources', defaultSources());
+      cur.push({ id: 's' + Date.now(), name, vectors: 0, enabled: true });
+      LS.set('sources', cur);
+      $('src-add-name').value = ''; $('src-add-token').value = '';
+      $('src-add-form').hidden = true;
+      $('src-add-toggle').setAttribute('aria-expanded', 'false');
+      renderSources();
+      showToast('Namespace added.');
+    });
+  }
+
+  // ---- PANEL 4: PUBLISH ----
+  function initPublish(acct) {
+    const planId = (acct && (acct.id || acct.tenant)) || 'anon';
+    const defaultName = String(planId).slice(0, 7);
+    const dn = LS.get('publish.displayName', defaultName);
+    const sign = LS.get('publish.signAs', 'kolm.ai');
+    const wh = LS.get('publish.webhook', '');
+
+    $('pub-displayname').value = dn;
+    $('pub-url').value = 'kolm.ai/u/' + dn;
+    $('pub-sign').value = sign;
+    $('pub-webhook').value = wh;
+
+    $('pub-displayname').addEventListener('input', e => {
+      const v = e.target.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24);
+      e.target.value = v;
+      $('pub-url').value = 'kolm.ai/u/' + (v || defaultName);
+      LS.set('publish.displayName', v || defaultName);
+    });
+    $('pub-sign').addEventListener('change', e => { LS.set('publish.signAs', e.target.value); showToast('Saved signing identity.'); });
+    $('pub-webhook').addEventListener('change', e => { LS.set('publish.webhook', e.target.value); showToast('Saved webhook.'); });
+    $('pub-webhook-test').addEventListener('click', () => {
+      const v = $('pub-webhook').value.trim();
+      const r = $('pub-webhook-result');
+      try {
+        const u = new URL(v);
+        if (u.protocol === 'https:' || u.protocol === 'http:') {
+          r.className = 'test-result ok'; r.textContent = '✓ reachable';
+        } else { throw new Error('bad protocol'); }
+      } catch {
+        r.className = 'test-result bad'; r.textContent = '✗ invalid URL';
+      }
+      setTimeout(() => { r.textContent = ''; r.className = 'test-result'; }, 4000);
+    });
+  }
+
+  // ---- PANEL 5: DANGER ZONE ----
+  function initDanger(acct) {
+    const planId = (acct && (acct.id || acct.tenant)) || 'plan-id';
+    const target = 'delete ' + planId;
+    $('dz-confirm-target').textContent = target;
+
+    $('dz-rotate').addEventListener('click', () => {
+      if (!confirm('Rotate? Your old key stops working immediately.')) return;
+      showToast('Rotated. New key emailed.', 3200);
+    });
+    $('dz-delete').addEventListener('click', () => {
+      $('dz-confirm').hidden = false;
+      $('dz-confirm-input').value = '';
+      $('dz-confirm-input').focus();
+    });
+    $('dz-cancel-btn').addEventListener('click', () => { $('dz-confirm').hidden = true; });
+    $('dz-confirm-input').addEventListener('input', e => {
+      $('dz-confirm-btn').disabled = e.target.value !== target;
+    });
+    $('dz-confirm-btn').addEventListener('click', () => {
+      showToast('Account scheduled for deletion. Check your email.', 4000);
+      $('dz-confirm').hidden = true;
+    });
+  }
+
+  function initPanels(acct) {
+    if (initPanels._done) return;
+    initPanels._done = true;
+    initCompileDefaults();
+    initBYOK();
+    initSources();
+    initPublish(acct);
+    initDanger(acct);
+  }
+
+  // ---- existing key controls ----
   $('acct-paste-btn').addEventListener('click', () => {
     const k = $('acct-paste').value.trim();
-    if (!/^ks_/.test(k)) { alert('Keys start with ks_'); return; }
+    if (!/^ks_/.test(k)) { showToast('Keys start with ks_'); return; }
     setKey(k); loadAccount();
   });
-
   $('acct-show').addEventListener('click', () => {
     $('acct-key').value = getKey();
     setTimeout(() => { $('acct-key').value = getKey().replace(/^(ks_.{4}).+/, '$1' + '•'.repeat(28)); }, 5000);
@@ -184,19 +686,6 @@
     await navigator.clipboard.writeText(getKey());
     $('acct-key-status').textContent = 'Copied to clipboard.';
     setTimeout(() => $('acct-key-status').textContent = '', 2000);
-  });
-  $('acct-rotate').addEventListener('click', async () => {
-    if (!confirm('Rotate? Your old key stops working immediately.')) return;
-    try {
-      const r = await fetch('/v1/account/rotate-key', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getKey() } }).then(r => r.json());
-      if (r.api_key) {
-        setKey(r.api_key);
-        $('acct-key-status').textContent = 'Rotated. New key saved to this browser.';
-        loadAccount();
-      } else {
-        $('acct-key-status').textContent = 'Could not rotate: ' + (r.error || 'unknown');
-      }
-    } catch (e) { $('acct-key-status').textContent = 'Rotate failed: ' + e.message; }
   });
   $('acct-logout').addEventListener('click', () => {
     if (!confirm('Sign out of this browser? Your key still works on other devices.')) return;

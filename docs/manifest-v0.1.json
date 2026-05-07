@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kolm.ai/docs/manifest-v0.1.json",
+  "title": "RS-1 .kolm manifest, v0.1",
+  "description": "Schema for the canonical manifest.json embedded inside every .kolm artifact. Defines the contract that binds a compiled artifact to its task, evals, base model, and signature.",
+  "type": "object",
+  "required": [
+    "kolm_version",
+    "artifact_id",
+    "artifact_name",
+    "tier",
+    "task_spec_hash",
+    "seed_examples_hash",
+    "evals_hash",
+    "targets",
+    "base_model",
+    "recipes",
+    "permissions",
+    "signature_alg",
+    "signature",
+    "signed_at",
+    "signed_by",
+    "evals_score",
+    "judge_id"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "kolm_version": {
+      "type": "string",
+      "const": "0.1",
+      "description": "Spec version this manifest conforms to."
+    },
+    "artifact_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUIDv4 unique to this artifact. Stable across re-compiles only when inputs are byte-identical."
+    },
+    "artifact_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["recipe", "adapter", "specialist", "bundle"]
+    },
+    "task_spec_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256 hex of canonicalized task description"
+    },
+    "seed_examples_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256 hex of canonicalized seed examples array"
+    },
+    "evals_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "sha256 hex of canonicalized evals.json"
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["ios", "android", "web", "server", "linux", "macos"]
+      }
+    },
+    "base_model": {
+      "type": "object",
+      "required": ["id", "hash"],
+      "properties": {
+        "id": { "type": "string", "description": "human-readable model id, e.g. qwen2.5-coder-7b-instruct" },
+        "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$", "description": "sha256 of the base weights" },
+        "quantization": { "type": ["string", "null"], "examples": ["q4_0", "q5_k_m", "fp16", "int4", null] },
+        "license": { "type": ["string", "null"], "examples": ["apache-2.0", "mit", "qwen-license"] }
+      }
+    },
+    "adapter": {
+      "type": ["object", "null"],
+      "description": "Present when tier is adapter, specialist, or bundle. Null otherwise.",
+      "required": ["present"],
+      "properties": {
+        "present": { "type": "boolean" },
+        "hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "size_bytes": { "type": ["integer", "null"], "minimum": 0 },
+        "lora_rank": { "type": ["integer", "null"], "minimum": 1, "maximum": 1024 }
+      }
+    },
+    "recipes": {
+      "type": "object",
+      "required": ["graph_hash", "ops_count", "deterministic"],
+      "properties": {
+        "graph_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "ops_count": { "type": "integer", "minimum": 0 },
+        "deterministic": { "type": "boolean" }
+      }
+    },
+    "recall_index": {
+      "type": ["object", "null"],
+      "required": ["present"],
+      "properties": {
+        "present": { "type": "boolean" },
+        "hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "vector_count": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "local_index_read",
+          "local_memory_read",
+          "network_none",
+          "network_outbound_kolm_ai_only"
+        ]
+      }
+    },
+    "signature_alg": {
+      "type": "string",
+      "enum": ["ed25519"]
+    },
+    "signature": {
+      "type": "string",
+      "description": "Base64-encoded ed25519 signature over the canonical manifest payload (excluding the signature field itself)."
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC3339 timestamp the signature was issued."
+    },
+    "signed_by": {
+      "type": "string",
+      "description": "Public key id of the signer; resolves to a public key registered in the kolm registry."
+    },
+    "evals_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Aggregate eval pass-rate that the artifact achieved at compile-time."
+    },
+    "judge_id": {
+      "type": "string",
+      "description": "Identifier for the judge that produced evals_score (e.g. opus-4-7, gpt-4o, jurynet-v1)."
+    }
+  }
+}

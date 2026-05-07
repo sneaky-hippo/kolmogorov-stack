@@ -191,11 +191,48 @@ export function buildRouter() {
     const slug = (name || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 32) || 'user';
     const uniq = `${slug}-${Date.now().toString(36).slice(-4)}`;
     const t = provisionTenant(uniq, { quota: 10000, plan: 'free', email });
-    res.json({
+    res.status(201).json({
       tenant: { id: t.id, name: t.name, plan: t.plan, quota: t.quota },
       api_key: t.api_key,
       message: 'Save this key. You can rotate it from /v1/account/rotate-key.',
     });
+  });
+
+  // ---------- Signin / Signout aliases (RS-1 contract) ----------
+  // /v1/signin and /v1/signout mirror /v1/session/login and /v1/session/logout
+  // for the homepage contract. POST {api_key} returns the same shape and sets
+  // the same kolm_session cookie. /v1/signout returns 204 to be friendly to
+  // CLI tools that ignore body.
+  r.post('/v1/signin', (req, res) => {
+    const { api_key, email, password } = req.body || {};
+    // Email/password is reserved for the future; today only api_key works.
+    if (!api_key || typeof api_key !== 'string') {
+      if (email || password) {
+        return res.status(501).json({ error: 'email/password signin not implemented', hint: 'pass api_key in the body' });
+      }
+      return res.status(400).json({ error: 'api_key required' });
+    }
+    const t = findOne('tenants', x => x.api_key === api_key && !x._deleted);
+    const adminKey = process.env.ADMIN_KEY || 'ks_admin_change_me';
+    if (!t && api_key !== adminKey) return res.status(401).json({ error: 'invalid api key' });
+    const isProd = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
+    res.cookie('kolm_session', api_key, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+    res.json({
+      ok: true,
+      api_key,
+      tenant: t ? { id: t.id, name: t.name, plan: t.plan } : { admin: true },
+    });
+  });
+
+  r.post('/v1/signout', (req, res) => {
+    res.clearCookie('kolm_session', { path: '/' });
+    res.status(204).end();
   });
 
   // ---------- Session cookie (S7) ----------
@@ -277,15 +314,86 @@ export function buildRouter() {
 
   // Public receipt verification — anyone can verify any receipt, no auth.
   // The whole point of receipts is offline, third-party-verifiable proof.
+  // Accepts both the legacy v0 receipt (rs-1 spec, hmac field) and the new
+  // v0.1 receipt (kolm_version="0.1", chain[], signature). Also accepts
+  // {artifact_hash, signature} drive-by shape used by lightweight callers.
   r.post('/v1/receipts/verify', (req, res) => {
-    const { receipt, input, output } = req.body || {};
+    const { receipt, input, output, artifact_hash: bodyArtifactHash, signature: bodySignature } = req.body || {};
+    const reasons = [];
+
+    // Drive-by: caller supplied just artifact_hash + signature without a
+    // full receipt envelope. Verify the signature is a hex HMAC binding the
+    // artifact_hash under our secret. This is the shape the homepage demo
+    // posts and the contract requires.
+    if (!receipt && bodyArtifactHash && bodySignature) {
+      const expected = crypto.createHmac('sha256', RECEIPT_SECRET)
+        .update(canonicalJson({ artifact_hash: bodyArtifactHash }))
+        .digest('hex');
+      const match = bodySignature.length === expected.length && (() => {
+        let d = 0;
+        for (let i = 0; i < expected.length; i++) d |= bodySignature.charCodeAt(i) ^ expected.charCodeAt(i);
+        return d === 0;
+      })();
+      if (!match) reasons.push('signature mismatch');
+      return res.json({ verified: match, reasons, mode: 'drive-by' });
+    }
+
+    if (!receipt || typeof receipt !== 'object') {
+      reasons.push('no receipt');
+      return res.json({ verified: false, reasons });
+    }
+
+    // v0.1 receipt — chain + signature over canonicalised body.
+    if (receipt.kolm_version === '0.1') {
+      // Verify chain links: each step's HMAC must seal {step, input_hash, output_hash}.
+      let chainOk = Array.isArray(receipt.chain) && receipt.chain.length > 0;
+      if (chainOk) {
+        for (let i = 0; i < receipt.chain.length; i++) {
+          const link = receipt.chain[i];
+          const expected = crypto.createHmac('sha256', RECEIPT_SECRET)
+            .update(canonicalJson({ step: link.step, input_hash: link.input_hash, output_hash: link.output_hash }))
+            .digest('hex');
+          if (link.hmac !== expected) { reasons.push('chain[' + i + '] hmac mismatch'); chainOk = false; break; }
+          if (i > 0 && link.input_hash !== receipt.chain[i - 1].output_hash) {
+            reasons.push('chain[' + i + '] not anchored to chain[' + (i - 1) + ']');
+            chainOk = false; break;
+          }
+        }
+      } else {
+        reasons.push('chain missing');
+      }
+      // Verify body signature.
+      const { signature, ...bodyNoSig } = receipt;
+      const bodyCanon = canonicalJson(bodyNoSig);
+      const expectedBody = crypto.createHmac('sha256', RECEIPT_SECRET).update(bodyCanon).digest('hex');
+      const sigOk = signature && signature.length === expectedBody.length && (() => {
+        let d = 0;
+        for (let i = 0; i < expectedBody.length; i++) d |= signature.charCodeAt(i) ^ expectedBody.charCodeAt(i);
+        return d === 0;
+      })();
+      if (!sigOk) reasons.push('signature mismatch');
+      const verified = chainOk && sigOk;
+      return res.json({
+        verified,
+        reasons,
+        receipt_id: receipt.receipt_id,
+        artifact_hash: receipt.artifact_hash,
+        eval_set_hash: receipt.eval_set_hash,
+        eval_score: receipt.eval_score,
+        judge_id: receipt.judge_id,
+      });
+    }
+
+    // Legacy v0 receipt (rs-1, hmac).
     const v = verifyReceipt(receipt);
-    if (!v.valid) return res.json({ valid: false, reason: v.reason });
+    if (!v.valid) {
+      return res.json({ verified: false, valid: false, reason: v.reason, reasons: [v.reason] });
+    }
     const checks = { signature: true };
     if (input !== undefined) checks.input_match = sha256(canonicalJson(input)) === receipt.input_hash;
     if (output !== undefined) checks.output_match = sha256(canonicalJson(output)) === receipt.output_hash;
     const allOk = Object.values(checks).every(Boolean);
-    res.json({ valid: allOk, checks, receipt });
+    res.json({ verified: allOk, valid: allOk, checks, receipt, reasons: allOk ? [] : ['input/output mismatch'] });
   });
 
   // Public RS-1 spec document — open standard, no auth required.
@@ -520,18 +628,31 @@ export function buildRouter() {
 
   r.use(authMiddleware);
 
-  // Authenticated /v1/health — full snapshot including provider availability.
-  // Public /health (above the authMiddleware) returns the no-leak version.
-  r.get('/v1/health', (req, res) => res.json({
-    status: 'ok',
-    version: '0.2.0',
-    library_version: LIBRARY_VERSION,
-    has_anthropic_key: !!process.env.ANTHROPIC_API_KEY,
-    region: process.env.RAILWAY_REGION || process.env.REGION || 'local',
-    uptime_s: Math.round(process.uptime()),
-    stats: storeStats(),
-    tenant: req.tenant_record ? { id: req.tenant_record.id, plan: req.tenant_record.plan } : { admin: !!req.is_admin },
-  }));
+  // Authenticated /v1/health — full snapshot including provider availability
+  // and feature flags. Admin-only because the booleans are useful signal for
+  // staff debugging but unnecessary surface for tenants. Public /health
+  // (above the authMiddleware) is the lightweight no-leak version.
+  r.get('/v1/health', (req, res) => {
+    if (!req.is_admin) {
+      return res.status(403).json({ error: 'admin only', hint: 'public /health is open; /v1/health is staff-only' });
+    }
+    res.json({
+      status: 'ok',
+      version: '0.2.0',
+      library_version: LIBRARY_VERSION,
+      region: process.env.RAILWAY_REGION || process.env.REGION || 'local',
+      uptime_s: Math.round(process.uptime()),
+      stats: storeStats(),
+      feature_flags: {
+        has_anthropic_key: !!process.env.ANTHROPIC_API_KEY,
+        invite_only: process.env.INVITE_ONLY === 'true',
+        recall_root_set: !!process.env.KOLM_RECALL_ROOT,
+        artifact_dir_set: !!process.env.KOLM_ARTIFACT_DIR,
+        sync_compile_only: !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME),
+      },
+      tenant: { admin: true },
+    });
+  });
 
   // ---------- Compile (kolm) ----------
   // POST /v1/compile          → start a compile job, returns { job_id }
@@ -606,6 +727,74 @@ export function buildRouter() {
     res.set('Content-Type', 'application/zip');
     res.set('Content-Disposition', `attachment; filename="${j.id}.kolm"`);
     fs.createReadStream(j.artifact_path).pipe(res);
+  });
+
+  // ---------- /v1/artifacts* — RS-1 contract aliases over compile jobs ----------
+  // Every completed compile job IS an artifact. This surface gives callers
+  // an artifact-noun view that doesn't leak the job machinery.
+  function jobToArtifact(j) {
+    return {
+      id: j.id,
+      name: (j.task || '').slice(0, 200) || j.id,
+      tier: j.manifest?.tier || 'recipe',
+      status: j.status,
+      created_at: j.created_at,
+      completed_at: j.completed_at || null,
+      bytes: j.artifact_bytes || null,
+      base_model: j.base_model || j.manifest?.base_model || null,
+      artifact_hash: j.artifact_hash || null,
+      eval_set_hash: j.eval_set_hash || null,
+      eval_score: j.manifest?.eval_score ?? null,
+      judge_id: j.manifest?.judge_id || null,
+      k_score: j.k_score || null,
+      manifest: j.manifest || null,
+      receipt: j.receipt || null,
+      download_url: j.status === 'completed' ? `/v1/artifacts/${j.id}/download` : null,
+    };
+  }
+
+  r.get('/v1/artifacts', (req, res) => {
+    const jobs = listJobs(req.tenant, 50).filter(j => j.status === 'completed');
+    res.json({ artifacts: jobs.map(jobToArtifact), n: jobs.length });
+  });
+
+  r.get('/v1/artifacts/:id', (req, res) => {
+    const j = getJob(req.params.id, req.is_admin ? null : req.tenant);
+    if (!j) return res.status(404).json({ error: 'artifact not found' });
+    res.json(jobToArtifact(j));
+  });
+
+  r.get('/v1/artifacts/:id/download', (req, res) => {
+    const j = getJob(req.params.id, req.is_admin ? null : req.tenant);
+    if (!j) return res.status(404).json({ error: 'artifact not found' });
+    if (j.status !== 'completed') return res.status(409).json({ error: 'artifact not ready', status: j.status });
+    if (!j.artifact_path || !fs.existsSync(j.artifact_path)) return res.status(410).json({ error: 'artifact expired or missing' });
+    res.set('Content-Type', 'application/zip');
+    res.set('Content-Disposition', `attachment; filename="${j.id}.kolm"`);
+    fs.createReadStream(j.artifact_path).pipe(res);
+  });
+
+  // /v1/registry/public — RS-1 contract alias over public concepts. Non-paginated;
+  // returns up to 200 of the most recent public concepts. The richer export
+  // (with bundled source) lives at /v1/registry/export above.
+  r.get('/v1/registry/public', (_req, res) => {
+    const concepts = all('concepts').filter(c => c.visibility === 'public');
+    const versions = all('versions');
+    const out = concepts.slice(-200).reverse().map(c => {
+      const v = versions.find(x => x.id === c.head_version);
+      return {
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        tags: c.tags || [],
+        head_version: c.head_version,
+        size_bytes: v?.evaluation?.size_bytes ?? null,
+        latency_p50_us: v?.evaluation?.latency_p50_us ?? null,
+        quality_score: v?.evaluation?.quality_score ?? null,
+        updated_at: c.updated_at,
+      };
+    });
+    res.json({ artifacts: out, n: out.length });
   });
 
   // ---------- Recall ----------
@@ -957,6 +1146,11 @@ export function buildRouter() {
   });
 
   // ---------- Telemetry / admin ----------
+  // Returns the v5 (kolm) summary AND the legacy invocations snapshot the
+  // existing dashboard.html consumes. Dashboard keeps reading
+  // total_invocations/p50_us/cache; new surfaces (status, hero) read
+  // compiles_today/receipts_verified/k_score_median/artifacts_total/
+  // active_tenants_24h.
   r.get('/v1/telemetry', (req, res) => {
     const inv = all('invocations').filter(i => !req.tenant_record || i.tenant === req.tenant);
     const recent = inv.slice(-200).reverse();
@@ -966,7 +1160,63 @@ export function buildRouter() {
     const pct = (p) => lats.length ? lats[Math.min(lats.length - 1, Math.floor(lats.length * p))] : 0;
     // last 60 invocations as sparkline
     const spark = inv.slice(-60).map(x => x.latency_us || 0);
+
+    // ---- v5 (kolm) summary ----
+    const dayMs = 24 * 60 * 60 * 1000;
+    const startOfTodayUtc = (() => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d.getTime(); })();
+    const since24h = Date.now() - dayMs;
+
+    const jobs = all('compile_jobs').filter(j => !j._deleted);
+    const tenantScopedJobs = req.tenant_record
+      ? jobs.filter(j => j.tenant === req.tenant)
+      : jobs; // admin sees the global view
+    const compilesToday = tenantScopedJobs.filter(j => {
+      const t = Date.parse(j.created_at || '');
+      return Number.isFinite(t) && t >= startOfTodayUtc;
+    }).length;
+    const artifactsTotal = tenantScopedJobs.filter(j => j.status === 'completed').length;
+
+    const kScores = tenantScopedJobs
+      .slice(-100)
+      .map(j => (j.k_score && typeof j.k_score.composite === 'number') ? j.k_score.composite : null)
+      .filter(v => typeof v === 'number');
+    const median = (xs) => {
+      if (!xs.length) return null;
+      const sorted = [...xs].sort((a, b) => a - b);
+      const m = Math.floor(sorted.length / 2);
+      return sorted.length % 2 ? sorted[m] : (sorted[m - 1] + sorted[m]) / 2;
+    };
+    const kScoreMedian = median(kScores);
+
+    // Receipts verified: every invocation in the v5 model gets a receipt
+    // bound to its run, so cache_miss inv count is the lower bound. Until
+    // we add a dedicated receipts table (Sprint 2), use the receipt-bearing
+    // invocation count as the closest proxy.
+    const receiptsVerified = inv.filter(i => !i.error).length;
+
+    // Active tenants in last 24h: distinct tenants that ran a job or an
+    // invocation. Admins see global; tenants see "1 if active else 0".
+    const tenantsTouching24h = new Set();
+    for (const i of all('invocations')) {
+      const t = Date.parse(i.ts || '');
+      if (Number.isFinite(t) && t >= since24h && i.tenant) tenantsTouching24h.add(i.tenant);
+    }
+    for (const j of jobs) {
+      const t = Date.parse(j.created_at || '');
+      if (Number.isFinite(t) && t >= since24h && j.tenant) tenantsTouching24h.add(j.tenant);
+    }
+    const activeTenants24h = req.tenant_record
+      ? (tenantsTouching24h.has(req.tenant) ? 1 : 0)
+      : tenantsTouching24h.size;
+
     res.json({
+      // ---- v5 (kolm) summary ----
+      compiles_today: compilesToday,
+      receipts_verified: receiptsVerified,
+      k_score_median: kScoreMedian,
+      artifacts_total: artifactsTotal,
+      active_tenants_24h: activeTenants24h,
+      // ---- legacy fields the dashboard.html consumes ----
       total_invocations: inv.length,
       avg_latency_us: inv.length ? Math.round(totalLat / inv.length) : 0,
       p50_us: pct(0.5),

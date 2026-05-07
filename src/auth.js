@@ -114,9 +114,12 @@ const PUBLIC_PAGES = new Set(['/', '/dashboard', '/playground', '/docs', '/regis
 const PUBLIC_API = (p) =>
   (p.startsWith('/v1/public/') && p !== '/v1/public/submit') ||
   p === '/v1/signup' ||
+  p === '/v1/signin' ||
+  p === '/v1/signout' ||
   p === '/v1/specialists/waitlist' ||
   p === '/v1/anon/bootstrap' ||
-  p === '/v1/anon/claim';
+  p === '/v1/anon/claim' ||
+  p === '/v1/registry/public';
 
 export function authMiddleware(req, res, next) {
   const p = req.path;

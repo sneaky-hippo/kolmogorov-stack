@@ -63,6 +63,23 @@ app.use(express.static(path.join(__dirname, 'public'), {
   },
 }));
 
+// RS-1 schema bundle — canonical JSON Schemas + spec markdown live in /docs
+// so the homepage anchors (/docs#rs-1, #manifest, #receipts) and direct
+// schema fetches both work. We mount the directory at /docs-static so the
+// /docs SPA route below can still own the HTML page; specific filenames
+// are then aliased back into /docs/* via explicit routes.
+const DOCS_DIR = path.join(__dirname, 'docs');
+for (const name of ['manifest-v0.1.json', 'receipt-v0.1.json', 'rs-1.md']) {
+  app.get('/docs/' + name, (_req, res) => {
+    const file = path.join(DOCS_DIR, name);
+    if (!fs.existsSync(file)) return res.status(404).json({ error: 'spec asset not found' });
+    if (name.endsWith('.json')) res.type('application/schema+json');
+    else if (name.endsWith('.md')) res.type('text/markdown');
+    res.set('Cache-Control', 'public, max-age=300');
+    res.sendFile(file);
+  });
+}
+
 app.use('/', buildRouter());
 
 // SPA fallback for HTML routes — every public page maps to a static file under /public.
@@ -84,7 +101,7 @@ const _404Path = path.join(__dirname, 'public', '404.html');
 app.use((req, res, next) => {
   if (req.method === 'GET' && req.accepts('html') && !req.path.startsWith('/v1') && !req.path.startsWith('/health') && !req.path.startsWith('/pricing') && req.path !== '/404') {
     if (fs.existsSync(_404Path)) return res.status(404).sendFile(_404Path);
-    return res.status(404).type('html').send(`<!DOCTYPE html><html><head><title>404 — Recipe</title><link rel="stylesheet" href="/styles.css"></head><body style="padding:48px;text-align:center;font-family:system-ui;color:#e8ecf3;background:#0a0b0e;min-height:100vh;"><h1 style="font-size:48px;margin:0;letter-spacing:-0.02em;">404</h1><p style="color:#8b94a8;margin-top:8px">That page doesn't exist.</p><p style="margin-top:24px;"><a href="/" style="color:#7dd3fc;">← Home</a> &middot; <a href="/registry" style="color:#7dd3fc;">Registry</a> &middot; <a href="/docs" style="color:#7dd3fc;">Docs</a></p></body></html>`);
+    return res.status(404).type('html').send(`<!DOCTYPE html><html><head><title>404 · kolm</title><link rel="stylesheet" href="/styles.css"></head><body style="padding:48px;text-align:center;font-family:system-ui;color:#e8ecf3;background:#0a0b0e;min-height:100vh;"><h1 style="font-size:48px;margin:0;letter-spacing:-0.02em;">404</h1><p style="color:#8b94a8;margin-top:8px">That page doesn't exist.</p><p style="margin-top:24px;"><a href="/" style="color:#7dd3fc;">&larr; Home</a> &middot; <a href="/registry" style="color:#7dd3fc;">Registry</a> &middot; <a href="/docs" style="color:#7dd3fc;">Docs</a></p></body></html>`);
   }
   next();
 });
@@ -144,8 +161,8 @@ if (process.argv[1] && process.argv[1].endsWith('server.js')) {
     console.log(`  ➜ Dashboard:  http://localhost:${PORT}/dashboard`);
     console.log(`  ➜ Playground: http://localhost:${PORT}/playground`);
     console.log(`  ➜ Docs:       http://localhost:${PORT}/docs`);
-    console.log(`  ➜ Demo API key: ${demo.api_key}`);
-    console.log(`  ➜ Admin key:    ${process.env.ADMIN_KEY || 'ks_admin_change_me'}`);
+    console.log(`  ➜ Demo API key configured: ${!!demo.api_key}`);
+    console.log(`  ➜ Admin key configured:    ${!!process.env.ADMIN_KEY}`);
     console.log(`  ➜ Synthesis backend: ${process.env.ANTHROPIC_API_KEY ? 'Claude (' + (process.env.ANTHROPIC_MODEL || 'claude-opus-4-7') + ') + Pattern' : 'Pattern (no API key set)'}`);
     console.log('');
   });

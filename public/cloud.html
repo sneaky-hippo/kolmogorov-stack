@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -7,25 +7,36 @@
   <meta name="description" content="Kolmogorov Cloud hosts the compile pipeline, the verified-inference wrap, and the public registry. Bring your own API key. Pay for what compiles." />
   <link rel="stylesheet" href="/styles.css" />
   <style>
-    .codebox { background:#0a0a0a; border:1px solid #222; border-radius:10px;
-      padding:14px 16px; font:12px ui-monospace,monospace; color:#bbb;
+    .codebox { background:#0b1018; border:1px solid #23203a; border-radius:10px;
+      padding:14px 16px; font:12px ui-monospace,monospace; color:#d6d3e3;
       overflow-x:auto; margin:8px 0; }
-    .codebox .c { color:#7c5cff; }
-    .codebox .o { color:#22c55e; }
-    .codebox .k { color:#f59e0b; }
+    .codebox .c { color:#a78bfa; }
+    .codebox .o { color:#43e6a6; }
+    .codebox .k { color:#ffb084; }
     .tiers { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin:14px 0; }
-    .tier { background:#0d0d0d; border:1px solid #222; border-radius:10px; padding:18px; display:flex; flex-direction:column; }
-    .tier.featured { border-color:#7c5cff; }
-    .tier h3 { margin:0; font-size:15px; color:#ddd; }
-    .tier .price { font: 700 22px ui-monospace,monospace; color:#fff; margin:8px 0 0; }
-    .tier .price small { color:#666; font-weight:400; font-size:12px; }
-    .tier ul { margin:14px 0 0; padding-left:18px; color:#999; font-size:13px; line-height:1.7; }
+    .tier { background:#0b1018; border:1px solid #23203a; border-radius:10px; padding:18px; display:flex; flex-direction:column; }
+    .tier.featured { border-color:#a78bfa; }
+    .tier h3 { margin:0; font-size:15px; color:#d6d3e3; }
+    .tier .price { font:560 22px ui-monospace,monospace; color:#f4f3fb; margin:8px 0 0; }
+    .tier .price small { color:#7d7898; font-weight:400; font-size:12px; }
+    .tier ul { margin:14px 0 0; padding-left:18px; color:#a09cb7; font-size:13px; line-height:1.7; }
     .tier .cta { margin-top:auto; padding-top:14px; }
-    .tier .cta a { display:inline-block; padding:7px 12px; border:1px solid #333; border-radius:6px; color:#ddd; text-decoration:none; font-size:12px; }
-    .tier.featured .cta a { background:#7c5cff; border-color:#7c5cff; color:#fff; }
+    .tier .cta a { display:inline-block; padding:7px 12px; border:1px solid #3a3658; border-radius:6px; color:#d6d3e3; text-decoration:none; font-size:12px; }
+    .tier.featured .cta a { background:#a78bfa; border-color:#a78bfa; color:#07090f; }
+    .engines { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin:14px 0; }
+    .eng { background:#0b1018; border:1px solid #23203a; border-radius:10px; padding:12px 14px; }
+    .eng .ex { font:560 11px ui-monospace,monospace; color:#d4c2ff; letter-spacing:0.04em; }
+    .eng h4 { margin:6px 0 2px; font-size:13px; color:#d6d3e3; }
+    .eng p  { margin:0; color:#a09cb7; font-size:12px; line-height:1.5; }
+    .lat { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin:10px 0 0; }
+    .lat .row { background:#13101f; border:1px solid #23203a; border-radius:8px; padding:10px 12px; }
+    .lat .row .k { display:block; font:11px ui-monospace,monospace; color:#7d7898; letter-spacing:0.04em; text-transform:uppercase; }
+    .lat .row .v { display:block; font: 600 14px ui-monospace,monospace; color:#f4f3fb; margin-top:3px; }
+    .lat .row .n { display:block; font:11px ui-monospace,monospace; color:#d4c2ff; margin-top:2px; }
   </style>
 </head>
 <body>
+<div class="bg-stage" aria-hidden="true"></div>
 <div class="app">
   <aside class="sidebar">
     <h1><span class="glyph"></span> kolm<span class="sub">by Kolmogorov</span></h1>
@@ -54,6 +65,28 @@
         format, same K-score, plus a verified-inference wrap that turns any Anthropic / OpenAI / Mistral key
         into a self-checking call, k-sample, deterministically verify, accept the winner, return a receipt.
       </p>
+    </section>
+
+    <section class="block">
+      <h2>Four engines, one pipeline.</h2>
+      <p class="lede">
+        Cloud runs the four engines so your laptop doesn't have to. Each is a stateless service behind one HTTP boundary;
+        the orchestrator schedules them per compile job. Everything is observable in <a href="/account">/account</a>.
+      </p>
+      <div class="engines">
+        <div class="eng"><div class="ex">RECALL</div><h4>multimodal index</h4><p>BM25 + vector + RRF + cross-encoder rerank. BGE-M3 1024d INT8. Per-tenant namespace.</p></div>
+        <div class="eng"><div class="ex">DISTILL</div><h4>verified inference</h4><p>k-sample frontier model, deterministically verify, accept the winner, return a signed receipt.</p></div>
+        <div class="eng"><div class="ex">DECOMPOSE</div><h4>recipe drafts</h4><p>Extract the structured-token subset of a model's behavior into a deterministic, registry-indexed draft pack.</p></div>
+        <div class="eng"><div class="ex">RUN</div><h4>artifact assembly</h4><p>Bundle base GGUF + LoRA + recipes + sqlite-vec index + manifest, sign with HMAC chain, ship a single .kolm.</p></div>
+      </div>
+      <h3 style="margin-top:18px; font-size:14px; color:#bbb; letter-spacing:0.04em; text-transform:uppercase;">Measured latency, west-region</h3>
+      <div class="lat">
+        <div class="row"><span class="k">recall query</span><span class="v">~18 ms</span><span class="n">p50, 100k chunks warm</span></div>
+        <div class="row"><span class="k">verified wrap (k=3)</span><span class="v">~2.4 s</span><span class="n">p50 cold, ~1.1 s warm</span></div>
+        <div class="row"><span class="k">compile job (5k rows)</span><span class="v">~3.4 min</span><span class="n">p50 end-to-end</span></div>
+        <div class="row"><span class="k">artifact download</span><span class="v">~280 ms</span><span class="n">p50, 17 MB .kolm</span></div>
+        <div class="row"><span class="k">compile throughput</span><span class="v">~7.4 / min</span><span class="n">concurrency 8, sustained</span></div>
+      </div>
     </section>
 
     <section class="block">
@@ -150,7 +183,7 @@ $ curl https://kolm.ai/v1/compile/job_abc/.kolm -o triage.kolm</div>
             <li>dedicated GPU embedders</li>
             <li>on-chain receipt anchoring</li>
           </ul>
-          <div class="cta"><a href="mailto:dev@kolm.ai">Contact →</a></div>
+          <div class="cta"><a href="mailto:hi@kolm.ai">Contact &rsaquo;</a></div>
         </div>
       </div>
       <p class="sub" style="font-size:12px; color:#666; margin-top:8px;">

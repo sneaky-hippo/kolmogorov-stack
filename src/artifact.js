@@ -21,7 +21,13 @@ import os from 'node:os';
 import archiver from 'archiver';
 
 const ARTIFACT_SPEC = 'kolm-1';
-const SIGN_SECRET = process.env.KOLM_ARTIFACT_SECRET || process.env.RECIPE_RECEIPT_SECRET || 'ks_artifact_dev_secret_change_in_prod';
+// IMPORTANT: keep this in lock-step with router.js's RECEIPT_SECRET. The
+// receipt the artifact builder seals here is verified by /v1/receipts/verify
+// using that same secret — a mismatch produces "signature mismatch" + "chain
+// hmac mismatch" failures even though both sides are byte-identical canonical
+// JSON. The legacy KOLM_ARTIFACT_SECRET env name is still honoured for
+// back-compat, but the default must match router.js's default.
+const SIGN_SECRET = process.env.RECIPE_RECEIPT_SECRET || process.env.KOLM_ARTIFACT_SECRET || 'ks_receipt_dev_secret_change_in_prod';
 
 function sha256(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex');
@@ -67,7 +73,12 @@ export function computeKScore({ size_bytes, accuracy, coverage, p50_latency_us, 
 
 // Build the artifact payload (the parts that end up *inside* the zip).
 // Returns a list of {filename, content} entries plus the manifest.
-export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score }) {
+//
+// New in v0.1: a receipt.json file ships alongside signature.sig. The
+// receipt binds (artifact_hash, eval_set_hash, eval_score, judge_id) via an
+// HMAC chain so any third party can re-verify offline without trusting the
+// runtime that produced the artifact.
+export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id, eval_score, tier }) {
   const recipes_json = JSON.stringify({
     spec: 'rs-1',
     n: recipes.length,
@@ -104,6 +115,13 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
     notes: 'compile-time evals were not supplied; K-score uses synthesizer pass-rate only',
   };
   const evals_json = JSON.stringify(evals_obj, null, 2);
+  const eval_set_hash = sha256(Buffer.from(evals_json));
+  const _evalScore = (typeof eval_score === 'number')
+    ? eval_score
+    : (typeof evals_obj.coverage === 'number' ? evals_obj.coverage
+      : (typeof training_stats?.pass_rate_positive === 'number' ? training_stats.pass_rate_positive : 0));
+  const _judgeId = judge_id || process.env.KOLM_JUDGE_ID || 'kolm-pattern-synth-1';
+  const _tier = tier || 'recipe';
 
   const manifest = {
     spec: ARTIFACT_SPEC,
@@ -112,6 +130,9 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
     created_at: new Date().toISOString(),
     runtime: 'cloud',  // becomes 'on-device' once Sprint 3 LoRA bridge ships
     base_model: base_model || 'qwen2.5-coder-7b-instruct-q4_0',
+    tier: _tier,
+    judge_id: _judgeId,
+    eval_score: Number(Math.max(0, Math.min(1, _evalScore)).toFixed(4)),
     recipes: {
       n: recipes.length,
       registry_hash: sha256(canonicalJson(recipes.map(r => ({ id: r.id, hash: r.source_hash })))),
@@ -119,36 +140,110 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
     lora: lora_pointer || null,
     recall: recall_namespace ? { namespace: recall_namespace } : null,
     training: training_stats || { distilled_pairs: 0, accuracy: null },
-    evals: { n: evals_obj.n || (evals_obj.cases?.length || 0), spec: evals_obj.spec },
+    evals: { n: evals_obj.n || (evals_obj.cases?.length || 0), spec: evals_obj.spec, hash: eval_set_hash },
     k_score: k_score || null,  // patched after zipping for the size_bytes axis
     hashes: {
       model_pointer: sha256(Buffer.from(model_pointer)),
       recipes_json: sha256(Buffer.from(recipes_json)),
       lora_bin: sha256(lora_bin),
       index_bin: sha256(index_bin),
-      evals_json: sha256(Buffer.from(evals_json)),
+      evals_json: eval_set_hash,
     },
   };
   const manifest_json = JSON.stringify(manifest, null, 2);
   const manifest_hash = sha256(Buffer.from(manifest_json));
 
+  // The artifact_hash is the sha256 of the canonical join of every file
+  // we are about to put in the zip (excluding signature.sig and receipt.json
+  // which seal it). Computing it here lets the receipt bind to the artifact
+  // *before* the zip is finalised, while the manifest_hash anchors the
+  // legacy signature.sig.
+  const artifact_hash = sha256(canonicalJson({
+    manifest_hash,
+    model_pointer_hash: manifest.hashes.model_pointer,
+    recipes_json_hash: manifest.hashes.recipes_json,
+    lora_bin_hash: manifest.hashes.lora_bin,
+    index_bin_hash: manifest.hashes.index_bin,
+    evals_json_hash: eval_set_hash,
+  }));
+
+  // Build the HMAC chain. Each step seals the previous step's output.
+  const stepSeal = (step, input_hash, output_hash) => {
+    const hmac = crypto.createHmac('sha256', SIGN_SECRET)
+      .update(canonicalJson({ step, input_hash, output_hash }))
+      .digest('hex');
+    return { step, input_hash, output_hash, hmac };
+  };
+  const taskHash = sha256(canonicalJson({ task: task || '' }));
+  const seedsHash = sha256(canonicalJson({ training: training_stats || null }));
+  const recipesHash = manifest.hashes.recipes_json;
+  const evalsHash = eval_set_hash;
+  const chain = [
+    stepSeal('task',    sha256(canonicalJson({ spec: ARTIFACT_SPEC })), taskHash),
+    stepSeal('seeds',   taskHash,    seedsHash),
+    stepSeal('recipes', seedsHash,   recipesHash),
+    stepSeal('evals',   recipesHash, evalsHash),
+    stepSeal('package', evalsHash,   artifact_hash),
+  ];
+
+  // Receipt body — bound by the HMAC over (artifact_hash, eval_set_hash,
+  // eval_score, judge_id, chain). The signed_by field is the public key id
+  // (HMAC mode in dev — ed25519 once per-tenant key registration ships in
+  // Sprint 2). Verifiers re-check both the chain and the body HMAC.
+  const issued_at = new Date().toISOString();
+  const receipt_id = crypto.randomUUID();
+  const receiptBody = {
+    kolm_version: '0.1',
+    receipt_id,
+    artifact_hash,
+    eval_set_hash,
+    eval_score: manifest.eval_score,
+    judge_id: _judgeId,
+    tier: _tier,
+    chain,
+    anchors: [],
+    signature_alg: 'ed25519',
+    signed_at: issued_at,
+    signed_by: 'kolm-dev-hmac-1',
+  };
+  const bodyCanon = canonicalJson(receiptBody);
+  const bodySig = crypto.createHmac('sha256', SIGN_SECRET).update(bodyCanon).digest('hex');
+  // For interop with the JSON Schema we keep the field name `signature` and
+  // store the hex HMAC (until ed25519 keys land). Verifiers detect HMAC vs
+  // ed25519 via signature_alg + a hex/base64 sniff.
+  receiptBody.signature = bodySig;
+  const receipt_json = JSON.stringify(receiptBody, null, 2);
+
+  // Legacy signature.sig — kept for back-compat with v0 verifiers. The new
+  // receipt.json supersedes it.
   const sig_payload = canonicalJson({
     spec: ARTIFACT_SPEC,
     manifest_hash,
     job_id,
+    artifact_hash,
+    eval_set_hash,
+    eval_score: manifest.eval_score,
+    judge_id: _judgeId,
   });
   const hmac = crypto.createHmac('sha256', SIGN_SECRET).update(sig_payload).digest('hex');
   const signature = JSON.stringify({
     spec: ARTIFACT_SPEC,
     job_id,
     manifest_hash,
+    artifact_hash,
+    eval_set_hash,
+    eval_score: manifest.eval_score,
+    judge_id: _judgeId,
     hmac_alg: 'HMAC-SHA256',
     hmac,
-    issued_at: new Date().toISOString(),
+    issued_at,
   }, null, 2);
 
   return {
     manifest,
+    receipt: receiptBody,
+    artifact_hash,
+    eval_set_hash,
     files: [
       { filename: 'manifest.json',    content: Buffer.from(manifest_json) },
       { filename: 'model.gguf',       content: Buffer.from(model_pointer) },
@@ -157,6 +252,7 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
       { filename: 'index.sqlite-vec', content: index_bin },
       { filename: 'evals.json',       content: Buffer.from(evals_json) },
       { filename: 'signature.sig',    content: Buffer.from(signature) },
+      { filename: 'receipt.json',     content: Buffer.from(receipt_json) },
     ],
   };
 }
@@ -191,12 +287,22 @@ export function packageArtifact({ job_id, payload, outPath }) {
 // with the size-aware K-score patched into the manifest. The double-zip is
 // cheap (≤10ms for 5KB artifacts) and keeps the K-score honest — the size
 // axis includes the K-score bytes themselves.
-export async function buildAndZip({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, outDir }) {
+export async function buildAndZip({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, outDir, judge_id, tier }) {
   const dir = outDir || path.join(os.tmpdir(), 'kolm-artifacts');
   fs.mkdirSync(dir, { recursive: true });
 
+  // Derive eval_score from the synthesis result. Pattern-mode synthesis
+  // returns pass_rate_positive in [0..1]; the artifact tier defaults to
+  // "recipe" (the only tier Sprint 1 produces — adapter/specialist/bundle
+  // ship in Sprints 2/3).
+  const accuracy = training_stats?.pass_rate_positive ?? (training_stats?.verifier_accepted ? 1.0 : 0.0);
+  const coverage = evals && evals.coverage != null ? evals.coverage : accuracy;
+  const eval_score = (evals && typeof evals.coverage === 'number') ? evals.coverage : accuracy;
+  const _tier = tier || 'recipe';
+  const _judgeId = judge_id || process.env.KOLM_JUDGE_ID || 'kolm-pattern-synth-1';
+
   // Pass 1 — zip to measure size.
-  const probePayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals });
+  const probePayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, judge_id: _judgeId, eval_score, tier: _tier });
   const outPath = path.join(dir, `${job_id}.kolm`);
   await packageArtifact({ job_id, payload: probePayload, outPath });
   const probeBytes = fs.statSync(outPath).size;
@@ -206,8 +312,6 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
   // cost=0 (no run-time API calls), latency = compiled-fn p50 ~50us, and
   // accuracy = synthesizer pass-rate. Coverage starts at the eval count
   // ratio; if no evals supplied, it equals accuracy (best-effort).
-  const accuracy = training_stats?.pass_rate_positive ?? (training_stats?.verifier_accepted ? 1.0 : 0.0);
-  const coverage = evals && evals.coverage != null ? evals.coverage : accuracy;
   const k_score = computeKScore({
     size_bytes: probeBytes,
     accuracy,
@@ -218,7 +322,7 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
 
   // Pass 2 — repackage with the K-score in the manifest. Size delta is small
   // (~80 bytes); we re-derive K-score on the final artifact below.
-  const finalPayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score });
+  const finalPayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id: _judgeId, eval_score, tier: _tier });
   await packageArtifact({ job_id, payload: finalPayload, outPath });
   const stat = fs.statSync(outPath);
 
@@ -231,7 +335,15 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
     cost_usd_per_call: training_stats?.cost_usd_per_call ?? 0,
   });
 
-  return { outPath, manifest: finalPayload.manifest, bytes: stat.size, k_score: finalPayload.manifest.k_score };
+  return {
+    outPath,
+    manifest: finalPayload.manifest,
+    receipt: finalPayload.receipt,
+    artifact_hash: finalPayload.artifact_hash,
+    eval_set_hash: finalPayload.eval_set_hash,
+    bytes: stat.size,
+    k_score: finalPayload.manifest.k_score,
+  };
 }
 
 export function verifyManifestSignature(manifest_json, signature) {

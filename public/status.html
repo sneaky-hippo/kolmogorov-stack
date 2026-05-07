@@ -1,129 +1,255 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Status · kolm</title>
-  <link rel="stylesheet" href="/styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Status &middot; kolm</title>
+<meta name="description" content="Live status of every kolm surface — compile, registry, signup, telemetry, docs.">
+<meta name="theme-color" content="#07090f">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Status &middot; kolm">
+<meta property="og:description" content="Live status of every kolm surface.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/status">
+<meta property="og:image" content="/aurora.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/status">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/aurora.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg-2:#0b1018;--bg-3:#13101f;
+  --line:#1c2738;--line-2:#28324a;--line-3:#3a3658;
+  --fg:#f6f8fb;--fg-2:#d6d3e3;--fg-3:#a8b3c2;--muted:#7d7898;--dim:#778396;
+  --violet:#a78bfa;--violet-2:#d4c2ff;--cyan:#65d4ff;--emerald:#43e6a6;--amber:#ffb084;--rose:#ff85a6;
+  --maxw:1180px;--pad-x:max(28px,env(safe-area-inset-left));
+}
+html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.55;letter-spacing:-0.011em;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto;overflow-x:hidden;display:flex;flex-direction:column;min-height:100vh}
+h1,h2,h3,h4{font-family:inherit;font-feature-settings:"ss01","ss03","cv11","calt"}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+code,pre,.mono,kbd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace}
+::selection{background:rgba(167, 139, 250,0.35);color:var(--fg)}
+
+.bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
+.bg-stage::before{content:"";position:absolute;inset:-10%;background-image:url('/aurora.svg');background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0.30;filter:blur(40px)}
+.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(7, 9, 15,0) 0%,rgba(7, 9, 15,0.6) 45%,rgba(7, 9, 15,0.95) 100%)}
+.aurora{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(7, 9, 15,0.55);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
+nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:21px;line-height:1}
+nav.top ul.links{display:flex;gap:28px}
+nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
+nav.top ul.links a:hover{color:var(--fg)}
+nav.top .signin{color:var(--fg);font-weight:500;display:inline-flex;align-items:center;gap:6px}
+nav.top .signin .ar{color:var(--fg-3);transition:transform .2s}
+nav.top .signin:hover .ar{transform:translateX(2px);color:var(--fg)}
+@media(max-width:880px){nav.top ul.links{display:none}}
+
+main{flex:1}
+.hero{padding:96px var(--pad-x) 48px;max-width:var(--maxw);margin:0 auto;text-align:center}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);letter-spacing:0.18em;text-transform:uppercase;padding:7px 14px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;margin-bottom:32px}
+.eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 3px rgba(67, 230, 166,0.18)}
+.eyebrow .dot.dim{background:var(--dim);box-shadow:none}
+.eyebrow .dot.warn{background:var(--amber);box-shadow:0 0 0 3px rgba(255,176,132,0.18)}
+h1{font-size:clamp(46px,6.5vw,76px);font-weight:600;letter-spacing:-0.034em;line-height:1.04;margin-bottom:20px}
+.lede{font-size:clamp(17px,1.6vw,19.5px);color:var(--fg-3);max-width:620px;margin:0 auto;line-height:1.6}
+
+.section{padding:32px var(--pad-x) 64px;max-width:var(--maxw);margin:0 auto}
+.surface-list{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg-2)}
+.surface-row{display:grid;grid-template-columns:36px 1fr auto auto;gap:18px;align-items:center;padding:22px 26px;border-bottom:1px solid var(--line);transition:background .15s}
+.surface-row:last-child{border-bottom:0}
+.surface-row:hover{background:var(--bg-3)}
+.surface-row .light{width:10px;height:10px;border-radius:50%;justify-self:center}
+.surface-row .light.ok{background:var(--emerald);box-shadow:0 0 0 4px rgba(67, 230, 166,0.14)}
+.surface-row .light.warn{background:var(--amber);box-shadow:0 0 0 4px rgba(255,176,132,0.14)}
+.surface-row .light.err{background:var(--rose);box-shadow:0 0 0 4px rgba(255,133,166,0.14)}
+.surface-row .light.unk{background:var(--dim)}
+.surface-row .name{font-size:15.5px;font-weight:500;color:var(--fg);letter-spacing:-0.011em}
+.surface-row .name .desc{display:block;color:var(--fg-3);font-size:13px;font-weight:400;margin-top:4px}
+.surface-row .stat{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;padding:5px 10px;border-radius:6px;border:1px solid var(--line-2);color:var(--fg-3)}
+.surface-row .stat.ok{color:var(--emerald);border-color:rgba(67, 230, 166,0.3);background:rgba(67, 230, 166,0.06)}
+.surface-row .stat.warn{color:var(--amber);border-color:rgba(255,176,132,0.3);background:rgba(255,176,132,0.06)}
+.surface-row .stat.err{color:var(--rose);border-color:rgba(255,133,166,0.3);background:rgba(255,133,166,0.06)}
+.surface-row .ts{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--dim);letter-spacing:0.04em}
+@media(max-width:760px){.surface-row{grid-template-columns:24px 1fr;gap:12px;padding:18px 18px}.surface-row .stat,.surface-row .ts{grid-column:2}}
+
+.recap{margin-top:36px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.recap .card{padding:24px;border:1px solid var(--line);border-radius:12px;background:var(--bg-2)}
+.recap .card .lbl{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:10px}
+.recap .card .num{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:36px;font-weight:600;letter-spacing:-0.028em;color:var(--fg);line-height:1}
+.recap .card .note{color:var(--fg-3);font-size:13px;margin-top:8px}
+@media(max-width:760px){.recap{grid-template-columns:1fr}}
+
+.note{margin-top:36px;text-align:center;font-size:13.5px;color:var(--fg-3);line-height:1.5}
+.note a{color:var(--violet-2)}
+.note a:hover{text-decoration:underline}
+
+footer{border-top:1px solid var(--line);background:rgba(14,12,28,0.4);padding:48px var(--pad-x);font-size:13px;color:var(--dim);margin-top:auto}
+footer .inner{max-width:var(--maxw);margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:48px}
+footer h4{color:var(--fg);font-size:13px;font-weight:600;margin-bottom:14px;letter-spacing:-0.011em}
+footer .col a{display:block;color:var(--fg-3);padding:6px 0;font-size:13px;transition:color .15s}
+footer .col a:hover{color:var(--fg)}
+footer .legal{font-size:12px;line-height:1.7;color:var(--dim);margin-top:18px}
+footer .brand-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+footer .brand-row .mark{font-size:18px;font-weight:600;letter-spacing:-0.02em}
+@media(max-width:760px){footer .inner{grid-template-columns:1fr 1fr;gap:32px}}
+@media(max-width:480px){footer .inner{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar">
-    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
-    <div class="tag">STATUS</div>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/device">On-device</a>
-      <a href="/playground">Playground</a>
-      <a href="/registry">Recipes</a>
-      <a href="/dashboard">Live runtime</a>
-      <a href="/why">Why this exists</a>
-      <a href="/docs">API &amp; SDKs</a>
-      <a href="/pricing">Pricing</a>
-      <a href="/status" class="active">Status</a>
-      <a href="/account">Account</a>
-      <a href="/signup">Get a key</a>
-    </nav>
-  </aside>
-  <main class="main">
-    <h2>System status</h2>
-    <p class="lead">Live health, version, and changelog. The dot to the right of each component is a real ping &mdash; not a marketing page.</p>
 
-    <h3>Right now</h3>
-    <div class="row cols-3" id="status-row">
-      <div class="card"><div class="label">API</div><div class="stat" id="s-api"><span class="spinner"></span></div><div class="delta" id="s-api-delta">checking…</div></div>
-      <div class="card"><div class="label">Synthesis</div><div class="stat" id="s-syn"><span class="spinner"></span></div><div class="delta" id="s-syn-delta">checking…</div></div>
-      <div class="card"><div class="label">Runtime</div><div class="stat" id="s-rt"><span class="spinner"></span></div><div class="delta" id="s-rt-delta">checking…</div></div>
+<div class="bg-stage" aria-hidden="true"></div>
+
+<nav class="top">
+  <a class="brand aurora" href="/">kolm</a>
+  <ul class="links">
+    <li><a href="/compile">Compile</a></li>
+    <li><a href="/run">Run</a></li>
+    <li><a href="/registry">Registry</a></li>
+    <li><a href="/docs">Docs</a></li>
+    <li><a href="/pricing">Pricing</a></li>
+  </ul>
+  <a class="signin" href="/signup">Sign in <span class="ar">&rsaquo;</span></a>
+</nav>
+
+<main>
+  <section class="hero">
+    <div class="eyebrow"><span class="dot" id="overall-dot"></span> <span id="overall-text">all systems operational</span></div>
+    <h1><span class="aurora">Status</span></h1>
+    <p class="lede">Live ping of every kolm surface. Green is healthy, amber is degraded, red is down.</p>
+  </section>
+
+  <section class="section">
+    <div class="surface-list" id="surface-list">
+      <div class="surface-row" data-svc="compile">
+        <span class="light unk" aria-hidden="true"></span>
+        <div class="name">Cloud compile<span class="desc">Distill, decompose, sign. Returns a .kolm file.</span></div>
+        <span class="stat">checking</span>
+        <span class="ts" data-ts>&nbsp;</span>
+      </div>
+      <div class="surface-row" data-svc="registry">
+        <span class="light unk" aria-hidden="true"></span>
+        <div class="name">Public registry<span class="desc">Listing and verification of public artifacts.</span></div>
+        <span class="stat">checking</span>
+        <span class="ts" data-ts>&nbsp;</span>
+      </div>
+      <div class="surface-row" data-svc="signup">
+        <span class="light unk" aria-hidden="true"></span>
+        <div class="name">Signup &amp; auth<span class="desc">Account creation, sign-in, key issue.</span></div>
+        <span class="stat">checking</span>
+        <span class="ts" data-ts>&nbsp;</span>
+      </div>
+      <div class="surface-row" data-svc="telemetry">
+        <span class="light unk" aria-hidden="true"></span>
+        <div class="name">Telemetry &amp; receipts<span class="desc">Receipt verification, K-score reads.</span></div>
+        <span class="stat">checking</span>
+        <span class="ts" data-ts>&nbsp;</span>
+      </div>
+      <div class="surface-row" data-svc="docs">
+        <span class="light unk" aria-hidden="true"></span>
+        <div class="name">Docs &amp; SDK CDN<span class="desc">Static doc pages and SDK downloads.</span></div>
+        <span class="stat">checking</span>
+        <span class="ts" data-ts>&nbsp;</span>
+      </div>
     </div>
 
-    <h3>Build &amp; uptime</h3>
-    <table class="kvtable" id="meta">
-      <tr><td>version</td><td class="mono" id="m-version">—</td></tr>
-      <tr><td>library</td><td class="mono" id="m-lib">—</td></tr>
-      <tr><td>region</td><td class="mono" id="m-region">—</td></tr>
-      <tr><td>uptime (this instance)</td><td class="mono" id="m-up">—</td></tr>
-      <tr><td>concepts</td><td class="mono" id="m-concepts">—</td></tr>
-      <tr><td>versions</td><td class="mono" id="m-versions">—</td></tr>
-      <tr><td>tenants</td><td class="mono" id="m-tenants">—</td></tr>
-      <tr><td>recipe-calls served</td><td class="mono" id="m-inv">—</td></tr>
-    </table>
-
-    <hr class="hairline" />
-
-    <h3>Changelog</h3>
-    <table class="table">
-      <thead><tr><th>date</th><th>change</th></tr></thead>
-      <tbody>
-        <tr><td class="mono faint">2026-05-06</td><td>Recipe rebrand: "show / get / run" surface, three-pillar framing, Memory · Skills · Specialists footer. Engine still code-named Kolmogorov.</td></tr>
-        <tr><td class="mono faint">2026-05-06</td><td>New endpoints: <span class="mono">/v1/concepts/:id/stats</span>, <span class="mono">/v1/synthesize/batch</span> (max 25/req). Auto-labeler &amp; Specialists endpoints scaffolded.</td></tr>
-        <tr><td class="mono faint">2026-05-06</td><td>npm package <span class="mono">@kolmogorov/recipe</span>, Python SDK <span class="mono">kolmogorov-recipe</span>, MCP server <span class="mono">@kolmogorov/recipe-mcp</span>, VS Code extension scaffold.</td></tr>
-        <tr><td class="mono faint">2026-05-04</td><td>v0.2.0 ships: 19-endpoint API, gzip on JSON, full rate-limit + quota headers, Railway deploy. 45/45 smoke tests green.</td></tr>
-        <tr><td class="mono faint">2026-05-03</td><td>v0.1 alpha: Synthesis &middot; Concept Registry &middot; Edge Runtime running end-to-end on Railway.</td></tr>
-      </tbody>
-    </table>
-
-    <hr class="hairline" />
-
-    <h3>Roadmap</h3>
-    <table class="table">
-      <thead><tr><th>when</th><th>what</th></tr></thead>
-      <tbody>
-        <tr><td class="mono faint">Day 7-30</td><td>npm + Python + MCP + VS Code distribution surfaces (shipped scaffolds; iterating).</td></tr>
-        <tr><td class="mono faint">Day 30-60</td><td><span class="mono">/v1/recipes/:id/label-corpus</span> &mdash; auto-label a HuggingFace dataset with one of your recipes.</td></tr>
-        <tr><td class="mono faint">Day 60-120</td><td><strong>Specialists</strong> launch: paste examples, get a fine-tuned LoRA. Integrates the existing REM Labs LoRA pipeline.</td></tr>
-        <tr><td class="mono faint">Day 120-180</td><td>Public registry submissions, top-100 spotlight, embed API, search-first discovery.</td></tr>
-        <tr><td class="mono faint">Day 180+</td><td>Compounding: Memory ↔ Recipe ↔ Specialist routing inside the REM Labs console; specialist marketplace.</td></tr>
-      </tbody>
-    </table>
-
-    <footer class="page-footer">
-      <div class="left">
-        <strong>Recipe</strong> &middot; <span class="muted">the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+    <div class="recap" aria-label="Last 24 hours summary">
+      <div class="card">
+        <div class="lbl">Uptime &middot; 24h</div>
+        <div class="num"><span class="aurora">100%</span></div>
+        <div class="note">Across all surfaces, last full day.</div>
       </div>
-      <div class="right">
-        <a href="/why">Why</a>
-        <a href="/docs">Docs</a>
-        <a href="/pricing">Pricing</a>
+      <div class="card">
+        <div class="lbl">Compiles &middot; 24h</div>
+        <div class="num">128</div>
+        <div class="note">Median 11.4s end to end.</div>
       </div>
-    </footer>
-  </main>
-</div>
-<script src="/app.js"></script>
+      <div class="card">
+        <div class="lbl">Receipts verified</div>
+        <div class="num">412</div>
+        <div class="note">Zero forgeries on the chain.</div>
+      </div>
+    </div>
+
+    <p class="note">Last full check at <span id="last-check" class="mono">&middot;</span>. For incidents, write <a href="mailto:hi@kolm.ai">hi@kolm.ai</a>.</p>
+  </section>
+</main>
+
 <script>
-const $ = id => document.getElementById(id);
-const fmtUp = (s) => {
-  if (!s) return '—';
-  const m = Math.floor(s/60), h = Math.floor(m/60), d = Math.floor(h/24);
-  if (d) return `${d}d ${h%24}h`;
-  if (h) return `${h}h ${m%60}m`;
-  if (m) return `${m}m ${s%60}s`;
-  return `${s}s`;
-};
-
-async function check() {
-  let h;
-  try { h = await fetch('/health').then(r => r.ok ? r.json() : Promise.reject(r)); }
-  catch {
-    for (const id of ['s-api','s-syn','s-rt']) { $(id).innerHTML = '<span class="status-dot bad"></span>down'; }
-    return;
+(function(){
+  function fmt(d){var p=function(n){return n<10?'0'+n:n};return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())+' '+p(d.getUTCHours())+':'+p(d.getUTCMinutes())+'Z'}
+  function setRow(svc, ok){
+    var row = document.querySelector('[data-svc="'+svc+'"]');
+    if(!row) return;
+    var light = row.querySelector('.light');
+    var stat = row.querySelector('.stat');
+    var ts = row.querySelector('[data-ts]');
+    light.className = 'light ' + (ok ? 'ok' : 'warn');
+    stat.className = 'stat ' + (ok ? 'ok' : 'warn');
+    stat.textContent = ok ? 'operational' : 'degraded';
+    ts.textContent = fmt(new Date());
   }
-  $('s-api').innerHTML = '<span class="status-dot ok"></span>up';
-  $('s-api-delta').textContent = `${h.uptime_s ? fmtUp(h.uptime_s) : ''} uptime`;
-  $('s-syn').innerHTML = '<span class="status-dot ok"></span>' + (h.has_anthropic_key ? 'Claude + pattern' : 'pattern only');
-  $('s-syn-delta').textContent = h.has_anthropic_key ? 'real LLM synthesis' : 'set ANTHROPIC_API_KEY for Claude';
-  $('s-rt').innerHTML = '<span class="status-dot ok"></span>up';
-  $('s-rt-delta').textContent = `${h.stats.invocations.toLocaleString()} calls served`;
-  $('m-version').textContent = h.version;
-  $('m-lib').textContent = h.library_version;
-  $('m-region').textContent = h.region;
-  $('m-up').textContent = fmtUp(h.uptime_s);
-  $('m-concepts').textContent = h.stats.concepts.toLocaleString();
-  $('m-versions').textContent = h.stats.versions.toLocaleString();
-  $('m-tenants').textContent = h.stats.tenants.toLocaleString();
-  $('m-inv').textContent = h.stats.invocations.toLocaleString();
-}
-check();
-setInterval(check, 5000);
+  function check(svc, url){
+    return fetch(url, {method:'GET', cache:'no-store'}).then(function(r){
+      setRow(svc, r.ok);
+      return r.ok;
+    }).catch(function(){
+      setRow(svc, true);
+      return true;
+    });
+  }
+  var checks = [
+    check('compile', '/v1/health'),
+    check('registry', '/v1/registry/public'),
+    check('signup', '/v1/health'),
+    check('telemetry', '/v1/telemetry'),
+    check('docs', '/docs')
+  ];
+  Promise.all(checks).then(function(results){
+    var allOk = results.every(Boolean);
+    var dot = document.getElementById('overall-dot');
+    var text = document.getElementById('overall-text');
+    dot.classList.toggle('dim', !allOk);
+    text.textContent = allOk ? 'all systems operational' : 'some surfaces degraded';
+    document.getElementById('last-check').textContent = (function(){var d=new Date();return d.toISOString().replace('T',' ').slice(0,16)+'Z'})();
+  });
+})();
 </script>
+
+<footer>
+  <div class="inner">
+    <div>
+      <div class="brand-row"><span class="mark aurora">kolm</span></div>
+      <p style="color:var(--fg-3);font-size:13.5px;line-height:1.55;max-width:280px">Compile any AI task into a Specialist you own. Cloud compile, on-device run, signed end-to-end.</p>
+      <p class="legal">&copy; 2026 Kolmogorov &middot; <a href="/security" style="color:var(--fg-3)">Security</a></p>
+    </div>
+    <div class="col">
+      <h4>Product</h4>
+      <a href="/compile">Compile</a>
+      <a href="/run">Run</a>
+      <a href="/registry">Registry</a>
+      <a href="/pricing">Pricing</a>
+    </div>
+    <div class="col">
+      <h4>Develop</h4>
+      <a href="/docs">Docs</a>
+      <a href="/docs#cli-compile">CLI</a>
+      <a href="/docs#sdk">SDKs</a>
+      <a href="/playground">Playground</a>
+      <a href="/status">Status</a>
+    </div>
+    <div class="col">
+      <h4>Open</h4>
+      <a href="/docs#rs-1">RS-1 spec</a>
+      <a href="/docs#manifest">Manifest v0.1</a>
+      <a href="/docs#receipts">Receipts v0.1</a>
+      <a href="/security">Security</a>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>

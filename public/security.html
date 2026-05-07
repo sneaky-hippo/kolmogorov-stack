@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Security · kolm</title>
+<meta name="description" content="kolm security policy. Encryption at rest, TLS in transit, signed artifacts, responsible disclosure, SOC 2 Type I in-flight.">
+<meta name="theme-color" content="#07090f">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://kolm.ai/security">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/aurora.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg-2:#0b1018;--bg-3:#13101f;
+  --line:#1c2738;--line-2:#28324a;--line-3:#3a3658;
+  --fg:#f6f8fb;--fg-2:#d6d3e3;--fg-3:#a8b3c2;--muted:#7d7898;--dim:#778396;
+  --violet:#a78bfa;--violet-2:#d4c2ff;--cyan:#65d4ff;--emerald:#43e6a6;
+  --maxw:1180px;--pad-x:max(28px,env(safe-area-inset-left));
+}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;letter-spacing:-0.011em;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto;overflow-x:hidden;position:relative}
+h1,h2,h3,h4{font-family:inherit;font-feature-settings:"ss01","ss03","cv11","calt"}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace;font-size:0.92em;color:var(--violet-2);background:rgba(167, 139, 250,0.08);padding:1px 6px;border-radius:4px;border:1px solid rgba(167, 139, 250,0.2)}
+
+.bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
+.bg-stage::before{content:"";position:absolute;inset:-10%;background-image:url('/aurora.svg');background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0.22;filter:blur(40px)}
+.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(7, 9, 15,0) 0%,rgba(7, 9, 15,0.7) 45%,rgba(7, 9, 15,0.97) 100%)}
+.aurora{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(7, 9, 15,0.62);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
+nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:21px;line-height:1}
+nav.top ul.links{display:flex;gap:28px}
+nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
+nav.top ul.links a:hover,nav.top ul.links a.active{color:var(--fg)}
+nav.top .signin{color:var(--fg);font-weight:500}
+nav.top .signin .ar{color:var(--fg-3);margin-left:4px}
+@media(max-width:880px){nav.top ul.links{display:none}}
+
+main{max-width:760px;margin:0 auto;padding:64px var(--pad-x) 96px}
+.head{margin-bottom:48px}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);letter-spacing:0.16em;text-transform:uppercase;padding:6px 13px;border-radius:6px;background:linear-gradient(180deg,rgba(167, 139, 250,0.10),rgba(167, 139, 250,0.04));border:1px solid rgba(167, 139, 250,0.22);margin-bottom:22px}
+.eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 3px rgba(67, 230, 166,0.18)}
+h1{font-size:clamp(34px,4.4vw,52px);font-weight:600;letter-spacing:-0.030em;line-height:1.05;margin-bottom:14px}
+.lede{color:var(--fg-3);font-size:16.5px;line-height:1.6;max-width:600px}
+
+section{padding:36px 0;border-top:1px solid var(--line)}
+section h2{font-size:22px;font-weight:600;letter-spacing:-0.022em;margin-bottom:14px}
+section h3{font-size:15.5px;font-weight:600;letter-spacing:-0.014em;margin:22px 0 8px;color:var(--fg-2)}
+section p{color:var(--fg-2);margin-bottom:14px}
+section ul.bullets{margin:0 0 14px;padding-left:0}
+section ul.bullets li{padding:5px 0 5px 22px;position:relative;color:var(--fg-2)}
+section ul.bullets li::before{content:"";position:absolute;left:6px;top:14px;width:5px;height:5px;border-radius:50%;background:var(--violet)}
+
+.cta-mail{margin-top:36px;padding:18px 22px;background:rgba(167, 139, 250,0.06);border:1px solid rgba(167, 139, 250,0.25);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.cta-mail h3{font-size:15px;font-weight:600;margin-bottom:4px}
+.cta-mail p{color:var(--fg-3);font-size:13.5px;margin:0}
+.cta-mail a{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:#fff;color:#07090f;border-radius:8px;font-weight:500;font-size:13.5px}
+
+.compliance{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
+@media(max-width:640px){.compliance{grid-template-columns:1fr}}
+.compliance .badge{padding:18px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px}
+.compliance .badge .lbl{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10.5px;color:var(--dim);letter-spacing:0.16em;text-transform:uppercase;margin-bottom:8px}
+.compliance .badge .v{font-size:15px;font-weight:600;color:var(--fg);margin-bottom:4px}
+.compliance .badge .n{color:var(--fg-3);font-size:12.5px}
+.compliance .badge.live .v{color:var(--emerald)}
+
+footer{border-top:1px solid var(--line);background:rgba(14,12,28,0.4);padding:48px var(--pad-x) 40px;margin-top:80px}
+footer .inner{max-width:var(--maxw);margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:36px}
+@media(max-width:760px){footer .inner{grid-template-columns:1fr 1fr;gap:28px}}
+footer .mark{font-size:18px;font-weight:600;letter-spacing:-0.025em;margin-bottom:10px;display:inline-block}
+footer .legal{color:var(--dim);font-size:12px;margin-top:14px}
+footer h4{color:var(--fg-2);font-size:12.5px;font-weight:600;letter-spacing:-0.011em;margin-bottom:12px}
+footer .col a{display:block;color:var(--fg-3);font-size:13px;padding:5px 0;transition:color .15s}
+footer .col a:hover{color:var(--fg)}
+</style>
+</head>
+<body>
+
+<div class="bg-stage" aria-hidden="true"></div>
+
+<nav class="top">
+  <a class="brand aurora" href="/">kolm</a>
+  <ul class="links">
+    <li><a href="/compile">Compile</a></li>
+    <li><a href="/run">Run</a></li>
+    <li><a href="/registry">Registry</a></li>
+    <li><a href="/docs">Docs</a></li>
+    <li><a href="/pricing">Pricing</a></li>
+  </ul>
+  <a class="signin" href="/signup">Sign in <span class="ar">&rsaquo;</span></a>
+</nav>
+
+<main>
+  <section class="head" style="border-top:0;padding-top:0">
+    <span class="eyebrow"><span class="dot"></span> Security policy</span>
+    <h1>How kolm protects you.</h1>
+    <p class="lede">Plain-language summary of what we encrypt, where it lives, who can read it, and how to report a vulnerability.</p>
+  </section>
+
+  <section>
+    <h2>What we hold</h2>
+    <p>The minimum needed to run your compiles.</p>
+    <ul class="bullets">
+      <li>Email + password hash (scrypt, memory-hard).</li>
+      <li>Your model API keys, encrypted with AES-256-GCM at rest. Decrypted only inside the compile process, never logged.</li>
+      <li>Your recall corpus, encrypted at rest in our managed index. Free / Mobile / Pro can opt in to on-device-only with sqlite-vec.</li>
+      <li>Compile receipts (HMAC chain over artifact hashes &mdash; no payload).</li>
+    </ul>
+    <p>We do not hold: your model bills, your raw prompts after compile, the contents of your <code>.kolm</code> artifacts after delivery.</p>
+  </section>
+
+  <section>
+    <h2>How we sign</h2>
+    <p>Every <code>.kolm</code> artifact ships an HMAC-SHA256 chain that anchors:</p>
+    <ul class="bullets">
+      <li>The base model SHA-256.</li>
+      <li>The LoRA delta SHA-256.</li>
+      <li>The recipe pack SHA-256 + RS-1 version.</li>
+      <li>The recall index SHA-256.</li>
+      <li>The compile manifest hash.</li>
+      <li>The signing timestamp.</li>
+    </ul>
+    <p>Verification is local, offline, and free. Any tampered byte breaks the chain and the artifact refuses to load. See <a href="/docs#receipts" style="color:var(--violet-2)">Receipts spec</a>.</p>
+  </section>
+
+  <section>
+    <h2>Transport</h2>
+    <p>All traffic to <code>kolm.ai</code> uses TLS 1.3 with HSTS. The CLI pins our public key for <code>/v1/compile</code> and <code>/v1/recall</code>.</p>
+  </section>
+
+  <section>
+    <h2>Compliance</h2>
+    <div class="compliance">
+      <div class="badge live"><div class="lbl">SOC 2 Type I</div><div class="v">In-flight</div><div class="n">Audit Q4 2026</div></div>
+      <div class="badge"><div class="lbl">SOC 2 Type II</div><div class="v">Q2 2027</div><div class="n">Continuous</div></div>
+      <div class="badge"><div class="lbl">GDPR / CCPA</div><div class="v">Compliant</div><div class="n">Data export &amp; delete</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Responsible disclosure</h2>
+    <p>If you believe you've found a vulnerability, please email us before publishing. We respond within 24 hours and will credit you publicly (with permission) once fixed.</p>
+    <ul class="bullets">
+      <li><strong>In scope:</strong> kolm.ai, *.kolm.ai, the CLI, every published SDK, the registry signing chain.</li>
+      <li><strong>Out of scope:</strong> social engineering, denial-of-service against shared infra, and anything that requires an authenticated account on someone else's tenant.</li>
+      <li><strong>Bounty:</strong> we pay $250&ndash;$5,000 for valid reports, scaled by severity.</li>
+    </ul>
+    <div class="cta-mail">
+      <div>
+        <h3>Report a vulnerability</h3>
+        <p>Encrypted preferred. PGP key on request.</p>
+      </div>
+      <a href="mailto:security@kolm.ai">security@kolm.ai &rsaquo;</a>
+    </div>
+  </section>
+
+  <section>
+    <h2>Account deletion</h2>
+    <p>From <a href="/account" style="color:var(--violet-2)">/account</a> you can delete your account and cascade-delete every artifact, recall vector, and receipt. The wipe is irreversible. Refunds for the current billing period are pro-rated.</p>
+  </section>
+
+  <section>
+    <h2>Data location</h2>
+    <p>Compute and storage live in <code>us-east-1</code> by default. Pro and Enterprise tiers can pin to <code>eu-west-1</code> or <code>ap-southeast-1</code>; Enterprise can also run the full stack on-prem.</p>
+  </section>
+</main>
+
+<footer>
+  <div class="inner">
+    <div>
+      <span class="mark aurora">kolm</span>
+      <p style="color:var(--fg-3);font-size:13.5px;line-height:1.55;max-width:280px">The AI compiler. Type a task. Compile a small signed specialist. Run it on every device offline.</p>
+      <p class="legal">&copy; 2026 Kolmogorov. <a href="/security" style="color:var(--fg-3)">Security</a></p>
+    </div>
+    <div class="col"><h4>Product</h4><a href="/compile">Compile</a><a href="/run">Run</a><a href="/registry">Registry</a><a href="/pricing">Pricing</a></div>
+    <div class="col"><h4>Develop</h4><a href="/docs">Docs</a><a href="/docs#cli-compile">CLI</a><a href="/docs#sdk">SDKs</a><a href="/playground">Playground</a></div>
+    <div class="col"><h4>Open</h4><a href="/docs#rs-1">RS-1 spec</a><a href="/docs#manifest">Manifest</a><a href="/docs#receipts">Receipts</a><a href="/security">Security</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

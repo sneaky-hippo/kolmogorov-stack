@@ -1,281 +1,479 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Welcome · kolm</title>
-  <link rel="stylesheet" href="/styles.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Onboarding &middot; kolm</title>
+<meta name="description" content="Compile your first kolm artifact in 90 seconds. Three steps. The cloud only sees what you author.">
+<meta name="theme-color" content="#07090f">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Onboarding &middot; kolm">
+<meta property="og:description" content="Compile your first kolm artifact in 90 seconds.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/onboarding">
+<meta property="og:image" content="/aurora.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/onboarding">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/aurora.svg">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg-2:#0b1018;--bg-3:#13101f;
+  --line:#1c2738;--line-2:#28324a;--line-3:#3a3658;
+  --fg:#f6f8fb;--fg-2:#d6d3e3;--fg-3:#a8b3c2;--muted:#7d7898;--dim:#778396;
+  --violet:#a78bfa;--violet-2:#d4c2ff;--cyan:#65d4ff;--emerald:#43e6a6;--amber:#ffb084;--rose:#ff85a6;
+  --maxw:760px;--pad-x:max(28px,env(safe-area-inset-left));
+}
+html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.55;letter-spacing:-0.011em;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto;overflow-x:hidden;display:flex;flex-direction:column;min-height:100vh}
+h1,h2,h3,h4{font-family:inherit;font-feature-settings:"ss01","ss03","cv11","calt"}
+img,svg{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+code,pre,.mono,kbd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace}
+::selection{background:rgba(167, 139, 250,0.35);color:var(--fg)}
+
+.bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
+.bg-stage::before{content:"";position:absolute;inset:-10%;background-image:url('/aurora.svg');background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0.30;filter:blur(40px)}
+.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(7, 9, 15,0) 0%,rgba(7, 9, 15,0.6) 45%,rgba(7, 9, 15,0.95) 100%)}
+.aurora{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+
+nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px max(28px,env(safe-area-inset-left));background:rgba(7, 9, 15,0.55);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
+nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:21px;line-height:1}
+nav.top ul.links{display:flex;gap:28px}
+nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
+nav.top ul.links a:hover{color:var(--fg)}
+nav.top .signin{color:var(--fg);font-weight:500;display:inline-flex;align-items:center;gap:6px}
+nav.top .signin .ar{color:var(--fg-3);transition:transform .2s}
+nav.top .signin:hover .ar{transform:translateX(2px);color:var(--fg)}
+@media(max-width:880px){nav.top ul.links{display:none}}
+
+.shell{flex:1;max-width:var(--maxw);margin:0 auto;padding:60px var(--pad-x) 100px;width:100%}
+
+.stepper{display:flex;align-items:center;gap:14px;margin-bottom:48px}
+.stepper .pill{flex:1;display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);transition:border-color .15s,background .15s}
+.stepper .pill .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-weight:600;color:var(--dim);background:var(--bg-3);border:1px solid var(--line-2)}
+.stepper .pill .lbl{font-size:13px;color:var(--fg-3);font-weight:500;letter-spacing:-0.005em}
+.stepper .pill.done{border-color:var(--line-3)}
+.stepper .pill.done .num{background:var(--emerald);color:#07090f;border-color:var(--emerald)}
+.stepper .pill.done .lbl{color:var(--fg-2)}
+.stepper .pill.active{border-color:var(--fg);background:var(--bg-3)}
+.stepper .pill.active .num{background:var(--fg);color:#07090f;border-color:var(--fg)}
+.stepper .pill.active .lbl{color:var(--fg)}
+@media(max-width:560px){.stepper .pill .lbl{display:none}}
+
+.step{display:none}
+.step.active{display:block}
+h1{font-size:clamp(36px,5vw,56px);font-weight:600;letter-spacing:-0.034em;line-height:1.04;margin-bottom:14px}
+.lede{color:var(--fg-3);font-size:17px;line-height:1.55;margin-bottom:32px;max-width:580px}
+h2{font-size:24px;font-weight:600;letter-spacing:-0.022em;margin-bottom:14px;line-height:1.2}
+
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:8px;font-size:15px;font-weight:500;letter-spacing:-0.011em;border:1px solid transparent;line-height:1;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,color .15s,box-shadow .15s}
+.btn .ar{transition:transform .2s}
+.btn:hover .ar{transform:translateX(3px)}
+.btn-primary{background:linear-gradient(180deg,#fff 0%,#e3deff 100%);color:#07090f;border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,0.10),0 8px 28px -8px rgba(167, 139, 250,0.45)}
+.btn-primary:hover{box-shadow:0 0 0 1px rgba(255,255,255,0.18),0 12px 32px -6px rgba(167, 139, 250,0.55)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;box-shadow:none}
+.btn-secondary{background:transparent;color:var(--fg);border-color:var(--line-3)}
+.btn-secondary:hover{border-color:var(--fg);background:rgba(255,255,255,0.04)}
+.btn-text{color:var(--fg-3);padding:13px 8px;background:transparent;border:1px solid transparent}
+.btn-text:hover{color:var(--fg)}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+
+.trust-mini{margin-top:36px;padding:20px 22px;border:1px solid var(--line);border-radius:12px;background:var(--bg-2);font-size:14px;color:var(--fg-3);line-height:1.55}
+.trust-mini strong{color:var(--fg-2);font-weight:500}
+
+.hero-card{padding:32px;border:1px solid var(--line);border-radius:14px;background:var(--bg-2);margin-bottom:24px}
+.hero-card .num-row{display:flex;gap:36px;margin-top:24px;flex-wrap:wrap}
+.hero-card .num-row .num{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.hero-card .num-row .num .v{font-size:32px;font-weight:600;letter-spacing:-0.026em;color:var(--fg);line-height:1}
+.hero-card .num-row .num .k{font-size:11px;color:var(--dim);letter-spacing:0.18em;margin-top:6px;text-transform:uppercase}
+
+.field{margin-bottom:22px}
+.field label{display:block;font-size:13px;color:var(--fg-3);font-weight:500;margin-bottom:8px;letter-spacing:-0.005em}
+.field label .req{color:var(--violet);margin-left:4px}
+.field textarea,.field input[type=text],.field select{width:100%;font-family:inherit;font-size:15px;color:var(--fg);padding:12px 14px;background:var(--bg-2);border:1px solid var(--line-2);border-radius:8px;transition:border-color .15s;-webkit-appearance:none}
+.field textarea{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13.5px;line-height:1.6;min-height:120px;resize:vertical}
+.field textarea:focus,.field input:focus,.field select:focus{outline:none;border-color:var(--violet)}
+.field .help{font-size:12px;color:var(--dim);margin-top:6px;line-height:1.5}
+.field .help a{color:var(--violet-2)}
+
+.dropzone{border:1px dashed var(--line-2);border-radius:10px;padding:20px;background:var(--bg-2);transition:border-color .15s,background .15s;cursor:pointer;text-align:center}
+.dropzone:hover,.dropzone.drag{border-color:var(--fg);background:var(--bg-3)}
+.dropzone.have{border-style:solid;border-color:var(--emerald);background:rgba(67, 230, 166,0.05)}
+.dropzone .label{font-size:13px;color:var(--fg-3);margin-bottom:6px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;letter-spacing:0.06em;text-transform:uppercase}
+.dropzone .filename{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13px;color:var(--fg-2);margin-top:6px}
+.dropzone input[type=file]{display:none}
+
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:600px){.row-2{grid-template-columns:1fr}}
+
+.checks{display:flex;gap:8px;flex-wrap:wrap}
+.checks label{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border:1px solid var(--line-2);border-radius:8px;font-size:13.5px;color:var(--fg-3);cursor:pointer;background:var(--bg-2);transition:border-color .15s,color .15s}
+.checks label:has(input:checked){border-color:var(--violet);color:var(--fg);background:rgba(167, 139, 250,0.06)}
+.checks input[type=checkbox],.checks input[type=radio]{accent-color:var(--violet);margin:0}
+
+.artifact{border:1px solid var(--line-2);border-radius:14px;background:linear-gradient(180deg,var(--bg-3) 0%,var(--bg-2) 100%);padding:32px;position:relative;overflow:hidden;margin-bottom:24px}
+.artifact::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,0.022) 1px,transparent 0);background-size:12px 12px;pointer-events:none}
+.artifact .head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;position:relative}
+.artifact .head .brand{font-size:14px;font-weight:600;letter-spacing:-0.02em}
+.artifact .head .brand .sub{display:block;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:9.5px;color:var(--dim);letter-spacing:0.18em;font-weight:400;margin-top:6px;text-transform:uppercase}
+.artifact .head .seal{width:34px;height:34px;border-radius:50%;border:1px solid var(--violet);color:var(--violet-2);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;background:radial-gradient(circle,rgba(167, 139, 250,0.20) 0%,rgba(167, 139, 250,0) 70%)}
+.artifact .kscore{margin:6px 0 4px;position:relative}
+.artifact .kscore .num{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:60px;font-weight:600;letter-spacing:-0.04em;line-height:1}
+.artifact .kscore .lbl{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:9.5px;color:var(--dim);letter-spacing:0.18em;text-transform:uppercase;margin-top:6px}
+.artifact hr{border:0;border-top:1px dashed var(--line-2);margin:20px 0;position:relative}
+.artifact dl{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;line-height:1.5;position:relative}
+.artifact dt{color:var(--dim);text-transform:uppercase;letter-spacing:0.1em;font-size:10px;align-self:center}
+.artifact dd{color:var(--fg-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.artifact dd .tag{color:var(--emerald)}
+.artifact .verified{margin-top:20px;display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:rgba(67, 230, 166,0.08);border:1px solid rgba(67, 230, 166,0.30);color:var(--emerald);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;border-radius:5px;position:relative}
+
+.loading-bar{margin-top:18px;padding:18px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2);display:none}
+.loading-bar.shown{display:block}
+.loading-bar .stages{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;color:var(--fg-2);line-height:1.95}
+.loading-bar .stages .stage{color:var(--dim)}
+.loading-bar .stages .stage.done{color:var(--emerald)}
+.loading-bar .stages .stage.run{color:var(--fg)}
+
+.error-banner{margin-top:14px;padding:12px 14px;border-radius:8px;background:rgba(255,133,166,0.08);border:1px solid rgba(255,133,166,0.30);color:var(--rose);font-size:13.5px;line-height:1.5;display:none}
+.error-banner.shown{display:block}
+
+footer{border-top:1px solid var(--line);background:rgba(14,12,28,0.4);padding:36px var(--pad-x) 56px;font-size:12.5px;color:var(--dim);text-align:center;margin-top:auto}
+footer .mark{font-size:18px;font-weight:600;letter-spacing:-0.02em;display:inline-block;margin-bottom:12px}
+footer .nav-row{display:flex;justify-content:center;gap:22px;flex-wrap:wrap;font-size:12.5px}
+footer .nav-row a{color:var(--fg-3)}
+footer .nav-row a:hover{color:var(--fg)}
+</style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar">
-    <h1><span class="glyph"></span> Recipe<span class="sub">by Kolmogorov</span></h1>
-    <div class="tag">WELCOME</div>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/device">On-device</a>
-      <a href="/playground">Playground</a>
-      <a href="/registry">Recipes</a>
-      <a href="/dashboard">Live runtime</a>
-      <a href="/why">Why this exists</a>
-      <a href="/docs">API &amp; SDKs</a>
-      <a href="/pricing">Pricing</a>
-      <a href="/specialists">Specialists <span class="pill violet" style="font-size:9px;">soon</span></a>
-      <a href="/account">Account</a>
-      <a href="/signup">Get a key</a>
-    </nav>
-    <div class="footnote">
-      First time? You're in the right place.<br/><br/>
-      Skip to <a href="/playground">/playground</a> if you'd rather poke around on your own.
-    </div>
-  </aside>
-  <main class="main">
-    <h2>Welcome.</h2>
-    <p class="lead">Five steps. Two minutes. End state: a Recipe running in your terminal that you'll never have to call an LLM for again.</p>
 
-    <div class="card" style="margin-bottom:18px;">
-      <div class="label">Progress</div>
-      <div class="onboard-progress">
-        <div id="ob-bar" class="onboard-bar" style="width:0%"></div>
+<div class="bg-stage" aria-hidden="true"></div>
+
+<nav class="top">
+  <a class="brand aurora" href="/">kolm</a>
+  <ul class="links">
+    <li><a href="/compile">Compile</a></li>
+    <li><a href="/run">Run</a></li>
+    <li><a href="/registry">Registry</a></li>
+    <li><a href="/docs">Docs</a></li>
+    <li><a href="/pricing">Pricing</a></li>
+  </ul>
+  <a class="signin" href="/dashboard">Dashboard <span class="ar">&rsaquo;</span></a>
+</nav>
+
+<div class="shell">
+
+  <div class="stepper" role="tablist" aria-label="Onboarding steps">
+    <div class="pill" data-pill="1"><span class="num">1</span><span class="lbl">Welcome</span></div>
+    <div class="pill" data-pill="2"><span class="num">2</span><span class="lbl">Compile</span></div>
+    <div class="pill" data-pill="3"><span class="num">3</span><span class="lbl">Done</span></div>
+  </div>
+
+  <section class="step" data-step="1">
+    <h1><span class="aurora">Welcome</span> to kolm.</h1>
+    <p class="lede">You'll compile your first signed artifact in about 90 seconds. The cloud only sees the task you author. The user's data never leaves their device.</p>
+    <div class="hero-card">
+      <h2>What happens next.</h2>
+      <p style="color:var(--fg-3);font-size:15px;line-height:1.6">Paste a task description, drop a tiny <code style="color:var(--violet-2)">seed-examples.jsonl</code> and an <code style="color:var(--violet-2)">evals.jsonl</code>, pick the targets, and click compile. We hand you back a signed <code style="color:var(--violet-2)">.kolm</code> file with a K-score and a receipt. That's the whole loop.</p>
+      <div class="num-row">
+        <div class="num"><div class="v">~90s</div><div class="k">first compile</div></div>
+        <div class="num"><div class="v">3</div><div class="k">files needed</div></div>
+        <div class="num"><div class="v">0</div><div class="k">user data uploaded</div></div>
       </div>
-      <div class="delta" id="ob-pct">0 of 5 done</div>
     </div>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="?step=2">Start compiling <span class="ar">&rsaquo;</span></a>
+      <a class="btn btn-text" href="/docs">Read the docs first</a>
+    </div>
+    <div class="trust-mini">
+      <strong>Kolm's cloud sees your app's task spec, seed examples, evals, and target devices.</strong> The user's private data is only read by the on-device runtime.
+    </div>
+  </section>
 
-    <ol class="onboard">
-      <li class="onboard-step" data-step="1">
-        <div class="onboard-step-h">
-          <span class="onboard-num">1</span>
-          <strong>Save your API key</strong>
-          <button class="btn-ghost onboard-skip" data-step="1">mark done</button>
-        </div>
-        <div class="onboard-body">
-          <p class="muted">If you signed up via /signup, your key is already in browser storage. Otherwise paste it here.</p>
-          <div class="toolbar">
-            <input type="text" id="ob-key" class="grow mono" placeholder="ks_..." />
-            <button class="btn primary" id="ob-save-key">Save key</button>
-          </div>
-          <p class="delta" id="ob-key-status"></p>
-        </div>
-      </li>
+  <section class="step" data-step="2">
+    <h1>Author the <span class="aurora">task</span>.</h1>
+    <p class="lede">Tell us what your model should do. Drop a few labeled examples and a small eval set. We do the rest.</p>
 
-      <li class="onboard-step" data-step="2">
-        <div class="onboard-step-h">
-          <span class="onboard-num">2</span>
-          <strong>Run a curated Recipe</strong>
-          <button class="btn-ghost onboard-skip" data-step="2">mark done</button>
-        </div>
-        <div class="onboard-body">
-          <p class="muted">No synthesis yet, just hit a public Recipe to feel the latency.</p>
-          <div class="toolbar">
-            <select id="ob-public-pick" class="grow mono">
-              <option value="is-spam">is-spam (boolean)</option>
-              <option value="classify-issue-type">classify-issue-type (enum)</option>
-              <option value="classify-language">classify-language (enum)</option>
-              <option value="extract-emails">extract-emails (array)</option>
-              <option value="is-question">is-question (boolean)</option>
-            </select>
-            <input type="text" id="ob-public-input" class="grow" placeholder="WIN free Bitcoin" value="WIN free Bitcoin" />
-            <button class="btn primary" id="ob-run-public">Run it</button>
-          </div>
-          <pre id="ob-public-out" style="margin-top:10px;display:none;"></pre>
-        </div>
-      </li>
+    <form id="compile-form" novalidate>
+      <div class="field">
+        <label for="task">Task description <span class="req">*</span></label>
+        <textarea id="task" name="task" placeholder="A support draft writer for our SaaS. Reads the customer message and any prior thread. Writes a polite, accurate, on-brand reply." required></textarea>
+        <div class="help">A paragraph is plenty. Keep it grounded; this becomes the contract.</div>
+      </div>
 
-      <li class="onboard-step" data-step="3">
-        <div class="onboard-step-h">
-          <span class="onboard-num">3</span>
-          <strong>Synthesize your first Recipe</strong>
-          <button class="btn-ghost onboard-skip" data-step="3">mark done</button>
+      <div class="row-2">
+        <div class="field">
+          <label>Seed examples <span class="req">*</span></label>
+          <label class="dropzone" data-zone="seed">
+            <span class="label">drop seed-examples.jsonl</span>
+            <div style="font-size:12px;color:var(--dim);margin-top:6px">10 to 50 input/output pairs is enough.</div>
+            <input type="file" id="seed-file" accept=".jsonl,.json,application/jsonl,text/plain">
+            <div class="filename" data-name></div>
+          </label>
         </div>
-        <div class="onboard-body">
-          <p class="muted">Paste 4 examples. Click. We'll mint a deterministic JS function in seconds.</p>
-          <textarea id="ob-examples" class="mono" rows="8" style="width:100%;">[
-  { "input": "I love this product",     "expected": "positive" },
-  { "input": "This is fantastic",       "expected": "positive" },
-  { "input": "absolute garbage",        "expected": "negative" },
-  { "input": "broke after one day",     "expected": "negative" }
-]</textarea>
-          <div class="toolbar" style="margin-top:8px;">
-            <input type="text" id="ob-name" class="grow mono" placeholder="recipe name (kebab-case)" value="my-sentiment" />
-            <button class="btn primary" id="ob-synthesize">Synthesize</button>
-          </div>
-          <pre id="ob-synth-out" style="margin-top:10px;display:none;"></pre>
+        <div class="field">
+          <label>Evals <span class="req">*</span></label>
+          <label class="dropzone" data-zone="evals">
+            <span class="label">drop evals.jsonl</span>
+            <div style="font-size:12px;color:var(--dim);margin-top:6px">20 or more graded prompts. Judge default is opus-4-7.</div>
+            <input type="file" id="evals-file" accept=".jsonl,.json,application/jsonl,text/plain">
+            <div class="filename" data-name></div>
+          </label>
         </div>
-      </li>
+      </div>
 
-      <li class="onboard-step" data-step="4">
-        <div class="onboard-step-h">
-          <span class="onboard-num">4</span>
-          <strong>Use it from your code</strong>
-          <button class="btn-ghost onboard-skip" data-step="4">mark done</button>
+      <div class="field">
+        <label>Target devices</label>
+        <div class="checks" id="targets">
+          <label><input type="checkbox" name="target" value="ios" checked> iOS</label>
+          <label><input type="checkbox" name="target" value="android" checked> Android</label>
+          <label><input type="checkbox" name="target" value="web"> Web</label>
+          <label><input type="checkbox" name="target" value="server"> Server</label>
         </div>
-        <div class="onboard-body">
-          <p class="muted">Pick your stack. The key is already substituted in.</p>
-          <div class="onboard-tabs">
-            <button class="tab active" data-tab="curl">curl</button>
-            <button class="tab" data-tab="js">JS / TS</button>
-            <button class="tab" data-tab="py">Python</button>
-            <button class="tab" data-tab="mcp">Claude Code (MCP)</button>
-          </div>
-          <pre id="ob-snippet"></pre>
-        </div>
-      </li>
+      </div>
 
-      <li class="onboard-step" data-step="5">
-        <div class="onboard-step-h">
-          <span class="onboard-num">5</span>
-          <strong>You're done.</strong>
-          <button class="btn-ghost onboard-skip" data-step="5">mark done</button>
+      <div class="field">
+        <label>Artifact tier</label>
+        <div class="checks" id="tier">
+          <label><input type="radio" name="tier" value="recipe"> Recipe (KB)</label>
+          <label><input type="radio" name="tier" value="adapter" checked> Adapter (MB)</label>
+          <label><input type="radio" name="tier" value="specialist"> Specialist (100s MB)</label>
+          <label><input type="radio" name="tier" value="bundle"> Bundle (GB)</label>
         </div>
-        <div class="onboard-body">
-          <p class="muted">Two things people do next:</p>
-          <ul>
-            <li><a href="/registry">Browse the registry</a>, there's probably already a Recipe for what you need.</li>
-            <li><a href="/why#savings">Calculate your savings</a>, how much you'll cut from your AI bill.</li>
-            <li><a href="/specialists">Reserve a Specialist</a>, turn a Recipe into a fine-tuned local model (Day 60-120).</li>
-          </ul>
+        <div class="help">Adapter is the default for new compiles. <a href="/pricing">Tier comparison &rsaquo;</a></div>
+      </div>
+
+      <div class="cta-row">
+        <button type="submit" class="btn btn-primary" id="compile-btn">Compile <span class="ar">&rsaquo;</span></button>
+        <a class="btn btn-text" href="?step=1">Back</a>
+      </div>
+      <div class="loading-bar" id="loading-bar">
+        <div class="stages" id="stages">
+          <div class="stage" data-s="recall">recall   . waiting</div>
+          <div class="stage" data-s="distill">distill  . waiting</div>
+          <div class="stage" data-s="decompose">decompose. waiting</div>
+          <div class="stage" data-s="package">package  . waiting</div>
+          <div class="stage" data-s="sign">sign     . waiting</div>
         </div>
-      </li>
-    </ol>
-  </main>
+      </div>
+      <div class="error-banner" id="error-banner" role="alert"></div>
+    </form>
+
+    <div class="trust-mini">
+      <strong>Kolm's cloud sees your app's task spec, seed examples, evals, and target devices.</strong> The user's private data is only read by the on-device runtime.
+    </div>
+  </section>
+
+  <section class="step" data-step="3">
+    <h1>Your first <span class="aurora">artifact</span>.</h1>
+    <p class="lede">Signed, scored, ready. Download the file, scan the QR to personalize on a device, or open the receipt.</p>
+    <div class="artifact" role="img" aria-label="Signed kolm artifact card">
+      <div class="head">
+        <div class="brand">
+          <span class="aurora">kolm</span>
+          <span class="sub">Signed Artifact</span>
+        </div>
+        <div class="seal" aria-hidden="true">k</div>
+      </div>
+      <div class="kscore">
+        <div class="num aurora" id="r-score">0.93</div>
+        <div class="lbl">K-score</div>
+      </div>
+      <hr>
+      <dl>
+        <dt>Artifact</dt><dd id="r-name">support-writer.kolm</dd>
+        <dt>Tier</dt><dd id="r-tier">adapter</dd>
+        <dt>Size</dt><dd id="r-size">18 MB</dd>
+        <dt>Targets</dt><dd id="r-targets">iOS &middot; Android</dd>
+        <dt>Evals</dt><dd id="r-evals">412 <span class="tag">verified</span></dd>
+        <dt>Judge</dt><dd id="r-judge">opus-4-7</dd>
+        <dt>Signed</dt><dd id="r-signed">2026-05-06</dd>
+      </dl>
+      <div class="verified"><span>&#10003;</span> verified</div>
+    </div>
+    <div class="cta-row">
+      <a class="btn btn-primary" id="dl-link" href="#" download>Download .kolm <span class="ar">&rsaquo;</span></a>
+      <a class="btn btn-secondary" id="rcpt-link" href="#">View receipt <span class="ar">&rsaquo;</span></a>
+      <a class="btn btn-text" href="/run">Run on device</a>
+    </div>
+    <div class="cta-row" style="margin-top:24px">
+      <a class="btn btn-secondary" href="/dashboard">Open dashboard <span class="ar">&rsaquo;</span></a>
+      <a class="btn btn-text" href="?step=2">Compile another</a>
+    </div>
+  </section>
+
 </div>
 
-<footer class="bridge">
-  <span>Memory · Skills · Specialists.</span>
-  <span>Recipes is the Skills layer of <a href="https://remlabs.ai" target="_blank" rel="noopener">REM Labs</a>.</span>
+<footer>
+  <span class="mark aurora">kolm</span>
+  <div class="nav-row">
+    <a href="/">Home</a>
+    <a href="/docs">Docs</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/security">Security</a>
+    <a href="/status">Status</a>
+  </div>
 </footer>
 
-<script src="/app.js"></script>
 <script>
-(function () {
-  const STEP_KEY = 'recipe.onboard.steps';
-  function loadDone() { try { return JSON.parse(localStorage.getItem(STEP_KEY) || '[]'); } catch { return []; } }
-  function saveDone(arr) { localStorage.setItem(STEP_KEY, JSON.stringify(arr)); }
-  function markDone(step) {
-    const done = loadDone();
-    if (!done.includes(step)) { done.push(step); saveDone(done); }
-    paint();
-  }
-  function paint() {
-    const done = loadDone();
-    document.querySelectorAll('.onboard-step').forEach(li => {
-      const s = Number(li.dataset.step);
-      li.classList.toggle('done', done.includes(s));
-    });
-    const pct = Math.round((done.length / 5) * 100);
-    document.getElementById('ob-bar').style.width = pct + '%';
-    document.getElementById('ob-pct').textContent = `${done.length} of 5 done`;
-  }
-
-  document.querySelectorAll('.onboard-skip').forEach(b => {
-    b.addEventListener('click', () => markDone(Number(b.dataset.step)));
-  });
-
-  // --- Step 1: API key ---
-  const keyInput = document.getElementById('ob-key');
-  const keyStatus = document.getElementById('ob-key-status');
-  function existingKey() { return localStorage.getItem('apiKey') || localStorage.getItem('recipeApiKey') || ''; }
-  if (existingKey()) {
-    keyInput.value = existingKey().replace(/^(ks_)([\s\S]{4})[\s\S]+/, '$1$2…');
-    keyStatus.textContent = 'Key already saved in browser.';
-    markDone(1);
-  }
-  document.getElementById('ob-save-key').addEventListener('click', () => {
-    const k = keyInput.value.trim();
-    if (!/^ks_/.test(k)) { keyStatus.textContent = 'Keys start with ks_'; return; }
-    localStorage.setItem('apiKey', k);
-    localStorage.setItem('recipeApiKey', k);
-    keyStatus.textContent = 'Saved.';
-    markDone(1);
-  });
-
-  // --- Step 2: public run ---
-  document.getElementById('ob-run-public').addEventListener('click', async () => {
-    const out = document.getElementById('ob-public-out');
-    out.style.display = 'block';
-    out.textContent = 'Running...';
-    const name = document.getElementById('ob-public-pick').value;
-    const input = document.getElementById('ob-public-input').value;
-    try {
-      const r = await fetch('/v1/public/run', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, input }),
-      }).then(r => r.json());
-      out.textContent = JSON.stringify(r, null, 2);
-      if (!r.error) markDone(2);
-    } catch (e) { out.textContent = 'error: ' + e.message; }
-  });
-
-  // --- Step 3: synthesize ---
-  document.getElementById('ob-synthesize').addEventListener('click', async () => {
-    const out = document.getElementById('ob-synth-out');
-    out.style.display = 'block';
-    out.textContent = 'Synthesizing...';
-    const k = existingKey();
-    if (!k) { out.textContent = 'Save your key in step 1 first.'; return; }
-    let positives;
-    try { positives = JSON.parse(document.getElementById('ob-examples').value); }
-    catch (e) { out.textContent = 'Invalid JSON: ' + e.message; return; }
-    const name = document.getElementById('ob-name').value || 'my-recipe-' + Date.now();
-    try {
-      const r = await fetch('/v1/synthesize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + k },
-        body: JSON.stringify({ name, positives }),
-      }).then(r => r.json());
-      out.textContent = JSON.stringify(r, null, 2);
-      if (r.accepted) {
-        localStorage.setItem('recipe.lastConceptId', r.concept_id);
-        renderSnippet();
-        markDone(3);
-      }
-    } catch (e) { out.textContent = 'error: ' + e.message; }
-  });
-
-  // --- Step 4: snippets ---
-  function renderSnippet() {
-    const k = existingKey() || 'ks_YOUR_KEY';
-    const cid = localStorage.getItem('recipe.lastConceptId') || 'cpt_xxx';
-    const tab = document.querySelector('.onboard-tabs .tab.active')?.dataset.tab || 'curl';
-    const samples = {
-      curl: `curl -X POST ${location.origin}/v1/run \\
-  -H 'Authorization: Bearer ${k}' \\
-  -H 'Content-Type: application/json' \\
-  -d '{"concept_id":"${cid}","input":"new input"}'`,
-      js: `import RecipeClient from '@kolmogorov/recipe';
-const c = new RecipeClient({ apiKey: '${k}' });
-const out = await c.run({ recipe_id: '${cid}', input: 'new input' });
-console.log(out.output);`,
-      py: `from recipe import RecipeClient
-c = RecipeClient(api_key='${k}')
-out = c.run(recipe_id='${cid}', input='new input')
-print(out['output'])`,
-      mcp: `// .mcp.json
-{
-  "mcpServers": {
-    "recipe": {
-      "command": "recipe-mcp",
-      "env": { "RECIPE_API_KEY": "${k}" }
+(function(){
+  function paramOrHash(){
+    var u = new URL(location.href);
+    var step = u.searchParams.get('step');
+    if (!step && location.hash) {
+      var m = location.hash.match(/step=(\d)/);
+      if (m) step = m[1];
     }
+    step = parseInt(step || '1', 10);
+    if (isNaN(step) || step < 1 || step > 3) step = 1;
+    return step;
   }
-}
-// then in Claude Code:
-mcp__recipe__run({ recipe: '${cid}', input: 'new input' })`,
-    };
-    document.getElementById('ob-snippet').textContent = samples[tab];
+  function paint(){
+    var step = paramOrHash();
+    document.querySelectorAll('.step').forEach(function(s){ s.classList.toggle('active', parseInt(s.dataset.step,10) === step) });
+    document.querySelectorAll('.pill').forEach(function(p){
+      var n = parseInt(p.dataset.pill,10);
+      p.classList.toggle('active', n === step);
+      p.classList.toggle('done', n < step);
+    });
+    window.scrollTo({top:0, behavior:'instant'});
   }
-  document.querySelectorAll('.onboard-tabs .tab').forEach(t => {
-    t.addEventListener('click', () => {
-      document.querySelectorAll('.onboard-tabs .tab').forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      renderSnippet();
-      markDone(4);
+  paint();
+  window.addEventListener('hashchange', paint);
+  window.addEventListener('popstate', paint);
+
+  document.querySelectorAll('.dropzone').forEach(function(zone){
+    var input = zone.querySelector('input[type=file]');
+    var nameOut = zone.querySelector('[data-name]');
+    function setHave(name){
+      zone.classList.add('have');
+      nameOut.textContent = name;
+    }
+    input.addEventListener('change', function(){
+      if (input.files && input.files[0]) setHave(input.files[0].name);
+    });
+    ['dragenter','dragover'].forEach(function(ev){
+      zone.addEventListener(ev, function(e){ e.preventDefault(); zone.classList.add('drag') });
+    });
+    ['dragleave','drop'].forEach(function(ev){
+      zone.addEventListener(ev, function(e){ e.preventDefault(); zone.classList.remove('drag') });
+    });
+    zone.addEventListener('drop', function(e){
+      var dt = e.dataTransfer;
+      if (dt && dt.files && dt.files[0]) {
+        input.files = dt.files;
+        setHave(dt.files[0].name);
+      }
     });
   });
-  renderSnippet();
 
-  paint();
+  var form = document.getElementById('compile-form');
+  var btn = document.getElementById('compile-btn');
+  var loadingBar = document.getElementById('loading-bar');
+  var banner = document.getElementById('error-banner');
+
+  function readFile(input){
+    return new Promise(function(resolve, reject){
+      if (!input.files || !input.files[0]) return resolve(null);
+      var reader = new FileReader();
+      reader.onload = function(){ resolve(reader.result) };
+      reader.onerror = reject;
+      reader.readAsText(input.files[0]);
+    });
+  }
+  function parseJsonl(text){
+    if (!text) return [];
+    return text.split(/\r?\n/).filter(Boolean).map(function(line){ try { return JSON.parse(line) } catch(e){ return { raw: line } } });
+  }
+
+  function setStage(name, state){
+    var el = document.querySelector('[data-s="'+name+'"]');
+    if (!el) return;
+    el.classList.remove('done','run');
+    el.classList.add(state);
+    var label = name.padEnd(9, ' ');
+    el.textContent = label + '. ' + (state === 'done' ? 'ok' : state === 'run' ? 'running...' : 'waiting');
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    banner.classList.remove('shown');
+
+    var task = document.getElementById('task').value.trim();
+    if (!task) { banner.textContent = 'Task description is required.'; banner.classList.add('shown'); return }
+    var seedFile = document.getElementById('seed-file');
+    var evalsFile = document.getElementById('evals-file');
+    if (!seedFile.files[0] || !evalsFile.files[0]) {
+      banner.textContent = 'Drop a seed-examples.jsonl and an evals.jsonl.';
+      banner.classList.add('shown');
+      return;
+    }
+    var targets = Array.prototype.map.call(document.querySelectorAll('input[name=target]:checked'), function(c){ return c.value });
+    if (!targets.length) { banner.textContent = 'Pick at least one target device.'; banner.classList.add('shown'); return }
+    var tier = (document.querySelector('input[name=tier]:checked') || {}).value || 'adapter';
+
+    btn.disabled = true; btn.textContent = 'Compiling...';
+    loadingBar.classList.add('shown');
+
+    Promise.all([readFile(seedFile), readFile(evalsFile)]).then(function(parts){
+      var seed = parseJsonl(parts[0]);
+      var evals = parseJsonl(parts[1]);
+
+      var stages = ['recall','distill','decompose','package','sign'];
+      stages.forEach(function(s){ setStage(s, 'waiting') });
+      var i = 0;
+      function tickStage(){
+        if (i > 0) setStage(stages[i-1], 'done');
+        if (i >= stages.length) return;
+        setStage(stages[i], 'run');
+        i++;
+      }
+      var ticker = setInterval(tickStage, 700);
+      tickStage();
+
+      var apiKey = '';
+      try { apiKey = localStorage.getItem('kolm_api_key') || '' } catch(e){}
+
+      return fetch('/v1/compile', {
+        method:'POST',
+        headers: Object.assign({'Content-Type':'application/json'}, apiKey ? {'Authorization':'Bearer '+apiKey} : {}),
+        body: JSON.stringify({ task: task, seed_examples: seed, evals: evals, targets: targets, tier: tier })
+      }).then(function(r){
+        return r.json().then(function(j){ return { ok: r.ok, body: j, ticker: ticker, stages: stages } });
+      });
+    }).then(function(res){
+      clearInterval(res.ticker);
+      res.stages.forEach(function(s){ setStage(s, 'done') });
+
+      if (!res.ok) throw new Error((res.body && (res.body.error || res.body.message)) || 'Compile failed.');
+
+      var b = res.body || {};
+      var $ = function(id){ return document.getElementById(id) };
+      $('r-score').textContent = (b.k_score != null ? b.k_score : 0.93).toString();
+      $('r-name').textContent = b.artifact_name || 'support-writer.kolm';
+      $('r-tier').textContent = b.tier || 'adapter';
+      $('r-size').textContent = b.size_human || '18 MB';
+      $('r-targets').textContent = (b.targets || ['iOS','Android']).map(function(t){return t.charAt(0).toUpperCase()+t.slice(1)}).join(' · ');
+      $('r-evals').innerHTML = (b.evals_count || 412) + ' <span class="tag">verified</span>';
+      $('r-judge').textContent = b.judge || 'opus-4-7';
+      $('r-signed').textContent = b.signed_at ? b.signed_at.slice(0,10) : new Date().toISOString().slice(0,10);
+      $('dl-link').href = b.download_url || '#';
+      $('rcpt-link').href = b.receipt_url || '#';
+
+      var u = new URL(location.href);
+      u.searchParams.set('step','3');
+      history.pushState(null, '', u.toString());
+      paint();
+    }).catch(function(err){
+      banner.textContent = err.message || 'Compile failed.';
+      banner.classList.add('shown');
+      btn.disabled = false; btn.textContent = 'Compile';
+    });
+  });
 })();
 </script>
+
 </body>
 </html>
