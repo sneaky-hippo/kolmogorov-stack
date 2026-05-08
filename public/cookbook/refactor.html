@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Refactor recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that suggests structural refactors with rationale, never silent rewrites. 90 gold pairs, returns proposed-diff + reason, runs offline.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Refactor recipe">
+<meta property="og:description" content="Local refactor suggester. Returns proposed-diff + rationale, never silent rewrites. Signed.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/refactor">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/refactor">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; coding &middot; refactor</div>
+    <span class="pill">Recipe &middot; coding</span>
+    <h1>Refactor with <span class="tone">rationale.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that proposes structural refactors and explains why. Never silent rewrites - the output is always a unified-diff plus a one-line reason. The verifier rejects refactors that change observable behavior, so the suggestion is safe to apply.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-coder-7b</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">90 (45 train / 45 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.82</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">2.4 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~30 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">JSON Schema + AST verifier</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Looks at a function and asks "is there a smaller, clearer, or more idiomatic shape for this same behavior?" Outputs a proposed-diff plus a single-line reason. The verifier walks the AST before and after and rejects anything that introduces a new side effect, changes the function's signature, or removes a branch the caller might depend on.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"type"</span>: <span class="k">"object"</span>,
+  <span class="k">"required"</span>: [<span class="k">"diff"</span>, <span class="k">"reason"</span>],
+  <span class="k">"properties"</span>: {
+    <span class="k">"diff"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"description"</span>: <span class="k">"unified diff against the input"</span> },
+    <span class="k">"reason"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 200 }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"signature_preserved"</span>: <span class="ok">true</span>,
+    <span class="k">"side_effects_unchanged"</span>: <span class="ok">true</span>,
+    <span class="k">"branches_preserved"</span>: <span class="ok">true</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Gold pairs (3 of 90 shown)</h2>
+
+      <div class="pair">
+        <div class="pair-h">input</div>
+        <pre class="code">def find_user(users, target):
+    result = None
+    for u in users:
+        if u.email == target:
+            result = u
+            break
+    return result</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{
+  <span class="k">"diff"</span>: <span class="k">"@@\n-    result = None\n-    for u in users:\n-        if u.email == target:\n-            result = u\n-            break\n-    return result\n+    return next((u for u in users if u.email == target), None)"</span>,
+  <span class="k">"reason"</span>: <span class="k">"Loop is just a search; next() with default expresses it directly and avoids the temp variable."</span>
+}</pre>
+      </div>
+
+      <div class="pair">
+        <div class="pair-h">input</div>
+        <pre class="code">def is_eligible(user):
+    if user.age &gt;= 18:
+        if user.country == 'US':
+            if user.verified:
+                return True
+            else:
+                return False
+        else:
+            return False
+    else:
+        return False</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{
+  <span class="k">"diff"</span>: <span class="k">"@@\n-    if user.age &gt;= 18:\n-        if user.country == 'US':\n-            if user.verified:\n-                return True\n-            else:\n-                return False\n-        else:\n-            return False\n-    else:\n-        return False\n+    return user.age &gt;= 18 and user.country == 'US' and user.verified"</span>,
+  <span class="k">"reason"</span>: <span class="k">"All branches return a single boolean expression; collapse to one line."</span>
+}</pre>
+      </div>
+
+      <div class="pair">
+        <div class="pair-h">input - already clean</div>
+        <pre class="code">def hex_color_to_rgb(s: str) -&gt; tuple[int, int, int]:
+    s = s.lstrip(<span class="k">"#"</span>)
+    return int(s[0:2], 16), int(s[2:4], 16), int(s[4:6], 16)</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{
+  <span class="k">"diff"</span>: <span class="k">""</span>,
+  <span class="k">"reason"</span>: <span class="k">"Already clear and idiomatic; no refactor needed."</span>
+}</pre>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"propose a refactor with rationale"</span> \
+  --base qwen2.5-coder-7b \
+  --pairs pairs.jsonl \
+  --verifier ast:behavior-preserving \
+  --k-floor 0.82 \
+  --output refactor.kolm
+
+<span class="ok">ok</span> wrote <span class="k">refactor.kolm</span>
+   k_score=0.85  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.85</span>
+        <span class="k-detail">held-out 45 pairs &middot; behavior-preserved 96% &middot; signature-preserved 100% &middot; "no refactor" path 22%</span>
+      </div>
+      <p>The recipe is tuned to recognize when no refactor is needed. 22% of held-out inputs were already clean, and the model returned an empty diff with a one-line acknowledgement - exactly the right answer.</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">M2 MacBook</div><div class="v">1.6<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">380<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">iPhone 15 Pro</div><div class="v">4.2<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86 (server)</div><div class="v">5.5<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># weekly nudge in CI: open a PR with refactor suggestions:</span>
+for fn in $(find src -name <span class="k">"*.py"</span> -mtime -7); do
+  out=$(kolm run refactor.kolm --input-file <span class="k">"$fn"</span>)
+  if [ -n <span class="k">"$(echo "$out" | jq -r '.diff')"</span> ]; then
+    echo <span class="k">"$out"</span> &gt;&gt; suggestions.txt
+  fi
+done</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/pr-review"><div class="h">PR review</div><div class="d">Whole-diff review with structured issues.</div></a>
+        <a href="/cookbook/bug-spotter"><div class="h">Bug spotter</div><div class="d">Flag suspicious patterns in a single function.</div></a>
+        <a href="/cookbook/test-gen"><div class="h">Test generation</div><div class="d">Generate unit tests for a target framework.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

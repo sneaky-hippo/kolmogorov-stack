@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Test generation recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that writes pytest / vitest / go test cases for a target function. Verifier runs the test at compile time. 100 gold pairs.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Test generation recipe">
+<meta property="og:description" content="Local test-case writer. Verifier executes generated tests at compile time. Signed, offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/test-gen">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/test-gen">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; coding &middot; test-gen</div>
+    <span class="pill">Recipe &middot; coding</span>
+    <h1>Test cases <span class="tone">that actually run.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that writes pytest / vitest / go test cases for a target function. The verifier <em>executes</em> each generated test at compile time and rejects any that fail to assemble or that don't actually exercise the function. Trained on 100 paired examples per framework.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-coder-7b</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">100 (50 train / 50 eval) per framework</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.85</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">2.4 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~32 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">execution verifier</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Reads a target function and writes 3-7 test cases in your chosen framework. The output is the test file's source, ready to drop into <code>tests/</code>. The trick is the verifier: at compile time, every candidate output is run through <code>pytest</code> (or <code>vitest</code>, or <code>go test</code>) against the actual function. Tests that fail to import, fail to find the function, or pass with zero assertions are rejected.</p>
+      <p>The training set ends up containing only tests that exercise real behavior on real code. The model learns the shape of "tests that actually do something."</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"text"</span>,
+  <span class="k">"verifier"</span>: {
+    <span class="k">"executor"</span>: <span class="k">"pytest"</span>,
+    <span class="k">"must_assemble"</span>: <span class="ok">true</span>,
+    <span class="k">"must_call_target"</span>: <span class="ok">true</span>,
+    <span class="k">"min_assertions"</span>: 2,
+    <span class="k">"max_lines"</span>: 80
+  }
+}</pre>
+      <p>Swap <code>executor</code> for <code>vitest</code>, <code>jest</code>, <code>go test</code>, or <code>cargo test</code>. The verifier knows the framework's idioms - what counts as an assertion, what counts as a test boundary, what kind of import is required.</p>
+    </div>
+
+    <div class="group">
+      <h2>Gold pairs (2 of 100 shown)</h2>
+
+      <div class="pair">
+        <div class="pair-h">input - python</div>
+        <pre class="code">def normalize_email(s: str) -&gt; str:
+    s = s.strip().lower()
+    if <span class="k">"+"</span> in s.split(<span class="k">"@"</span>)[0]:
+        local, domain = s.split(<span class="k">"@"</span>)
+        local = local.split(<span class="k">"+"</span>)[0]
+        s = f<span class="k">"{local}@{domain}"</span>
+    return s</pre>
+        <div class="pair-h">output - pytest</div>
+        <pre class="code">import pytest
+from app.email import normalize_email
+
+def test_lowercases():
+    assert normalize_email(<span class="k">"Alice@Example.com"</span>) == <span class="k">"alice@example.com"</span>
+
+def test_strips_plus_alias():
+    assert normalize_email(<span class="k">"alice+spam@example.com"</span>) == <span class="k">"alice@example.com"</span>
+
+def test_strips_whitespace():
+    assert normalize_email(<span class="k">"  alice@example.com  "</span>) == <span class="k">"alice@example.com"</span>
+
+@pytest.mark.parametrize(<span class="k">"raw"</span>, [<span class="k">""</span>, <span class="k">"  "</span>])
+def test_handles_empty(raw):
+    assert normalize_email(raw) == raw.strip().lower()</pre>
+      </div>
+
+      <div class="pair">
+        <div class="pair-h">input - typescript</div>
+        <pre class="code">export function clamp(x: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(x, hi));
+}</pre>
+        <div class="pair-h">output - vitest</div>
+        <pre class="code">import { describe, it, expect } from <span class="k">"vitest"</span>;
+import { clamp } from <span class="k">"./clamp"</span>;
+
+describe(<span class="k">"clamp"</span>, () =&gt; {
+  it(<span class="k">"returns x when in range"</span>, () =&gt; {
+    expect(clamp(5, 0, 10)).toBe(5);
+  });
+  it(<span class="k">"clamps below"</span>, () =&gt; {
+    expect(clamp(-3, 0, 10)).toBe(0);
+  });
+  it(<span class="k">"clamps above"</span>, () =&gt; {
+    expect(clamp(99, 0, 10)).toBe(10);
+  });
+  it(<span class="k">"handles equal bounds"</span>, () =&gt; {
+    expect(clamp(7, 5, 5)).toBe(5);
+  });
+});</pre>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"write pytest tests that exercise the target"</span> \
+  --base qwen2.5-coder-7b \
+  --pairs pairs.jsonl \
+  --verifier executor=pytest,min-assertions=2 \
+  --k-floor 0.85 \
+  --output test-gen.kolm
+
+<span class="ok">ok</span> wrote <span class="k">test-gen.kolm</span>
+   k_score=0.88  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.88</span>
+        <span class="k-detail">held-out 50 pairs &middot; assemble-pass 96% &middot; calls-target 100% &middot; min-assertions met 92%</span>
+      </div>
+      <p>The "calls-target" check is what catches the common failure mode: tests that import the function and assert <code>True == True</code> without ever calling it. Verifier-rejected outputs never make it into the corpus, so the model learns to write tests that actually exercise the code under test.</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">M2 MacBook</div><div class="v">1.7<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">410<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">iPhone 15 Pro</div><div class="v">4.4<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86 (server)</div><div class="v">5.8<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># bulk-generate tests for newly-added functions:</span>
+for fn in $(git diff --name-only HEAD~1 -- <span class="k">"*.py"</span>); do
+  for func in $(kolm extract-functions <span class="k">"$fn"</span>); do
+    out=$(kolm run test-gen.kolm --input <span class="k">"$func"</span>)
+    test_path=<span class="k">"tests/test_$(basename "$fn" .py).py"</span>
+    echo <span class="k">"$out"</span> &gt;&gt; <span class="k">"$test_path"</span>
+  done
+done
+
+<span class="c"># run the generated tests immediately:</span>
+pytest tests/ -x -q</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/bug-spotter"><div class="h">Bug spotter</div><div class="d">Flag suspicious patterns in a single function.</div></a>
+        <a href="/cookbook/refactor"><div class="h">Refactor</div><div class="d">Suggest structural changes with rationale.</div></a>
+        <a href="/cookbook/pr-review"><div class="h">PR review</div><div class="d">Whole-diff review with structured issues.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

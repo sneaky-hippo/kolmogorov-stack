@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PR review recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local PR-reviewer that flags correctness, style, and security issues from a diff. ~120 gold pairs, K-score floor 0.85, runs in &lt;2s on a Mac.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="PR review recipe">
+<meta property="og:description" content="Local PR-reviewer compiled to a .kolm artifact. 120 gold pairs, signed receipts, runs offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/pr-review">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/pr-review">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; coding &middot; pr-review</div>
+    <span class="pill">Recipe &middot; coding</span>
+    <h1>PR review, <span class="tone">compiled.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that takes a unified diff and returns a structured review - issues with severity, category, file, and line. Trained on 120 hand-labelled diffs from public review threads. Runs in under two seconds on an M2.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-coder-7b</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">120 (60 train / 60 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.85</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">2.4 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~28 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">JSON Schema</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Replaces the "ask GPT to review this PR" prompt that lives in your CI with a signed local model. The deliverable is a <code>.kolm</code> file that runs offline, returns a JSON object you can render in a comment, and never leaks the diff to a third-party API.</p>
+      <p>The shape: <em>diff in, structured-review out</em>. Each issue carries severity (<code>error</code> / <code>warning</code> / <code>info</code>), category (<code>correctness</code> / <code>style</code> / <code>security</code> / <code>perf</code>), and a precise file:line pointer. The verifier rejects free-form prose and enforces the schema before any output ships.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"type"</span>: <span class="k">"object"</span>,
+  <span class="k">"required"</span>: [<span class="k">"summary"</span>, <span class="k">"issues"</span>],
+  <span class="k">"properties"</span>: {
+    <span class="k">"summary"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 280 },
+    <span class="k">"issues"</span>: {
+      <span class="k">"type"</span>: <span class="k">"array"</span>,
+      <span class="k">"items"</span>: {
+        <span class="k">"type"</span>: <span class="k">"object"</span>,
+        <span class="k">"required"</span>: [<span class="k">"severity"</span>, <span class="k">"category"</span>, <span class="k">"file"</span>, <span class="k">"line"</span>, <span class="k">"detail"</span>],
+        <span class="k">"properties"</span>: {
+          <span class="k">"severity"</span>: { <span class="k">"enum"</span>: [<span class="k">"error"</span>, <span class="k">"warning"</span>, <span class="k">"info"</span>] },
+          <span class="k">"category"</span>: { <span class="k">"enum"</span>: [<span class="k">"correctness"</span>, <span class="k">"style"</span>, <span class="k">"security"</span>, <span class="k">"perf"</span>] },
+          <span class="k">"file"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> },
+          <span class="k">"line"</span>: { <span class="k">"type"</span>: <span class="k">"integer"</span>, <span class="k">"minimum"</span>: 1 },
+          <span class="k">"detail"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 480 }
+        }
+      }
+    }
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Gold pairs (3 of 120 shown)</h2>
+
+      <div class="pair">
+        <div class="pair-h">input - diff #017</div>
+        <pre class="code">--- a/src/auth.js
++++ b/src/auth.js
+@@ -42,8 +42,11 @@ function checkPassword(req, res) {
+   const stored = db.users[req.body.email];
+-  if (stored.password === req.body.password) {
++  if (stored.password == req.body.password) {
+     return res.json({ token: sign(stored) });
+   }
+   return res.status(401).end();
+}</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{
+  <span class="k">"summary"</span>: <span class="k">"Loose equality on credential check; missing bcrypt compare."</span>,
+  <span class="k">"issues"</span>: [
+    {
+      <span class="k">"severity"</span>: <span class="k">"error"</span>, <span class="k">"category"</span>: <span class="k">"security"</span>,
+      <span class="k">"file"</span>: <span class="k">"src/auth.js"</span>, <span class="k">"line"</span>: 44,
+      <span class="k">"detail"</span>: <span class="k">"Plaintext password comparison with == coerces types and timing-leaks. Use bcrypt.compare or crypto.timingSafeEqual."</span>
+    }
+  ]
+}</pre>
+      </div>
+
+      <div class="pair">
+        <div class="pair-h">input - diff #042</div>
+        <pre class="code">--- a/lib/sum.py
++++ b/lib/sum.py
+@@ -1,3 +1,3 @@
+ def sum_pos(xs):
+-    return sum(x for x in xs if x &gt; 0)
++    return sum([x for x in xs if x &gt; 0])</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{
+  <span class="k">"summary"</span>: <span class="k">"List comprehension is materialized unnecessarily; minor perf regression."</span>,
+  <span class="k">"issues"</span>: [
+    {
+      <span class="k">"severity"</span>: <span class="k">"info"</span>, <span class="k">"category"</span>: <span class="k">"perf"</span>,
+      <span class="k">"file"</span>: <span class="k">"lib/sum.py"</span>, <span class="k">"line"</span>: 3,
+      <span class="k">"detail"</span>: <span class="k">"Generator already lazy; wrapping it in a list allocates an extra array. Drop the brackets."</span>
+    }
+  ]
+}</pre>
+      </div>
+
+      <div class="pair">
+        <div class="pair-h">input - diff #088</div>
+        <pre class="code">--- a/api/users.go
++++ b/api/users.go
+@@ -10,6 +10,9 @@ func ListUsers(w http.ResponseWriter, r *http.Request) {
+   page, _ := strconv.Atoi(r.URL.Query().Get("page"))
++  if page &lt; 0 { page = 0 }
++  if page &gt; 1000 { page = 1000 }
+   users := db.ListUsers(page * 50)
+}</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{
+  <span class="k">"summary"</span>: <span class="k">"Defensive bounds added; correct."</span>,
+  <span class="k">"issues"</span>: []
+}</pre>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code"><span class="c"># pairs.jsonl: 120 (input, output) pairs of the shape above</span>
+kolm compile <span class="k">"PR review with structured issues"</span> \
+  --base qwen2.5-coder-7b \
+  --pairs pairs.jsonl \
+  --spec spec.json \
+  --k-floor 0.85 \
+  --output pr-review.kolm
+
+<span class="ok">ok</span> wrote <span class="k">pr-review.kolm</span>
+   k_score=0.89  signature=hmac-sha256
+   artifact_hash=sha256:8a4f...e612</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.89</span>
+        <span class="k-detail">held-out 60 pairs &middot; verifier-pass 91% &middot; recipe-coverage 88% &middot; latency-ratio 0.84</span>
+      </div>
+      <p>Floor was 0.85. Run came in at 0.89. The verifier rejected three Pass-1 outputs that emitted free-form prose instead of the schema; those got recompiled and the gate held.</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">M2 MacBook</div><div class="v">1.4<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">340<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">iPhone 15 Pro</div><div class="v">3.8<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86 (server)</div><div class="v">6.1<span class="u">s</span></div></div>
+      </div>
+      <p>Numbers are p50 on a 32-line diff. Long diffs (200+ lines) scale roughly 2x. The artifact is 2.4 GB on disk; cold-load to first-token is dominated by the load step on phone-class hardware.</p>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># GitHub Action that posts a review on every push:</span>
+- uses: kolm-ai/run-action@v1
+  with:
+    artifact: pr-review.kolm
+    input: <span class="k">${{ github.event.pull_request.diff_url }}</span>
+    output: review.json
+- uses: actions/github-script@v7
+  with:
+    script: |
+      const r = require(<span class="k">'./review.json'</span>);
+      for (const i of r.issues) {
+        await github.rest.pulls.createReviewComment({...});
+      }</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/bug-spotter"><div class="h">Bug spotter</div><div class="d">Flag suspect patterns in a single function.</div></a>
+        <a href="/cookbook/test-gen"><div class="h">Test generation</div><div class="d">Compile a unit-test writer for a target framework.</div></a>
+        <a href="/cookbook/refactor"><div class="h">Refactor</div><div class="d">Suggest structural changes with rationale.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

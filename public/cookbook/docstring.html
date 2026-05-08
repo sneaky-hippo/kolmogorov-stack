@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Docstring writer recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that writes Google-style or NumPy-style docstrings for an undocumented function. 100 gold pairs, runs offline, returns docstring text only.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Docstring recipe">
+<meta property="og:description" content="Local docstring writer compiled from 100 hand-labelled examples. Style-faithful, signed, offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/docstring">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/docstring">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; coding &middot; docstring</div>
+    <span class="pill">Recipe &middot; coding</span>
+    <h1>Docstrings, <span class="tone">in the house style.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that writes a docstring for an undocumented function. Trained on 100 examples from your own codebase, so the output matches the style you already use - Google, NumPy, JSDoc, or whatever convention is most common in your repo.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-coder-3b</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">100 (50 train / 50 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.80</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">1.6 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~22 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">text + style verifier</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Replaces "ask GPT to write a docstring" with a model that has read your codebase. The verifier checks that the output starts with a one-line summary, includes the parameters and return values present in the function signature, and matches your repo's prevailing style.</p>
+      <p>The shape: <em>function source in, docstring text out</em>. The output is just the docstring (no surrounding code), so you can pipe it straight into a code editor's "insert docstring" command.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"text"</span>,
+  <span class="k">"verifier"</span>: {
+    <span class="k">"required_first_line_pattern"</span>: <span class="k">"^[A-Z].*[.!?]$"</span>,
+    <span class="k">"must_mention_params"</span>: <span class="ok">true</span>,
+    <span class="k">"must_mention_return"</span>: <span class="ok">true</span>,
+    <span class="k">"style"</span>: <span class="k">"google"</span>,
+    <span class="k">"max_lines"</span>: 24
+  }
+}</pre>
+      <p>The <code>style</code> field is one of <code>google</code>, <code>numpy</code>, <code>sphinx</code>, <code>jsdoc</code>, or <code>tsdoc</code>. The verifier reads it once at compile time and inserts the appropriate keyword set (<code>Args:</code>, <code>Parameters</code>, <code>:param:</code>, <code>@param</code>, etc.) into the K-score check.</p>
+    </div>
+
+    <div class="group">
+      <h2>Gold pairs (3 of 100 shown)</h2>
+
+      <div class="pair">
+        <div class="pair-h">input - python function</div>
+        <pre class="code">def chunk(seq, size):
+    return [seq[i:i+size] for i in range(0, len(seq), size)]</pre>
+        <div class="pair-h">output - google style</div>
+        <pre class="code"><span class="k">"""Split a sequence into fixed-size chunks.
+
+Args:
+    seq: The sequence to partition. Anything that supports slicing.
+    size: Chunk size. Must be positive; behavior at zero is undefined.
+
+Returns:
+    A list of slices. The last chunk may be shorter than ``size`` if
+    the input length is not a multiple of ``size``.
+"""</span></pre>
+      </div>
+
+      <div class="pair">
+        <div class="pair-h">input - typescript function</div>
+        <pre class="code">export function debounce&lt;T extends (...args: any[]) =&gt; void&gt;(
+  fn: T, ms: number
+): T {
+  let h: NodeJS.Timeout | undefined;
+  return ((...a) =&gt; {
+    if (h) clearTimeout(h);
+    h = setTimeout(() =&gt; fn(...a), ms);
+  }) as T;
+}</pre>
+        <div class="pair-h">output - tsdoc style</div>
+        <pre class="code"><span class="k">/**
+ * Wraps a function so it only fires once `ms` milliseconds have
+ * passed since the last invocation.
+ *
+ * @param fn - The function to debounce.
+ * @param ms - Quiet period in milliseconds.
+ * @returns A drop-in replacement that delays calls.
+ */</span></pre>
+      </div>
+
+      <div class="pair">
+        <div class="pair-h">input - go function</div>
+        <pre class="code">func MustParse(s string) *url.URL {
+    u, err := url.Parse(s)
+    if err != nil { panic(err) }
+    return u
+}</pre>
+        <div class="pair-h">output - go-doc style</div>
+        <pre class="code"><span class="k">// MustParse parses s as a URL and returns the result.
+// It panics if the input is not a valid URL.
+// Intended for compile-time constants and tests; use url.Parse for
+// runtime input where you need to handle the error.</span></pre>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code"><span class="c"># pairs.jsonl: 100 (function source, docstring) pairs from your repo</span>
+kolm compile <span class="k">"write a docstring in google style"</span> \
+  --base qwen2.5-coder-3b \
+  --pairs pairs.jsonl \
+  --verifier style=google \
+  --k-floor 0.80 \
+  --output docstring.kolm
+
+<span class="ok">ok</span> wrote <span class="k">docstring.kolm</span>
+   k_score=0.84  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.84</span>
+        <span class="k-detail">held-out 50 pairs &middot; style-match 92% &middot; param-coverage 88% &middot; return-coverage 86%</span>
+      </div>
+      <p>The verifier penalizes outputs that omit required sections (<code>Args:</code>, <code>Returns:</code>) or use the wrong style markers. False-positive rate on style mismatch was 8%; recompiling with a tighter style verifier brought it under 5%.</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">M2 MacBook</div><div class="v">880<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">240<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">iPhone 15 Pro</div><div class="v">2.6<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86 (server)</div><div class="v">3.4<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># VS Code task that fills in the docstring on selection:</span>
+{
+  <span class="k">"label"</span>: <span class="k">"kolm: docstring"</span>,
+  <span class="k">"command"</span>: <span class="k">"kolm run docstring.kolm --input ${selectedText}"</span>,
+  <span class="k">"presentation"</span>: { <span class="k">"reveal"</span>: <span class="k">"never"</span> },
+  <span class="k">"problemMatcher"</span>: []
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/type-hint"><div class="h">Type hints</div><div class="d">Add Python type hints inferred from usage.</div></a>
+        <a href="/cookbook/refactor"><div class="h">Refactor</div><div class="d">Suggest structural changes with rationale.</div></a>
+        <a href="/cookbook/test-gen"><div class="h">Test generation</div><div class="d">Generate unit tests for a target framework.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

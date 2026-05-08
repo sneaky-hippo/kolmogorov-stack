@@ -87,6 +87,14 @@ app.get('/docs', (_req, res) => {
   res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
+// /cookbook serves cookbook.html directly. Same dance as /articles, /use-cases —
+// public/cookbook/ exists as a directory of recipes, so without this hook
+// express.static would 301-redirect /cookbook to /cookbook/.
+app.get('/cookbook', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=60, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'cookbook.html'));
+});
+
 // RFC 9116 security.txt — serve from .well-known and as a top-level
 // alias. express.static skips dot-directories on some hosts, so we serve
 // explicitly to guarantee both URLs resolve.
@@ -173,14 +181,18 @@ app.get('/articles/:slug', (req, res, next) => {
   next();
 });
 
-// /cookbook/<vertical> aliases: /cookbook/healthcare → /healthcare etc.
-// We keep the canonical URL at the root (/healthcare, /finance, /legal, /edge)
-// and let /cookbook/<slug> serve the same file so either path works.
+// /cookbook/<slug>: serves recipes from public/cookbook/<slug>.html if present.
+// Vertical aliases (healthcare/finance/legal/edge) keep their canonical /<vertical> URLs;
+// /cookbook/<vertical> serves the same file so either path works.
 const COOKBOOK_VERTICALS = new Set(['healthcare', 'finance', 'legal', 'edge']);
 app.get('/cookbook/:slug', (req, res, next) => {
   const slug = req.params.slug;
-  if (!COOKBOOK_VERTICALS.has(slug)) return next();
-  const file = path.join(__dirname, 'public', slug + '.html');
+  if (!/^[a-z0-9-]+$/.test(slug)) return next();
+  if (COOKBOOK_VERTICALS.has(slug)) {
+    const file = path.join(__dirname, 'public', slug + '.html');
+    if (fs.existsSync(file)) return res.sendFile(file);
+  }
+  const file = path.join(__dirname, 'public', 'cookbook', slug + '.html');
   if (fs.existsSync(file)) return res.sendFile(file);
   next();
 });

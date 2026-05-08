@@ -796,6 +796,61 @@ B33_WH=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/v1/stripe/webhook"
 check "webhook reachable (503 or 400)"            bash -c "[ '$B33_WH' = '503' ] || [ '$B33_WH' = '400' ]"
 
 echo ""
+echo "=== 34. Workstream G — six coding cookbook recipes ==="
+# Six new recipe pages under /cookbook/ — each is a one-page recipe with spec,
+# gold pairs, compile command, K-score gate, run-time profile.
+for r in pr-review bug-spotter docstring type-hint refactor test-gen; do
+  RC=$(curl -s -o /dev/null -w "%{http_code}" "$URL/cookbook/$r")
+  check "/cookbook/$r is 200" eq "$RC" 200
+done
+
+# Recipe shape checks — every recipe carries the canonical sections.
+PR_R=$(curl -s "$URL/cookbook/pr-review")
+check "pr-review names the base model"         has "$PR_R" "qwen2.5-coder-7b"
+check "pr-review has K-score floor"            has "$PR_R" "k-score floor"
+check "pr-review has compile block"            has "$PR_R" "kolm compile"
+check "pr-review has run-time profile"         has "$PR_R" "Run-time profile"
+
+BUG_R=$(curl -s "$URL/cookbook/bug-spotter")
+check "bug-spotter has gold pairs section"     has "$BUG_R" "Gold pairs"
+check "bug-spotter has K-score gate"           has "$BUG_R" "K-score gate"
+
+DOC_R=$(curl -s "$URL/cookbook/docstring")
+check "docstring lists supported styles"       has "$DOC_R" "google"
+check "docstring shows compile command"        has "$DOC_R" "kolm compile"
+
+TYPE_R=$(curl -s "$URL/cookbook/type-hint")
+check "type-hint mentions mypy --strict"       has "$TYPE_R" "mypy --strict"
+check "type-hint shows verifier output"        has "$TYPE_R" "k_score=0.88"
+
+REF_R=$(curl -s "$URL/cookbook/refactor")
+check "refactor shows AST verifier"            has "$REF_R" "behavior-preserving"
+check "refactor shows diff+reason output"      has "$REF_R" "rationale"
+
+TG_R=$(curl -s "$URL/cookbook/test-gen")
+check "test-gen names the executor verifier"   has "$TG_R" "execution verifier"
+check "test-gen shows multi-framework spec"    has "$TG_R" "vitest"
+
+# Cookbook index page now lists the six coding recipes.
+COOK_IDX=$(curl -s "$URL/cookbook")
+check "cookbook index links pr-review"         has "$COOK_IDX" "/cookbook/pr-review"
+check "cookbook index links bug-spotter"       has "$COOK_IDX" "/cookbook/bug-spotter"
+check "cookbook index links docstring"         has "$COOK_IDX" "/cookbook/docstring"
+check "cookbook index links type-hint"         has "$COOK_IDX" "/cookbook/type-hint"
+check "cookbook index links refactor"          has "$COOK_IDX" "/cookbook/refactor"
+check "cookbook index links test-gen"          has "$COOK_IDX" "/cookbook/test-gen"
+check "cookbook index has coding section"      has "$COOK_IDX" "coding recipes"
+
+# Sitemap carries all six recipe URLs.
+COOK_SM=$(curl -s "$URL/sitemap.xml")
+check "sitemap has /cookbook/pr-review"        has "$COOK_SM" "/cookbook/pr-review"
+check "sitemap has /cookbook/bug-spotter"      has "$COOK_SM" "/cookbook/bug-spotter"
+check "sitemap has /cookbook/docstring"        has "$COOK_SM" "/cookbook/docstring"
+check "sitemap has /cookbook/type-hint"        has "$COOK_SM" "/cookbook/type-hint"
+check "sitemap has /cookbook/refactor"         has "$COOK_SM" "/cookbook/refactor"
+check "sitemap has /cookbook/test-gen"         has "$COOK_SM" "/cookbook/test-gen"
+
+echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"
 if [ $FAIL -gt 0 ]; then

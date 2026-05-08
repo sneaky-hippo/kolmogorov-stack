@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bug spotter recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that scans a function and flags suspicious patterns - off-by-one, race conditions, null deref, leaked resources. 80 gold pairs, runs offline.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Bug spotter recipe">
+<meta property="og:description" content="Local bug-flagger compiled from 80 hand-labelled examples. Signed receipts, runs offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/bug-spotter">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/bug-spotter">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; coding &middot; bug-spotter</div>
+    <span class="pill">Recipe &middot; coding</span>
+    <h1>Find suspicious patterns. <span class="tone">In a single function.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that scans one function at a time and returns a list of suspect patterns - off-by-one, race conditions, null deref, leaked resources, suspicious flow. Trained on 80 short snippets with hand-labelled flags. Pairs well with PR review for finer-grained checks.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-coder-3b</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">80 (40 train / 40 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.82</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">1.6 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~18 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">JSON Schema</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Single-function bug detection. Where PR review answers "what's wrong with this whole change?" the bug spotter zooms in on a hot function and asks "what's about to break inside this 30-line scope?"</p>
+      <p>Used on its own as a pre-commit hook, or as a second pass after PR review. The spec is intentionally narrow: one input function, one output list of flags with severity and a one-line explanation.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"type"</span>: <span class="k">"object"</span>,
+  <span class="k">"required"</span>: [<span class="k">"flags"</span>],
+  <span class="k">"properties"</span>: {
+    <span class="k">"flags"</span>: {
+      <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"maxItems"</span>: 8,
+      <span class="k">"items"</span>: {
+        <span class="k">"type"</span>: <span class="k">"object"</span>,
+        <span class="k">"required"</span>: [<span class="k">"line"</span>, <span class="k">"kind"</span>, <span class="k">"detail"</span>],
+        <span class="k">"properties"</span>: {
+          <span class="k">"line"</span>: { <span class="k">"type"</span>: <span class="k">"integer"</span>, <span class="k">"minimum"</span>: 1 },
+          <span class="k">"kind"</span>: { <span class="k">"enum"</span>: [<span class="k">"off-by-one"</span>, <span class="k">"null-deref"</span>, <span class="k">"race"</span>, <span class="k">"leak"</span>, <span class="k">"flow"</span>, <span class="k">"unsafe-input"</span>] },
+          <span class="k">"detail"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 240 }
+        }
+      }
+    }
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Gold pairs (3 of 80 shown)</h2>
+
+      <div class="pair">
+        <div class="pair-h">input - off-by-one</div>
+        <pre class="code">def last_n(xs, n):
+    out = []
+    for i in range(len(xs) - n, len(xs) + 1):
+        out.append(xs[i])
+    return out</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{
+  <span class="k">"flags"</span>: [
+    {
+      <span class="k">"line"</span>: 3, <span class="k">"kind"</span>: <span class="k">"off-by-one"</span>,
+      <span class="k">"detail"</span>: <span class="k">"range upper bound is len(xs)+1; xs[len(xs)] is out-of-bounds. Use range(len(xs)-n, len(xs))."</span>
+    }
+  ]
+}</pre>
+      </div>
+
+      <div class="pair">
+        <div class="pair-h">input - leaked resource</div>
+        <pre class="code">def read_first_line(path):
+    f = open(path)
+    return f.readline()</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{
+  <span class="k">"flags"</span>: [
+    {
+      <span class="k">"line"</span>: 2, <span class="k">"kind"</span>: <span class="k">"leak"</span>,
+      <span class="k">"detail"</span>: <span class="k">"file handle never closed; use 'with open(path) as f:' to scope the resource."</span>
+    }
+  ]
+}</pre>
+      </div>
+
+      <div class="pair">
+        <div class="pair-h">input - clean code</div>
+        <pre class="code">def clamp(x, lo, hi):
+    return max(lo, min(x, hi))</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{ <span class="k">"flags"</span>: [] }</pre>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"flag suspicious patterns in a single function"</span> \
+  --base qwen2.5-coder-3b \
+  --pairs bugs.jsonl \
+  --spec spec.json \
+  --k-floor 0.82 \
+  --output bug-spotter.kolm
+
+<span class="ok">ok</span> wrote <span class="k">bug-spotter.kolm</span>
+   k_score=0.86  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.86</span>
+        <span class="k-detail">held-out 40 pairs &middot; verifier-pass 90% &middot; recipe-coverage 84% &middot; latency-ratio 0.86</span>
+      </div>
+      <p>The verifier rejects empty objects, missing <code>flags</code>, and any <code>kind</code> outside the enum. False-positive rate on the held-out clean snippets was 7% (3/40). The recipe is tuned to be <em>quiet</em> - we'd rather miss a flag than spam a clean function.</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">M2 MacBook</div><div class="v">620<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">180<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">iPhone 15 Pro</div><div class="v">2.1<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86 (server)</div><div class="v">2.8<span class="u">s</span></div></div>
+      </div>
+      <p>p50 on a 25-line function. Compact enough to run as a pre-commit hook on a developer laptop without measurable friction.</p>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># pre-commit hook (.git/hooks/pre-commit):</span>
+<span class="c">#!/bin/sh</span>
+for fn in $(git diff --cached --name-only --diff-filter=AM); do
+  for func in $(kolm extract-functions <span class="k">"$fn"</span>); do
+    flags=$(kolm run bug-spotter.kolm --input <span class="k">"$func"</span>)
+    if echo <span class="k">"$flags"</span> | jq -e <span class="k">'.flags | length &gt; 0'</span>; then
+      echo <span class="k">"$flags"</span>
+      exit 1
+    fi
+  done
+done</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/pr-review"><div class="h">PR review</div><div class="d">Whole-diff review with structured issues.</div></a>
+        <a href="/cookbook/refactor"><div class="h">Refactor</div><div class="d">Suggest structural improvements with rationale.</div></a>
+        <a href="/cookbook/test-gen"><div class="h">Test generation</div><div class="d">Generate unit tests for a target framework.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

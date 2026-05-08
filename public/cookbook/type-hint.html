@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Type-hint recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that adds Python type hints to an untyped function. Verifier runs mypy at compile time. 90 gold pairs, runs offline.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Type-hint recipe">
+<meta property="og:description" content="Local Python type-hint adder. mypy-verified at compile time. Signed, offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/type-hint">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/type-hint">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; coding &middot; type-hint</div>
+    <span class="pill">Recipe &middot; coding</span>
+    <h1>Type-hint, <span class="tone">mypy-verified.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that takes an untyped Python function and returns the same function with parameter and return annotations. The verifier runs <code>mypy --strict</code> at compile time on every gold pair, so an output that doesn't type-check never lands in the training set.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-coder-3b</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">90 (45 train / 45 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.85</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">1.6 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~24 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">mypy verifier</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Reads an untyped function (parameters, return, and any internal locals where useful) and returns the same function with type hints added. The hard part is making the output actually type-check; the easy part is making it look like it does.</p>
+      <p>The verifier here is more interesting than usual: at compile time, every candidate output is run through <code>mypy --strict</code>. Outputs that mypy rejects are dropped from the training set entirely. This is the trick - the model learns to emit annotations that <em>survive a real type checker</em>, not just plausible-looking ones.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"text"</span>,
+  <span class="k">"verifier"</span>: {
+    <span class="k">"mypy"</span>: { <span class="k">"strict"</span>: <span class="ok">true</span>, <span class="k">"python_version"</span>: <span class="k">"3.11"</span> },
+    <span class="k">"must_preserve_function_body"</span>: <span class="ok">true</span>,
+    <span class="k">"must_add_return_annotation"</span>: <span class="ok">true</span>,
+    <span class="k">"max_lines_added"</span>: 3
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Gold pairs (3 of 90 shown)</h2>
+
+      <div class="pair">
+        <div class="pair-h">input</div>
+        <pre class="code">def average(xs):
+    return sum(xs) / len(xs)</pre>
+        <div class="pair-h">output - mypy --strict ok</div>
+        <pre class="code">def average(xs: list[float]) -&gt; float:
+    return sum(xs) / len(xs)</pre>
+      </div>
+
+      <div class="pair">
+        <div class="pair-h">input</div>
+        <pre class="code">def fetch(url, timeout=5):
+    r = requests.get(url, timeout=timeout)
+    r.raise_for_status()
+    return r.json()</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">from typing import Any
+
+def fetch(url: str, timeout: float = 5) -&gt; dict[str, Any]:
+    r = requests.get(url, timeout=timeout)
+    r.raise_for_status()
+    return r.json()</pre>
+      </div>
+
+      <div class="pair">
+        <div class="pair-h">input</div>
+        <pre class="code">def first_match(xs, pred):
+    for x in xs:
+        if pred(x):
+            return x
+    return None</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">from typing import Callable, Iterable, TypeVar
+
+T = TypeVar(<span class="k">"T"</span>)
+
+def first_match(xs: Iterable[T], pred: Callable[[T], bool]) -&gt; T | None:
+    for x in xs:
+        if pred(x):
+            return x
+    return None</pre>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"add python type hints, mypy --strict"</span> \
+  --base qwen2.5-coder-3b \
+  --pairs pairs.jsonl \
+  --verifier mypy:strict \
+  --k-floor 0.85 \
+  --output type-hint.kolm
+
+<span class="ok">ok</span> wrote <span class="k">type-hint.kolm</span>
+   k_score=0.88  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.88</span>
+        <span class="k-detail">held-out 45 pairs &middot; mypy-pass 94% &middot; body-preservation 100% &middot; latency-ratio 0.83</span>
+      </div>
+      <p>3 of 45 outputs failed <code>mypy --strict</code> on first try (typically a missing import for <code>TypeVar</code> or <code>Callable</code>). Recompile with the offending pairs surfaced as hard negatives took the pass-rate to 94%.</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">M2 MacBook</div><div class="v">740<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">200<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">iPhone 15 Pro</div><div class="v">2.3<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86 (server)</div><div class="v">3.0<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># bulk-annotate a directory:</span>
+find src -name <span class="k">"*.py"</span> -exec kolm run type-hint.kolm \
+  --input-file {} --output-file {} \;
+
+<span class="c"># run mypy after to verify the artifact's claim:</span>
+mypy --strict src/</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/docstring"><div class="h">Docstrings</div><div class="d">Write docstrings in your repo's style.</div></a>
+        <a href="/cookbook/refactor"><div class="h">Refactor</div><div class="d">Suggest structural changes with rationale.</div></a>
+        <a href="/cookbook/bug-spotter"><div class="h">Bug spotter</div><div class="d">Flag suspicious patterns in a single function.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
