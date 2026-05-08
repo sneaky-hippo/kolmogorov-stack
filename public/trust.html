@@ -306,20 +306,27 @@ signature       = HMAC(secret, receipt[N])</pre>
       <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Each receipt depends on the previous one. <b>You cannot insert, reorder, or remove a single output without invalidating every later receipt</b> in the chain. The signature at the tail is what an auditor checks against the published artifact_id and the build's HMAC public reference.</p>
 
       <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">Verify a receipt yourself</h3>
-      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Public, no auth, no SDK. POST any receipt to <code>/v1/receipts/verify</code>. The endpoint walks the HMAC chain server-side and returns <code>{verified, reasons[]}</code>. The same endpoint is what the CLI's <code>kolm verify</code> calls.</p>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Public endpoint, no auth, no SDK. Paste any receipt below — the widget POSTs to <code>/v1/receipts/verify</code>, walks the HMAC chain server-side, and returns each broken ring by name: <code>chain[3] hmac mismatch</code>, <code>signature mismatch</code>, <code>chain[4] not anchored to chain[3]</code>. The CLI's <code>kolm verify</code> calls the same endpoint.</p>
+      <div id="rcpt-widget" style="margin:14px 0 6px;border:1px solid var(--line-strong);border-radius:10px;background:var(--bg-elev);padding:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;flex-wrap:wrap;">
+          <span style="font-family:var(--mono);font-size:11.5px;text-transform:uppercase;color:var(--ink-faint);letter-spacing:0.04em;">receipt JSON</span>
+          <div style="display:flex;gap:8px;">
+            <button type="button" id="rcpt-sample" style="font-family:var(--mono);font-size:11.5px;background:transparent;border:1px solid var(--line-strong);color:var(--ink-mute);border-radius:6px;padding:5px 10px;cursor:pointer;">load sample</button>
+            <button type="button" id="rcpt-clear" style="font-family:var(--mono);font-size:11.5px;background:transparent;border:1px solid var(--line);color:var(--ink-faint);border-radius:6px;padding:5px 10px;cursor:pointer;">clear</button>
+          </div>
+        </div>
+        <textarea id="rcpt-input" spellcheck="false" autocorrect="off" autocapitalize="off" placeholder='{"kolm_version":"0.1","artifact_hash":"...","chain":[{"step":0,"input_hash":"...","output_hash":"...","hmac":"..."}],"signature":"..."}' style="width:100%;min-height:160px;background:var(--bg-card);border:1px solid var(--line);border-radius:8px;padding:12px;font-family:var(--mono);font-size:12.5px;color:var(--ink);resize:vertical;line-height:1.5;outline:none;"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;">
+          <span id="rcpt-hint" style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);">accepts v0.1, drive-by, or rs-1 legacy</span>
+          <button type="button" id="rcpt-verify" style="font-family:var(--sans);font-size:13px;font-weight:540;background:var(--ink);color:var(--bg);border:0;border-radius:6px;padding:8px 16px;cursor:pointer;">Verify chain</button>
+        </div>
+        <div id="rcpt-result" style="margin-top:14px;display:none;border-top:1px solid var(--line);padding-top:14px;"></div>
+      </div>
+      <p style="color:var(--ink-faint);font-size:12.5px;line-height:1.6;margin-top:6px;">Or, programmatically:</p>
       <pre class="code">curl -s -X POST https://kolm.ai/v1/receipts/verify \
   -H "Content-Type: application/json" \
-  -d '{"receipt": {"kolm_version":"0.1", "artifact_hash":"...", "chain":[...], "signature":"..."}}'
+  -d '{"receipt": {"kolm_version":"0.1", "artifact_hash":"...", "chain":[...], "signature":"..."}}'</pre>
 
-# response
-{
-  "verified": true,
-  "reasons": [],
-  "receipt_id": "...",
-  "artifact_hash": "...",
-  "eval_score": 0.84
-}</pre>
-      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">A failed chain returns <code>verified: false</code> with each broken ring named: <code>chain[3] hmac mismatch</code>, <code>signature mismatch</code>, <code>chain[4] not anchored to chain[3]</code>. No prose. The CLI flag for the same check: <code>kolm verify ./artifact.kolm</code>.</p>
       <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">Optional Sigstore Rekor anchor</h3>
       <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Receipts can carry an <code>anchors</code> array. The <code>http</code> kind references our public Sigstore Rekor entry; <code>arweave</code>, <code>btc-op-return</code>, and <code>ots</code> let regulated buyers anchor receipts to substrates the supply-chain auditor already trusts. v0.1 runtimes ignore the field if absent. Schema: <a href="/docs/receipt-v0.1.json" style="color:var(--accent);">receipt-v0.1.json</a>.</p>
       <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">What this defends against</h3>
@@ -376,6 +383,140 @@ signature       = HMAC(secret, receipt[N])</pre>
     <span><a href="/manifesto">Manifesto</a> - <a href="/security">Security</a> - <a href="/privacy">Privacy</a> - <a href="/terms">Terms</a></span>
   </div>
 </footer>
+
+<script>
+(function () {
+  var input = document.getElementById('rcpt-input');
+  var btn = document.getElementById('rcpt-verify');
+  var sampleBtn = document.getElementById('rcpt-sample');
+  var clearBtn = document.getElementById('rcpt-clear');
+  var hint = document.getElementById('rcpt-hint');
+  var result = document.getElementById('rcpt-result');
+  if (!input || !btn || !result) return;
+
+  var SAMPLE = {
+    kolm_version: '0.1',
+    receipt_id: 'rcpt_demo_tampered',
+    artifact_hash: 'demo000000000000000000000000000000000000000000000000000000000000',
+    chain: [
+      { step: 0, input_hash: 'aaaa', output_hash: 'bbbb', hmac: 'tampered_hmac_value' },
+      { step: 1, input_hash: 'bbbb', output_hash: 'cccc', hmac: 'also_tampered' }
+    ],
+    signature: 'fake_signature_for_demo'
+  };
+
+  function escape(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function render(state, data) {
+    result.style.display = 'block';
+    if (state === 'loading') {
+      result.innerHTML = '<div style="font-family:var(--mono);font-size:12.5px;color:var(--ink-mute);">verifying chain...</div>';
+      return;
+    }
+    if (state === 'parse-error') {
+      result.innerHTML = '<div style="display:flex;gap:10px;align-items:flex-start;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-top:7px;flex:none;"></span><div><div style="font-family:var(--mono);font-size:13px;color:var(--bad);font-weight:540;">JSON parse error</div><div style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);margin-top:4px;">' + escape(data) + '</div></div></div>';
+      return;
+    }
+    if (state === 'network-error') {
+      result.innerHTML = '<div style="display:flex;gap:10px;align-items:flex-start;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-top:7px;flex:none;"></span><div><div style="font-family:var(--mono);font-size:13px;color:var(--bad);font-weight:540;">network error</div><div style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);margin-top:4px;">' + escape(data) + '</div></div></div>';
+      return;
+    }
+    var verified = !!data.verified;
+    var reasons = Array.isArray(data.reasons) ? data.reasons : [];
+    var dot = verified ? 'var(--good)' : 'var(--bad)';
+    var label = verified ? 'verified' : 'not verified';
+    var labelColor = verified ? 'var(--good)' : 'var(--bad)';
+    var html = '<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">';
+    html += '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + dot + ';"></span>';
+    html += '<span style="font-family:var(--mono);font-size:13px;color:' + labelColor + ';font-weight:540;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</span>';
+    if (data.mode) {
+      html += '<span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);">mode: ' + escape(data.mode) + '</span>';
+    }
+    html += '</div>';
+    if (reasons.length) {
+      html += '<div style="font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.04em;margin:0 0 6px;">broken rings</div>';
+      html += '<ul style="margin:0 0 12px;padding-left:18px;">';
+      for (var i = 0; i < reasons.length; i++) {
+        html += '<li style="font-family:var(--mono);font-size:12.5px;color:var(--bad);line-height:1.6;">' + escape(reasons[i]) + '</li>';
+      }
+      html += '</ul>';
+    }
+    var meta = [];
+    if (data.receipt_id) meta.push(['receipt_id', data.receipt_id]);
+    if (data.artifact_hash) meta.push(['artifact_hash', data.artifact_hash]);
+    if (data.eval_set_hash) meta.push(['eval_set_hash', data.eval_set_hash]);
+    if (typeof data.eval_score === 'number') meta.push(['eval_score', String(data.eval_score)]);
+    if (data.judge_id) meta.push(['judge_id', data.judge_id]);
+    if (meta.length) {
+      html += '<div style="font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.04em;margin:0 0 6px;">metadata</div>';
+      html += '<table style="font-family:var(--mono);font-size:12.5px;border-collapse:collapse;width:100%;">';
+      for (var j = 0; j < meta.length; j++) {
+        html += '<tr><td style="color:var(--ink-faint);padding:2px 12px 2px 0;vertical-align:top;width:140px;">' + escape(meta[j][0]) + '</td><td style="color:var(--ink-mute);padding:2px 0;word-break:break-all;">' + escape(meta[j][1]) + '</td></tr>';
+      }
+      html += '</table>';
+    }
+    result.innerHTML = html;
+  }
+
+  sampleBtn.addEventListener('click', function () {
+    input.value = JSON.stringify(SAMPLE, null, 2);
+    hint.textContent = 'sample is a tampered chain — will return verified=false with the broken ring named';
+    hint.style.color = 'var(--warn)';
+    result.style.display = 'none';
+  });
+
+  clearBtn.addEventListener('click', function () {
+    input.value = '';
+    result.style.display = 'none';
+    hint.textContent = 'accepts v0.1, drive-by, or rs-1 legacy';
+    hint.style.color = 'var(--ink-faint)';
+  });
+
+  btn.addEventListener('click', function () {
+    var raw = (input.value || '').trim();
+    if (!raw) {
+      render('parse-error', 'paste a receipt first, or click "load sample"');
+      return;
+    }
+    var parsed;
+    try { parsed = JSON.parse(raw); } catch (e) {
+      render('parse-error', e.message);
+      return;
+    }
+    var body;
+    if (parsed && parsed.receipt) {
+      body = parsed;
+    } else if (parsed && parsed.artifact_hash && parsed.signature && !parsed.kolm_version && !parsed.chain) {
+      body = parsed;
+    } else {
+      body = { receipt: parsed };
+    }
+    render('loading');
+    btn.disabled = true;
+    fetch('/v1/receipts/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(function (r) {
+      return r.json().then(function (data) {
+        if (r.status === 503) {
+          render('network-error', 'verifier not configured on this server (' + (data.error || 'no detail') + ')');
+          return;
+        }
+        render('ok', data);
+      });
+    }).catch(function (err) {
+      render('network-error', err && err.message ? err.message : 'request failed');
+    }).finally(function () {
+      btn.disabled = false;
+    });
+  });
+})();
+</script>
 
 </body>
 </html>
