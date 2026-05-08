@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Calendar summary recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that reads your week of calendar events and returns a summary, conflicts, and prep checklist. Runs on-device, never uploads your calendar.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Calendar-summary recipe">
+<meta property="og:description" content="Local week-summary + conflict detector. Signed, offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/calendar-summary">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/calendar-summary">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; personal &middot; calendar-summary</div>
+    <span class="pill">Recipe &middot; personal</span>
+    <h1>Your week, <span class="tone">in one paragraph + the conflicts.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that reads your iCal/Google Calendar events for a 7-day window and returns <em>(summary, conflicts, prep_checklist, total_focus_hours)</em>. Trained on 200 of your past weeks tagged with what actually mattered. Verifier rejects any conflict it can't trace to overlapping event start/end pairs in the input.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">phi-3-mini-4k</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">200 (140 train / 60 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.82</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">2.1 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~28 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">grounded extraction</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Most calendar AIs hallucinate meetings or quietly miss a back-to-back. This one doesn't, because the verifier walks the events: every "conflict" cited in the output must trace to two events in the input whose intervals overlap, and the total_focus_hours number must equal the sum of unscheduled blocks of ≥45 minutes.</p>
+      <p>Runs entirely on-device. Your calendar export never leaves your laptop.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"summary"</span>, <span class="k">"conflicts"</span>, <span class="k">"prep_checklist"</span>, <span class="k">"total_focus_hours"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"summary"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 600 },
+      <span class="k">"conflicts"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {
+        <span class="k">"required"</span>: [<span class="k">"a"</span>, <span class="k">"b"</span>, <span class="k">"overlap_minutes"</span>],
+        <span class="k">"properties"</span>: { <span class="k">"a"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>}, <span class="k">"b"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>}, <span class="k">"overlap_minutes"</span>: {<span class="k">"type"</span>:<span class="k">"integer"</span>} }
+      } },
+      <span class="k">"prep_checklist"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>}, <span class="k">"maxItems"</span>: 8 },
+      <span class="k">"total_focus_hours"</span>: { <span class="k">"type"</span>: <span class="k">"number"</span> }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"conflicts_must_overlap_in_input"</span>: <span class="ok">true</span>,
+    <span class="k">"focus_hours_must_match_gaps"</span>: <span class="ok">true</span>,
+    <span class="k">"summary_must_cite_real_events"</span>: <span class="ok">true</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"weekly calendar summary with grounded conflict detection"</span> \
+  --base phi-3-mini-4k \
+  --pairs ~/.kolm/calendar-pairs.jsonl \
+  --verifier conflicts-grounded,focus-hours-arithmetic \
+  --k-floor 0.82 \
+  --output calendar-summary.kolm
+
+<span class="ok">ok</span> wrote <span class="k">calendar-summary.kolm</span>
+   k_score=0.86  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.86</span>
+        <span class="k-detail">held-out 60 weeks &middot; conflict-precision 100% (no false positives) &middot; conflict-recall 94% &middot; focus-hours within ±15 min on 96% of weeks</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">M2 MacBook</div><div class="v">680<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">180<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">iPhone 15 Pro</div><div class="v">2.0<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86 (server)</div><div class="v">2.6<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># sunday-night cron — sms a recap of the week ahead:</span>
+0 19 * * 0 /usr/local/bin/kolm run calendar-summary.kolm \
+  --input "$(icalbuddy eventsToday+7)" \
+  | jq -r .summary | shortcuts run "Send SMS to Self"</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/email-reply"><div class="h">Email reply</div><div class="d">Inbound email → draft in your voice.</div></a>
+        <a href="/cookbook/daily-recap"><div class="h">Daily recap</div><div class="d">Logs and messages → one-paragraph recap.</div></a>
+        <a href="/cookbook/voice-memo-to-task"><div class="h">Voice → task</div><div class="d">Voice memo → structured todo entry.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

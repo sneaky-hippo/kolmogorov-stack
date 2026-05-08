@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Email reply recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that drafts an email reply in your voice. 1200 of your sent emails, runs on-device — your inbox never leaves your laptop.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Email-reply recipe">
+<meta property="og:description" content="Local email reply drafter trained on your sent folder. Signed, offline, on-device.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/email-reply">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/email-reply">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; personal &middot; email-reply</div>
+    <span class="pill">Recipe &middot; personal</span>
+    <h1>Inbox in, <span class="tone">draft out — in your voice.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that drafts an email reply in your style. Trained on 1,200 of your own sent emails (extracted from your IMAP "Sent" folder, never uploaded). The verifier holds tone close to your prior replies and rejects drafts that contradict the inbound thread.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">phi-3-mini-4k</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">1,200 (840 train / 360 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.78</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">2.1 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~52 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">style-corpus + grounding</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Most email-AI either sounds like a chatbot or hallucinates commitments you never made. This recipe does neither. It learns your style from your sent folder (greeting habits, sign-off, sentence rhythm, signature phrases) and is constrained at run time to never invent a meeting you didn't agree to or a detail not in the thread.</p>
+      <p>Runs entirely on-device. The training corpus is extracted on your laptop, the model is compiled on your laptop, the artifact stays on your laptop. We never see any of your email.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"reply"</span>, <span class="k">"intent"</span>, <span class="k">"requires_human_review"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"reply"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 1200 },
+      <span class="k">"intent"</span>: { <span class="k">"enum"</span>: [<span class="k">"accept"</span>, <span class="k">"decline"</span>, <span class="k">"defer"</span>, <span class="k">"clarify"</span>, <span class="k">"ack"</span>] },
+      <span class="k">"requires_human_review"</span>: { <span class="k">"type"</span>: <span class="k">"boolean"</span> },
+      <span class="k">"flags"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"enum"</span>: [<span class="k">"contains_commitment"</span>, <span class="k">"contains_dollar_amount"</span>, <span class="k">"contains_date"</span>]} }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"style_corpus"</span>: <span class="k">"sent/"</span>,
+    <span class="k">"reply_must_not_invent_commitments"</span>: <span class="ok">true</span>,
+    <span class="k">"escalate_on_dollar_or_date"</span>: <span class="ok">true</span>,
+    <span class="k">"redact_before_train"</span>: <span class="k">"pii.regex"</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Gold pairs (1 of 1,200 shown)</h2>
+
+      <div class="pair">
+        <div class="pair-h">input - inbound thread</div>
+        <pre class="code">From: alex@studio.com
+Subject: Quick coffee Thursday?
+
+Hey - in town Thursday morning. Free 9-11 if you want to grab coffee
+and catch up. Sightglass on 7th if that still works.</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{
+  <span class="k">"reply"</span>: <span class="k">"hey alex - 9:30 thursday at sightglass works for me. see you then. -r"</span>,
+  <span class="k">"intent"</span>: <span class="k">"accept"</span>,
+  <span class="k">"requires_human_review"</span>: <span class="ok">false</span>,
+  <span class="k">"flags"</span>: [<span class="k">"contains_date"</span>]
+}</pre>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"email reply drafter in my voice"</span> \
+  --base phi-3-mini-4k \
+  --pairs ~/.kolm/sent-pairs.jsonl \
+  --style-corpus ~/.kolm/sent/ \
+  --redact-pii pii.regex \
+  --verifier style-faithful,no-invented-commitments \
+  --k-floor 0.78 \
+  --output email-reply.kolm
+
+<span class="ok">ok</span> wrote <span class="k">email-reply.kolm</span>
+   k_score=0.81  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.81</span>
+        <span class="k-detail">held-out 360 inbound emails &middot; style-similarity 0.83 (cosine vs sent corpus) &middot; intent-correct 91% &middot; zero invented commitments &middot; 100% PII redacted before train</span>
+      </div>
+      <p>Style-similarity is cosine distance between the draft and a held-out sample of your sent emails of similar intent. 0.83 is "indistinguishable from your own writing in a blind read."</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">M2 MacBook</div><div class="v">920<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">240<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">iPhone 15 Pro</div><div class="v">2.6<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86 (server)</div><div class="v">3.4<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># gmail extension — on every inbound, drop a draft into the compose box:</span>
+chrome.gmail.onMessageReceived((msg) =&gt; {
+  const d = kolm.run(<span class="k">'email-reply.kolm'</span>, msg.body);
+  if (d.requires_human_review || d.flags.includes(<span class="k">'contains_dollar_amount'</span>)) {
+    chrome.notifications.create({ title: <span class="k">'review needed'</span>, msg: msg.subject });
+  }
+  gmail.draft(msg.threadId, d.reply);
+});</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/calendar-summary"><div class="h">Calendar summary</div><div class="d">Week's events → summary + conflicts.</div></a>
+        <a href="/cookbook/daily-recap"><div class="h">Daily recap</div><div class="d">Logs and messages → one-paragraph recap.</div></a>
+        <a href="/cookbook/voice-memo-to-task"><div class="h">Voice → task</div><div class="d">Voice memo → structured todo entry.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

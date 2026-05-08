@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Daily recap recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that turns your day's logs, commits, and messages into a one-paragraph recap. Trained on your own writing, runs on-device.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Daily-recap recipe">
+<meta property="og:description" content="Local end-of-day recap in your voice. Signed, offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/daily-recap">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/daily-recap">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; personal &middot; daily-recap</div>
+    <span class="pill">Recipe &middot; personal</span>
+    <h1>End-of-day, <span class="tone">in one paragraph.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that takes your day's git commits, calendar entries, browser history (if you want), and slack messages, and returns a one-paragraph recap in your own voice. 150 days of your past journal entries are the gold corpus. Verifier rejects any recap that mentions a project or person not present in the input.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">phi-3-mini-4k</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">150 (105 train / 45 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.78</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">2.1 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~24 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">style + grounded extraction</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>You journal but skip days. This bridges the gap. It gathers what already exists (commits, calendar, slack DMs you bookmarked) and writes the entry that you would have written if you had sat down for ten minutes. It does not fabricate emotions, projects, or people — every named entity in the recap must appear in the input.</p>
+      <p>The verifier's tone-similarity check holds the recap close to the corpus of your own entries: same sentence rhythm, same hedge words, same trick of starting with the verb instead of "I."</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"recap"</span>, <span class="k">"highlights"</span>, <span class="k">"mood"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"recap"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 800 },
+      <span class="k">"highlights"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>}, <span class="k">"maxItems"</span>: 5 },
+      <span class="k">"mood"</span>: { <span class="k">"enum"</span>: [<span class="k">"flowing"</span>, <span class="k">"steady"</span>, <span class="k">"scattered"</span>, <span class="k">"drained"</span>, <span class="k">"sharp"</span>] },
+      <span class="k">"open_loops"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>} }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"named_entity_must_appear_in_input"</span>: <span class="ok">true</span>,
+    <span class="k">"style_corpus"</span>: <span class="k">"journal/"</span>,
+    <span class="k">"redact_before_train"</span>: <span class="k">"pii.regex"</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Gold pair (1 of 150 shown)</h2>
+
+      <div class="pair">
+        <div class="pair-h">input - day's events (compacted)</div>
+        <pre class="code">commits: [kolm@a1b2c3] fix smoke 304 redirect, [kolm@d4e5f6] add cookbook idx
+calendar: 10:00 standup, 14:00 design partner #2 call (45m)
+slack-dms: alex@studio "thursday coffee?", jen "sent the contract"
+keep-notes: "the verifier idea is the right wedge — write it down"</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{
+  <span class="k">"recap"</span>: <span class="k">"good day. fixed the smoke redirect that was eating my morning, then shipped the cookbook index. design partner call with #2 went well — they get the verifier wedge. jen sent the contract. wrote down the wedge framing because it's the right one."</span>,
+  <span class="k">"highlights"</span>: [<span class="k">"smoke fix"</span>, <span class="k">"DP #2 call"</span>, <span class="k">"contract from jen"</span>],
+  <span class="k">"mood"</span>: <span class="k">"flowing"</span>,
+  <span class="k">"open_loops"</span>: [<span class="k">"thursday coffee with alex - reply needed"</span>]
+}</pre>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"end-of-day recap in my voice"</span> \
+  --base phi-3-mini-4k \
+  --pairs ~/.kolm/journal-pairs.jsonl \
+  --style-corpus ~/.kolm/journal/ \
+  --verifier entity-grounded,style-faithful \
+  --k-floor 0.78 \
+  --output daily-recap.kolm
+
+<span class="ok">ok</span> wrote <span class="k">daily-recap.kolm</span>
+   k_score=0.82  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.82</span>
+        <span class="k-detail">held-out 45 days &middot; named-entity-grounded 100% &middot; style-similarity 0.81 cosine vs journal &middot; mood-correct 87%</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">M2 MacBook</div><div class="v">760<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">200<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">iPhone 15 Pro</div><div class="v">2.2<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86 (server)</div><div class="v">2.9<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># 9pm cron — write today's recap to your journal:</span>
+0 21 * * * /usr/local/bin/build-day-input.sh | \
+  kolm run daily-recap.kolm | \
+  jq -r .recap &gt;&gt; ~/journal/$(date +%Y-%m-%d).md</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/calendar-summary"><div class="h">Calendar summary</div><div class="d">Week's events → summary + conflicts.</div></a>
+        <a href="/cookbook/email-reply"><div class="h">Email reply</div><div class="d">Inbound email → draft in your voice.</div></a>
+        <a href="/cookbook/voice-memo-to-task"><div class="h">Voice → task</div><div class="d">Voice memo → structured todo entry.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

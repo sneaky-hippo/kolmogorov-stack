@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Photo grouper recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that groups your camera roll into albums by event, place, and people. EXIF + on-device CLIP, runs offline, photos never leave your phone.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Photo-grouper recipe">
+<meta property="og:description" content="Local album builder from EXIF + CLIP embeddings. Signed, offline, on-device.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/photo-grouper">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/photo-grouper">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; personal &middot; photo-grouper</div>
+    <span class="pill">Recipe &middot; personal</span>
+    <h1>Camera roll, <span class="tone">grouped by event.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that takes a batch of photos (with EXIF) and returns <em>(album_name, event_type, who's_in_it, suggested_cover)</em> for each cluster. Trained on 80 of your past albums you already named. Verifier rejects any album whose photos don't share a place + time window in the EXIF.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">phi-3-mini-vision</span></div>
+      <div class="item"><span class="label">gold albums</span><span class="value">80 (56 train / 24 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.80</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">3.4 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~46 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">EXIF-grounded clustering</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Apple's "Memories" decides what was a memory. This recipe lets <em>you</em> teach the model what counts as an album by feeding it 80 albums you already curated. It groups by EXIF time + GPS + on-device CLIP embedding similarity, then names the album in the style you used for the gold corpus ("brunch with the cousins" not "Sunday morning at 30°N").</p>
+      <p>Photos never leave your device. EXIF stripping happens after grouping — the artifact only sees the EXIF, not raw pixels, except through CLIP embeddings computed locally.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"albums"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"albums"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {
+        <span class="k">"required"</span>: [<span class="k">"name"</span>, <span class="k">"event_type"</span>, <span class="k">"photo_ids"</span>, <span class="k">"suggested_cover"</span>],
+        <span class="k">"properties"</span>: {
+          <span class="k">"name"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 60 },
+          <span class="k">"event_type"</span>: { <span class="k">"enum"</span>: [<span class="k">"meal"</span>, <span class="k">"trip"</span>, <span class="k">"work"</span>, <span class="k">"home"</span>, <span class="k">"event"</span>, <span class="k">"misc"</span>] },
+          <span class="k">"photo_ids"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>} },
+          <span class="k">"who"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>} },
+          <span class="k">"suggested_cover"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> }
+        }
+      } }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"album_must_share_time_window"</span>: <span class="ok">true</span>,
+    <span class="k">"max_window_hours"</span>: 8,
+    <span class="k">"album_must_share_place_or_subject"</span>: <span class="ok">true</span>,
+    <span class="k">"name_style_corpus"</span>: <span class="k">"prior-albums.jsonl"</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"camera roll grouper in my naming style"</span> \
+  --base phi-3-mini-vision \
+  --pairs ~/.kolm/album-pairs.jsonl \
+  --style-corpus ~/.kolm/prior-albums.jsonl \
+  --verifier exif-grounded-clusters,style-faithful-names \
+  --k-floor 0.80 \
+  --output photo-grouper.kolm
+
+<span class="ok">ok</span> wrote <span class="k">photo-grouper.kolm</span>
+   k_score=0.84  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.84</span>
+        <span class="k-detail">held-out 24 albums &middot; cluster-purity 0.91 &middot; name agrees with held-out 78% (≥3-of-5 word overlap) &middot; zero cross-event leaks</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">M2 MacBook</div><div class="v">3.1<span class="u">s</span><div class="u">/100 photos</div></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">680<span class="u">ms</span><div class="u">/100 photos</div></div></div>
+        <div class="cell"><div class="h">iPhone 15 Pro</div><div class="v">9.4<span class="u">s</span><div class="u">/100 photos</div></div></div>
+        <div class="cell"><div class="h">CPU x86 (server)</div><div class="v">12<span class="u">s</span><div class="u">/100 photos</div></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># iOS shortcut — run on every "Photos batch import" event:</span>
+const photos = await Photos.getRecent({ since: lastRun });
+const out = kolm.run(<span class="k">'photo-grouper.kolm'</span>, photos.map(p =&gt; p.exif));
+for (const a of out.albums) {
+  await Photos.createAlbum(a.name, a.photo_ids, a.suggested_cover);
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/voice-memo-to-task"><div class="h">Voice → task</div><div class="d">Voice memo → structured todo entry.</div></a>
+        <a href="/cookbook/daily-recap"><div class="h">Daily recap</div><div class="d">Logs and messages → one-paragraph recap.</div></a>
+        <a href="/cookbook/email-reply"><div class="h">Email reply</div><div class="d">Inbound email → draft in your voice.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

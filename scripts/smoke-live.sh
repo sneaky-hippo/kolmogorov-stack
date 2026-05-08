@@ -944,6 +944,54 @@ check "sitemap has /cookbook/churn-predict"           has "$PRD_SM" "/cookbook/c
 check "sitemap has /cookbook/nps-classifier"          has "$PRD_SM" "/cookbook/nps-classifier"
 
 echo ""
+echo "=== 37. Workstream G — five personal cookbook recipes ==="
+# Five recipes for the device a person actually carries. Each verifier locks
+# the output to the user's own corpus or to the input itself: style faithful
+# to your sent folder, named entities present in input, EXIF-grounded clusters,
+# closed-vocab project taxonomy.
+for r in email-reply calendar-summary daily-recap photo-grouper voice-memo-to-task; do
+  RC=$(curl -s -o /dev/null -w "%{http_code}" "$URL/cookbook/$r")
+  check "/cookbook/$r is 200" eq "$RC" 200
+done
+
+ER_R=$(curl -s "$URL/cookbook/email-reply")
+check "email-reply no invented commitments"         has "$ER_R" "reply_must_not_invent_commitments"
+check "email-reply escalates on dollar/date"        has "$ER_R" "escalate_on_dollar_or_date"
+
+CS_R=$(curl -s "$URL/cookbook/calendar-summary")
+check "calendar-summary conflicts grounded"         has "$CS_R" "conflicts_must_overlap_in_input"
+check "calendar-summary focus-hours arithmetic"     has "$CS_R" "focus_hours_must_match_gaps"
+
+DR_R=$(curl -s "$URL/cookbook/daily-recap")
+check "daily-recap entities grounded"               has "$DR_R" "named_entity_must_appear_in_input"
+check "daily-recap style corpus journal"            has "$DR_R" "journal/"
+
+PG_R=$(curl -s "$URL/cookbook/photo-grouper")
+check "photo-grouper time-window gate"              has "$PG_R" "album_must_share_time_window"
+check "photo-grouper place/subject gate"            has "$PG_R" "album_must_share_place_or_subject"
+
+VM_R=$(curl -s "$URL/cookbook/voice-memo-to-task")
+check "voice-memo closed-vocab list"                has "$VM_R" "list_must_be_in_lists_json"
+check "voice-memo closed-vocab project"             has "$VM_R" "project_must_be_in_projects_json"
+
+# Cookbook index now lists five personal recipes.
+COOK_IDX4=$(curl -s "$URL/cookbook")
+check "cookbook index links email-reply"            has "$COOK_IDX4" "/cookbook/email-reply"
+check "cookbook index links calendar-summary"       has "$COOK_IDX4" "/cookbook/calendar-summary"
+check "cookbook index links daily-recap"            has "$COOK_IDX4" "/cookbook/daily-recap"
+check "cookbook index links photo-grouper"          has "$COOK_IDX4" "/cookbook/photo-grouper"
+check "cookbook index links voice-memo-to-task"     has "$COOK_IDX4" "/cookbook/voice-memo-to-task"
+check "cookbook index has personal section"         has "$COOK_IDX4" "personal recipes"
+
+# Sitemap carries all five personal recipe URLs.
+PRS_SM=$(curl -s "$URL/sitemap.xml")
+check "sitemap has /cookbook/email-reply"           has "$PRS_SM" "/cookbook/email-reply"
+check "sitemap has /cookbook/calendar-summary"      has "$PRS_SM" "/cookbook/calendar-summary"
+check "sitemap has /cookbook/daily-recap"           has "$PRS_SM" "/cookbook/daily-recap"
+check "sitemap has /cookbook/photo-grouper"         has "$PRS_SM" "/cookbook/photo-grouper"
+check "sitemap has /cookbook/voice-memo-to-task"    has "$PRS_SM" "/cookbook/voice-memo-to-task"
+
+echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"
 if [ $FAIL -gt 0 ]; then

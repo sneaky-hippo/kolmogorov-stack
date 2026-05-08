@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Voice memo to task recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that turns a voice memo into a structured task in your todo system. Whisper + structured extraction, runs on-device.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Voice-memo-to-task recipe">
+<meta property="og:description" content="Local voice → structured task. Signed, offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/voice-memo-to-task">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/voice-memo-to-task">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; personal &middot; voice-memo-to-task</div>
+    <span class="pill">Recipe &middot; personal</span>
+    <h1>Talk it, <span class="tone">it goes in the right list.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that takes a voice-memo transcript (whisper.cpp on-device) and returns <em>(title, list, due_date, project, priority, raw_transcript)</em>. Trained on 300 of your past memos paired with where they ended up in Things 3 / Reminders / Notion. The verifier rejects any task with a project not in your project list.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">phi-3-mini-4k</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">300 (210 train / 90 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.83</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">2.1 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~30 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">closed-vocab + grounded</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Voice memos are the highest-bandwidth capture method and the lowest-organized. This recipe is the missing layer: hold the button, talk for ten seconds, and a structured task lands in the right list with the right due date — using the project taxonomy <em>you already use</em>, not a generic one.</p>
+      <p>Whisper.cpp does the transcription on-device. The <code>.kolm</code> reads the transcript and writes the task. Nothing leaves the phone.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"title"</span>, <span class="k">"list"</span>, <span class="k">"raw_transcript"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"title"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 80 },
+      <span class="k">"list"</span>: { <span class="k">"$ref"</span>: <span class="k">"lists.json"</span> },
+      <span class="k">"project"</span>: { <span class="k">"$ref"</span>: <span class="k">"projects.json"</span> },
+      <span class="k">"due_date"</span>: { <span class="k">"type"</span>: [<span class="k">"string"</span>, <span class="k">"null"</span>], <span class="k">"format"</span>: <span class="k">"date"</span> },
+      <span class="k">"priority"</span>: { <span class="k">"enum"</span>: [<span class="k">"low"</span>, <span class="k">"med"</span>, <span class="k">"high"</span>] },
+      <span class="k">"raw_transcript"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"list_must_be_in_lists_json"</span>: <span class="ok">true</span>,
+    <span class="k">"project_must_be_in_projects_json"</span>: <span class="ok">true</span>,
+    <span class="k">"due_date_must_be_extractable_or_null"</span>: <span class="ok">true</span>,
+    <span class="k">"redact_pii"</span>: <span class="ok">true</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Gold pair (1 of 300 shown)</h2>
+
+      <div class="pair">
+        <div class="pair-h">input - whisper transcript</div>
+        <pre class="code">"hey remind me to email the contract back to jen by friday, that's
+the kolm contract not the studio one. high priority."</pre>
+        <div class="pair-h">output</div>
+        <pre class="code">{
+  <span class="k">"title"</span>: <span class="k">"email contract back to jen"</span>,
+  <span class="k">"list"</span>: <span class="k">"work"</span>,
+  <span class="k">"project"</span>: <span class="k">"kolm"</span>,
+  <span class="k">"due_date"</span>: <span class="k">"2026-05-15"</span>,
+  <span class="k">"priority"</span>: <span class="k">"high"</span>,
+  <span class="k">"raw_transcript"</span>: <span class="k">"hey remind me to email the contract back to jen by friday, that's the kolm contract not the studio one. high priority."</span>
+}</pre>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"voice memo to structured task using my project taxonomy"</span> \
+  --base phi-3-mini-4k \
+  --pairs ~/.kolm/voice-pairs.jsonl \
+  --lists ~/.kolm/lists.json \
+  --projects ~/.kolm/projects.json \
+  --verifier closed-vocab,date-extractable \
+  --k-floor 0.83 \
+  --output voice-memo-to-task.kolm
+
+<span class="ok">ok</span> wrote <span class="k">voice-memo-to-task.kolm</span>
+   k_score=0.88  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.88</span>
+        <span class="k-detail">held-out 90 memos &middot; list-correct 96% &middot; project-correct 91% &middot; due-date-correct 89% (relative dates resolved against memo timestamp) &middot; 100% closed-vocab</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">M2 MacBook</div><div class="v">540<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">150<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">iPhone 15 Pro</div><div class="v">1.6<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86 (server)</div><div class="v">2.1<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># iOS shortcut — record memo, transcribe, route to Things 3:</span>
+const audio = await Shortcut.recordAudio();
+const text = await whisper.transcribe(audio);
+const task = kolm.run(<span class="k">'voice-memo-to-task.kolm'</span>, text);
+await Things.add({
+  list: task.list, project: task.project,
+  title: task.title, due: task.due_date, notes: task.raw_transcript
+});</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/email-reply"><div class="h">Email reply</div><div class="d">Inbound email → draft in your voice.</div></a>
+        <a href="/cookbook/calendar-summary"><div class="h">Calendar summary</div><div class="d">Week's events → summary + conflicts.</div></a>
+        <a href="/cookbook/daily-recap"><div class="h">Daily recap</div><div class="d">Logs and messages → one-paragraph recap.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
