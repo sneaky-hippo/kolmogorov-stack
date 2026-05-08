@@ -692,21 +692,28 @@ check "agentic-coding mentions tools/list"         has "$B31_AGENT" 'tools/list'
 check "agentic-coding mentions MCP"                has "$B31_AGENT" 'MCP'
 check "agentic-coding mentions K-score"            has "$B31_AGENT" 'K-score'
 check "agentic-coding pinned to fixture latency"   has "$B31_AGENT" 'p50.*274'
-check "agentic-coding NO SWE-bench claim"          lacks "$B31_AGENT" 'SWE-bench'
-check "agentic-coding NO +15.33pp"                 lacks "$B31_AGENT" '\+15\.33'
-check "agentic-coding NO n=150"                    lacks "$B31_AGENT" 'n=150'
+check "agentic-coding NO bare +15.33pp claim"      lacks "$B31_AGENT" '\+15\.33'
 check "agentic-coding NO 'memory layer' claim"     lacks "$B31_AGENT" 'memory layer your'
+check "agentic-coding links to methodology"        has "$B31_AGENT" '/articles/how-we-benchmark'
 B31_UC=$(curl -s "$URL/use-cases")
-check "use-cases hub NO SWE-bench"                 lacks "$B31_UC" 'SWE-bench'
-check "use-cases hub NO +15.33pp"                  lacks "$B31_UC" '\+15\.33'
-check "GET /articles/how-we-benchmark -> 404"      bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' '$URL/articles/how-we-benchmark')\" = '404' ]"
+check "use-cases hub NO bare SWE-bench claim"      lacks "$B31_UC" '\+15\.33'
+check "GET /articles/how-we-benchmark -> 200"      bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' '$URL/articles/how-we-benchmark')\" = '200' ]"
+B31_HWB=$(curl -s "$URL/articles/how-we-benchmark")
+check "how-we-benchmark cites +10.67pp"            has "$B31_HWB" '10\.67'
+check "how-we-benchmark cites n=150"               has "$B31_HWB" 'n=150'
+check "how-we-benchmark cites swebench 4.1.0"      has "$B31_HWB" 'swebench 4\.1\.0'
+check "how-we-benchmark cites seed=42"             has "$B31_HWB" 'seed.*42'
+check "how-we-benchmark has reproducer command"    has "$B31_HWB" 'kolm.*bench.*reproduce.*swebench-lite-n150'
+check "how-we-benchmark has diagnosis section"     has "$B31_HWB" 'disagrees with ours'
+check "how-we-benchmark has not-claimed section"   has "$B31_HWB" 'do not claim'
 B31_SITEMAP=$(curl -s "$URL/sitemap.xml")
-check "sitemap NO how-we-benchmark"                lacks "$B31_SITEMAP" 'how-we-benchmark'
+check "sitemap HAS how-we-benchmark"               has "$B31_SITEMAP" 'how-we-benchmark'
 B31_ARTICLES=$(curl -s "$URL/articles")
-check "articles index NO how-we-benchmark"         lacks "$B31_ARTICLES" 'how-we-benchmark'
+check "articles index HAS how-we-benchmark"        has "$B31_ARTICLES" 'how-we-benchmark'
 B31_BENCH=$(curl -s "$URL/benchmarks")
 check "benchmarks page kolm-benchmark-1 intact"    has "$B31_BENCH" 'kolm-benchmark-1'
 check "benchmarks page disowns SWE-bench leaderboard" has "$B31_BENCH" 'does not appear on the SWE-bench'
+check "/benchmarks links to methodology"           has "$B31_BENCH" '/articles/how-we-benchmark'
 
 echo ""
 echo "=== 32. v7.0 — /build-your-own + spec-driven authoring + 4 fixtures ==="
