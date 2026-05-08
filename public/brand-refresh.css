@@ -124,9 +124,11 @@ img.brand-mark,
   display: none !important;
 }
 
+/* Pseudo-dot only on legacy headers (header.site, nav.top) and footer marks.
+ * Canonical .site-header pages have an inline <span class="brand-dot"> already,
+ * so adding ::before there double-renders the dot. */
 nav.top .brand::before,
 header.site .brand::before,
-.site-header .brand::before,
 footer .brand-row .mark::before {
   content: "";
   width: 7px;
@@ -144,14 +146,28 @@ footer .brand-row .mark::before {
   50%      { box-shadow: 0 0 16px rgba(76,125,255,0.95); opacity: 0.85; }
 }
 
-/* Tab spacing — same metrics on every header variant. */
-header.site nav,
-.site-header .site-nav,
-nav.top .site-nav,
-nav.top .nav-links {
-  display: flex !important;
-  align-items: center !important;
-  gap: 22px !important;
+/* Tab spacing — same metrics on every header variant.
+ * Wrapped in a media query so the nav can hide on phones (<920px).
+ * Without this guard, display:flex !important would override the
+ * `.site-nav { display: none }` rule in styles.css and force the nav
+ * to render on iPhone viewports, overflowing the header. */
+@media (min-width: 921px) {
+  header.site nav,
+  .site-header .site-nav,
+  nav.top .site-nav,
+  nav.top .nav-links {
+    display: flex !important;
+    align-items: center !important;
+    gap: 22px !important;
+  }
+}
+@media (max-width: 920px) {
+  header.site nav,
+  .site-header .site-nav,
+  nav.top .site-nav,
+  nav.top .nav-links {
+    display: none !important;
+  }
 }
 header.site nav a,
 .site-header .site-nav a,
@@ -333,3 +349,129 @@ svg [stroke="#4c7dff"] {
     transition-duration: .001ms !important;
   }
 }
+
+/* =========================================================
+ * Mobile pass v5.5 — defensive overrides that win over every
+ * page's inline <style> block (brand-refresh.css loads after).
+ * Ships:
+ *  - kills page-level horizontal scroll
+ *  - keeps header on one line, no nav/CTA wrap
+ *  - terminal/pre wraps instead of pushing layout wider
+ *  - figure.plate gives up its 16:9 below 480 so the cap stops overlapping the diagram
+ * ========================================================= */
+
+/* Defensive: never let the page itself scroll sideways. */
+html, body {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+/* Anything inside main can't push past viewport. */
+img, svg, video, iframe, canvas, picture {
+  max-width: 100% !important;
+  height: auto;
+}
+
+@media (max-width: 720px) {
+  /* Header: brand + CTA only on narrow viewports — nav already display:none at <920px. */
+  header.site .row,
+  .site-header .wrap {
+    flex-wrap: nowrap !important;
+    gap: 12px !important;
+  }
+  .site-actions a,
+  .site-header .cta,
+  header.site .right .cta {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  /* CTA: never wrap, tighten padding so "get a key" stays one line */
+  .site-actions .cta,
+  header.site .right .cta {
+    padding: 6px 12px !important;
+    font-size: 11.5px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Terminal / pre / code — wrap, never push layout. */
+  pre, .terminal, pre.terminal, .terminal pre, .codebox, code {
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    white-space: pre-wrap !important;
+    max-width: 100% !important;
+  }
+  pre { font-size: 12px !important; padding: 14px 16px !important; }
+
+  /* Hero/lab containment so the home grid's right column can't blow viewport. */
+  .home-hero .wrap,
+  .hero .wrap,
+  .hero-copy,
+  .artifact-lab,
+  .install,
+  .install-cmd { min-width: 0 !important; max-width: 100% !important; }
+  .install-cmd { white-space: normal !important; padding-right: 64px !important; }
+  .install-cmd .install-text,
+  .install-cmd #install-text {
+    word-break: break-all !important;
+    overflow-wrap: anywhere !important;
+    white-space: normal !important;
+  }
+
+  /* Hide the secondary "sign in" link in the header so the brand+CTA fit on tiny screens.
+   * "/signin" still reachable from /account, footer, and signup tab. */
+  .site-actions a:not(.cta),
+  header.site .right a:not(.cta) {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* The .plate figure on /k-score uses aspect-ratio:16/9 with absolute-positioned cap.
+   * On phones the cap collides with the SVG diagram. Drop the aspect ratio and let
+   * the image have a min-height; let the cap sit below as a normal block. */
+  .plate { aspect-ratio: auto !important; }
+  .plate .img {
+    aspect-ratio: 16/9 !important;
+    min-height: 180px !important;
+  }
+  .plate .cap {
+    position: static !important;
+    padding: 14px 16px 16px !important;
+    background: rgba(8,9,8,0.92) !important;
+    border-top: 1px solid var(--line, rgba(255,255,255,0.06)) !important;
+  }
+  .plate .stamp { top: 12px !important; left: 12px !important; }
+
+  /* Tighter header at narrow widths */
+  header.site .row,
+  .site-header .wrap { padding-left: 16px !important; padding-right: 16px !important; }
+
+  /* /k-score component grid: 5 → 2 above, 2 → 1 here. Inline page CSS only goes to 880px. */
+  .grid.cols-5,
+  .grid.cols-4,
+  .grid.cols-3,
+  .grid.cols-2 { grid-template-columns: 1fr !important; }
+
+  /* /compile two-up I/O panels: stack on tiny widths */
+  .io { grid-template-columns: 1fr !important; }
+  /* /anatomy 1.25fr 1fr layout: stack */
+  .layout { grid-template-columns: 1fr !important; gap: 28px !important; }
+  /* /serve compare side-by-side: stack */
+  .compare,
+  .clients,
+  .steps { grid-template-columns: 1fr !important; }
+  /* footers everywhere */
+  footer .cols,
+  footer.site .grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+
+  /* H1s shrink, meta paragraphs wrap */
+  h1 { font-size: clamp(32px, 9vw, 48px) !important; max-width: 100% !important; }
+  h2 { font-size: clamp(22px, 6.5vw, 28px) !important; max-width: 100% !important; }
+}
+
+/* iOS rubber-banding fix (touch screens often expose the overscroll area). */
+@supports (-webkit-touch-callout: none) {
+  html { -webkit-text-size-adjust: 100%; }
+}
+
