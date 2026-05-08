@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>kolm vs fine-tuning — yours, not theirs</title>
+<meta name="description" content="OpenAI / Anthropic / Google fine-tuning produces weights you cannot download or audit, locked to one vendor. kolm produces a portable, signed artifact you own. Both customize a model to your task — only one is yours.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm vs fine-tuning">
+<meta property="og:description" content="Vendor fine-tuning gives you a hosted endpoint. kolm gives you a file. Sovereignty is the difference.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/vs-fine-tune">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/vs-fine-tune">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-strong: #9db6ff; --good: #7ef0d2; --bad: #ff6b91;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 540; font-size: 16px; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 32px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  h1 { margin: 22px 0 16px; font-size: clamp(36px, 5vw, 52px); line-height: 1.05; font-weight: 500; max-width: 22ch; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 24px; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
+
+  .one-line { display: grid; grid-template-columns: 1fr 60px 1fr; gap: 14px; margin: 24px 0 0; align-items: stretch; }
+  @media (max-width: 720px) { .one-line { grid-template-columns: 1fr; } .one-line .arrow { display: none; } }
+  .one-line .col { padding: 22px 24px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev); }
+  .one-line .col h3 { margin: 0 0 8px; font-size: 15px; font-weight: 540; color: var(--ink); }
+  .one-line .col p { margin: 0; font-size: 14px; color: var(--ink-mute); line-height: 1.6; }
+  .one-line .arrow { display: flex; align-items: center; justify-content: center; color: var(--accent); font-family: var(--mono); font-size: 22px; }
+
+  .group { margin: 56px 0 0; padding-top: 32px; border-top: 1px solid var(--line); }
+  .group h2 { margin: 0 0 14px; font-size: clamp(22px, 2.4vw, 28px); font-weight: 540; }
+  .group p { margin: 0 0 12px; color: var(--ink-mute); font-size: 15px; line-height: 1.65; max-width: 64ch; }
+
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 14px 0 0; }
+  table.tbl th, table.tbl td { border-bottom: 1px solid var(--line); padding: 14px 14px; text-align: left; vertical-align: top; }
+  table.tbl th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; font-weight: 540; }
+  table.tbl td { color: var(--ink-mute); }
+  table.tbl td b { color: var(--ink); font-weight: 540; }
+  table.tbl td.row-h { color: var(--ink); font-weight: 540; font-family: var(--mono); font-size: 13px; text-transform: uppercase; letter-spacing: 0.02em; width: 26%; }
+  table.tbl td .ok { color: var(--good); font-family: var(--mono); font-size: 12px; text-transform: uppercase; }
+  table.tbl td .no { color: var(--bad); font-family: var(--mono); font-size: 12px; text-transform: uppercase; }
+  table.tbl td .partial { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; text-transform: uppercase; }
+  @media (max-width: 720px) {
+    table.tbl, table.tbl tbody, table.tbl tr, table.tbl td { display: block; width: 100%; }
+    table.tbl thead { display: none; }
+    table.tbl tr { padding: 14px 0; border-bottom: 1px solid var(--line); }
+    table.tbl td { border: 0; padding: 4px 0; }
+    table.tbl td.row-h { font-size: 12px; margin-bottom: 6px; }
+    table.tbl td::before { display: block; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; margin-bottom: 2px; }
+    table.tbl td[data-l]::before { content: attr(data-l); }
+  }
+
+  pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.55; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; overflow-x: auto; color: var(--ink); margin: 14px 0; white-space: pre; }
+  @media (max-width: 720px) { pre.code { white-space: pre-wrap; word-break: break-word; } }
+  pre.code .c { color: var(--ink-faint); }
+  pre.code .ok { color: var(--good); }
+  pre.code .k { color: var(--accent-strong); }
+
+  .verdict { padding: 28px 32px; border: 1px solid var(--line-strong); border-radius: 12px; background: linear-gradient(180deg, rgba(76,125,255,0.04), rgba(76,125,255,0.01)); margin: 24px 0 0; }
+  .verdict h3 { margin: 0 0 8px; font-size: 18px; font-weight: 540; color: var(--ink); }
+  .verdict p { margin: 0 0 8px; font-size: 14.5px; color: var(--ink-mute); line-height: 1.6; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict b { color: var(--ink); font-weight: 540; }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 80px; }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  footer.site a { color: var(--ink-mute); }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">get a key</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill">vs fine-tuning</span>
+    <h1>Yours. <span class="tone">Not theirs.</span></h1>
+    <p class="lede">OpenAI fine-tuning gives you a hosted endpoint, weights you cannot download, a model that disappears when they deprecate it. kolm gives you a file. The customization step is similar; the ownership is not.</p>
+
+    <div class="one-line">
+      <div class="col">
+        <h3>Vendor fine-tuning</h3>
+        <p>Send labels to OpenAI / Anthropic / Google. Get back a model ID. Pay per token to use it. Cannot export. Disappears on vendor's schedule.</p>
+      </div>
+      <div class="arrow">vs</div>
+      <div class="col">
+        <h3>kolm compile</h3>
+        <p>Send labels to your own teacher (any frontier). Get back a <code>.kolm</code> file. Run it on any device. Pay $0 per token. Yours forever.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What is the same</h2>
+      <p>Both produce a model that performs better on <em>your</em> task than the cold base model. Both consume labeled examples. Both use a teacher (the frontier) to produce labels for a student (the customized model). Both can use LoRA-style parameter-efficient methods.</p>
+      <p>The mechanism overlaps. The contract does not.</p>
+    </div>
+
+    <div class="group">
+      <h2>Side-by-side</h2>
+      <table class="tbl">
+        <thead>
+          <tr><th></th><th>Vendor fine-tune</th><th>kolm</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-h">Output</td>
+            <td data-l="Vendor">Model ID on vendor cloud</td>
+            <td data-l="kolm"><code>.kolm</code> file (≤3 GB)</td>
+          </tr>
+          <tr>
+            <td class="row-h">Where weights live</td>
+            <td data-l="Vendor">Vendor cluster only</td>
+            <td data-l="kolm">Your disk, your phone, your edge box</td>
+          </tr>
+          <tr>
+            <td class="row-h">Run cost</td>
+            <td data-l="Vendor">Per-token, often 4–8× the base model</td>
+            <td data-l="kolm"><span class="ok">$0</span> after compile</td>
+          </tr>
+          <tr>
+            <td class="row-h">Vendor lock</td>
+            <td data-l="Vendor"><span class="no">total</span> — only one provider runs it</td>
+            <td data-l="kolm"><span class="ok">none</span> — any GGUF runtime works</td>
+          </tr>
+          <tr>
+            <td class="row-h">Deprecation risk</td>
+            <td data-l="Vendor">Vendor sunsets the base, your fine-tune dies with it</td>
+            <td data-l="kolm">File outlives any vendor's product schedule</td>
+          </tr>
+          <tr>
+            <td class="row-h">Offline / air-gap</td>
+            <td data-l="Vendor"><span class="no">no</span></td>
+            <td data-l="kolm"><span class="ok">yes</span></td>
+          </tr>
+          <tr>
+            <td class="row-h">Choice of teacher</td>
+            <td data-l="Vendor">Locked to whichever frontier the vendor uses</td>
+            <td data-l="kolm">Any frontier with a key — Anthropic, OpenAI, Mistral, etc.</td>
+          </tr>
+          <tr>
+            <td class="row-h">Choice of base</td>
+            <td data-l="Vendor">Vendor's catalogue only (GPT-4o-mini, etc.)</td>
+            <td data-l="kolm">Any open-weight base (Qwen2.5, Llama-3, Phi-3, Hermes-3)</td>
+          </tr>
+          <tr>
+            <td class="row-h">Receipts / signing</td>
+            <td data-l="Vendor"><span class="no">none</span> — you trust the vendor's logs</td>
+            <td data-l="kolm"><span class="ok">HMAC-SHA256 chain</span> over manifest → output</td>
+          </tr>
+          <tr>
+            <td class="row-h">Data leaves your network</td>
+            <td data-l="Vendor"><span class="no">always</span> — for training and for every inference</td>
+            <td data-l="kolm">Training-only (opt-in cloud or self-host); inference is local</td>
+          </tr>
+          <tr>
+            <td class="row-h">Audit trail</td>
+            <td data-l="Vendor">Vendor invoice; vendor logs</td>
+            <td data-l="kolm">Cryptographic chain you control</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="group">
+      <h2>The lock-in math</h2>
+      <p>OpenAI fine-tuning charges 4–8× the base model price for inference. At any meaningful volume, that becomes a per-month bill. Worse: when the base model deprecates (every 12–18 months), your fine-tune dies with it. You re-train. You re-pay. You re-validate.</p>
+      <p>kolm pays the frontier teacher cost once, at compile time, then runs the resulting student locally for $0 per token forever. The base model open-weight (Qwen2.5, Llama-3) does not get deprecated by anyone — it sits in your filesystem.</p>
+    </div>
+
+    <div class="group">
+      <h2>How a kolm compile differs from a fine-tune</h2>
+      <p>A vendor fine-tune trains the vendor's own base on your labels. A kolm compile trains an <em>open-weight</em> base on labels generated by a vendor frontier. The frontier is the teacher; the local model is the student. The student is what runs.</p>
+      <pre class="code"><span class="c"># vendor fine-tune (e.g. OpenAI)</span>
+your labels  -&gt;  vendor cloud  -&gt;  vendor model ID
+<span class="c"># to use it: pay per token, vendor side, every request</span>
+
+<span class="c"># kolm compile</span>
+your labels  -&gt;  k-sample teacher (any frontier)  -&gt;  verified pairs
+                                                       |
+                                                       v
+                                          LoRA student (open base)
+                                                       |
+                                                       v
+                                                 <span class="k">.kolm file</span>
+<span class="c"># to use it: run locally, $0, byte-identical forever</span></pre>
+    </div>
+
+    <div class="group">
+      <h2>When a vendor fine-tune is the right answer</h2>
+      <p>Use vendor fine-tuning when (a) the absolute ceiling of vendor base model is the only one good enough for your task, (b) you don't care about per-token cost, (c) you have no need for offline / sovereignty / signed audit. Most chat applications fit this profile.</p>
+    </div>
+
+    <div class="group">
+      <h2>When kolm is the right answer</h2>
+      <p>Use kolm when you need any one of: offline operation, signed receipts, vendor-independent ownership, sub-cent inference economics, or guarantee against vendor model deprecation. The compile step pays for itself the first month at meaningful volume.</p>
+    </div>
+
+    <div class="verdict">
+      <h3>Verdict</h3>
+      <p>Both customize a model. <b>Only one of them gives you the model.</b></p>
+      <p>If the question is "should I fine-tune?", the more useful question is "do I want a model ID or a file?" If a file: <code>kolm compile</code>.</p>
+      <p>Adjacent comparisons: <a href="/vs-ollama" style="color:var(--accent);">vs Ollama</a> · <a href="/vs-rag" style="color:var(--accent);">vs RAG</a> · <a href="/compare" style="color:var(--accent);">full comparison table</a></p>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm v0.1.0 · the AI compiler</span>
+    <span><a href="/manifesto">Manifesto</a> · <a href="/security">Security</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

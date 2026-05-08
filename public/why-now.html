@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Why now — kolm</title>
+<meta name="description" content="Frontier models stopped being a moat. Token economics broke. Sovereignty became regulated. The compile step shows up exactly when these three lines cross.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm — why now">
+<meta property="og:description" content="Frontier inference is commoditizing. EU AI Act demands provenance. Per-token economics broke for high-volume tasks. The compile step is the answer to all three.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/why-now">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/why-now">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-strong: #9db6ff; --good: #7ef0d2; --bad: #ff6b91;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 540; font-size: 16px; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 32px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  h1 { margin: 22px 0 16px; font-size: clamp(40px, 5.5vw, 60px); line-height: 1.04; font-weight: 500; max-width: 18ch; letter-spacing: -0.01em; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 24px; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
+
+  .group { margin: 56px 0 0; padding-top: 32px; border-top: 1px solid var(--line); }
+  .group h2 { margin: 0 0 16px; font-size: clamp(24px, 2.6vw, 30px); font-weight: 500; }
+  .group p { margin: 0 0 14px; color: var(--ink-mute); font-size: 15.5px; line-height: 1.7; max-width: 64ch; }
+  .group p b { color: var(--ink); font-weight: 540; }
+
+  .num-pillar { display: grid; grid-template-columns: 60px 1fr; gap: 20px; margin: 0 0 28px; }
+  .num-pillar .num { font-family: var(--mono); color: var(--accent); font-size: 14px; padding-top: 4px; }
+  .num-pillar h3 { margin: 0 0 8px; font-size: 18px; font-weight: 540; color: var(--ink); }
+  .num-pillar p { margin: 0; color: var(--ink-mute); font-size: 14.5px; line-height: 1.65; max-width: 60ch; }
+
+  blockquote.q { margin: 24px 0; padding: 20px 26px; border-left: 2px solid var(--accent); background: var(--bg-elev); border-radius: 0 8px 8px 0; font-size: 15px; color: var(--ink); line-height: 1.55; }
+  blockquote.q .src { display: block; margin-top: 8px; font-family: var(--mono); font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.55; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; overflow-x: auto; color: var(--ink); margin: 14px 0; white-space: pre; }
+  @media (max-width: 720px) { pre.code { white-space: pre-wrap; word-break: break-word; } }
+  pre.code .c { color: var(--ink-faint); }
+
+  .verdict { padding: 28px 32px; border: 1px solid var(--line-strong); border-radius: 12px; background: linear-gradient(180deg, rgba(76,125,255,0.04), rgba(76,125,255,0.01)); margin: 24px 0 0; }
+  .verdict h3 { margin: 0 0 8px; font-size: 18px; font-weight: 540; color: var(--ink); }
+  .verdict p { margin: 0 0 8px; font-size: 14.5px; color: var(--ink-mute); line-height: 1.6; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict b { color: var(--ink); font-weight: 540; }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 80px; }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  footer.site a { color: var(--ink-mute); }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">get a key</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill">why now</span>
+    <h1>Three lines crossed <span class="tone">at the same time.</span></h1>
+    <p class="lede">A compiler for AI was inevitable; it became urgent in 2026 because frontier moats commoditized, regulators started asking for provenance, and the per-token bill broke unit economics for high-volume teams. kolm is what happens when those three problems are the same problem.</p>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>Three forces, one answer</h2>
+
+      <div class="num-pillar">
+        <div class="num">01</div>
+        <div>
+          <h3>Frontier capability commoditized.</h3>
+          <p>In late 2024 and through 2025, the gap between top frontier models (GPT-4 / Claude / Gemini / Mistral / Hermes) collapsed to within a few points on most benchmarks that matter. Open-weight 70B-class models reached parity with hosted frontier of 18 months prior. The "use the best frontier" pitch lost its edge — picking the right teacher is now a routing decision, not an exclusive purchase.</p>
+        </div>
+      </div>
+
+      <div class="num-pillar">
+        <div class="num">02</div>
+        <div>
+          <h3>Per-token economics broke.</h3>
+          <p>For agent workloads, code review, document classification, content generation at scale, the per-token bill at $5–$15 per million tokens compounds into five- and six-figure monthly invoices. Companies that started in 2023 with frontier-everything are migrating tier-by-tier to local. The compile step is exactly that migration: pay the frontier <b>once</b>, run the student forever.</p>
+        </div>
+      </div>
+
+      <div class="num-pillar">
+        <div class="num">03</div>
+        <div>
+          <h3>Sovereignty got regulated.</h3>
+          <p>EU AI Act enforcement starts in 2026 for general-purpose AI providers and 2027 for high-risk use. Article 50 demands provenance for AI-generated content. NIST AI RMF, ISO/IEC 42001, and the FTC's deceptive-pattern rulemaking all converge on the same requirement: <b>you must be able to prove what your AI did.</b> A signed receipt chain over a local artifact is the cleanest possible answer to that requirement.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="group">
+      <h2>The compounding pressure</h2>
+      <p>Each of the three forces alone justifies a niche product. Together they justify a primitive. A team that adopted a frontier API for a real workload in 2024 hits all three within 12 months: the model that was special is now one of five equivalent options; the bill that was small is now hard to justify; the auditor is now asking how the AI made that decision.</p>
+      <p>The compile step solves all three with one operation. <b>Compile</b> takes whichever frontier is cheapest this quarter and uses it as a teacher. <b>Compile</b> turns the per-token bill into a one-time charge. <b>Compile</b> emits a signed manifest the auditor can verify.</p>
+
+      <blockquote class="q">
+        "We have been moving from frontier APIs to local-first inference for our high-volume tasks not because frontier got worse, but because $40k/mo for token spend wasn't justifiable when an open-weight 8B model fine-tuned on our data hit 95% of the same quality."
+        <span class="src">— common pattern, 2025–2026</span>
+      </blockquote>
+    </div>
+
+    <div class="group">
+      <h2>Why "now" and not 2024</h2>
+      <p>Three things had to be true for the compile model to work, and they all became true within 18 months of each other:</p>
+
+      <div class="num-pillar">
+        <div class="num">A</div>
+        <div>
+          <h3>Open-weight bases got good enough.</h3>
+          <p>Qwen2.5, Llama-3, Hermes-3, Phi-3 — all released within an 18-month window — finally cleared the threshold where a LoRA-distilled student of a frontier teacher actually wins on the user's task. Pre-2024, the floor was too low. The compile step would have produced a sub-quality artifact.</p>
+        </div>
+      </div>
+
+      <div class="num-pillar">
+        <div class="num">B</div>
+        <div>
+          <h3>Phones became real inference targets.</h3>
+          <p>iOS Neural Engine and Android NPUs in 2025 silicon (Apple A18, Snapdragon 8 Gen 4, Tensor G4) cleared the bar where a 3B-class INT4 model runs at usable speed for agentic workloads, not just chat. The deployment surface that "compile-and-run-anywhere" needs finally exists.</p>
+        </div>
+      </div>
+
+      <div class="num-pillar">
+        <div class="num">C</div>
+        <div>
+          <h3>Cryptographic provenance reached general expectation.</h3>
+          <p>Code-signing in CI/CD (Sigstore, SLSA), supply-chain attestation (in-toto), reproducible builds — every adjacent area of software shipped this in 2023–2025. The pattern is now familiar enough that demanding the same for AI outputs is a question of when, not whether.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="group">
+      <h2>What this means for you</h2>
+      <p>If you are operating a real LLM workload today, you will hit at least one of those three forces in the next 12 months. The earliest movers are already migrating. The compile step is the route they take.</p>
+      <pre class="code"><span class="c"># the migration, in one command</span>
+kolm compile <span style="color:var(--accent-strong);">"$YOUR_TASK"</span> \
+  --examples ./examples.jsonl \
+  --teacher anthropic/claude-opus-4-7 \
+  --base qwen2.5-7b
+<span class="c">
+# what you get back:
+#  - .kolm file, ≤3 GB
+#  - K-score over your held-out set
+#  - HMAC-SHA256 receipt chain
+#  - $0 per-token from this point on</span></pre>
+    </div>
+
+    <div class="verdict">
+      <h3>The window</h3>
+      <p>Frontier capability is going to keep commoditizing. Token bills are going to keep growing as agentic patterns scale. Regulators are not going to relax. <b>Whatever the answer to "AI ownership at scale" looks like, this is the year it stops being theoretical.</b></p>
+      <p><a href="/compile" style="color:var(--accent);">try kolm compile</a> · <a href="/manifesto" style="color:var(--accent);">read the manifesto</a> · <a href="/pricing" style="color:var(--accent);">see pricing</a></p>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm v0.1.0 · the AI compiler</span>
+    <span><a href="/manifesto">Manifesto</a> · <a href="/security">Security</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Trust - kolm</title>
+<meta name="description" content="kolm trust center: SOC 2 Type I (Q4 2026) and Type II (Q2 2027) roadmap, subprocessor list, data residency, SLA, security policy, vulnerability disclosure, and the verification primitives that make every kolm output cryptographically auditable.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm trust center">
+<meta property="og:description" content="The compliance roadmap, subprocessor list, SLA, and verification primitives behind every signed kolm artifact.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/trust">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/trust">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-soft: rgba(76,125,255,0.10); --accent-strong: #9db6ff;
+    --good: #7ef0d2; --warn: #ffd07a; --bad: #ff6b91;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 540; font-size: 16px; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .ghost:hover { color: var(--ink); }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  header.site .right .cta:hover { background: #fff; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 48px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  h1 { margin: 22px 0 16px; font-size: clamp(36px, 5.4vw, 56px); line-height: 1.05; font-weight: 500; max-width: 22ch; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 28px; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 64ch; }
+  p.lede b { color: var(--ink); font-weight: 540; }
+
+  .toc { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 28px 0 0; padding: 0; list-style: none; }
+  .toc a { font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; color: var(--ink-faint); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; transition: color 120ms, border-color 120ms; }
+  .toc a:hover { color: var(--accent); border-color: var(--line-strong); }
+
+  .group { margin: 56px 0 0; padding-top: 32px; border-top: 1px solid var(--line); }
+  .group:first-of-type { margin-top: 8px; padding-top: 0; border-top: 0; }
+  .group h2 { margin: 0 0 8px; font-size: clamp(22px, 2.4vw, 28px); font-weight: 540; letter-spacing: 0; }
+  .group p.kicker { margin: 0 0 22px; color: var(--ink-mute); font-size: 14.5px; max-width: 64ch; }
+
+  .grid { display: grid; gap: 16px; }
+  .grid.c-2 { grid-template-columns: 1fr 1fr; }
+  .grid.c-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 720px) { .grid.c-2, .grid.c-3 { grid-template-columns: 1fr; } }
+
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 22px; background: var(--bg-elev); }
+  .card h3 { margin: 0 0 8px; font-size: 16px; font-weight: 540; color: var(--ink); }
+  .card p { margin: 0; font-size: 14px; color: var(--ink-mute); line-height: 1.6; }
+  .card .meta { margin-top: 12px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+  .card .meta.ok { color: var(--good); }
+  .card .meta.warn { color: var(--warn); }
+  .card a { color: var(--accent); }
+  .card a:hover { color: var(--accent-strong); }
+
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0 0; }
+  table.tbl th, table.tbl td { border-bottom: 1px solid var(--line); padding: 12px 14px; text-align: left; vertical-align: top; }
+  table.tbl th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; font-weight: 540; }
+  table.tbl td { color: var(--ink-mute); }
+  table.tbl td b { color: var(--ink); font-weight: 540; }
+  table.tbl code { font-family: var(--mono); font-size: 0.92em; color: var(--ink); background: var(--bg-card); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+  table.tbl tr:hover td { background: rgba(76,125,255,0.022); }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 0; }
+  .badge { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11.5px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-elev); color: var(--ink-mute); }
+  .badge.in-progress { color: var(--warn); }
+  .badge.done { color: var(--good); }
+  .badge .stat { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-faint); }
+  .badge.in-progress .stat { background: var(--warn); }
+  .badge.done .stat { background: var(--good); }
+
+  pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.55; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; overflow-x: auto; color: var(--ink); margin: 12px 0; white-space: pre; }
+  @media (max-width: 720px) { pre.code { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; } }
+
+  ul.bul { margin: 8px 0 0; padding: 0 0 0 18px; color: var(--ink-mute); font-size: 14.5px; line-height: 1.65; }
+  ul.bul li { margin-bottom: 6px; }
+  ul.bul li b { color: var(--ink); font-weight: 540; }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  footer.site a { color: var(--ink-mute); }
+  footer.site a:hover { color: var(--ink); }
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">get a key</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span>Trust center</span>
+    <h1>Compliance is a <span class="tone">build artifact.</span></h1>
+    <p class="lede">Every <code>.kolm</code> ships with a manifest hash, a HMAC-SHA256 receipt chain, and an explicit K-score gate. <b>Every output is cryptographically receiptable.</b> This page is the trust posture: roadmap, subprocessors, residency, SLAs, and how to file a security report.</p>
+    <ul class="toc">
+      <li><a href="#status">Status</a></li>
+      <li><a href="#certifications">Certifications</a></li>
+      <li><a href="#subprocessors">Subprocessors</a></li>
+      <li><a href="#residency">Data residency</a></li>
+      <li><a href="#sla">SLA</a></li>
+      <li><a href="#disclosure">Vulnerability disclosure</a></li>
+      <li><a href="#verification">How verification works</a></li>
+      <li><a href="#docs">Downloads</a></li>
+    </ul>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group" id="status">
+      <h2>Live status</h2>
+      <p class="kicker">Engineering posts uptime to a public dashboard. Incidents are written there in plain language with timestamps. No marketing.</p>
+      <div class="grid c-3">
+        <div class="card">
+          <h3>kolm.ai surface</h3>
+          <p>36 routes, 100% uptime target. Status page polls each route on a 60s cron.</p>
+          <div class="meta ok">live</div>
+        </div>
+        <div class="card">
+          <h3>Compile pipeline</h3>
+          <p>Synthesis + verification + registry write. p50 under 8s on the recipe-mode preview.</p>
+          <div class="meta ok">live</div>
+        </div>
+        <div class="card">
+          <h3>Registry</h3>
+          <p>Public artifact index at <code>/v1/registry/public</code>. Read-only by default; per-tenant write via API key.</p>
+          <div class="meta ok">live</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;"><a href="/status" style="color:var(--accent);font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:0.04em;">See full status &rarr;</a></div>
+    </div>
+
+    <div class="group" id="certifications">
+      <h2>Certifications</h2>
+      <p class="kicker">Honest about what we have today and what we are working toward. The roadmap is timestamped; we update this page when each item closes.</p>
+      <div class="badges">
+        <span class="badge in-progress"><span class="stat"></span>SOC 2 Type I - Q4 2026</span>
+        <span class="badge in-progress"><span class="stat"></span>SOC 2 Type II - Q2 2027</span>
+        <span class="badge"><span class="stat"></span>ISO 27001 - 2027 target</span>
+        <span class="badge"><span class="stat"></span>HIPAA-eligible workflows - <a href="/healthcare" style="color:inherit;">/healthcare</a></span>
+        <span class="badge"><span class="stat"></span>GDPR DPA - <a href="/legal" style="color:inherit;">/legal</a></span>
+      </div>
+      <p style="color:var(--ink-mute); font-size:14px; margin-top:18px;">Enterprise contracts include a custom DPA and BAA where relevant. Mail <a href="mailto:trust@kolm.ai" style="color:var(--accent);">trust@kolm.ai</a> for the current attestation packet.</p>
+    </div>
+
+    <div class="group" id="subprocessors">
+      <h2>Subprocessors</h2>
+      <p class="kicker">The processors that touch managed-tier customer data. Bring-your-own-key tenants can opt out of any third-party teacher entirely - the local CLI runtime never reaches them.</p>
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Vendor</th>
+            <th>Purpose</th>
+            <th>Data class</th>
+            <th>Region</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Vercel</b></td>
+            <td>Hosting for kolm.ai marketing surface</td>
+            <td>Public website only</td>
+            <td>Global edge (US East primary)</td>
+          </tr>
+          <tr>
+            <td><b>Railway</b></td>
+            <td>Hosting for the managed compile API</td>
+            <td>API request / artifact metadata</td>
+            <td>US West</td>
+          </tr>
+          <tr>
+            <td><b>Anthropic</b> <span class="meta">optional</span></td>
+            <td>Frontier teacher during compile (BYO key)</td>
+            <td>Customer-supplied training samples</td>
+            <td>Anthropic-managed</td>
+          </tr>
+          <tr>
+            <td><b>Stripe</b></td>
+            <td>Subscription billing</td>
+            <td>Email + billing identifiers</td>
+            <td>Global</td>
+          </tr>
+          <tr>
+            <td><b>SendGrid</b></td>
+            <td>Transactional email (sign-up, password reset)</td>
+            <td>Email + token</td>
+            <td>US</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="color:var(--ink-mute); font-size:14px; margin-top:14px;">Every frontier teacher is a BYO-API-key concern. Customer data flows from your environment to your chosen provider; kolm proxies the call but never resells tokens or stores prompt bodies beyond the receipt-chain hash.</p>
+    </div>
+
+    <div class="group" id="residency">
+      <h2>Data residency</h2>
+      <p class="kicker">Where your data sits, where it moves, where it doesn't.</p>
+      <div class="grid c-2">
+        <div class="card">
+          <h3>Local CLI runtime</h3>
+          <p>The CLI executes <code>.kolm</code> artifacts on your machine. Inference does not transit kolm.ai. Receipts stay on disk under <code>~/.kolm/receipts/</code> until you choose to publish them.</p>
+          <div class="meta ok">your machine</div>
+        </div>
+        <div class="card">
+          <h3>Managed compile API</h3>
+          <p>Hosted today in US West (Railway). Customer compile jobs may transit your chosen frontier teacher (BYO key). EU residency available on Enterprise.</p>
+          <div class="meta">US West - EU on contract</div>
+        </div>
+        <div class="card">
+          <h3>Registry</h3>
+          <p>Public concepts are mirrored globally; private concepts are pinned to the same region as the compile job. Encrypted at rest with per-tenant keys.</p>
+          <div class="meta ok">tenant-pinned</div>
+        </div>
+        <div class="card">
+          <h3>Receipts</h3>
+          <p>HMAC chain anchors live in your registry namespace and (optional) on a public Merkle root. The registry never stores plaintext output - only the SHA-256 hash.</p>
+          <div class="meta ok">hash only</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group" id="sla">
+      <h2>Service level</h2>
+      <p class="kicker">Uptime, response time, and incident communication commitments. Reproducible numbers. No vague language.</p>
+      <table class="tbl">
+        <thead>
+          <tr><th>Plan</th><th>Uptime target</th><th>Severity-1 ack</th><th>Compile queue p50</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>Developer</b> ($0)</td><td>Best-effort</td><td>Best-effort</td><td>10 minutes</td></tr>
+          <tr><td><b>Pro</b> ($49)</td><td>99.5%</td><td>1 business day</td><td>5 minutes</td></tr>
+          <tr><td><b>Teams</b> ($149)</td><td>99.9%</td><td>8 hours (Slack)</td><td>3 minutes</td></tr>
+          <tr><td><b>Enterprise</b> ($2,999)</td><td>99.95%</td><td>1 hour</td><td>1 minute or dedicated queue</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="group" id="disclosure">
+      <h2>Vulnerability disclosure</h2>
+      <p class="kicker">Coordinated disclosure with a real human, fast. Bug bounty brackets below; out-of-scope examples after.</p>
+      <div class="grid c-2">
+        <div class="card">
+          <h3>How to report</h3>
+          <p>Mail <a href="mailto:security@kolm.ai">security@kolm.ai</a> with the affected URL, reproduction, and your contact. Encrypted reports welcome via the PGP key in <code>/.well-known/security.txt</code>.</p>
+          <div class="meta">RFC 9116 compliant</div>
+        </div>
+        <div class="card">
+          <h3>Bounty brackets</h3>
+          <p>Critical RCE / receipt-chain forgery: $500-$2,000. High auth/billing: $250-$500. Medium IDOR/XSS: $100-$250. Low: swag + credit. Out-of-scope: rate-limit policy, missing CSP nonces (we use 'unsafe-inline' on inline JS by design until Sprint 1).</p>
+          <div class="meta">live brackets</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group" id="verification">
+      <h2>How verification works</h2>
+      <p class="kicker">A plain-language threat model. What kolm signs, what tampering looks like, what verification proves.</p>
+      <h3 style="margin:18px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">The chain</h3>
+      <pre class="code">manifest.json   = { artifact_id, base_model_hash, recipe_pack_hash, k_score, build_time }
+manifest_hash   = sha256(manifest.json)
+receipt[0]      = HMAC(secret, manifest_hash)
+receipt[i]      = HMAC(secret, receipt[i-1] || input_hash[i] || output_hash[i])
+signature       = HMAC(secret, receipt[N])</pre>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Each receipt depends on the previous one. <b>You cannot insert, reorder, or remove a single output without invalidating every later receipt</b> in the chain. The signature at the tail is what an auditor checks against the published artifact_id and the build's HMAC public reference.</p>
+      <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">What this defends against</h3>
+      <ul class="bul">
+        <li><b>Output tampering.</b> If a downstream system rewrites a model output, the recomputed receipt diverges and the chain breaks.</li>
+        <li><b>Model swap.</b> If a deployed <code>.kolm</code> is replaced with a different artifact, the manifest hash differs and the K-score gate fails.</li>
+        <li><b>Behavior drift.</b> The K-score gate is recomputed on a held-out test set at every release. A drifted artifact does not promote.</li>
+        <li><b>Input replay.</b> Each receipt embeds the input hash. A replay with different inputs produces a different chain.</li>
+        <li><b>Auditor fraud.</b> The chain is verifiable by anyone with the public anchor - no trust required in the auditor's claim.</li>
+      </ul>
+      <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">What this does not defend against</h3>
+      <ul class="bul">
+        <li><b>Malicious training data.</b> If your <code>--examples</code> are poisoned, the artifact is poisoned. Verification is honest about provenance, not correctness.</li>
+        <li><b>K-score gaming.</b> If the verifier itself is built from the same data it scores, the K-score is uninformative. Use a held-out test source.</li>
+        <li><b>Compromised signing secret.</b> Standard HMAC threat model: protect the secret. Enterprise plan rotates per-tenant.</li>
+      </ul>
+    </div>
+
+    <div class="group" id="docs">
+      <h2>Downloads</h2>
+      <p class="kicker">Schemas, security policy, and machine-readable trust assets.</p>
+      <div class="grid c-2">
+        <div class="card">
+          <h3>RS-1 spec</h3>
+          <p><a href="/docs/rs-1.md">rs-1.md</a> - the open spec for the .kolm artifact format and receipt chain. MIT-licensed.</p>
+          <div class="meta">spec</div>
+        </div>
+        <div class="card">
+          <h3>Manifest schema</h3>
+          <p><a href="/docs/manifest-v0.1.json">manifest-v0.1.json</a> - JSON schema for the .kolm manifest. Validate with any standard tool.</p>
+          <div class="meta">schema</div>
+        </div>
+        <div class="card">
+          <h3>Receipt schema</h3>
+          <p><a href="/docs/receipt-v0.1.json">receipt-v0.1.json</a> - JSON schema for the receipt chain.</p>
+          <div class="meta">schema</div>
+        </div>
+        <div class="card">
+          <h3>security.txt</h3>
+          <p><a href="/.well-known/security.txt">/.well-known/security.txt</a> - RFC 9116 contact and disclosure policy.</p>
+          <div class="meta">RFC 9116</div>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin: 64px 0 0; color: var(--ink-faint); font-family: var(--mono); font-size: 11.5px;">Last updated 2026-05-08 / kolm v0.1.0 / <a href="mailto:trust@kolm.ai" style="color:var(--accent);">trust@kolm.ai</a></p>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm v0.1.0 - the AI compiler</span>
+    <span><a href="/manifesto">Manifesto</a> - <a href="/security">Security</a> - <a href="/privacy">Privacy</a> - <a href="/terms">Terms</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

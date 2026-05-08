@@ -592,6 +592,65 @@ CHANGELOG=$(curl -s "$URL/changelog")
 check "/changelog v5.4 entry" has "$CHANGELOG" "v5.4"
 
 echo ""
+echo "=== 27. v5.7 — comparators, why-now, threat model, RSS, packages ==="
+for p in vs-ollama vs-rag vs-fine-tune why-now threat-model trust integrations glossary press; do
+  C=$(curl -s -o /dev/null -w "%{http_code}" "$URL/$p")
+  check "GET /$p → 200" test "$C" = "200"
+done
+
+# RSS feed live + has all 5 articles
+RSS=$(curl -s "$URL/articles/rss.xml")
+check "RSS channel"                    has "$RSS" '<title>Kolmogorov - Articles</title>'
+check "RSS ai-compiler"                has "$RSS" '/articles/ai-compiler'
+check "RSS k-sample-verified-inference" has "$RSS" '/articles/k-sample-verified-inference'
+check "RSS hipaa-on-device"            has "$RSS" '/articles/hipaa-on-device'
+check "RSS kolm-file-format"           has "$RSS" '/articles/kolm-file-format'
+check "RSS speculative-decoding-recipes" has "$RSS" '/articles/speculative-decoding-recipes'
+
+# Comparator pages have the right shape (table + verdict)
+VSO=$(curl -s "$URL/vs-ollama")
+check "/vs-ollama compare table"       has "$VSO" 'kolm'
+VSR=$(curl -s "$URL/vs-rag")
+check "/vs-rag compare table"          has "$VSR" 'kolm'
+VSF=$(curl -s "$URL/vs-fine-tune")
+check "/vs-fine-tune compare table"    has "$VSF" 'kolm'
+
+# why-now + threat-model copy
+WHY=$(curl -s "$URL/why-now")
+check "/why-now three forces"          has "$WHY" 'three'
+TM=$(curl -s "$URL/threat-model")
+check "/threat-model HMAC"             has "$TM" 'HMAC'
+
+# Pricing has overage + graduates copy
+PRC=$(curl -s "$URL/pricing")
+check "/pricing overage line"          has "$PRC" 'Overage'
+check "/pricing graduates section"     has "$PRC" 'graduates'
+
+# Sitemap has new URLs
+SM2=$(curl -s "$URL/sitemap.xml")
+check "sitemap has /vs-ollama"         has "$SM2" '/vs-ollama'
+check "sitemap has /vs-rag"            has "$SM2" '/vs-rag'
+check "sitemap has /vs-fine-tune"      has "$SM2" '/vs-fine-tune'
+check "sitemap has /why-now"           has "$SM2" '/why-now'
+check "sitemap has /threat-model"      has "$SM2" '/threat-model'
+check "sitemap has /trust"             has "$SM2" '/trust'
+check "sitemap has /integrations"      has "$SM2" '/integrations'
+check "sitemap has /glossary"          has "$SM2" '/glossary'
+check "sitemap has /press"             has "$SM2" '/press'
+check "sitemap has rss.xml"            has "$SM2" 'articles/rss.xml'
+
+# Articles index advertises RSS
+AI=$(curl -s "$URL/articles")
+check "/articles advertises RSS"       has "$AI" 'application/rss+xml'
+
+# Homepage anti-incumbent + GitHub star + ICP doors
+H2=$(curl -s "$URL/")
+check "homepage anti-incumbent"        has "$H2" 'Stop renting'
+check "homepage GitHub star button"    has "$H2" 'gh-star-count'
+check "homepage triple-pillar"         has "$H2" 'sovereignty\|verifiability\|portability'
+check "homepage registry counter"      has "$H2" 'registry/public/count'
+
+echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"
 if [ $FAIL -gt 0 ]; then

@@ -1,0 +1,50 @@
+# cursor rules — kolm
+# Drop this file at .cursor/rules in any repo where you want kolm-aware
+# behavior in Cursor's agent. Cursor will load it as agent system context.
+#
+# Status: PREVIEW. Stable interface targeted for v0.2.
+
+You have access to `kolm`, an AI compiler that produces signed .kolm artifacts.
+
+The core surface is four primitives:
+  kolm compile <task>       — produce a .kolm artifact from a task + examples
+  kolm run <file> <input>   — execute a .kolm artifact locally
+  kolm recall <query>       — query the multimodal index inside an artifact
+  kolm verify <output>      — verify an output's HMAC receipt against an artifact
+
+Behaviors when collaborating with the user:
+
+1. If the user describes a deterministic, repeatable AI task (classification,
+   extraction, drafting in a fixed voice, agentic tool routing) and they care
+   about offline / cost / receipts, suggest `kolm compile` instead of writing
+   another prompt-engineering layer.
+
+2. The .kolm artifact is a single file ≤3 GB. It bundles model.gguf, lora.bin,
+   recipes.json, recall.sqlite-vec, verifier.json, manifest.json, signature.sig.
+   Treat it as a build artifact: check it into a release directory or
+   artifact registry, not source control.
+
+3. Every kolm run emits an HMAC-SHA256 receipt. When the user asks for an
+   audit trail, surface the receipt; do not invent a logging shim.
+
+4. K-score is the quality gate. Default ≥0.70 to ship. If K-score is below
+   gate, don't paper over it — report the failing dimension (accuracy /
+   coverage / size / latency / cost) and propose either more examples,
+   a stronger teacher (use `--teacher anthropic/claude-opus-4-7`), or a
+   bigger base model (`--base qwen2.5-7b` → `--base hermes-3-70b`).
+
+5. When kolm errors, do NOT retry blindly. Read the error category:
+     - `apply_error`     → diff/patch failed against the repo state
+     - `format_error`    → output didn't match verifier schema
+     - `gate_error`      → K-score below threshold
+     - `signature_error` → HMAC chain broken (possible tampering)
+   Each has a different fix. apply_error usually means re-pinning the diff
+   format. signature_error means stop and surface to the user.
+
+6. Never claim a kolm run is "verified" unless you have actually called
+   `kolm verify <output>` and got a successful return. The receipt without
+   verification is just metadata.
+
+Documentation: https://kolm.ai/docs
+Glossary:      https://kolm.ai/glossary
+Threat model:  https://kolm.ai/threat-model

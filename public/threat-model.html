@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Threat model — kolm</title>
+<meta name="description" content="What kolm defends against and what it does not. HMAC chain, K-score gate, manifest signing, recall integrity. Honest scope.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm — threat model">
+<meta property="og:description" content="What the signed artifact actually defends against. What it does not. The full scope.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/threat-model">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/threat-model">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-strong: #9db6ff; --good: #7ef0d2; --bad: #ff6b91;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 540; font-size: 16px; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 32px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  h1 { margin: 22px 0 16px; font-size: clamp(36px, 5vw, 52px); line-height: 1.05; font-weight: 500; max-width: 22ch; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 24px; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
+
+  .group { margin: 56px 0 0; padding-top: 32px; border-top: 1px solid var(--line); }
+  .group h2 { margin: 0 0 14px; font-size: clamp(22px, 2.4vw, 28px); font-weight: 540; }
+  .group p { margin: 0 0 12px; color: var(--ink-mute); font-size: 15px; line-height: 1.65; max-width: 64ch; }
+
+  .threat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 0; }
+  @media (max-width: 760px) { .threat-grid { grid-template-columns: 1fr; } }
+  .card { padding: 20px 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev); }
+  .card.defends { border-color: rgba(126,240,210,0.22); }
+  .card.does-not { border-color: rgba(255,107,145,0.22); }
+  .card .tag { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .card.defends .tag { color: var(--good); }
+  .card.does-not .tag { color: var(--bad); }
+  .card h3 { margin: 0 0 8px; font-size: 15.5px; font-weight: 540; color: var(--ink); }
+  .card p { margin: 0; font-size: 13.5px; color: var(--ink-mute); line-height: 1.55; }
+
+  pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.55; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; overflow-x: auto; color: var(--ink); margin: 14px 0; white-space: pre; }
+  @media (max-width: 720px) { pre.code { white-space: pre-wrap; word-break: break-word; } }
+  pre.code .c { color: var(--ink-faint); }
+  pre.code .ok { color: var(--good); }
+  pre.code .k { color: var(--accent-strong); }
+
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; margin: 14px 0 0; }
+  table.tbl th, table.tbl td { border-bottom: 1px solid var(--line); padding: 12px 12px; text-align: left; vertical-align: top; }
+  table.tbl th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; font-weight: 540; }
+  table.tbl td { color: var(--ink-mute); }
+  table.tbl td b { color: var(--ink); font-weight: 540; }
+  table.tbl td.row-h { color: var(--ink); font-weight: 540; font-family: var(--mono); font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.02em; width: 28%; }
+  @media (max-width: 720px) {
+    table.tbl, table.tbl tbody, table.tbl tr, table.tbl td { display: block; width: 100%; }
+    table.tbl thead { display: none; }
+    table.tbl tr { padding: 14px 0; border-bottom: 1px solid var(--line); }
+    table.tbl td { border: 0; padding: 4px 0; }
+    table.tbl td.row-h { font-size: 12px; margin-bottom: 6px; }
+    table.tbl td::before { display: block; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; margin-bottom: 2px; }
+    table.tbl td[data-l]::before { content: attr(data-l); }
+  }
+
+  .verdict { padding: 28px 32px; border: 1px solid var(--line-strong); border-radius: 12px; background: linear-gradient(180deg, rgba(76,125,255,0.04), rgba(76,125,255,0.01)); margin: 24px 0 0; }
+  .verdict h3 { margin: 0 0 8px; font-size: 18px; font-weight: 540; color: var(--ink); }
+  .verdict p { margin: 0 0 8px; font-size: 14.5px; color: var(--ink-mute); line-height: 1.6; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict b { color: var(--ink); font-weight: 540; }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 80px; }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  footer.site a { color: var(--ink-mute); }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">get a key</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill">threat model</span>
+    <h1>What it defends. <span class="tone">What it doesn't.</span></h1>
+    <p class="lede">A signed artifact is only useful if the threat scope is honest. Below: the five attacks the receipt chain catches, and the four it doesn't. Plus the cryptographic primitives behind both.</p>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>Primitive: the receipt chain</h2>
+      <p>Every <code>.kolm</code> artifact emits a chain of HMAC-SHA256 hashes anchored on the manifest. At runtime, every output is signed against the chain. The verifier walks the chain backwards from the output to the manifest hash; any tampered link breaks verification.</p>
+      <pre class="code"><span class="c">// at compile time</span>
+manifest_hash   = SHA256(manifest.json)
+model_hash      = SHA256(model.gguf)
+lora_hash       = SHA256(lora.bin)
+recipes_hash    = SHA256(recipes.json)
+recall_hash     = SHA256(recall.sqlite-vec)
+
+artifact_root   = HMAC-SHA256(secret, manifest_hash || model_hash ||
+                              lora_hash || recipes_hash || recall_hash)
+
+<span class="c">// at run time, every output gets a fresh receipt</span>
+output_receipt  = HMAC-SHA256(secret, artifact_root ||
+                              SHA256(prompt) || SHA256(output) ||
+                              timestamp || run_nonce)
+
+<span class="c">// verification (anyone can run, no secret needed if signed by registry)</span>
+verify(output, receipt, artifact) =&gt; <span class="ok">ok</span> | <span style="color:var(--bad);">tampered</span></pre>
+    </div>
+
+    <div class="group">
+      <h2>What kolm defends against</h2>
+      <div class="threat-grid">
+
+        <div class="card defends">
+          <div class="tag">defends · t1</div>
+          <h3>Artifact tampering</h3>
+          <p>Anyone modifies model.gguf, lora.bin, recipes.json, or recall.sqlite-vec inside a <code>.kolm</code> file. Receipt chain breaks; <code>kolm verify</code> fails immediately.</p>
+        </div>
+
+        <div class="card defends">
+          <div class="tag">defends · t2</div>
+          <h3>Output substitution</h3>
+          <p>Adversary swaps a real model output for a forged one before the user sees it. The forged output's receipt does not chain to a valid artifact_root; verifier rejects.</p>
+        </div>
+
+        <div class="card defends">
+          <div class="tag">defends · t3</div>
+          <h3>Manifest forgery</h3>
+          <p>Attacker writes a fake manifest claiming to describe a different artifact. Manifest hash diverges from artifact_root; verification fails on first link.</p>
+        </div>
+
+        <div class="card defends">
+          <div class="tag">defends · t4</div>
+          <h3>Recall index poisoning</h3>
+          <p>Adversary edits the bundled sqlite-vec index to add or remove documents. recall_hash diverges; chain breaks. (This is why we ship the index <em>inside</em> the artifact, not alongside it.)</p>
+        </div>
+
+        <div class="card defends">
+          <div class="tag">defends · t5</div>
+          <h3>Replay across artifacts</h3>
+          <p>Attacker copies a valid receipt from artifact A to claim it came from artifact B. Receipt embeds artifact_root; verification against B fails because A's root ≠ B's root.</p>
+        </div>
+
+        <div class="card defends">
+          <div class="tag">defends · t6</div>
+          <h3>Quality regression smuggling</h3>
+          <p>Adversary swaps the LoRA delta with a deliberately worse one (e.g. trojan-trained). K-score gate rejects at compile time; manifest records both the K-score and the held-out test set hash.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>What kolm does <em>not</em> defend against</h2>
+      <div class="threat-grid">
+
+        <div class="card does-not">
+          <div class="tag">out of scope · n1</div>
+          <h3>Model-level adversarial prompts</h3>
+          <p>If your prompt is jailbroken, the artifact will sign whatever the model produced. Receipts prove <em>provenance</em>, not <em>safety</em>. Use guardrail layers separately.</p>
+        </div>
+
+        <div class="card does-not">
+          <div class="tag">out of scope · n2</div>
+          <h3>Compromised compile environment</h3>
+          <p>If the machine running <code>kolm compile</code> is compromised, the attacker can produce a valid signed artifact with poisoned weights. Use a clean build environment; consider air-gapped compile for high-stakes use.</p>
+        </div>
+
+        <div class="card does-not">
+          <div class="tag">out of scope · n3</div>
+          <h3>Side-channel timing inference</h3>
+          <p>An attacker observing inference timing on shared hardware may infer aspects of input or output. The receipt is a content integrity primitive, not a confidentiality primitive. Use trusted hardware (SEV, TDX) for adversarial multi-tenant.</p>
+        </div>
+
+        <div class="card does-not">
+          <div class="tag">out of scope · n4</div>
+          <h3>Human at the keyboard</h3>
+          <p>Receipts prove what the artifact said. They cannot prove that the human who saw the output then acted on it correctly. Audit trail ends at the model's output; downstream business logic is your responsibility.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Trust roots</h2>
+      <table class="tbl">
+        <thead>
+          <tr><th>component</th><th>signs</th><th>verifies against</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-h" data-l="component">user secret</td>
+            <td data-l="signs">all artifacts you produce locally</td>
+            <td data-l="verifies against">your own pubkey (or registry-stored fingerprint)</td>
+          </tr>
+          <tr>
+            <td class="row-h" data-l="component">Kolmogorov registry</td>
+            <td data-l="signs">co-signs published artifacts; signs spec versions</td>
+            <td data-l="verifies against">public registry pubkey at <code>/v1/registry/pubkey</code></td>
+          </tr>
+          <tr>
+            <td class="row-h" data-l="component">Recipe registry</td>
+            <td data-l="signs">deterministic-pattern packs (recipes.json)</td>
+            <td data-l="verifies against">RS-1 spec hash, MIT-licensed at <code>/docs/rs-1.md</code></td>
+          </tr>
+          <tr>
+            <td class="row-h" data-l="component">on-chain anchor (enterprise)</td>
+            <td data-l="signs">root hash anchored in Bitcoin OP_RETURN or Arweave</td>
+            <td data-l="verifies against">block height + tx hash, public</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="group">
+      <h2>What an attacker would have to compromise</h2>
+      <p>To produce a forged artifact that verifies as legitimate kolm output, an attacker would need <b>simultaneously</b>: (a) the user's signing secret <em>or</em> the Kolmogorov registry's signing secret, (b) a SHA-256 second-preimage on the manifest, and (c) — if registry-co-signed — a second compromise on the registry side. The cost of all three is the cost of breaking SHA-256, plus social engineering against two parties.</p>
+      <p>For artifacts anchored on-chain (enterprise), forgery additionally requires rewriting the anchored block, which requires the cost of attacking the underlying chain.</p>
+    </div>
+
+    <div class="group">
+      <h2>Reporting</h2>
+      <p>Found a way around any of T1–T6? Email <a href="mailto:security@kolm.ai" style="color:var(--accent);">security@kolm.ai</a> with reproduction steps. Bounty brackets are listed on <a href="/trust" style="color:var(--accent);">trust</a>. Coordinated disclosure window: 90 days standard, 14 days for actively exploited.</p>
+    </div>
+
+    <div class="verdict">
+      <h3>Honest scope</h3>
+      <p>kolm is an <b>integrity</b> primitive, not a <b>safety</b> primitive. The receipt chain proves <em>what was said by which artifact</em>. It does not prove the model said something safe, true, or aligned with your policy.</p>
+      <p>Pair with: prompt-side guardrails, output filters, downstream business logic. The receipt chain is the substrate underneath those layers, not a replacement for them.</p>
+      <p><a href="/trust" style="color:var(--accent);">trust center</a> · <a href="/security" style="color:var(--accent);">security policy</a> · <a href="/docs/rs-1.md" style="color:var(--accent);">RS-1 spec</a></p>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm v0.1.0 · the AI compiler</span>
+    <span><a href="/manifesto">Manifesto</a> · <a href="/security">Security</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
