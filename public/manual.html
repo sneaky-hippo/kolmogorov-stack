@@ -145,7 +145,7 @@
     </div>
     <div class="right">
       <a href="/signin" class="ghost">sign in</a>
-      <a href="/signup" class="cta">get a key</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
     </div>
   </div>
 </header>
@@ -226,53 +226,60 @@ K = 5 / ( 1/A + 1/F + 1/L + 1/C + 1/V )
       <p>The default gate and CI behavior are product targets unless the installed CLI exposes those flags. Treat the manifest and receipt evidence as the current source of truth.</p>
       <p>The default gate is <code>0.70</code>. Set with <code>--gate 0.85</code> for a stricter ship. CI integrations fail the build if K is below the gate; <code>kolm compile</code> exits non-zero. The gate is recorded in the manifest, so a downstream consumer can verify the artifact was held to a known bar.</p>
 
-      <p class="lede-sec">A <code>.kolm</code> file is a deterministically ordered zip. Today: model pointer, placeholder LoRA, recipes, placeholder recall index, evals, manifest, signature, and receipt. Real model/index bytes are bridge outputs.</p>
-      <p class="lede-sec">A <code>.kolm</code> file is a deterministically-ordered zip. Inside: model, LoRA, recipes, recall index, tests, manifest, signature. Every layer is content-addressed by SHA-256.</p>
+      <p class="lede-sec">A <code>.kolm</code> file is a deterministically ordered zip. Today, in the recipe tier: model pointer, optional KOLMPACK behaviour pack in <code>lora.bin</code>, recipes callable from a sandboxed JS runtime, optional KOLMIDX lookup index in <code>index.sqlite-vec</code>, evals, manifest, signature, and receipt chain. Tenants customise behaviour at run time via <code>params</code>. Never re-signed, never persisted, the artifact bytes stay byte-stable.</p>
+      <p class="lede-sec">Later tiers reuse the same slot names with richer encodings: LoRA delta in <code>lora.bin</code>, sqlite-vec retrieval in <code>index.sqlite-vec</code>. Every layer is content-addressed by SHA-256.</p>
 
       <h3 id="layers">Layer order</h3>
       <div class="layers">
         <div class="cell k">model.gguf</div><div class="cell s">pointer</div><div class="cell">Base-model pointer record today.</div>
-        <div class="cell k">lora.bin</div><div class="cell s">0 B today</div><div class="cell">Reserved LoRA delta slot.</div>
-        <div class="cell k">lora.bin</div><div class="cell s">≤ 100 MiB</div><div class="cell">LoRA delta fine-tuned on verified labels.</div>
-        <div class="cell k">index.sqlite-vec</div><div class="cell s">0 B today</div><div class="cell">Reserved recall-index slot.</div>
-        <div class="cell k">index.sqlite-vec</div><div class="cell s">≤ 500 MiB</div><div class="cell">Multimodal embedding index of the user corpus.</div>
+        <div class="cell k">lora.bin</div><div class="cell s">KOLMPACK or 0 B</div><div class="cell">Recipe tier: KOLMPACK\x01 container holding patterns, default rules, default categories. Empty when a recipe needs no pack.</div>
+        <div class="cell k">lora.bin</div><div class="cell s">≤ 100 MiB</div><div class="cell">LoRA-delta tier: same slot name, binary delta fine-tuned on verified labels.</div>
+        <div class="cell k">index.sqlite-vec</div><div class="cell s">KOLMIDX or 0 B</div><div class="cell">Recipe tier: KOLMIDX\x01 container holding keyword maps, by_recipe reverse index. Empty when no index is needed.</div>
+        <div class="cell k">index.sqlite-vec</div><div class="cell s">≤ 500 MiB</div><div class="cell">Retrieval tier: same slot name, real sqlite-vec database of the user corpus.</div>
         <div class="cell k">tests.jsonl</div><div class="cell s">≤ 4 MiB</div><div class="cell">Held-out evaluation set with expected outputs.</div>
         <div class="cell k">signature.sig</div><div class="cell s">256 B</div><div class="cell">HMAC chain over every prior layer, anchored.</div>
       </div>
 
       <h3 id="manifest">Manifest fields</h3>
 <pre>{
-  <span class="arg">"rs1_version"</span>: "0.1",
+  <span class="arg">"spec"</span>:        "rs-1",                        <span class="com">// artifact spec version</span>
+  <span class="arg">"job_id"</span>:      "cmp_8f2a...",                 <span class="com">// the compile job that produced this</span>
   <span class="arg">"task"</span>:        "reply to support tickets in our voice",
-  <span class="arg">"task_hash"</span>:   "sha256:7a4f...",
-  <span class="arg">"examples_hash"</span>:"sha256:c1b2...",
-  <span class="arg">"evals_hash"</span>:   "sha256:9d3e...",
-  <span class="arg">"base"</span>:        "qwen2.5-3b@hf:a7f4ae",
-  <span class="arg">"teacher"</span>:     "claude-opus-4-7",
-  <span class="arg">"layers"</span>: {
-    "model":   { "sha": "sha256:bf21...", "bytes": 1900000000 },
-    "lora":    { "sha": "sha256:91ac...", "bytes":   86000000 },
-    "index":   { "sha": "sha256:5d8e...", "bytes":   38000000 }
-  },
-  <span class="arg">"k_score"</span>: 0.94,
-  <span class="arg">"k_components"</span>: { "A": 0.974, "F": 0.99, "L": 0.91, "C": 0.96, "V": 0.88 },
-  <span class="arg">"gate"</span>: 0.70,
-  <span class="arg">"compiled_at"</span>: "2026-05-07T15:21:08Z",
-  <span class="arg">"registry"</span>:    "rs-1@v0.1.42"
+  <span class="arg">"created_at"</span>:  "2026-05-07T15:21:08Z",
+  <span class="arg">"runtime"</span>:     "cloud",                       <span class="com">// 'on-device' once Sprint 3 LoRA bridge ships</span>
+  <span class="arg">"base_model"</span>:  "qwen2.5-coder-7b-instruct-q4_0",
+  <span class="arg">"tier"</span>:        "recipe",                      <span class="com">// 'recipe' or 'lora'</span>
+  <span class="arg">"judge_id"</span>:    "kolm-pattern-synth-1",
+  <span class="arg">"eval_score"</span>:  0.94,
+  <span class="arg">"recipes"</span>:     { "n": 7, "registry_hash": "sha256:..." },
+  <span class="arg">"lora"</span>:        null,                          <span class="com">// pointer to LoRA delta when present</span>
+  <span class="arg">"recall"</span>:      { "namespace": "tenant/corpus" },
+  <span class="arg">"training"</span>:    { "distilled_pairs": 0, "accuracy": null },
+  <span class="arg">"evals"</span>:       { "n": 24, "spec": "...", "hash": "sha256:..." },
+  <span class="arg">"k_score"</span>:     { "composite": 0.94, "accuracy": 0.97, "coverage": 0.99, "size_bytes": 4249, "p50_latency_us": 142 },
+  <span class="arg">"hashes"</span>: {
+    "model_pointer": "sha256:...",
+    "recipes_json":  "sha256:...",
+    "lora_bin":      "sha256:...",
+    "index_bin":     "sha256:...",
+    "evals_json":    "sha256:..."
+  }
 }</pre>
 
-      <p class="lede-sec">Every artifact carries an HMAC chain over every layer. The chain is bound in the artifact receipt. Tampering with any layer breaks the chain; verification is fast and offline.</p>
+      <p class="lede-sec">Every artifact carries an HMAC chain. Each step seals the previous step's output, so tampering with any step breaks the chain. Verification is fast and offline.</p>
 
       <h3 id="chain">HMAC chain</h3>
-<pre>r0 = HMAC(secret, sha256(manifest))
-r1 = HMAC(secret, r0 || sha256(model.gguf))
-r2 = HMAC(secret, r1 || sha256(lora.bin))
-r3 = HMAC(secret, r2 || sha256(recipes.json))
-r4 = HMAC(secret, r3 || sha256(index.sqlite-vec))
-r5 = HMAC(secret, r4 || sha256(evals.jsonl))
+<pre><span class="com"># The 5-step chain. Each step.hmac = HMAC(secret, canonical({step, input_hash, output_hash})).
+# Every step's input_hash equals the previous step's output_hash; the chain links forward.</span>
 
-signature.sig = r5</pre>
-      <p>The <code>secret</code> is per-tenant. Verification is one HMAC chain re-derive against the layer hashes in the manifest and receipt body &mdash; offline, no service required.</p>
+step 1  task     <span class="com">// seals canonical(spec) &rarr; canonical(task)</span>
+step 2  seeds    <span class="com">// seals task &rarr; canonical(training stats)</span>
+step 3  recipes  <span class="com">// seals seeds &rarr; recipes_json hash</span>
+step 4  evals    <span class="com">// seals recipes &rarr; eval_set hash</span>
+step 5  package  <span class="com">// seals evals &rarr; final artifact_hash</span>
+
+receipt.signature = HMAC(secret, canonical(receipt body, including chain[]))</pre>
+      <p>The <code>secret</code> is per-tenant (or per-user via <code>~/.kolm/config.json</code> for local builds). Verification is one HMAC re-derive per step plus one body-signature check, offline, no service required.</p>
 
       <h3 id="anchor">Anchor extension</h3>
       <p>The receipt schema carries anchor fields for transparency-log roots and third-party timestamps. Available as an Enterprise add-on; the field is empty by default on Free / Pro tiers, populated on Enterprise.</p>
@@ -293,16 +300,16 @@ signature.sig = r5</pre>
       <h2 id="cli"><span class="num">08</span>CLI reference</h2>
       <p class="lede-sec">Every <code>kolm</code> subcommand. <code>kolm --help</code> prints the same list with current flags.</p>
       <ul>
-        <li><code>kolm login</code> &mdash; configure your API key for the CLI.</li>
-        <li><code>kolm config [base|api_key] [value]</code> &mdash; inspect or set endpoint and API key config.</li>
-        <li><code>kolm compile &lt;task&gt;</code> &mdash; build a <code>.kolm</code> artifact.</li>
-        <li><code>kolm run &lt;file&gt; &lt;input&gt;</code> &mdash; run the artifact locally.</li>
-        <li><code>kolm inspect &lt;file&gt;</code> &mdash; print manifest, recipes, K-score, and signature metadata.</li>
-        <li><code>kolm eval &lt;file&gt;</code> &mdash; re-run embedded evals.</li>
-        <li><code>kolm score &lt;file&gt;</code> &mdash; print the K-score summary.</li>
-        <li><code>kolm serve --mcp [--http] [--port]</code> &mdash; expose <code>~/.kolm/artifacts</code> as MCP tools.</li>
-        <li><code>kolm publish &lt;file&gt;</code> &mdash; placeholder; public gallery publishing is not implemented.</li>
-        <li><code>kolm version</code> &mdash; print the CLI version.</li>
+        <li><code>kolm login</code>: configure your API key for the CLI.</li>
+        <li><code>kolm config [base|api_key] [value]</code>: inspect or set endpoint and API key config.</li>
+        <li><code>kolm compile &lt;task&gt;</code>: build a <code>.kolm</code> artifact.</li>
+        <li><code>kolm run &lt;file&gt; &lt;input&gt;</code>: run the artifact locally.</li>
+        <li><code>kolm inspect &lt;file&gt;</code>: print manifest, recipes, K-score, and signature metadata.</li>
+        <li><code>kolm eval &lt;file&gt;</code>: re-run embedded evals.</li>
+        <li><code>kolm score &lt;file&gt;</code>: print the K-score summary.</li>
+        <li><code>kolm serve --mcp [--http] [--port]</code>: expose <code>~/.kolm/artifacts</code> as MCP tools.</li>
+        <li><code>kolm publish &lt;file&gt;</code>: placeholder; public gallery publishing is not implemented.</li>
+        <li><code>kolm version</code>: print the CLI version.</li>
       </ul>
 
     </div>
@@ -335,8 +342,8 @@ signature.sig = r5</pre>
       <div>
         <h5>Develop</h5>
         <ul>
-          <li><a href="/docs">Docs</a>
-        <a href="/articles">Articles</a></li>
+          <li><a href="/docs">Docs</a></li>
+          <li><a href="/articles">Articles</a></li>
           <li><a href="/manual">Manual</a></li>
           <li><a href="/sdk.js">SDK</a></li>
           <li><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></li>

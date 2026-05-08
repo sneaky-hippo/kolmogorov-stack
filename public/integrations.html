@@ -100,7 +100,7 @@
     </div>
     <div class="right">
       <a href="/signin" class="ghost">sign in</a>
-      <a href="/signup" class="cta">get a key</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
     </div>
   </div>
 </header>
@@ -141,7 +141,7 @@
           <p>Drop the <code>.cursorrules</code> template into your project. Cursor can call <code>kolm compile</code>, swap LLM-as-judge calls for deterministic recipes, and inspect <code>.kolm</code> manifests inline.</p>
           <pre>curl -O https://kolm.ai/docs/cursor-rules.txt
 mv cursor-rules.txt .cursorrules</pre>
-          <div class="links"><a href="/docs/cursor-rules.txt">cursor-rules.txt</a><a href="/quickstart#cursor">quickstart</a></div>
+          <div class="links"><a href="/docs/cursor-rules.txt">cursor-rules.txt</a><a href="/quickstart">quickstart</a></div>
         </div>
 
         <div class="ig">
@@ -184,8 +184,8 @@ mv claude-skill.md CLAUDE.md</pre>
 script:
   - npm i -g github:sneaky-hippo/kolmogorov-stack
   - kolm compile "$TASK" --examples ./labels.jsonl
-  - kolm eval --gate 0.85</pre>
-          <div class="links"><a href="/quickstart#cicd">quickstart</a></div>
+  - kolm eval ./artifacts/$ARTIFACT.kolm</pre>
+          <div class="links"><a href="/quickstart">quickstart</a></div>
         </div>
       </div>
     </div>
@@ -197,9 +197,9 @@ script:
         <div class="ig">
           <div class="top"><h3>Node / TypeScript</h3><span class="stat shipped">shipped</span></div>
           <p>Browser-native SDK at <code>/sdk.js</code> + a Node wrapper at <code>sdk/node</code>. TypeScript types included.</p>
-          <pre>npm i github:sneaky-hippo/kolmogorov-stack
-import { KolmClient } from 'kolmogorov-stack/sdk/node/index.mjs';
-const k = new KolmClient({ apiKey: process.env.KOLM_API_KEY });
+          <pre>npm i @kolmogorov/kolm-sdk
+import { RecipeClient } from '@kolmogorov/kolm-sdk';
+const k = new RecipeClient({ apiKey: process.env.KOLM_API_KEY });
 const job = await k.synthesize({ positives, negatives });</pre>
           <div class="links"><a href="/sdk.js">/sdk.js</a><a href="/docs">docs</a></div>
         </div>
@@ -209,28 +209,11 @@ const job = await k.synthesize({ positives, negatives });</pre>
           <p>Stdlib-only client at <code>sdk/python/kolm</code>. <code>from kolm import Kolm</code> works the same as the Node SDK.</p>
           <pre>pip install -e sdk/python
 from kolm import Kolm
-k = Kolm(api_key="k_live_...")
+k = Kolm(api_key="ks_...")
 job = k.compile(task=..., examples_path="./tickets.jsonl")</pre>
           <div class="links"><a href="https://github.com/sneaky-hippo/kolmogorov-stack/tree/main/sdk/python">source</a></div>
         </div>
 
-        <div class="ig">
-          <div class="top"><h3>Rust / Go bindings</h3><span class="stat preview">preview</span></div>
-          <p>Bare HTTP client. Speak the same JSON API the SDKs do. RS-1 spec is open and stable.</p>
-          <pre># auth: Bearer ${KOLM_API_KEY}
-POST https://kolm.ai/v1/compile
-{ "task": "...", "examples": [...] }</pre>
-          <div class="links"><a href="/docs">API spec</a></div>
-        </div>
-
-        <div class="ig">
-          <div class="top"><h3>HuggingFace bridge</h3><span class="stat preview">preview</span></div>
-          <p>Pull any open base from HF as the student model in your compile. Pin by <code>--base</code> or <code>--base-url</code>.</p>
-          <pre>kolm compile "..." \
-  --base hf://Qwen/Qwen2.5-7B-Instruct \
-  --examples ./labels.jsonl</pre>
-          <div class="links"><a href="/docs">docs</a></div>
-        </div>
       </div>
     </div>
 
@@ -275,16 +258,19 @@ npm i -g github:sneaky-hippo/kolmogorov-stack</pre>
 
     <div class="group" id="cta-row">
       <h2>Don't see your stack?</h2>
-      <p class="kicker">Mail <a href="mailto:dev@kolm.ai" style="color:var(--accent);">dev@kolm.ai</a> with the integration you want. RS-1 is open. The HTTP API is stable. We will help you wire it.</p>
+      <p class="kicker">Open a thread in <a href="https://github.com/sneaky-hippo/kolmogorov-stack/discussions" style="color:var(--accent);">GitHub Discussions</a>. RS-1 is open. The HTTP API is stable. The integration you need is usually thirty lines; we'll review the PR.</p>
     </div>
 
   </div>
 </section>
 
 <footer class="site">
-  <div class="wrap-wide row">
-    <span>kolm v0.1.0 - the AI compiler</span>
-    <span><a href="/manifesto">Manifesto</a> - <a href="/security">Security</a> - <a href="/privacy">Privacy</a> - <a href="/terms">Terms</a></span>
+  <div class="wrap-wide">
+    <div class="row">
+      <span>kolm v0.1.0 - the AI compiler</span>
+      <span><a href="/manifesto">Manifesto</a> - <a href="/security">Security</a> - <a href="/privacy">Privacy</a> - <a href="/terms">Terms</a></span>
+    </div>
+    <small class="footer-tag" style="display:block;margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--ink-faint,#6b7280);letter-spacing:0;">kolm &middot; open spec &middot; MIT licensed runtime &middot; kolm.ai</small>
   </div>
 </footer>
 

@@ -100,7 +100,9 @@ USAGE
 
 COMMANDS
   login                            authenticate to a kolm cloud
-  compile "<task>" [opts]          compile a task into a .kolm artifact
+  new <name> [--from <template>]   scaffold a spec.json you can compile
+  compile "<task>" [opts]          cloud-compile a task into a .kolm artifact
+  compile --spec <file|->           offline build from a JSON spec (any author, AI included)
   run <art.kolm> '<input>'         execute a .kolm against an input
   eval <art.kolm>                  re-run embedded evals, print K-score
   bench <art.kolm> [opts]          emit artifact benchmark JSON (alias: benchmark)
@@ -123,26 +125,77 @@ USAGE
 
 The key is stored at ~/.kolm/config.json (mode 0600). Get a key at https://kolm.ai/signin.
 `,
-  compile: `kolm compile - cloud-compile a task into a .kolm artifact.
+  compile: `kolm compile - build a .kolm artifact (cloud-synthesised or local spec).
 
 USAGE
-  kolm compile "<task>" [opts]
+  kolm compile "<task>" [opts]                  cloud compile from a task description
+  kolm compile --spec <file.json> [--out <p>]   offline build from a JSON spec
+  kolm compile --spec - [--out <p>]             offline build from JSON on stdin
 
-OPTIONS
+OPTIONS (cloud)
   --data <dir>                 corpus dir to ground the compile in (Recall)
   --base-model <name>          base model (default: qwen2.5-coder-7b-instruct-q4_0)
   --examples <file.jsonl>      seed examples for the verifier
-  --out <dir>                  where to drop the .kolm (default ~/.kolm/artifacts)
+  --out <dir|file.kolm>        where to drop the artifact (default ~/.kolm/artifacts)
 
-EXAMPLE
+OPTIONS (spec)
+  --spec <file|->              JSON spec describing recipes + evals + optional pack/index
+  --out <file.kolm|dir>        output path (.kolm) or directory; default ~/.kolm/artifacts
+
+SPEC SHAPE (offline path — any human or AI agent can author this)
+  {
+    "job_id": "job_my_redactor_v1",
+    "task":   "redact PII from free text",
+    "recipes": [{ "id":"rcp_my", "name":"...", "source":"function generate(input,lib){...}" }],
+    "pack":   { ... optional KOLMPACK ... },
+    "index":  { ... optional KOLMIDX ... },
+    "evals":  { "spec":"rs-1-evals", "n":3, "cases":[{"id":"...","input":...,"expected":...}] }
+  }
+
+The offline path signs the artifact with a per-user secret stored at
+~/.kolm/config.json (auto-generated). Set RECIPE_RECEIPT_SECRET in env to share
+signatures across teammates / CI.
+
+EXAMPLES
+  # cloud (need: kolm login)
   kolm compile "triage support tickets" --data ./tickets --examples ./labels.jsonl
+
+  # offline — write a spec, compile, run locally
+  kolm new my-classifier --from classifier
+  kolm compile --spec my-classifier.spec.json --out my-classifier.kolm
+  kolm run my-classifier.kolm '{"text":"refund my last invoice"}'
+
+  # offline from stdin (AI-agent friendly)
+  cat spec.json | kolm compile --spec - --out out.kolm
+`,
+  new: `kolm new - scaffold a spec.json you can compile into a .kolm.
+
+USAGE
+  kolm new <name> [--from <template>] [--out <file>]
+
+TEMPLATES
+  --from blank        empty stub: one no-op recipe + one eval, ready to edit
+  --from redactor     identifier redactor (regex pack + tenant extras)
+  --from extractor    structured-field extractor (regex rules pack)
+  --from classifier   keyword-weighted classifier (categories pack)
+
+The output is a JSON file at <name>.spec.json (or --out <file>) that you can
+compile with: kolm compile --spec <name>.spec.json --out <name>.kolm
 `,
   run: `kolm run - execute a .kolm artifact locally.
 
 USAGE
-  kolm run <artifact.kolm> '<input-json>'
+  kolm run <artifact.kolm> '<input-json>' [--params <json|@file>]
 
 The input is parsed as JSON when possible; otherwise passed as a bare string.
+--params lets you pass tenant-runtime config to the recipes (extra patterns,
+allowlists, vertical rules). Recipes read these via lib.params. Tenant params
+are never persisted by the runtime and never re-signed into the artifact.
+
+EXAMPLES
+  kolm run redactor.kolm '{"text":"call 555-1212"}'
+  kolm run redactor.kolm '{"text":"id 12-345"}' --params '{"extra_patterns":[{"name":"emp_id","regex":"\\\\b\\\\d{2}-\\\\d{3}\\\\b","replacement":"[ID]"}]}'
+  kolm run redactor.kolm '{"text":"..."}' --params @hospital-rules.json
 `,
   eval: `kolm eval - re-run a .kolm's embedded eval set and recompute K-score.
 
@@ -228,6 +281,229 @@ function firstRunBannerIfNeeded() {
 }
 
 // ---------- commands ----------
+
+const SPEC_TEMPLATES = {
+  blank: (jobId) => ({
+    job_id: jobId,
+    task: 'describe what this artifact does in one sentence',
+    base_model: 'none',
+    recipes: [{
+      id: 'rcp_main_v1',
+      name: 'main recipe',
+      source: [
+        'function generate(input, lib) {',
+        "  var text = (typeof input === 'string') ? input : (input && input.text) || '';",
+        "  return { echoed: String(text) };",
+        '}',
+      ].join('\n'),
+      tags: ['stub'],
+      schema: { input: { text: 'string' }, output: { echoed: 'string' } },
+    }],
+    evals: {
+      spec: 'rs-1-evals',
+      n: 1,
+      cases: [
+        { id: 'echo', input: { text: 'hello' }, expected: { echoed: 'hello' } },
+      ],
+      coverage: 1.0,
+    },
+    training_stats: { pass_rate_positive: 1.0, latency_p50_us: 50 },
+  }),
+
+  redactor: (jobId) => ({
+    job_id: jobId,
+    task: 'redact identifier patterns from free text — extend at run time via params.extra_patterns',
+    base_model: 'none',
+    recipes: [{
+      id: 'rcp_redactor_v1',
+      name: 'identifier redactor',
+      source: [
+        'function generate(input, lib) {',
+        "  var text = (typeof input === 'string') ? input : (input && input.text) || '';",
+        "  if (typeof text !== 'string') return { redacted: '', hits: [] };",
+        '  var patterns = [];',
+        "  var enabled = (lib.pack && lib.pack.enabled_builtins) || ['email','phone','url','ipv4','date'];",
+        '  for (var i=0;i<enabled.length;i++){ var k=enabled[i]; if (lib.patterns[k]) patterns.push({name:k.toUpperCase(),regex:lib.patterns[k],replacement:"["+k.toUpperCase()+"]"}); }',
+        '  var packPats = (lib.pack && lib.pack.default_patterns) || [];',
+        "  for (var j=0;j<packPats.length;j++){ var p=packPats[j]; try { patterns.push({name:p.name,regex:new RegExp(p.regex,p.flags||'g'),replacement:p.replacement||('['+p.name+']')}); } catch(e){} }",
+        '  var extras = (lib.params && lib.params.extra_patterns) || [];',
+        "  for (var x=0;x<extras.length;x++){ var e=extras[x]; try { patterns.push({name:e.name,regex:new RegExp(e.regex,e.flags||'g'),replacement:e.replacement||('['+e.name+']')}); } catch(err){} }",
+        '  var hits = {}, redacted = text;',
+        '  for (var n=0;n<patterns.length;n++){ var pat=patterns[n], count=0; redacted = redacted.replace(pat.regex, function(){ count++; return pat.replacement; }); if (count>0) hits[pat.name]=(hits[pat.name]||0)+count; }',
+        '  var hitList = []; for (var key in hits) hitList.push({name:key,count:hits[key]});',
+        '  hitList.sort(function(a,b){ return a.name<b.name?-1:a.name>b.name?1:0; });',
+        '  return { redacted: redacted, hits: hitList };',
+        '}',
+      ].join('\n'),
+      tags: ['redaction', 'privacy', 'generic'],
+      schema: { input: { text: 'string' }, output: { redacted: 'string', hits: 'array' } },
+    }],
+    pack: {
+      spec: 'kolm-pack-1',
+      description: 'starter identifier patterns — tenants extend via params.extra_patterns',
+      enabled_builtins: ['email', 'phone', 'url', 'ipv4', 'date'],
+      default_patterns: [
+        { name: 'SSN_LIKE', regex: '\\b\\d{3}-\\d{2}-\\d{4}\\b', replacement: '[SSN]' },
+      ],
+    },
+    index: {
+      spec: 'kolm-index-1',
+      by_keyword: { redact: 'rcp_redactor_v1', privacy: 'rcp_redactor_v1' },
+      by_recipe: { rcp_redactor_v1: ['redact', 'privacy'] },
+    },
+    evals: {
+      spec: 'rs-1-evals',
+      n: 2,
+      cases: [
+        { id: 'phone', input: { text: 'call 555-123-4567 today' }, expected: { redacted: 'call [PHONE] today', hits: [{ name: 'PHONE', count: 1 }] } },
+        { id: 'ssn',   input: { text: 'ssn 123-45-6789' },         expected: { redacted: 'ssn [SSN]',          hits: [{ name: 'SSN_LIKE', count: 1 }] } },
+      ],
+      coverage: 1.0,
+    },
+    training_stats: { pass_rate_positive: 1.0, latency_p50_us: 60 },
+  }),
+
+  extractor: (jobId) => ({
+    job_id: jobId,
+    task: 'extract structured fields from free text via artifact-bound + tenant-supplied regex rules',
+    base_model: 'none',
+    recipes: [{
+      id: 'rcp_extractor_v1',
+      name: 'structured field extractor',
+      source: [
+        'function generate(input, lib) {',
+        "  var text = (typeof input === 'string') ? input : (input && input.text) || '';",
+        "  if (typeof text !== 'string') return { fields: {}, raw: '' };",
+        '  var rules = [];',
+        '  var packRules = (lib.pack && lib.pack.default_rules) || [];',
+        '  for (var i=0;i<packRules.length;i++) rules.push(packRules[i]);',
+        '  var tenantRules = (lib.params && lib.params.extra_rules) || [];',
+        '  for (var j=0;j<tenantRules.length;j++) rules.push(tenantRules[j]);',
+        '  var fields = {};',
+        '  for (var k=0;k<rules.length;k++){ var r=rules[k]; if (!r||!r.name||!r.regex) continue;',
+        "    var re; try { re = new RegExp(r.regex, r.flags||''); } catch(err){ fields[r.name]=null; continue; }",
+        '    var m = text.match(re); if (!m) { fields[r.name]=null; continue; }',
+        "    var raw = (typeof r.group==='number'&&r.group>=0) ? (m[r.group]!=null?m[r.group]:null) : m[0];",
+        '    if (raw==null) { fields[r.name]=null; continue; }',
+        "    if (r.transform==='upper') raw=String(raw).toUpperCase();",
+        "    else if (r.transform==='lower') raw=String(raw).toLowerCase();",
+        "    else if (r.transform==='trim') raw=String(raw).trim();",
+        "    else if (r.transform==='number') { var n=lib.parseFloatSafe(raw); raw=isNaN(n)?null:n; }",
+        '    fields[r.name] = raw;',
+        '  }',
+        '  return { fields: fields, raw: text };',
+        '}',
+      ].join('\n'),
+      tags: ['extraction', 'structured', 'generic'],
+      schema: { input: { text: 'string' }, output: { fields: 'object', raw: 'string' } },
+    }],
+    pack: {
+      spec: 'kolm-pack-1',
+      description: 'starter extraction rules — tenants extend via params.extra_rules',
+      default_rules: [
+        { name: 'iso_date', regex: '\\b(\\d{4}-\\d{2}-\\d{2})\\b', group: 1 },
+      ],
+    },
+    index: {
+      spec: 'kolm-index-1',
+      by_keyword: { extract: 'rcp_extractor_v1', parse: 'rcp_extractor_v1' },
+      by_recipe: { rcp_extractor_v1: ['extract', 'parse'] },
+    },
+    evals: {
+      spec: 'rs-1-evals',
+      n: 1,
+      cases: [
+        { id: 'date', input: { text: 'invoice dated 2026-05-09' }, expected: { fields: { iso_date: '2026-05-09' }, raw: 'invoice dated 2026-05-09' } },
+      ],
+      coverage: 1.0,
+    },
+    training_stats: { pass_rate_positive: 1.0, latency_p50_us: 70 },
+  }),
+
+  classifier: (jobId) => ({
+    job_id: jobId,
+    task: 'rule-based keyword classifier — score input against artifact-bound + tenant-supplied categories',
+    base_model: 'none',
+    recipes: [{
+      id: 'rcp_classifier_v1',
+      name: 'keyword classifier',
+      source: [
+        'function generate(input, lib) {',
+        "  var text = (typeof input === 'string') ? input : (input && input.text) || '';",
+        "  if (typeof text !== 'string') text = String(text);",
+        '  var cats = [];',
+        '  var packCats = (lib.pack && lib.pack.categories) || [];',
+        '  for (var i=0;i<packCats.length;i++) cats.push(packCats[i]);',
+        '  var tenantCats = (lib.params && lib.params.extra_categories) || [];',
+        '  for (var j=0;j<tenantCats.length;j++) cats.push(tenantCats[j]);',
+        '  var lower = text.toLowerCase();',
+        '  var scores = {};',
+        '  for (var k=0;k<cats.length;k++){ var c=cats[k]; if (!c||!c.name||!Array.isArray(c.keywords)) continue;',
+        "    var weight = (typeof c.weight==='number'&&c.weight>0) ? c.weight : 1;",
+        "    var score = 0; for (var n=0;n<c.keywords.length;n++){ var kw=String(c.keywords[n]||'').toLowerCase(); if (!kw) continue; var idx=0,hits=0; while ((idx=lower.indexOf(kw,idx))!==-1){ hits++; idx+=kw.length; } score += hits*weight; }",
+        '    if (score>0) scores[c.name] = (scores[c.name]||0) + score;',
+        '  }',
+        '  var sortedNames = Object.keys(scores).sort(function(a,b){ if (scores[b]!==scores[a]) return scores[b]-scores[a]; return a<b?-1:1; });',
+        "  var fallback = (lib.pack && lib.pack.fallback_label) || 'unclassified';",
+        '  var top = sortedNames.length ? sortedNames[0] : fallback;',
+        '  return { label: top, score: scores[top]||0, scores: scores };',
+        '}',
+      ].join('\n'),
+      tags: ['classification', 'rules', 'generic'],
+      schema: { input: { text: 'string' }, output: { label: 'string', score: 'number', scores: 'object' } },
+    }],
+    pack: {
+      spec: 'kolm-pack-1',
+      description: 'starter categories — tenants extend via params.extra_categories',
+      fallback_label: 'general',
+      categories: [
+        { name: 'billing', keywords: ['refund', 'invoice', 'payment'] },
+        { name: 'bug',     keywords: ['error', 'crash', 'broken'] },
+      ],
+    },
+    index: {
+      spec: 'kolm-index-1',
+      by_keyword: { classify: 'rcp_classifier_v1', label: 'rcp_classifier_v1' },
+      by_recipe: { rcp_classifier_v1: ['classify', 'label'] },
+    },
+    evals: {
+      spec: 'rs-1-evals',
+      n: 1,
+      cases: [
+        { id: 'billing', input: { text: 'I need a refund' }, expected: { label: 'billing', score: 1, scores: { billing: 1 } } },
+      ],
+      coverage: 1.0,
+    },
+    training_stats: { pass_rate_positive: 1.0, latency_p50_us: 80 },
+  }),
+};
+
+function slugify(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'artifact';
+}
+
+async function cmdNew(args) {
+  if (maybeHelp('new', args)) return;
+  const positional = args.find(a => !a.startsWith('--'));
+  if (!positional) { console.error('error: kolm new <name> [--from blank|redactor|extractor|classifier]'); process.exit(1); }
+  const name = slugify(positional);
+  const fromIdx = args.indexOf('--from');
+  const tmplName = (fromIdx >= 0 ? args[fromIdx + 1] : 'blank') || 'blank';
+  const tmpl = SPEC_TEMPLATES[tmplName];
+  if (!tmpl) { console.error(`error: unknown template "${tmplName}". choose: ${Object.keys(SPEC_TEMPLATES).join(', ')}`); process.exit(1); }
+  const outIdx = args.indexOf('--out');
+  const outPath = outIdx >= 0 ? args[outIdx + 1] : path.resolve(process.cwd(), `${name}.spec.json`);
+  if (fs.existsSync(outPath)) { console.error(`error: ${outPath} already exists. pick a new name or --out <path>.`); process.exit(1); }
+  const jobId = `job_${name.replace(/-/g, '_')}_v1`;
+  const spec = tmpl(jobId);
+  fs.writeFileSync(outPath, JSON.stringify(spec, null, 2) + '\n');
+  console.log(`wrote: ${outPath}`);
+  console.log(`compile: kolm compile --spec ${path.relative(process.cwd(), outPath) || outPath} --out ${name}.kolm`);
+  console.log(`then run:  kolm run ${name}.kolm '{"text":"..."}'`);
+  console.log(`\nedit the spec to point recipes/pack/index/evals at your task.`);
+  console.log(`docs: see /docs/AUTHORING.md for the full schema + sensitive-data caveats.`);
+}
+
 async function cmdLogin(args) {
   if (maybeHelp('login', args)) return;
   const c = loadConfig();
@@ -249,11 +525,67 @@ async function cmdLogin(args) {
   }
 }
 
+async function readStdin() {
+  return new Promise((resolve, reject) => {
+    let buf = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => { buf += chunk; });
+    process.stdin.on('end', () => resolve(buf));
+    process.stdin.on('error', reject);
+  });
+}
+
 async function cmdCompile(args) {
   if (maybeHelp('compile', args)) return;
   firstRunBannerIfNeeded();
+
+  // ---- Spec-driven local compile path: anyone (or any AI agent) can author a
+  // .kolm by writing JSON. No cloud, no account. The artifact is signed with
+  // a per-user secret stored at ~/.kolm/config.json (auto-generated on first
+  // run); set RECIPE_RECEIPT_SECRET in env to share signatures across teams.
+  const specIdx = args.indexOf('--spec');
+  if (specIdx >= 0) {
+    const specArg = args[specIdx + 1];
+    if (!specArg) { console.error('error: --spec needs a path or "-" for stdin'); process.exit(1); }
+    let raw;
+    try {
+      if (specArg === '-' || specArg === '/dev/stdin') {
+        raw = await readStdin();
+      } else {
+        raw = fs.readFileSync(specArg, 'utf8');
+      }
+    } catch (e) {
+      console.error(`error: cannot read spec from ${specArg}: ${e.message}`); process.exit(1);
+    }
+    let spec;
+    try { spec = JSON.parse(raw); }
+    catch (e) { console.error(`error: spec is not valid JSON: ${e.message}`); process.exit(1); }
+    const outIdxL = args.indexOf('--out');
+    const outArg = outIdxL >= 0 ? args[outIdxL + 1] : null;
+    const outDirL = outArg && outArg.endsWith('.kolm') ? path.dirname(outArg) : (outArg || ARTIFACTS_DIR);
+    const outPath = outArg && outArg.endsWith('.kolm') ? path.resolve(outArg) : null;
+    fs.mkdirSync(outDirL, { recursive: true });
+    const { compileSpec } = await import('../src/spec-compile.js');
+    try {
+      const r = await compileSpec(spec, { outDir: outDirL, outPath });
+      console.log(`built: ${r.outPath}`);
+      console.log(`bytes: ${r.bytes}`);
+      console.log(`sha256: ${r.sha256}`);
+      if (r.k_score) console.log(`k_score: ${r.k_score.composite}`);
+      console.log(`\ntry it:  kolm run ${path.basename(r.outPath)} '<input-json>'`);
+      console.log(`serve:   kolm serve --mcp     # frontier agents discover it`);
+      return;
+    } catch (e) {
+      const code = e.code ? `[${e.code}] ` : '';
+      console.error(`compile failed: ${code}${e.message}`);
+      if (process.env.KOLM_DEBUG) console.error(e.stack);
+      process.exit(1);
+    }
+  }
+
+  // ---- Cloud-compile path (existing): synthesize from task + corpus + examples.
   const c = loadConfig();
-  if (!c.api_key) { console.error('not logged in. run: kolm login'); process.exit(1); }
+  if (!c.api_key) { console.error('not logged in. run: kolm login\n(or use --spec <file.json> for offline spec-driven compile)'); process.exit(1); }
 
   const task = args.find(a => !a.startsWith('--'));
   const dataIdx = args.indexOf('--data');
@@ -266,7 +598,7 @@ async function cmdCompile(args) {
   const examplesPath = exIdx >= 0 ? args[exIdx + 1] : null;
   const outDir = outIdx >= 0 ? args[outIdx + 1] : ARTIFACTS_DIR;
 
-  if (!task) { console.error('error: compile needs a task. e.g. kolm compile "triage support tickets"'); process.exit(1); }
+  if (!task) { console.error('error: compile needs a task. e.g. kolm compile "triage support tickets"\n(or kolm compile --spec <file.json> for offline spec-driven compile)'); process.exit(1); }
 
   // Optional: if --data given, ingest first.
   let corpus_namespace = null;
@@ -358,17 +690,36 @@ function resolveArtifact(p) {
 
 async function cmdRun(args) {
   if (maybeHelp('run', args)) return;
-  const ap = resolveArtifact(args[0]);
-  if (!ap) { console.error('error: artifact not found:', args[0]); process.exit(1); }
-  const inputRaw = args[1];
+  // pull --params <json|@file> off args before resolving positional argv
+  let paramsArg = null;
+  const cleaned = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--params' && i + 1 < args.length) { paramsArg = args[i + 1]; i++; }
+    else cleaned.push(args[i]);
+  }
+  const ap = resolveArtifact(cleaned[0]);
+  if (!ap) { console.error('error: artifact not found:', cleaned[0]); process.exit(1); }
+  const inputRaw = cleaned[1];
   let input = null;
   if (inputRaw) {
     try { input = JSON.parse(inputRaw); }
-    catch { input = inputRaw; } // pass as bare string
+    catch { input = inputRaw; }
+  }
+  let params = null;
+  if (paramsArg) {
+    const raw = paramsArg.startsWith('@') ? fs.readFileSync(paramsArg.slice(1), 'utf8') : paramsArg;
+    try { params = JSON.parse(raw); }
+    catch (e) { console.error('error: --params must be JSON or @file.json:', e.message); process.exit(2); }
   }
   await withRunner(async ({ runArtifact }) => {
-    const r = await runArtifact(ap, input);
-    console.log(JSON.stringify({ output: r.output, recipe: r.recipe_name || r.recipe_id, latency_us: r.latency_us, k_score: r.k_score, receipt: r.receipt }, null, 2));
+    try {
+      const r = await runArtifact(ap, input, { params });
+      console.log(JSON.stringify({ output: r.output, recipe: r.recipe_name || r.recipe_id, latency_us: r.latency_us, k_score: r.k_score, receipt: r.receipt, audit: r.audit }, null, 2));
+    } catch (e) {
+      const code = e.code || 'KOLM_E_RUN_FAILED';
+      console.error(JSON.stringify({ error: e.message, code, tried: e.tried || null }, null, 2));
+      process.exit(3);
+    }
   });
 }
 
@@ -498,11 +849,28 @@ async function cmdVersion(args) {
 }
 
 // ---------- dispatch ----------
+// If the user previously compiled an artifact via `kolm compile --spec` we
+// auto-saved a per-user `local_receipt_secret` to ~/.kolm/config.json so the
+// receipt signs deterministically. Pull it back into env here so subsequent
+// `kolm inspect/run/eval/bench` calls verify the signatures we issued.
+function ensureLocalReceiptSecretInEnv() {
+  if (process.env.RECIPE_RECEIPT_SECRET || process.env.KOLM_ARTIFACT_SECRET) return;
+  try {
+    if (!fs.existsSync(CONFIG_PATH)) return;
+    const cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    if (cfg && typeof cfg.local_receipt_secret === 'string' && cfg.local_receipt_secret.length > 0) {
+      process.env.RECIPE_RECEIPT_SECRET = cfg.local_receipt_secret;
+    }
+  } catch {}
+}
+
 async function main() {
+  ensureLocalReceiptSecretInEnv();
   const [, , cmd, ...rest] = process.argv;
   try {
     switch (cmd) {
       case 'login':    await cmdLogin(rest); break;
+      case 'new':      await cmdNew(rest); break;
       case 'compile':  await cmdCompile(rest); break;
       case 'run':      await cmdRun(rest); break;
       case 'eval':     await cmdEval(rest); break;

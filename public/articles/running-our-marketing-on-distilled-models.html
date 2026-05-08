@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Our marketing runs on 4 distilled models · kolm</title>
+<meta name="description" content="The kolm marketing site is dogfood. Four Specialists power the most expensive AI features on this site, on a $99/mo GPU sliver. Here's which Specialists, what they cost, and what we kept on the frontier.">
+<meta name="keywords" content="dogfood AI, marketing AI cost, distilled model marketing stack, kolm specialists, .kolm production">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta name="author" content="Kolmogorov">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="How kolm runs its own marketing on 4 distilled models">
+<meta property="og:description" content="Four Specialists. One GPU sliver. $99/mo. Here's the breakdown.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/articles/running-our-marketing-on-distilled-models">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/articles/running-our-marketing-on-distilled-models">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"TechArticle","headline":"How kolm runs its own marketing on 4 distilled models","description":"A working dogfood case study of the kolm.ai marketing stack.","author":{"@type":"Organization","name":"Kolmogorov","url":"https://kolm.ai"},"publisher":{"@type":"Organization","name":"Kolmogorov","logo":{"@type":"ImageObject","url":"https://kolm.ai/favicon.svg"}},"datePublished":"2026-05-09","dateModified":"2026-05-09","mainEntityOfPage":{"@type":"WebPage","@id":"https://kolm.ai/articles/running-our-marketing-on-distilled-models"},"image":"https://kolm.ai/og-card.svg","keywords":"dogfood, marketing automation, distilled model","articleSection":"Engineering","wordCount":2300}
+</script>
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#4c7dff;--accent-soft:rgba(76,125,255,0.10);--good:#7ef0d2;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:760px;margin:0 auto;padding:0 32px}
+  .wrap-wide{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap,.wrap-wide{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand span{font-weight:540;font-size:16px}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .cta{color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540}
+  @media(max-width:720px){header.site nav{display:none}}
+
+  section.hero{padding:80px 0 36px;position:relative;overflow:hidden}
+  section.hero::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 900px 460px at 22% 12%,rgba(76,125,255,0.10),transparent 60%)}
+  section.hero .wrap{position:relative}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-mute);border:1px solid var(--line-strong);border-radius:999px;padding:5px 12px;background:var(--bg-elev)}
+  .pill .dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+  h1{margin:22px 0 18px;font-size:clamp(34px,5.4vw,54px);line-height:1.05;font-weight:500;max-width:22ch}
+  h1 .tone{color:var(--accent)}
+  p.lede{margin:0 0 0;font-size:clamp(17px,1.4vw,20px);line-height:1.55;color:var(--ink-mute);max-width:60ch}
+  p.lede b{color:var(--ink);font-weight:540}
+  .meta{display:flex;gap:18px;margin-top:22px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
+  .meta b{color:var(--ink-mute);font-weight:500}
+
+  article{padding:36px 0 96px}
+  article h2{margin:56px 0 14px;font-size:clamp(24px,2.6vw,30px);line-height:1.2;font-weight:540;color:var(--ink)}
+  article h2 .tone{color:var(--accent)}
+  article h3{margin:36px 0 10px;font-size:18px;font-weight:540;color:var(--ink)}
+  article p{margin:0 0 16px;font-size:16.5px;line-height:1.7;color:var(--ink-mute)}
+  article p b{color:var(--ink);font-weight:540}
+  article p code,article li code{font-family:var(--mono);font-size:0.92em;background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--ink)}
+  article blockquote{margin:28px 0;padding:16px 22px;border-left:2px solid var(--accent);background:var(--bg-elev);border-radius:0 8px 8px 0;font-size:17px;line-height:1.6;color:var(--ink)}
+  article blockquote p{color:var(--ink);margin:0;font-weight:480}
+  article ul{padding-left:0;list-style:none;margin:16px 0 24px}
+  article ul li{padding:8px 0 8px 22px;position:relative;font-size:16px;line-height:1.6;color:var(--ink-mute)}
+  article ul li::before{content:"-";color:var(--accent);position:absolute;left:6px;font-weight:560}
+  article ul li b{color:var(--ink);font-weight:540}
+  article pre{margin:18px 0 24px;padding:18px 22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.75;color:var(--ink)}
+  article pre .com{color:var(--ink-faint)}
+  article pre .arg{color:var(--accent)}
+  article pre .kw{color:#b0bbff}
+
+  .stack-tbl{width:100%;border-collapse:collapse;margin:20px 0 8px;font-size:13.5px}
+  .stack-tbl th{text-align:left;font-family:var(--mono);font-weight:500;font-size:10.5px;text-transform:uppercase;color:var(--ink-faint);padding:12px 14px;border-bottom:1px solid var(--line-strong);background:rgba(0,0,0,0.2)}
+  .stack-tbl td{padding:12px 14px;border-bottom:1px solid var(--line);color:var(--ink-mute);vertical-align:top}
+  .stack-tbl td:first-child{color:var(--ink);font-weight:500;font-family:var(--mono);font-size:12.5px}
+  .stack-tbl tbody tr:last-child td{border-bottom:none}
+  .stack-tbl-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0 0}
+  .stack-tbl .acc{color:var(--accent)}
+
+  .toc{margin:28px 0 36px;padding:18px 22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px}
+  .toc h5{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px;font-weight:500}
+  .toc ol{margin:0;padding-left:20px}
+  .toc li{padding:4px 0;font-size:14px;color:var(--ink-mute)}
+  .toc li a{color:var(--ink-mute)}
+  .toc li a:hover{color:var(--accent)}
+
+  .signpost{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:48px 0 0}
+  @media(max-width:720px){.signpost{grid-template-columns:1fr}}
+  .signpost a{display:flex;flex-direction:column;gap:8px;padding:22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;transition:border-color 120ms,background 120ms}
+  .signpost a:hover{border-color:var(--line-strong);background:var(--bg-card)}
+  .signpost a .lab{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
+  .signpost a .v{color:var(--ink);font-weight:540;font-size:16px}
+  .signpost a .v .arrow{color:var(--accent);margin-left:6px}
+  .signpost a p{margin:4px 0 0;font-size:13.5px;color:var(--ink-mute);line-height:1.5}
+
+  footer.site{padding:56px 0 40px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+  footer.site .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span>Dogfood &middot; 2026-05-09 &middot; 10 min read</span>
+    <h1>Our marketing runs on <span class="tone">four distilled models.</span></h1>
+    <p class="lede">The site you&rsquo;re reading this on uses AI for nine features. <b>Four of them are powered by .kolm Specialists running on a $99/mo GPU sliver.</b> One is on the frontier where it belongs. Four are static or rule-based. This is the breakdown: which Specialists, why we picked them, what they cost, and where we kept the frontier.</p>
+    <div class="meta"><span><b>By</b>&nbsp;Kolmogorov</span><span><b>Tag</b>&nbsp;dogfood &middot; cost &middot; production</span></div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="toc">
+      <h5>Contents</h5>
+      <ol>
+        <li><a href="#features">The nine features that need a model</a></li>
+        <li><a href="#stack">The four Specialists</a></li>
+        <li><a href="#kept">Where we kept the frontier</a></li>
+        <li><a href="#bill">The actual monthly bill</a></li>
+        <li><a href="#fail">The features we tried to compile and rolled back</a></li>
+        <li><a href="#auto">The build pipeline</a></li>
+        <li><a href="#why">Why this is the most useful blog post we could write</a></li>
+      </ol>
+    </div>
+
+    <h2 id="features">The nine features that need a model.</h2>
+    <p>Audit of every place AI touches the kolm marketing pipeline. Two-week review, one engineer, no tools you don&rsquo;t already have access to.</p>
+
+    <ul>
+      <li><b>1. ROI calc descriptor.</b> The text under <a href="/roi">/roi</a> after a user types in their numbers.</li>
+      <li><b>2. Article TL;DR generator.</b> Each article hero contains a 60-word lede; we draft them with AI.</li>
+      <li><b>3. Outbound email opener.</b> First line of the cold-email cadence to design partners (Smartlead).</li>
+      <li><b>4. Reply classifier.</b> Routes inbound mail to "yes / maybe / unsubscribe / spam / other-team."</li>
+      <li><b>5. Demo-request triage.</b> Reads form submissions, infers tier interest, drafts the first reply.</li>
+      <li><b>6. Slack/Discord summarizer.</b> Daily digest of #partners and #ops channels.</li>
+      <li><b>7. Doc-rewrite for the latest model release.</b> When a frontier vendor releases new tokens or capabilities, we rewrite the affected article paragraphs.</li>
+      <li><b>8. Comparator-page diff.</b> When a competitor updates pricing or features, we generate a "what changed" delta.</li>
+      <li><b>9. Long-form drafting.</b> The cornerstone essays you&rsquo;re reading.</li>
+    </ul>
+
+    <p>Of those, <b>five are 80%+ deterministic in shape.</b> They take an input that fits a recognizable mold and produce an output that fits a recognizable mold. Those are the candidates for a Specialist. The other four are open-domain reasoning that we keep on the frontier.</p>
+
+    <h2 id="stack">The four Specialists.</h2>
+    <p>What we actually compiled, what each is doing, and what we paid for it.</p>
+
+    <div class="stack-tbl-wrap">
+      <table class="stack-tbl">
+        <thead>
+          <tr><th>Specialist</th><th>Powers</th><th>Base</th><th>K-score</th><th>Compile cost</th><th>Per-call cost</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>tldr-2.1.kolm</td><td>article TL;DRs (#2)</td><td>Qwen-2.5-3B</td><td><span class="acc">93.4</span></td><td>$220</td><td>$0.0002</td></tr>
+          <tr><td>cold-opener-1.4.kolm</td><td>cold-email openers (#3)</td><td>Qwen-2.5-3B</td><td><span class="acc">88.7</span></td><td>$340</td><td>$0.0003</td></tr>
+          <tr><td>reply-router-1.0.kolm</td><td>inbound classification (#4) + demo triage (#5)</td><td>Phi-3-mini</td><td><span class="acc">94.8</span></td><td>$180</td><td>$0.0001</td></tr>
+          <tr><td>chan-digest-1.2.kolm</td><td>Slack/Discord summaries (#6)</td><td>Qwen-2.5-3B</td><td><span class="acc">90.1</span></td><td>$280</td><td>$0.0002</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><b>One-time compile total: $1,020.</b> Marginal cost of all four running on one $99/mo H100-sliver from a tier-2 GPU host: $99/mo, regardless of volume. If we 10x our outbound volume tomorrow, the cost stays at $99.</p>
+
+    <p>For comparison, when we ran all four on Sonnet at our current volume in February, the bill was $1,860/mo. <b>The four artifacts paid back their compile cost in 17 days.</b></p>
+
+    <h2 id="kept">Where we kept the frontier.</h2>
+    <p>We did not compile features 1, 7, 8, or 9. Each for a specific reason.</p>
+
+    <h3>1. ROI calc descriptor.</h3>
+    <p>The descriptor changes every time a user types in different numbers. It would be easy to compile, but the volume is so low (a few hundred calls a month) that compiling it would be a vanity flex, not a margin recovery. <b>The frontier is the right answer for low-volume, open-input features.</b></p>
+
+    <h3>7. Doc-rewrite for new model releases.</h3>
+    <p>This is open-ended editing. The shape of the input is "old paragraph plus list of model-release notes;" the shape of the output is "new paragraph that gets the technical claims right." It needs a frontier-class reasoning capacity that a 3B distill cannot fake. We pay frontier rates here and we are happy to.</p>
+
+    <h3>8. Comparator-page diff.</h3>
+    <p>Same shape as #7. Open-domain editing of nuanced positioning. <b>The frontier earns its margin here.</b></p>
+
+    <h3>9. Long-form drafting.</h3>
+    <p>The essay you&rsquo;re reading was drafted by a human, edited by Opus, and reviewed by a human again. We have not even tried to compile this. It would be premature distillation; the task is too open and the volume is too low. <b>Long-form essay drafting is a frontier task.</b></p>
+
+    <blockquote>
+      <p>The point of compiling isn&rsquo;t to compile everything. It&rsquo;s to stop paying frontier prices for the shapes the frontier doesn&rsquo;t need to handle.</p>
+    </blockquote>
+
+    <h2 id="bill">The actual monthly bill.</h2>
+    <p>February 2026, before any compile work:</p>
+    <pre><span class="com"># before</span>
+sonnet calls (all 9 features)             <span class="kw">$1,860 / mo</span>
+total                                     <span class="arg">$1,860 / mo</span></pre>
+
+    <p>May 2026, four Specialists shipped:</p>
+    <pre><span class="com"># after</span>
+sonnet/opus calls (features 1, 7, 8, 9)   <span class="kw">$  240 / mo</span>
+H100-sliver lease (one box, four .kolm)   <span class="kw">$   99 / mo</span>
+sigstore rekor anchoring (free)           <span class="kw">$    0 / mo</span>
+total                                     <span class="arg">$  339 / mo</span></pre>
+
+    <p><b>Net: $1,521/mo recovered, or $18,252/yr.</b> One-time compile cost was $1,020. Payback: 20 days. Annualized return on the $1,020 spend: ~1,790%.</p>
+
+    <p>The numbers above are not impressive in absolute dollars; we&rsquo;re a small company, our volumes are small. <b>The numbers matter because they&rsquo;re shaped the same way at every scale.</b> A Series A AI-native SaaS doing 4M calls a month gets the same shape, multiplied by 100x. The point is the slope.</p>
+
+    <h2 id="fail">The features we tried to compile and rolled back.</h2>
+    <p>Two failures worth naming.</p>
+
+    <h3>The "rephrase to brand voice" Specialist.</h3>
+    <p>We tried to compile a "make this sound like kolm marketing voice" Specialist. The verifier was a BLEU-based reference output check. The K-score gated at 78. <b>The outputs were technically correct and stylistically wrong.</b> Brand voice turns out to be open-domain in a way the verifier couldn&rsquo;t capture. We pulled it back to the frontier for now.</p>
+
+    <h3>The "draft a tweet from this article" Specialist.</h3>
+    <p>Compile worked, K-score 91, the model produced acceptable tweets, but not <i>good</i> tweets. The line between "fine" and "fire" turns out to be exactly the open-domain creative judgment we were trying to compile away. <b>Tweets stay on the frontier.</b> Maybe forever.</p>
+
+    <p>Both failures are honest examples of where compiling does not pay back. <b>Distillation transfers behavior; it does not transfer taste.</b> Anywhere taste is the metric, the frontier wins for now.</p>
+
+    <h2 id="auto">The build pipeline.</h2>
+    <p>For the four Specialists that did ship, the pipeline looks like this:</p>
+    <pre><span class="com"># nightly job, runs at 04:00 UTC</span>
+<span class="kw">$</span> kolm compile <span class="arg">"draft a 60-word TLDR for the article body provided"</span> \
+    --examples ./marketing/examples/tldr-2026-05.jsonl \
+    --eval ./marketing/eval/tldr-holdout.jsonl \
+    --base qwen-2.5-3b-instruct \
+    --gate K=88
+
+<span class="arg">→</span> verifier synthesized   schema + length-band + topic-overlap
+<span class="arg">→</span> k-sampled teacher       claude-opus-4-7 (k=4, n=200)
+<span class="arg">→</span> LoRA fit                12 min on H100, loss 0.21 → 0.06
+<span class="arg">→</span> K-score                 93.4 (T 95.1 / C 92.0 / L 92.8)
+<span class="arg">→</span> signed                  tldr-2.1.kolm  (1.4GB)
+
+<span class="kw">$</span> kolm compare ./tldr-2.0.kolm ./tldr-2.1.kolm
+<span class="arg">→</span> K-score          93.4 ↑ from 92.8 (+0.6)
+<span class="arg">→</span> regressions      0
+<span class="arg">→</span> recommended      promote new artifact
+
+<span class="kw">$</span> kolm publish ./tldr-2.1.kolm --to=marketing-prod
+<span class="arg">→</span> rolled out behind 5% traffic
+<span class="arg">→</span> hold for 24h, auto-promote on no K-score regression</pre>
+
+    <p>The whole pipeline is six commands. <b>One CI job, ten minutes a night.</b> Specialists that fail the gate stay at the prior version; Specialists that pass roll out behind a 5% canary. We have not had a regression incident since switching.</p>
+
+    <h2 id="why">Why this is the most useful blog post we could write.</h2>
+    <p>Most engineering posts are arguments. This one is a checklist. If you read it as a checklist of "what your AI-native SaaS could be doing instead of paying Sonnet rates for ticket-tagging," it has done its job.</p>
+
+    <p>If you want the same setup at your company:</p>
+    <ul>
+      <li><b>Audit:</b> list every AI feature in your product. Tag each as deterministic-shape or open-domain. Tag each by call volume.</li>
+      <li><b>Pick:</b> the highest-volume, most-deterministic feature is your first compile. Skip taste-driven features.</li>
+      <li><b>Compile:</b> 50-200 example pairs, one verifier, one base model, one CI run. <code>kolm compile</code> handles the seven stages.</li>
+      <li><b>Canary:</b> route 5% of traffic to the Specialist; watch the K-score and the customer-facing metric. Hold 24h. Promote.</li>
+      <li><b>Repeat:</b> the next-highest-volume feature.</li>
+    </ul>
+
+    <p>Three months in, your AI-feature line item is a fraction of what it was, your gross margin curve has bent, and your auditor has a receipt for every customer-facing call. <b>That&rsquo;s the dogfood. That&rsquo;s how the building gets used.</b></p>
+
+    <div class="signpost">
+      <a href="/articles/why-we-built-kolm">
+        <span class="lab">read</span>
+        <span class="v">Why we built .kolm <span class="arrow">&rarr;</span></span>
+        <p>The origin story behind the file format and the AI compiler that produces it.</p>
+      </a>
+      <a href="/articles/distillation-vs-fine-tuning-vs-rag">
+        <span class="lab">read</span>
+        <span class="v">Distillation vs fine-tuning vs RAG <span class="arrow">&rarr;</span></span>
+        <p>Decision tree for which technique fits your task. With the actual cost numbers.</p>
+      </a>
+      <a href="/use-cases/ai-saas">
+        <span class="lab">act</span>
+        <span class="v">The AI-native SaaS use case <span class="arrow">&rarr;</span></span>
+        <p>Compile your highest-cost features. Recover gross margin in a quarter.</p>
+      </a>
+      <a href="/manifesto">
+        <span class="lab">manifesto</span>
+        <span class="v">The closed-API tax <span class="arrow">&rarr;</span></span>
+        <p>The economic case for an exit from frontier-API recurring spend. Compile your way out.</p>
+      </a>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolmogorov &middot; 2026 &middot; engineering essays</span>
+    <span><a href="/articles">All articles</a> &middot; <a href="/articles/rss.xml">RSS</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

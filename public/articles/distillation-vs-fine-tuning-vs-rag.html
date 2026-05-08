@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Distillation vs fine-tuning vs RAG · kolm</title>
+<meta name="description" content="A decision tree, not a religion. When to distill, when to fine-tune, when RAG is enough, and when to keep calling the frontier API. With the actual cost numbers and the failure modes for each.">
+<meta name="keywords" content="distillation vs fine-tuning, distillation vs RAG, when to fine-tune, LoRA vs RAG, AI feature decision tree">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta name="author" content="Kolmogorov">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="Distillation vs fine-tuning vs RAG: a decision tree">
+<meta property="og:description" content="When each technique wins, where each one fails, and the actual cost numbers.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/articles/distillation-vs-fine-tuning-vs-rag">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/articles/distillation-vs-fine-tuning-vs-rag">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"TechArticle","headline":"Distillation vs fine-tuning vs RAG: when to use each","description":"A decision tree for AI engineering teams choosing between the three dominant ways to specialize a model.","author":{"@type":"Organization","name":"Kolmogorov","url":"https://kolm.ai"},"publisher":{"@type":"Organization","name":"Kolmogorov","logo":{"@type":"ImageObject","url":"https://kolm.ai/favicon.svg"}},"datePublished":"2026-05-09","dateModified":"2026-05-09","mainEntityOfPage":{"@type":"WebPage","@id":"https://kolm.ai/articles/distillation-vs-fine-tuning-vs-rag"},"image":"https://kolm.ai/og-card.svg","keywords":"distillation, fine-tuning, RAG, decision tree","articleSection":"Engineering","wordCount":2400}
+</script>
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#4c7dff;--accent-soft:rgba(76,125,255,0.10);--good:#7ef0d2;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:760px;margin:0 auto;padding:0 32px}
+  .wrap-wide{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap,.wrap-wide{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand span{font-weight:540;font-size:16px}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .cta{color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540}
+  @media(max-width:720px){header.site nav{display:none}}
+
+  section.hero{padding:80px 0 36px;position:relative;overflow:hidden}
+  section.hero::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 900px 460px at 22% 12%,rgba(76,125,255,0.10),transparent 60%)}
+  section.hero .wrap{position:relative}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-mute);border:1px solid var(--line-strong);border-radius:999px;padding:5px 12px;background:var(--bg-elev)}
+  .pill .dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+  h1{margin:22px 0 18px;font-size:clamp(34px,5.4vw,54px);line-height:1.05;font-weight:500;max-width:22ch}
+  h1 .tone{color:var(--accent)}
+  p.lede{margin:0 0 0;font-size:clamp(17px,1.4vw,20px);line-height:1.55;color:var(--ink-mute);max-width:60ch}
+  p.lede b{color:var(--ink);font-weight:540}
+  .meta{display:flex;gap:18px;margin-top:22px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
+  .meta b{color:var(--ink-mute);font-weight:500}
+
+  article{padding:36px 0 96px}
+  article h2{margin:56px 0 14px;font-size:clamp(24px,2.6vw,30px);line-height:1.2;font-weight:540;color:var(--ink)}
+  article h2 .tone{color:var(--accent)}
+  article h3{margin:36px 0 10px;font-size:18px;font-weight:540;color:var(--ink)}
+  article p{margin:0 0 16px;font-size:16.5px;line-height:1.7;color:var(--ink-mute)}
+  article p b{color:var(--ink);font-weight:540}
+  article p code,article li code{font-family:var(--mono);font-size:0.92em;background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--ink)}
+  article blockquote{margin:28px 0;padding:16px 22px;border-left:2px solid var(--accent);background:var(--bg-elev);border-radius:0 8px 8px 0;font-size:17px;line-height:1.6;color:var(--ink)}
+  article blockquote p{color:var(--ink);margin:0;font-weight:480}
+  article ul{padding-left:0;list-style:none;margin:16px 0 24px}
+  article ul li{padding:8px 0 8px 22px;position:relative;font-size:16px;line-height:1.6;color:var(--ink-mute)}
+  article ul li::before{content:"-";color:var(--accent);position:absolute;left:6px;font-weight:560}
+  article ul li b{color:var(--ink);font-weight:540}
+
+  .cmp-tbl{width:100%;border-collapse:collapse;margin:20px 0 8px;font-size:14px}
+  .cmp-tbl th{text-align:left;font-family:var(--mono);font-weight:500;font-size:10.5px;text-transform:uppercase;color:var(--ink-faint);padding:12px 14px;border-bottom:1px solid var(--line-strong);background:rgba(0,0,0,0.2)}
+  .cmp-tbl td{padding:12px 14px;border-bottom:1px solid var(--line);color:var(--ink-mute);vertical-align:top;font-size:13.5px}
+  .cmp-tbl td:first-child{color:var(--ink);font-weight:500}
+  .cmp-tbl tbody tr:last-child td{border-bottom:none}
+  .cmp-tbl-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0 0}
+  .cmp-tbl .y{color:var(--good)}
+  .cmp-tbl .n{color:#5e6464}
+  .cmp-tbl .p{color:#e2c66c}
+
+  .toc{margin:28px 0 36px;padding:18px 22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px}
+  .toc h5{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px;font-weight:500}
+  .toc ol{margin:0;padding-left:20px}
+  .toc li{padding:4px 0;font-size:14px;color:var(--ink-mute)}
+  .toc li a{color:var(--ink-mute)}
+  .toc li a:hover{color:var(--accent)}
+
+  .signpost{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:48px 0 0}
+  @media(max-width:720px){.signpost{grid-template-columns:1fr}}
+  .signpost a{display:flex;flex-direction:column;gap:8px;padding:22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;transition:border-color 120ms,background 120ms}
+  .signpost a:hover{border-color:var(--line-strong);background:var(--bg-card)}
+  .signpost a .lab{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
+  .signpost a .v{color:var(--ink);font-weight:540;font-size:16px}
+  .signpost a .v .arrow{color:var(--accent);margin-left:6px}
+  .signpost a p{margin:4px 0 0;font-size:13.5px;color:var(--ink-mute);line-height:1.5}
+
+  footer.site{padding:56px 0 40px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+  footer.site .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span>Engineering &middot; 2026-05-09 &middot; 11 min read</span>
+    <h1>Distillation vs fine-tuning vs <span class="tone">RAG.</span></h1>
+    <p class="lede">A decision tree, not a religion. <b>When each technique wins, when each one fails, and the actual cost numbers.</b> Most teams pick one based on what their loudest engineer used last quarter; it's worth taking ten minutes to pick on substance.</p>
+    <div class="meta"><span><b>By</b>&nbsp;Kolmogorov</span><span><b>Tag</b>&nbsp;decision tree &middot; LoRA &middot; RAG &middot; distillation</span></div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="toc">
+      <h5>Contents</h5>
+      <ol>
+        <li><a href="#three">The three techniques, in one paragraph each</a></li>
+        <li><a href="#tree">The decision tree, by question</a></li>
+        <li><a href="#cost">The cost matrix</a></li>
+        <li><a href="#rag">When RAG wins (and where it dies)</a></li>
+        <li><a href="#ft">When fine-tuning wins (and the trap)</a></li>
+        <li><a href="#dist">When distillation wins (and the cost)</a></li>
+        <li><a href="#combo">The combinations that actually ship</a></li>
+        <li><a href="#worked">A worked example: ticket routing</a></li>
+      </ol>
+    </div>
+
+    <h2 id="three">The three techniques, in one paragraph each.</h2>
+    <p><b>RAG (retrieval-augmented generation).</b> At inference time, search a vector index, paste the top-k chunks into the prompt, ask the model to answer using them. The model is unchanged; the system is.</p>
+    <p><b>Fine-tuning (LoRA / QLoRA / full).</b> Take an open-weight base model, train it on labeled (input, output) pairs from your domain. The model parameters change. The model is now <i>your</i> model.</p>
+    <p><b>Distillation.</b> Use a powerful teacher model to label a large dataset, then fine-tune a smaller student to match. Often paired with <i>verified inference</i>: k-sample the teacher and only keep labels that pass a deterministic check. The student learns the teacher&rsquo;s behavior on your specific tasks; the cost shifts from per-call to one-time.</p>
+
+    <blockquote>
+      <p>RAG retrieves. Fine-tuning teaches. Distillation transfers a behavior from one model to another. They solve different problems. They are not interchangeable.</p>
+    </blockquote>
+
+    <h2 id="tree">The decision tree, by question.</h2>
+    <p>Five questions. Asked in this order, they get most teams to the right answer in under a minute.</p>
+    <ul>
+      <li><b>1. Does the answer change as your data changes?</b> If yes (knowledge base, ticket archive, fresh news), <b>RAG is mandatory at the base.</b> Stop here unless the next questions push you further.</li>
+      <li><b>2. Is the task structured?</b> Does it always produce JSON, a fixed schema, a label from a closed set, code in a known style? If yes, <b>fine-tuning helps a lot;</b> distillation helps even more.</li>
+      <li><b>3. Are you paying frontier prices for it at scale?</b> If yes (&gt;1M calls/mo), <b>distillation pays back fast.</b> Below that, fine-tuning&rsquo;s ROI is iffy.</li>
+      <li><b>4. Does the data have to stay local?</b> If yes (HIPAA, defense, customer-VPC, mobile offline), <b>distillation is the only viable answer</b>: the artifact has to travel, the data does not.</li>
+      <li><b>5. Do you need a verifier?</b> If outputs go to regulated systems, <b>distillation gives you one for free</b> as the gate during training. RAG and fine-tuning don&rsquo;t produce one.</li>
+    </ul>
+
+    <h2 id="cost">The cost matrix.</h2>
+    <p>Concrete numbers from the same hypothetical SaaS in our manifesto: 4M calls/month, ticket-classification task. The numbers are illustrative; your mileage will vary by 2-3x.</p>
+
+    <div class="cmp-tbl-wrap">
+      <table class="cmp-tbl">
+        <thead>
+          <tr><th>Technique</th><th>Setup cost</th><th>Per-call cost</th><th>Latency p50</th><th>Data leaves?</th><th>Verifier?</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Frontier API only</td><td>$0</td><td>$0.040</td><td>700ms</td><td><span class="n">yes</span></td><td><span class="n">no</span></td></tr>
+          <tr><td>RAG over frontier</td><td>$200 (index)</td><td>$0.045</td><td>950ms</td><td><span class="n">yes</span></td><td><span class="n">no</span></td></tr>
+          <tr><td>LoRA fine-tune of frontier</td><td>$2-5k (vendor)</td><td>$0.030</td><td>700ms</td><td><span class="p">at training</span></td><td><span class="n">no</span></td></tr>
+          <tr><td>LoRA fine-tune of open base</td><td>$200-1k</td><td>$0.0008 (own GPU)</td><td>180ms</td><td><span class="y">no</span></td><td><span class="n">no</span></td></tr>
+          <tr><td><b>kolm distillation (.kolm)</b></td><td><b>$700</b></td><td><b>$0.0003</b></td><td><b>180ms</b></td><td><span class="y"><b>no</b></span></td><td><span class="y"><b>yes</b></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>The setup-cost column hides the most important detail. <b>Frontier API has no setup cost because there is no setup.</b> But the per-call line compounds; at 4M calls/mo it&rsquo;s $160k/yr forever, and it grows with usage. The kolm distillation row pays back its setup in <b>about three weeks</b> at that volume.</p>
+
+    <h2 id="rag">When RAG wins (and where it dies).</h2>
+    <p>RAG wins when the answer is <i>in</i> the data and the data <i>changes</i>. A support knowledge base that gets updated weekly. An internal docs system. A news summarizer. A research assistant over recent papers. <b>The model doesn&rsquo;t need to know the answer; it needs to read the answer and present it.</b></p>
+    <p>RAG dies when the task is structured. Asking GPT-4 to classify a ticket into one of 12 queues by retrieving 8 example tickets is more expensive, slower, and less accurate than fine-tuning a 3B model to do the same thing in 180ms. RAG also dies when latency budgets are tight (the retrieval step is a third of the latency) and when the data needs to stay local (the embeddings still need to live somewhere).</p>
+    <p><b>RAG also has a hidden tax that nobody costs out: the eval.</b> RAG systems are notoriously hard to evaluate because the answer depends on what was retrieved, which depends on what was indexed, which drifts. Fine-tuned and distilled models are evaluated on a fixed eval set with a K-score; RAG systems are evaluated on prayers and a Slack channel.</p>
+
+    <h2 id="ft">When fine-tuning wins (and the trap).</h2>
+    <p>Fine-tuning wins when the task is structured, the eval is reproducible, and you have 200-2000 high-quality labeled pairs. <b>It is the right answer at moderate scale</b> (say, 100k-1M calls/mo) on tasks where you don&rsquo;t need verifier-grade outputs.</p>
+    <p>The trap: fine-tuning a vendor-hosted frontier model. <b>You don&rsquo;t actually own the result.</b> The fine-tuned weights live in their cloud. They charge you per call as if it were the base. You can&rsquo;t move it to your VPC. You can&rsquo;t ship it to the edge. You can&rsquo;t put it on a phone. <b>You traded one rental for another.</b></p>
+    <p>The fine-tune that earns its keep is on an open-weight base (Qwen, Llama, Phi, Hermes) that you can serve yourself. That&rsquo;s a real advantage. It is also, mostly, what kolm does <i>inside</i> the compile pipeline as one of seven stages. The artifact is what you get back; the fine-tune is plumbing.</p>
+
+    <h2 id="dist">When distillation wins (and the cost).</h2>
+    <p>Distillation wins when:</p>
+    <ul>
+      <li>You have a teacher (frontier API) that is good at the task and a student (open base, 3-7B) that needs to learn it.</li>
+      <li>The task has a verifier (regex, schema, label set, BLEU, AST diff) that can score outputs deterministically.</li>
+      <li>You&rsquo;ll make &gt;1M calls/mo or you have a local-only constraint that makes per-call frontier cost moot.</li>
+      <li>You need a signed receipt, a K-score, or a portable artifact that runs across devices.</li>
+    </ul>
+    <p>The cost of distillation is the teacher API bill at compile time, plus a few hours of GPU for LoRA training. <b>$200 - $5,000 per Specialist</b> depending on dataset size and base model. After that, marginal cost is whatever you pay for the GPU sliver that serves the artifact.</p>
+    <p>The honest failure mode: distillation can&rsquo;t conjure capability the student doesn&rsquo;t have. If the task is open-domain reasoning, distilling a 3B from a frontier model gets you a 3B that knows your tasks, not a 3B that reasons like Opus. Pick distillation for the deterministic 80%; keep frontier for the open 20%.</p>
+
+    <blockquote>
+      <p>The smaller-model-with-LoRA can match the frontier on your tasks. It cannot match the frontier on tasks you didn&rsquo;t teach it. That&rsquo;s a feature, not a bug.</p>
+    </blockquote>
+
+    <h2 id="combo">The combinations that actually ship.</h2>
+    <p>None of the three techniques are pure in production. The combinations win.</p>
+    <ul>
+      <li><b>RAG + fine-tune.</b> Fine-tune the base to follow your output schema, RAG over your knowledge base for the answer content. Common for support copilots.</li>
+      <li><b>Distillation + Recall (RAG-flavored).</b> The kolm default. The artifact ships with a sqlite-vec index of the user&rsquo;s corpus and a LoRA-fit base. Inference grounds in the index <i>and</i> the model behaves like the teacher.</li>
+      <li><b>Distillation + frontier escape hatch.</b> Compile the deterministic 80%; route the open-domain 20% to the frontier API. Same harness, two backends. K-score on the cover guarantees the cheap path is correct; the frontier escape hatch is for the hard tail.</li>
+    </ul>
+
+    <h2 id="worked">A worked example: ticket routing.</h2>
+    <p>Concrete walk-through. Same SaaS, same 4M calls/mo. The team chose distillation. Here&rsquo;s why each alternative didn&rsquo;t fit.</p>
+    <p><b>Why not RAG?</b> The answer isn&rsquo;t in the knowledge base; it&rsquo;s a classification into one of 12 queues, learned from prior tickets. Retrieval doesn&rsquo;t add anything; the labels are baked into the training set.</p>
+    <p><b>Why not vendor fine-tuning?</b> Per-call cost still ran on the vendor meter, and the team wanted to ship the same model into a customer-VPC deployment for one regulated buyer. <b>The fine-tune had to be portable.</b></p>
+    <p><b>Why not open-base LoRA without distillation?</b> They had 200 labeled pairs. Not enough to train a 3B from scratch on this task; the LoRA stage needed thousands. <b>Distillation</b> generated 3,400 labeled pairs by k-sampling the teacher with verifier gating, which gave the LoRA enough signal to converge.</p>
+
+    <p>Outcome: K-score 94.2, latency 180ms, $1,888/yr fixed cost vs $160,128/yr variable. Same accuracy band on the holdout set. The receipt chain went live the day they shipped. The CFO was happy.</p>
+
+    <p>One feature, one quarter, one number on the unit-economics line. <b>Then the next.</b></p>
+
+    <div class="signpost">
+      <a href="/articles/why-we-built-kolm">
+        <span class="lab">read next</span>
+        <span class="v">Why we built .kolm <span class="arrow">&rarr;</span></span>
+        <p>The origin story behind the file format and the AI compiler that produces it.</p>
+      </a>
+      <a href="/articles/k-sample-verified-inference">
+        <span class="lab">read next</span>
+        <span class="v">K-sample verified inference <span class="arrow">&rarr;</span></span>
+        <p>The mechanism behind every label inside a .kolm. A practical alternative to zk-ML.</p>
+      </a>
+      <a href="/articles/running-our-marketing-on-distilled-models">
+        <span class="lab">dogfood</span>
+        <span class="v">Our marketing runs on distilled models <span class="arrow">&rarr;</span></span>
+        <p>Four Specialists run features on this site. Here&rsquo;s the K-scores and the bill.</p>
+      </a>
+      <a href="/use-cases/ai-saas">
+        <span class="lab">act</span>
+        <span class="v">The AI-native SaaS use case <span class="arrow">&rarr;</span></span>
+        <p>Compile your highest-cost features. Recover gross margin in a quarter.</p>
+      </a>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolmogorov &middot; 2026 &middot; engineering essays</span>
+    <span><a href="/articles">All articles</a> &middot; <a href="/articles/rss.xml">RSS</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

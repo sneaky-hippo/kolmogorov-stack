@@ -291,7 +291,7 @@
     </div>
     <div class="right">
       <a href="/signin" class="ghost">sign in</a>
-      <a href="/signup" class="cta">get a key</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
     </div>
   </div>
 </header>
@@ -416,13 +416,13 @@
   <div class="wrap">
     <div class="eyebrow"><span class="num">02</span><span>Three layers of provenance</span></div>
     <h2>Signed at compile.<br><span class="tone">Verified by receipt.</span></h2>
-    <p class="sec-lede">Each layer is independent. You can verify the artifact and receipt chain from the bytes you hold &mdash; offline, with a single command, no service required. External ledger anchoring ships as an Enterprise add-on.</p>
+    <p class="sec-lede">Each layer is independent. You can verify the artifact and receipt chain from the bytes you hold: offline, with a single command, no service required. External ledger anchoring ships as an Enterprise add-on.</p>
 
     <div class="layers">
       <div class="layer-card">
         <div class="num">Layer 01</div>
         <p>HMAC-SHA-256 covers every emitted component: model pointer, recipes, eval set, manifest, and receipt body. Tampering with any byte breaks the chain.</p>
-        <p><code>kolm inspect</code> prints the full chain. <code>kolm verify</code> re-runs the receipt against the artifact you hold &mdash; no key, no service.</p>
+        <p><code>kolm inspect</code> prints the full chain. <code>kolm verify</code> re-runs the receipt against the artifact you hold: no key, no service.</p>
         <pre><span class="dim">$</span> kolm inspect support-triage.kolm
 <span class="ok">ok</span> manifest.signature_alg hmac-sha256
 <span class="ok">ok</span> receipt.signature_alg  hmac-sha256
@@ -490,7 +490,55 @@
 
 <section>
   <div class="wrap">
-    <div class="eyebrow"><span class="num">04</span><span>Data handling</span></div>
+    <div class="eyebrow"><span class="num">04</span><span>Supply chain</span></div>
+    <h2>What ran. <span class="tone">Where the bytes came from.</span></h2>
+    <p class="sec-lede">Every release of the kolm CLI, runtime, and SDK is reproducible from source, attested at build time, and signed before publication. The same provenance applies to the recipe registry, the Docker images, and the npm and Homebrew artifacts. If you can&rsquo;t verify the supply chain, the receipts in section 02 don&rsquo;t mean much.</p>
+
+    <div class="compl">
+      <div class="compl-card">
+        <div class="head"><span class="nm">SLSA</span><span class="st">Level 3 target &middot; Q3 2026</span></div>
+        <h4>Build provenance attested by GitHub Actions OIDC.</h4>
+        <p>Every release tag triggers a hermetic build; the resulting <code>provenance.intoto.jsonl</code> is signed by the runner identity and uploaded next to the release artifact. Verifiable with <code>slsa-verifier</code> against any tag.</p>
+      </div>
+      <div class="compl-card">
+        <div class="head"><span class="nm">Sigstore</span><span class="st">live</span></div>
+        <h4>Cosign signatures on every published artifact.</h4>
+        <p>npm tarballs, Homebrew bottles, Docker images, GitHub release zips, and the public recipe registry deltas are signed with keyless Sigstore. <code>cosign verify</code> works against the Rekor transparency log without contacting kolm.</p>
+      </div>
+      <div class="compl-card">
+        <div class="head"><span class="nm">SBOM</span><span class="st">CycloneDX 1.5</span></div>
+        <h4>One SBOM per release, machine-readable.</h4>
+        <p>Published at <code>github.com/sneaky-hippo/kolmogorov-stack/releases/&lt;tag&gt;/sbom.cdx.json</code>. Every transitive dependency is named, versioned, and hashed. Auditors can diff release-to-release without running our tooling.</p>
+      </div>
+      <div class="compl-card">
+        <div class="head"><span class="nm">Reproducible build</span><span class="st flight">verified per release</span></div>
+        <h4>Independent rebuilds match byte-for-byte.</h4>
+        <p>The CLI and runtime build under fixed Node and Rust toolchains, with locked OS images. Two independent clones at the same commit produce the same SHA-256 for every published binary. RS-1 §9 applies to the compiler itself, not just compiled artifacts.</p>
+      </div>
+      <div class="compl-card">
+        <div class="head"><span class="nm">Pinned dependencies</span><span class="st">live</span></div>
+        <h4>npm, cargo, pip locked. CI fails on drift.</h4>
+        <p>Lockfiles are part of the release. Renovate raises PRs for security advisories; merges require a human and a passing CI matrix. No floating semver ranges in production deps.</p>
+      </div>
+      <div class="compl-card">
+        <div class="head"><span class="nm">Vuln disclosure</span><span class="st">RFC 9116</span></div>
+        <h4>Canonical contact at <code>/.well-known/security.txt</code>.</h4>
+        <p>PGP key published at <code>kolm.ai/.well-known/pgp-key.txt</code>. 24h acknowledgement, 3-day initial triage, paid bounty on real findings. Researchers credited at <code>kolm.ai/security/researchers</code>.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-family:var(--mono);font-size:12px">
+      <a href="/.well-known/security.txt" style="color:var(--accent)">security.txt &rarr;</a>
+      <a href="/.well-known/pgp-key.txt" style="color:var(--accent)">PGP key &rarr;</a>
+      <a href="https://github.com/sneaky-hippo/kolmogorov-stack/releases" style="color:var(--accent)">Releases &amp; SBOMs &rarr;</a>
+      <span style="color:var(--ink-faint)">verify with <code style="font-family:var(--mono);background:var(--bg-card);border:1px solid var(--line);padding:1px 6px;border-radius:4px;color:var(--ink)">cosign verify</code> &middot; <code style="font-family:var(--mono);background:var(--bg-card);border:1px solid var(--line);padding:1px 6px;border-radius:4px;color:var(--ink)">slsa-verifier</code></span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">05</span><span>Data handling</span></div>
     <h2>What we hold.<br><span class="tone">What we don't.</span></h2>
     <p class="sec-lede">The shortest possible answer to "where does our data go-" Written so a procurement team can read it once and tell their CISO what to do next.</p>
 
@@ -520,7 +568,7 @@
 
 <section>
   <div class="wrap">
-    <div class="eyebrow"><span class="num">05</span><span>Disclosure</span></div>
+    <div class="eyebrow"><span class="num">06</span><span>Disclosure</span></div>
     <div class="disc">
       <div>
         <h3>Found a flaw-<br><span class="tone">Tell us first.</span></h3>

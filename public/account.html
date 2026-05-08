@@ -136,12 +136,35 @@
         </label>
       </section>
 
-      <section class="card settings-card danger-card">
-        <h2>Session</h2>
-        <p>Sign out clears local browser keys and ends the session cookie. Your account and server key remain active.</p>
-        <div class="toolbar">
-          <button id="acct-logout" class="btn ghost" type="button">Sign out</button>
+      <section class="card settings-card">
+        <h2>Plan &amp; billing</h2>
+        <p>Self-serve. Change plans, cancel, or delete the account. Stripe payment links open in a new tab; the plan flips after Stripe confirms.</p>
+        <label class="field">
+          <span class="lbl">Switch plan</span>
+          <select id="plan-select">
+            <option value="free">Developer (free)</option>
+            <option value="starter">Starter ($9 / mo)</option>
+            <option value="pro">Pro ($49 / mo)</option>
+            <option value="teams">Teams ($149 / mo)</option>
+            <option value="business">Business ($1,499 / mo)</option>
+            <option value="enterprise">Enterprise ($2,999 / mo)</option>
+          </select>
+        </label>
+        <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+          <button id="plan-change" class="btn primary" type="button">Change plan</button>
+          <button id="plan-cancel" class="btn ghost" type="button">Cancel (drop to free)</button>
         </div>
+        <p id="plan-status" class="delta" aria-live="polite"></p>
+      </section>
+
+      <section class="card settings-card danger-card">
+        <h2>Session &amp; account</h2>
+        <p>Sign out clears local browser keys. Delete account removes all artifacts and tenants. Not reversible.</p>
+        <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+          <button id="acct-logout" class="btn ghost" type="button">Sign out</button>
+          <button id="acct-delete" class="btn ghost" type="button" style="border-color:rgba(255,107,145,0.32);color:#ff6b91">Delete account</button>
+        </div>
+        <p id="acct-delete-status" class="delta" aria-live="polite"></p>
       </section>
     </div>
   </section>
@@ -331,6 +354,71 @@
     fetch('/v1/signout', { method: 'POST', credentials: 'include' }).catch(function () {});
     KS.clearApiKey();
     location.href = '/';
+  });
+
+  function setPlanStatus(message) {
+    $('plan-status').textContent = message || '';
+    if (message) setTimeout(function () { $('plan-status').textContent = ''; }, 4200);
+  }
+
+  $('plan-change').addEventListener('click', async function () {
+    var plan = $('plan-select').value;
+    if (!plan) return;
+    var isPaid = plan !== 'free';
+    var msg = isPaid
+      ? 'Continue to Stripe to pay for the ' + plan + ' tier? Your plan activates after payment.'
+      : 'Switch to the free Developer plan?';
+    if (!confirm(msg)) return;
+    try {
+      var body = await KS.api('/v1/account/change-plan', {
+        method: 'POST',
+        body: JSON.stringify({ plan: plan })
+      });
+      if (body.billing_url) {
+        setPlanStatus('Redirecting to Stripe...');
+        window.location.assign(body.billing_url);
+        return;
+      }
+      if (body.error === 'billing_not_configured') {
+        setPlanStatus(body.message || 'Billing not yet enabled for this tier.');
+        return;
+      }
+      setPlanStatus('Plan switched to ' + (body.plan || plan) + '.');
+      setTimeout(loadAccount, 800);
+    } catch (e) {
+      setPlanStatus('Switch failed. Check your network and try again.');
+    }
+  });
+
+  $('plan-cancel').addEventListener('click', async function () {
+    if (!confirm('Cancel paid plan and drop to free at period end? Existing artifacts continue to work; quotas drop to free limits at period end.')) return;
+    try {
+      await KS.api('/v1/account/cancel', { method: 'POST' });
+      setPlanStatus('Cancellation scheduled. You drop to free at the end of the paid period.');
+      setTimeout(loadAccount, 800);
+    } catch (e) {
+      setPlanStatus('Cancel failed. Try again or contact support.');
+    }
+  });
+
+  $('acct-delete').addEventListener('click', async function () {
+    var typed = prompt('This permanently deletes your account, artifacts, and tenants. To confirm, type:\n\n  DELETE my-org\n\nReplace my-org with your tenant name.');
+    if (!typed) return;
+    try {
+      var body = await KS.api('/v1/account/delete', {
+        method: 'POST',
+        body: JSON.stringify({ confirm: typed })
+      });
+      if (body && body.ok) {
+        $('acct-delete-status').textContent = 'Account deleted. Goodbye.';
+        KS.clearApiKey();
+        setTimeout(function () { location.href = '/'; }, 1800);
+      } else {
+        $('acct-delete-status').textContent = 'Confirmation phrase mismatch. Account not deleted.';
+      }
+    } catch (e) {
+      $('acct-delete-status').textContent = 'Delete failed. Confirmation must read DELETE &lt;your-tenant&gt;.';
+    }
   });
 
   loadAccount();

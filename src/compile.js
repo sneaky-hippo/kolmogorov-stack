@@ -129,8 +129,19 @@ export async function runJob(job, ctx) {
     // recipe pack. Sprint 2 will narrow this to the deterministic-token
     // subset of the model's behavior on this task.
     setStage(job, 'decompose.start');
-    const recipes = ctx.publicRecipes() || [];
-    setStage(job, 'decompose.done', { recipes_n: recipes.length });
+    const baseRecipes = ctx.publicRecipes() || [];
+    const recipes = [];
+    if (synthesis_result && synthesis_result.accepted && synthesis_result.source) {
+      recipes.push({
+        id: `cpt_synth_${job.id}`,
+        version_id: `ver_synth_${job.id}`,
+        name: (job.task || 'task').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'synthesized',
+        source: synthesis_result.source,
+        synthesized: true,
+      });
+    }
+    for (const r of baseRecipes) recipes.push(r);
+    setStage(job, 'decompose.done', { recipes_n: recipes.length, synthesized: !!(synthesis_result && synthesis_result.accepted) });
     setStatus(job, 'running', { progress: 80 });
 
     // Stage 4 — Run / package: assemble + sign the .kolm artifact.

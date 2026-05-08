@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Failure modes - kolm</title>
+<meta name="description" content="What kolm does when k-score is below the floor, the corpus is unreadable, the frontier API is down, or signature verification fails. Concrete exit codes, receipt status, and operator action for each.">
+<meta name="theme-color" content="#0b0d10">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm failure modes">
+<meta property="og:description" content="Honest documentation of every error path: k-score below floor, frontier outages, signature mismatches, corpus failures.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/failure-modes">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/failure-modes">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .fm-section { margin-bottom: 56px; }
+  .fm-section h2 { font-size: 22px; font-weight: 540; margin: 0 0 12px; }
+  .fm-section p.lede { color: var(--ink-mute, #b5bdb1); font-size: 14px; line-height: 1.6; max-width: 70ch; margin: 0 0 22px; }
+  .fail { border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2, #11151b); padding: 22px 24px; margin-bottom: 18px; }
+  .fail .hd { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .fail .tag { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; background: rgba(255,107,145,0.12); color: #ff6b91; }
+  .fail .sev { font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 3px; }
+  .fail .sev-fail { background: rgba(255,107,145,0.14); color: #ff6b91; border: 1px solid rgba(255,107,145,0.28); }
+  .fail .sev-warn { background: rgba(255,176,79,0.12); color: #ffb04f; border: 1px solid rgba(255,176,79,0.28); }
+  .fail .sev-info { background: rgba(76,196,255,0.12); color: #4cc4ff; border: 1px solid rgba(76,196,255,0.28); }
+  .fail .id { font-family: var(--mono); font-size: 12px; color: var(--ink-faint, #737c73); }
+  .fm-matrix-wrap { margin: 32px auto 64px; max-width: 1080px; padding: 0 24px; }
+  .fm-matrix { display: grid; grid-template-columns: 110px 1fr 1fr; grid-template-rows: 36px 1fr 1fr; gap: 0; background: var(--bg-2, #11151b); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .fm-matrix .axis-corner { grid-column: 1; grid-row: 1; }
+  .fm-matrix .axis-top-l, .fm-matrix .axis-top-r { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint, #737c73); padding: 12px 18px; border-bottom: 1px solid var(--line); }
+  .fm-matrix .axis-top-r { border-left: 1px solid var(--line); }
+  .fm-matrix .axis-row { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint, #737c73); writing-mode: vertical-rl; transform: rotate(180deg); padding: 18px 0; display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--line); }
+  .fm-matrix .axis-row.bottom { border-top: 1px solid var(--line); }
+  .fm-matrix .cell { padding: 18px 20px; min-height: 140px; border-left: 1px solid transparent; }
+  .fm-matrix .cell.r { border-left: 1px solid var(--line); }
+  .fm-matrix .cell.b { border-top: 1px solid var(--line); }
+  .fm-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px 5px 7px; margin: 0 6px 6px 0; border-radius: 5px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink, #faf2e1); text-decoration: none; }
+  .fm-chip:hover { background: rgba(255,255,255,0.06); border-color: rgba(76,125,255,0.30); }
+  .fm-chip .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .fm-chip .dot-fail { background: #ff6b91; }
+  .fm-chip .dot-warn { background: #ffb04f; }
+  .fm-chip .dot-info { background: #4cc4ff; }
+  .fm-chip .id { color: var(--violet, #4c7dff); font-weight: 540; }
+  .fm-chip .lbl { color: var(--ink-mute, #b5bdb1); font-size: 10.5px; }
+  .fm-legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 14px 0 0; font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint, #737c73); }
+  .fm-legend .item { display: inline-flex; align-items: center; gap: 6px; }
+  .fm-legend .dot { width: 7px; height: 7px; border-radius: 50%; }
+  @media (max-width: 720px) {
+    .fm-matrix { grid-template-columns: 1fr; grid-template-rows: auto; }
+    .fm-matrix .axis-corner, .fm-matrix .axis-row { display: none; }
+    .fm-matrix .cell { border-left: 0; border-top: 1px solid var(--line); }
+    .fm-matrix .cell::before { content: attr(data-label); display: block; font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint, #737c73); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  }
+  .fail h3 { margin: 0 0 8px; font-size: 17px; font-weight: 540; color: var(--fg, #faf2e1); }
+  .fail p { margin: 0 0 12px; font-size: 13.5px; color: var(--fg-2, #c9c2b2); line-height: 1.6; }
+  .fail .grid { display: grid; grid-template-columns: 130px 1fr; gap: 8px 16px; font-family: var(--mono); font-size: 12px; margin: 12px 0 0; }
+  .fail .grid .k { color: var(--ink-faint, #737c73); text-transform: uppercase; letter-spacing: 0.04em; font-size: 10.5px; }
+  .fail .grid .v { color: var(--ink, #faf2e1); }
+  .fail pre { margin: 12px 0 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 6px; background: rgba(0,0,0,0.32); font-family: var(--mono); font-size: 12px; color: var(--ink, #faf2e1); overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/compile">Compile</a>
+      <a href="/serve">Serve</a>
+      <a href="/anatomy">.kolm</a>
+      <a href="/k-score">K-score</a>
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/signin">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div class="eyebrow"><span class="pulse"></span>Failure modes</div>
+      <h1>What happens when something goes wrong.</h1>
+      <p class="lede">Compilers fail in clean ways. So does kolm. Below: every error path, the exit code, the receipt status, and the action you should take.</p>
+    </div>
+  </section>
+
+  <div class="fm-matrix-wrap">
+    <div class="fm-matrix" role="table" aria-label="Failure modes by phase and severity">
+      <div class="axis-corner"></div>
+      <div class="axis-top-l">Compile-time</div>
+      <div class="axis-top-r">Run-time</div>
+
+      <div class="axis-row">Hard fail</div>
+      <div class="cell" data-label="Compile-time / Hard fail">
+        <a class="fm-chip" href="#FM-001"><span class="dot dot-fail"></span><span class="id">FM-001</span><span class="lbl">k_score &lt; floor</span></a>
+        <a class="fm-chip" href="#FM-004"><span class="dot dot-fail"></span><span class="id">FM-004</span><span class="lbl">format invalid</span></a>
+        <a class="fm-chip" href="#FM-005"><span class="dot dot-fail"></span><span class="id">FM-005</span><span class="lbl">base unavailable</span></a>
+        <a class="fm-chip" href="#FM-302"><span class="dot dot-fail"></span><span class="id">FM-302</span><span class="lbl">quota exhausted</span></a>
+        <a class="fm-chip" href="#FM-303"><span class="dot dot-fail"></span><span class="id">FM-303</span><span class="lbl">signup rate-limited</span></a>
+      </div>
+      <div class="cell r" data-label="Run-time / Hard fail">
+        <a class="fm-chip" href="#FM-101"><span class="dot dot-fail"></span><span class="id">FM-101</span><span class="lbl">signature invalid</span></a>
+        <a class="fm-chip" href="#FM-103"><span class="dot dot-fail"></span><span class="id">FM-103</span><span class="lbl">oom</span></a>
+        <a class="fm-chip" href="#FM-104"><span class="dot dot-fail"></span><span class="id">FM-104</span><span class="lbl">arch mismatch</span></a>
+        <a class="fm-chip" href="#FM-203"><span class="dot dot-fail"></span><span class="id">FM-203</span><span class="lbl">receipt malformed</span></a>
+        <a class="fm-chip" href="#FM-301"><span class="dot dot-fail"></span><span class="id">FM-301</span><span class="lbl">bearer invalid</span></a>
+      </div>
+
+      <div class="axis-row bottom">Soft / warn</div>
+      <div class="cell b" data-label="Compile-time / Soft / warn">
+        <a class="fm-chip" href="#FM-002"><span class="dot dot-warn"></span><span class="id">FM-002</span><span class="lbl">corpus subset</span></a>
+        <a class="fm-chip" href="#FM-003"><span class="dot dot-warn"></span><span class="id">FM-003</span><span class="lbl">frontier 429</span></a>
+      </div>
+      <div class="cell r b" data-label="Run-time / Soft / warn">
+        <a class="fm-chip" href="#FM-102"><span class="dot dot-warn"></span><span class="id">FM-102</span><span class="lbl">verifier rejected</span></a>
+        <a class="fm-chip" href="#FM-201"><span class="dot dot-info"></span><span class="id">FM-201</span><span class="lbl">registry down</span></a>
+        <a class="fm-chip" href="#FM-202"><span class="dot dot-info"></span><span class="id">FM-202</span><span class="lbl">secret rotated</span></a>
+      </div>
+    </div>
+    <div class="fm-legend">
+      <span class="item"><span class="dot" style="background:#ff6b91"></span>fail-closed (no signed output)</span>
+      <span class="item"><span class="dot" style="background:#ffb04f"></span>degraded (continues with flags)</span>
+      <span class="item"><span class="dot" style="background:#4cc4ff"></span>warning (cached path keeps working)</span>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">01</span>compile-time</div>
+      <h2>Compile-time failures (the artifact never ships).</h2>
+      <p class="sec-lede">Every compile is gated by the K-score floor and the verifier. If the artifact does not meet the gate, the compile fails closed - you never get a signed binary that under-performs.</p>
+
+      <div class="fail" id="FM-001">
+        <div class="hd"><span class="tag">FM-001</span><span class="sev sev-fail">fail-closed</span><span class="id">k_score &lt; floor</span></div>
+        <h3>K-score below the gate.</h3>
+        <p>The compiled artifact would not pass your eval set at the K-score floor (default 0.85). The compile <b>fails closed</b>: no signature, no receipt, no <code>.kolm</code> emitted. The job report shows the eval breakdown and the highest scoring sub-recipe.</p>
+        <div class="grid">
+          <span class="k">exit code</span><span class="v">22 (kolm: gate-not-met)</span>
+          <span class="k">http status</span><span class="v">422 Unprocessable Entity</span>
+          <span class="k">artifact</span><span class="v">not produced</span>
+          <span class="k">receipt</span><span class="v">none</span>
+          <span class="k">action</span><span class="v">add more gold examples, lower the floor explicitly with <code>--k-score-floor</code>, or split the task</span>
+        </div>
+        <pre>$ kolm compile "..." --examples gold.jsonl
+[compile] k_score=0.71 below floor=0.85
+[compile] FAIL - artifact not signed.
+[hint] add 30+ more examples or run: kolm compile ... --k-score-floor 0.70</pre>
+      </div>
+
+      <div class="fail" id="FM-002">
+        <div class="hd"><span class="tag">FM-002</span><span class="sev sev-warn">degraded</span><span class="id">corpus.unreadable</span></div>
+        <h3>Corpus has unreadable files.</h3>
+        <p>One or more files in the corpus directory failed to parse: corrupt PDF, unsupported audio codec, broken image, encrypted file without key. The compile <b>continues</b> with the readable subset; the failed paths are listed in <code>compile.log</code> and in the manifest's <code>skipped</code> field.</p>
+        <div class="grid">
+          <span class="k">exit code</span><span class="v">0 (with warnings)</span>
+          <span class="k">http status</span><span class="v">200 with <code>warnings: [...]</code></span>
+          <span class="k">artifact</span><span class="v">produced (subset)</span>
+          <span class="k">receipt</span><span class="v">issued; <code>corpus_completeness</code> field reflects reality</span>
+          <span class="k">action</span><span class="v">re-encode or remove the failing files; re-compile if completeness matters</span>
+        </div>
+      </div>
+
+      <div class="fail" id="FM-003">
+        <div class="hd"><span class="tag">FM-003</span><span class="sev sev-warn">degraded</span><span class="id">frontier.quota_exceeded</span></div>
+        <h3>Frontier API key out of quota.</h3>
+        <p>Your Anthropic / OpenAI / Google key returned 429 mid-compile. The job <b>pauses</b> for up to 30 minutes and resumes from the last checkpoint when quota replenishes; if it does not, the job fails with a partial-progress report.</p>
+        <div class="grid">
+          <span class="k">exit code</span><span class="v">23 (kolm: frontier-quota)</span>
+          <span class="k">http status</span><span class="v">503 Service Unavailable (with <code>retry_at</code>)</span>
+          <span class="k">artifact</span><span class="v">not produced</span>
+          <span class="k">receipt</span><span class="v">none</span>
+          <span class="k">action</span><span class="v">top up the frontier key, or pass <code>--frontier-key</code> with a different vendor's key</span>
+        </div>
+      </div>
+
+      <div class="fail" id="FM-004">
+        <div class="hd"><span class="tag">FM-004</span><span class="sev sev-fail">fail-closed</span><span class="id">examples.format_invalid</span></div>
+        <h3>Examples don't match the spec.</h3>
+        <p>JSONL parse error, missing required fields, mismatched output schema. The compile <b>fails fast</b> before consuming frontier tokens.</p>
+        <div class="grid">
+          <span class="k">exit code</span><span class="v">2 (kolm: bad-input)</span>
+          <span class="k">http status</span><span class="v">400 Bad Request</span>
+          <span class="k">artifact</span><span class="v">not produced</span>
+          <span class="k">receipt</span><span class="v">none</span>
+          <span class="k">action</span><span class="v">run <code>kolm lint examples.jsonl</code> for the per-line error report</span>
+        </div>
+      </div>
+
+      <div class="fail" id="FM-005">
+        <div class="hd"><span class="tag">FM-005</span><span class="sev sev-fail">fail-closed</span><span class="id">base_model.unavailable</span></div>
+        <h3>Base model not found in registry.</h3>
+        <p>The base model tag (<code>qwen3-7b</code>, <code>llama-3-8b</code>, etc.) is not in the public Kolmogorov registry. The compile <b>fails fast</b>.</p>
+        <div class="grid">
+          <span class="k">exit code</span><span class="v">2 (kolm: bad-input)</span>
+          <span class="k">http status</span><span class="v">400 Bad Request</span>
+          <span class="k">action</span><span class="v">run <code>kolm models</code> to see the registry list, or specify a sha-pinned local path</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">02</span>run-time</div>
+      <h2>Run-time failures (after a signed artifact ships).</h2>
+      <p class="sec-lede">Once a <code>.kolm</code> is signed, runtime failures are bounded: signature mismatch (corruption / tampering), input-out-of-distribution (refusal vs. wrong answer), or environment incompatibility (RAM, codec, OS).</p>
+
+      <div class="fail" id="FM-101">
+        <div class="hd"><span class="tag">FM-101</span><span class="sev sev-fail">fail-closed</span><span class="id">signature.invalid</span></div>
+        <h3>Signature does not verify.</h3>
+        <p>The artifact's HMAC chain does not match the registry's published key. The runtime <b>refuses to load</b>. Possible causes: corrupt download, tampering, expired registry secret rotation.</p>
+        <div class="grid">
+          <span class="k">exit code</span><span class="v">31 (kolm: signature-invalid)</span>
+          <span class="k">artifact</span><span class="v">refused at load</span>
+          <span class="k">action</span><span class="v">re-download from the original tenant's signed source; if persistent, file an issue with the manifest hash</span>
+        </div>
+        <pre>$ kolm run patient-intake.kolm "..."
+[run] FAIL - signature does not match published HMAC chain.
+[run] manifest_hash=sha256:...  expected=...
+[hint] this artifact may be tampered. Do not trust output.</pre>
+      </div>
+
+      <div class="fail" id="FM-102">
+        <div class="hd"><span class="tag">FM-102</span><span class="sev sev-warn">degraded</span><span class="id">verifier.rejected</span></div>
+        <h3>Verifier rejects the output.</h3>
+        <p>The artifact ran, but the embedded verifier scored the output below the artifact's K-score floor. The runtime <b>returns the output with a low-confidence flag</b> and a refusal-by-default policy unless the caller passes <code>--allow-low-confidence</code>.</p>
+        <div class="grid">
+          <span class="k">exit code</span><span class="v">42 (kolm: low-confidence)</span>
+          <span class="k">artifact</span><span class="v">ran successfully</span>
+          <span class="k">receipt</span><span class="v">issued; <code>verifier_score</code> field below the gate</span>
+          <span class="k">action</span><span class="v">treat as out-of-distribution; route to a human or escalate to a frontier call</span>
+        </div>
+      </div>
+
+      <div class="fail" id="FM-103">
+        <div class="hd"><span class="tag">FM-103</span><span class="sev sev-fail">fail-closed</span><span class="id">runtime.oom</span></div>
+        <h3>Out of memory.</h3>
+        <p>The artifact's base + LoRA + recall index exceeded available RAM. The runtime <b>fails fast</b> at load with the required vs. available footprint.</p>
+        <div class="grid">
+          <span class="k">exit code</span><span class="v">12 (kolm: oom)</span>
+          <span class="k">action</span><span class="v">re-compile with a smaller base (<code>--base qwen3-3b</code>) or a quantized variant (<code>--quant int4</code>)</span>
+        </div>
+      </div>
+
+      <div class="fail" id="FM-104">
+        <div class="hd"><span class="tag">FM-104</span><span class="sev sev-fail">fail-closed</span><span class="id">runtime.unsupported_arch</span></div>
+        <h3>Unsupported architecture.</h3>
+        <p>The artifact was compiled with a target tag (e.g., <code>cuda-sm89</code>) that does not match the local GPU/CPU. The runtime <b>fails fast</b> with the required vs. detected target.</p>
+        <div class="grid">
+          <span class="k">exit code</span><span class="v">14 (kolm: arch-mismatch)</span>
+          <span class="k">action</span><span class="v">re-compile with <code>--target portable</code> for the slowest-but-everywhere build</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">03</span>registry</div>
+      <h2>Registry &amp; receipt failures.</h2>
+      <p class="sec-lede">The public Kolmogorov registry anchors signature verification. If it goes down, already-issued artifacts continue to run; new compiles and verifications block until it recovers.</p>
+
+      <div class="fail" id="FM-201">
+        <div class="hd"><span class="tag">FM-201</span><span class="sev sev-info">warning</span><span class="id">registry.unavailable</span></div>
+        <h3>Registry is down.</h3>
+        <p>The public registry returns 5xx or times out. <b>Already-loaded artifacts continue to run on cached signatures.</b> New compiles block; new <code>kolm run</code> against an unfamiliar artifact pauses for up to 5 minutes, then runs in unverified mode if you pass <code>--allow-unverified</code>.</p>
+        <div class="grid">
+          <span class="k">artifact (loaded)</span><span class="v">continues</span>
+          <span class="k">artifact (cold load)</span><span class="v">blocks 5 min, then refused unless <code>--allow-unverified</code></span>
+          <span class="k">compile</span><span class="v">queued; runs when registry recovers</span>
+          <span class="k">receipt verify</span><span class="v">offline path: works against archived public key; online: blocks</span>
+          <span class="k">action</span><span class="v">check <a href="/status" style="color:var(--violet,#4c7dff)">/status</a>; for air-gapped deployments, the registry is mirrored at compile time</span>
+        </div>
+      </div>
+
+      <div class="fail" id="FM-202">
+        <div class="hd"><span class="tag">FM-202</span><span class="sev sev-info">warning</span><span class="id">receipt.secret_rotated</span></div>
+        <h3>Receipt secret rotated.</h3>
+        <p>The HMAC secret on the registry was rotated. <b>Receipts issued before the rotation cannot be re-verified by the public endpoint.</b> They remain verifiable offline against the archived secret bundled in the original artifact.</p>
+        <div class="grid">
+          <span class="k">http status</span><span class="v">410 Gone (on /v1/receipts/verify)</span>
+          <span class="k">action</span><span class="v">use <code>kolm verify --offline receipt.json artifact.kolm</code></span>
+        </div>
+      </div>
+
+      <div class="fail" id="FM-203">
+        <div class="hd"><span class="tag">FM-203</span><span class="sev sev-fail">fail-closed</span><span class="id">receipt.malformed</span></div>
+        <h3>Receipt body is malformed.</h3>
+        <p>Required fields missing or types wrong. <b>Always treat as not-verified.</b></p>
+        <div class="grid">
+          <span class="k">http status</span><span class="v">400 Bad Request</span>
+          <span class="k">action</span><span class="v">re-export the receipt from the artifact's <code>receipts/</code> dir</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">04</span>auth</div>
+      <h2>Auth &amp; quota failures.</h2>
+
+      <div class="fail" id="FM-301">
+        <div class="hd"><span class="tag">FM-301</span><span class="sev sev-fail">fail-closed</span><span class="id">auth.bearer_invalid</span></div>
+        <h3>Bearer key not recognized.</h3>
+        <p>Either the key was rotated, the tenant was deleted, or the request was made against the wrong host.</p>
+        <div class="grid">
+          <span class="k">http status</span><span class="v">401 Unauthorized</span>
+          <span class="k">action</span><span class="v"><code>kolm login</code> to refresh, or <code>POST /v1/account/rotate-key</code></span>
+        </div>
+      </div>
+
+      <div class="fail" id="FM-302">
+        <div class="hd"><span class="tag">FM-302</span><span class="sev sev-fail">fail-closed</span><span class="id">quota.exhausted</span></div>
+        <h3>Compile quota exhausted.</h3>
+        <p>Free: 3 compiles per month. Starter: 25. Pro: 200. Teams: 1000. Enterprise: unlimited. Existing artifacts keep running; new compiles block.</p>
+        <div class="grid">
+          <span class="k">http status</span><span class="v">402 Payment Required</span>
+          <span class="k">action</span><span class="v"><a href="/pricing" style="color:var(--violet,#4c7dff)">Upgrade</a> or wait for the monthly reset</span>
+        </div>
+      </div>
+
+      <div class="fail" id="FM-303">
+        <div class="hd"><span class="tag">FM-303</span><span class="sev sev-fail">fail-closed</span><span class="id">rate_limit.signup</span></div>
+        <h3>Signup rate-limited.</h3>
+        <p>10 signups per IP per 24 hours. Prevents enumeration / abuse.</p>
+        <div class="grid">
+          <span class="k">http status</span><span class="v">429 Too Many Requests</span>
+          <span class="k">action</span><span class="v">wait for the rolling window or sign up from a different network</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">05</span>action</div>
+      <h2>If you hit something not on this page.</h2>
+      <p class="sec-lede">Open <a href="https://github.com/sneaky-hippo/kolmogorov-stack/issues" style="color:var(--violet,#4c7dff)">an issue</a> with the compile id and the last 50 lines of <code>~/.kolm/log/compile.log</code>. We answer within one business day. <a href="/troubleshooting" style="color:var(--violet,#4c7dff)">/troubleshooting</a> covers the common ones.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="meta"><img src="/logo-mark.svg" alt="" style="width:18px;height:18px;margin-right:8px;vertical-align:-4px;">kolm failure modes / <a href="/troubleshooting">troubleshooting</a> / <a href="/status">status</a></div>
+    <div class="links">
+      <div>
+        <div class="col-h">Operations</div>
+        <a href="/failure-modes">failure modes</a>
+        <a href="/troubleshooting">troubleshooting</a>
+        <a href="/status">status</a>
+        <a href="/security">security</a>
+      </div>
+      <div>
+        <div class="col-h">Reference</div>
+        <a href="/api">api reference</a>
+        <a href="/docs">docs</a>
+        <a href="/glossary">glossary</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

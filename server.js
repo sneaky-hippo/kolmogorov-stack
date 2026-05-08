@@ -51,7 +51,15 @@ app.use(helmet({
 // gzip everything except SSE streams (compression breaks event delivery).
 app.use(compression({ filter: (req, res) => res.getHeader('Content-Type') !== 'text/event-stream' && compression.filter(req, res) }));
 app.use(cookieParser());
-app.use(express.json({ limit: '4mb' }));
+// Stripe webhook signature verification needs the raw request body — JSON
+// reparse reorders keys and breaks the HMAC. Mount express.raw() for the
+// webhook route ahead of express.json() so req.body is a Buffer there only.
+app.use((req, res, next) => {
+  if (req.path === '/v1/stripe/webhook') {
+    return express.raw({ type: '*/*', limit: '4mb' })(req, res, next);
+  }
+  return express.json({ limit: '4mb' })(req, res, next);
+});
 app.use(express.urlencoded({ extended: true }));
 
 // /articles serves the index page directly (no 301 redirect) — must come
@@ -59,6 +67,14 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/articles', (_req, res) => {
   res.set('Cache-Control', 'public, max-age=60, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'articles', 'index.html'));
+});
+
+// /use-cases serves the index page directly. Same reasoning — public/use-cases/
+// exists as a directory, so express.static would 301-redirect /use-cases to
+// /use-cases/. Pre-empt with an explicit handler.
+app.get('/use-cases', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=60, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'use-cases', 'index.html'));
 });
 
 // Explicit /docs handler — serves the docs hub HTML before express.static
@@ -129,7 +145,7 @@ const ROUTE_ALIASES = {
   '/signin': 'signup',
   '/atlas': 'registry',
 };
-for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/atlas', '/signup', '/signin', '/why', '/pricing', '/status', '/specialists', '/onboarding', '/account', '/optimize', '/audit', '/spec', '/receipts', '/how-it-works', '/verified', '/economics', '/device', '/compile', '/run', '/recall', '/cloud', '/manual', '/mobile', '/k-score', '/benchmarks', '/compare', '/serve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/legal', '/edge', '/cookbook', '/defense', '/manifesto', '/faq', '/quickstart', '/changelog', '/troubleshooting', '/launch', '/architecture', '/trust', '/integrations', '/glossary', '/press', '/vs-ollama', '/vs-rag', '/vs-fine-tune', '/why-now', '/threat-model', '/motion', '/roi']) {
+for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/atlas', '/signup', '/signin', '/why', '/pricing', '/status', '/specialists', '/onboarding', '/account', '/optimize', '/audit', '/spec', '/receipts', '/how-it-works', '/verified', '/economics', '/device', '/compile', '/run', '/recall', '/cloud', '/manual', '/mobile', '/k-score', '/benchmarks', '/compare', '/serve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/legal', '/edge', '/cookbook', '/defense', '/manifesto', '/faq', '/quickstart', '/changelog', '/troubleshooting', '/launch', '/architecture', '/trust', '/integrations', '/glossary', '/press', '/vs-ollama', '/vs-rag', '/vs-fine-tune', '/why-now', '/threat-model', '/motion', '/roi', '/api', '/failure-modes', '/whitepaper', '/customers', '/brand', '/build-your-own']) {
   app.get(route, (_req, res) => {
     const name = route === '/' ? 'index' : (ROUTE_ALIASES[route] || route.slice(1));
     const file = path.join(__dirname, 'public', name + '.html');
@@ -137,6 +153,15 @@ for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/a
     res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
   });
 }
+
+// Extensionless use-case URLs: /use-cases/<slug> → public/use-cases/<slug>.html
+app.get('/use-cases/:slug', (req, res, next) => {
+  const slug = req.params.slug;
+  if (!/^[a-z0-9-]+$/.test(slug)) return next();
+  const file = path.join(__dirname, 'public', 'use-cases', slug + '.html');
+  if (fs.existsSync(file)) return res.sendFile(file);
+  next();
+});
 
 // Extensionless article URLs: /articles/<slug> → public/articles/<slug>.html
 app.get('/articles/:slug', (req, res, next) => {

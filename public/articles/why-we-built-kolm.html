@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Why we built .kolm · kolm</title>
+<meta name="description" content="The story behind a file format. Why every working AI feature today is held together with bash glue, and how a build step changes the unit economics, the deployment model, and the audit trail.">
+<meta name="keywords" content="why kolm, AI compiler origin, .kolm format, ai-native saas, frontier API tax">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta name="author" content="Kolmogorov">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="Why we built .kolm">
+<meta property="og:description" content="The story behind a file format. Webpack made web apps shippable. Docker made services shippable. .kolm makes private AI shippable.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/articles/why-we-built-kolm">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/articles/why-we-built-kolm">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"TechArticle","headline":"Why we built .kolm","description":"The origin story of the .kolm file format and the AI compiler that produces it.","author":{"@type":"Organization","name":"Kolmogorov","url":"https://kolm.ai"},"publisher":{"@type":"Organization","name":"Kolmogorov","logo":{"@type":"ImageObject","url":"https://kolm.ai/favicon.svg"}},"datePublished":"2026-05-09","dateModified":"2026-05-09","mainEntityOfPage":{"@type":"WebPage","@id":"https://kolm.ai/articles/why-we-built-kolm"},"image":"https://kolm.ai/og-card.svg","keywords":".kolm origin, AI compiler, why we built","articleSection":"Engineering","wordCount":2100}
+</script>
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#4c7dff;--accent-soft:rgba(76,125,255,0.10);--good:#7ef0d2;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:760px;margin:0 auto;padding:0 32px}
+  .wrap-wide{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap,.wrap-wide{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand span{font-weight:540;font-size:16px}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .cta{color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540}
+  @media(max-width:720px){header.site nav{display:none}}
+
+  section.hero{padding:80px 0 36px;position:relative;overflow:hidden}
+  section.hero::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 900px 460px at 22% 12%,rgba(76,125,255,0.10),transparent 60%)}
+  section.hero .wrap{position:relative}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-mute);border:1px solid var(--line-strong);border-radius:999px;padding:5px 12px;background:var(--bg-elev)}
+  .pill .dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+  h1{margin:22px 0 18px;font-size:clamp(34px,5.4vw,54px);line-height:1.05;font-weight:500;max-width:22ch}
+  h1 .tone{color:var(--accent)}
+  p.lede{margin:0 0 0;font-size:clamp(17px,1.4vw,20px);line-height:1.55;color:var(--ink-mute);max-width:60ch}
+  p.lede b{color:var(--ink);font-weight:540}
+  .meta{display:flex;gap:18px;margin-top:22px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
+  .meta b{color:var(--ink-mute);font-weight:500}
+
+  article{padding:36px 0 96px}
+  article h2{margin:56px 0 14px;font-size:clamp(24px,2.6vw,30px);line-height:1.2;font-weight:540;color:var(--ink)}
+  article h2 .tone{color:var(--accent)}
+  article h3{margin:36px 0 10px;font-size:18px;font-weight:540;color:var(--ink)}
+  article p{margin:0 0 16px;font-size:16.5px;line-height:1.7;color:var(--ink-mute)}
+  article p b{color:var(--ink);font-weight:540}
+  article p code,article li code{font-family:var(--mono);font-size:0.92em;background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--ink)}
+  article blockquote{margin:28px 0;padding:16px 22px;border-left:2px solid var(--accent);background:var(--bg-elev);border-radius:0 8px 8px 0;font-size:17px;line-height:1.6;color:var(--ink)}
+  article blockquote p{color:var(--ink);margin:0;font-weight:480}
+  article ul{padding-left:0;list-style:none;margin:16px 0 24px}
+  article ul li{padding:8px 0 8px 22px;position:relative;font-size:16px;line-height:1.6;color:var(--ink-mute)}
+  article ul li::before{content:"-";color:var(--accent);position:absolute;left:6px;font-weight:560}
+  article ul li b{color:var(--ink);font-weight:540}
+  article pre{margin:18px 0 24px;padding:18px 22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.75;color:var(--ink)}
+  article pre .com{color:var(--ink-faint)}
+  article pre .arg{color:var(--accent)}
+  article pre .kw{color:#b0bbff}
+
+  .toc{margin:28px 0 36px;padding:18px 22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px}
+  .toc h5{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px;font-weight:500}
+  .toc ol{margin:0;padding-left:20px}
+  .toc li{padding:4px 0;font-size:14px;color:var(--ink-mute)}
+  .toc li a{color:var(--ink-mute)}
+  .toc li a:hover{color:var(--accent)}
+
+  .signpost{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:48px 0 0}
+  @media(max-width:720px){.signpost{grid-template-columns:1fr}}
+  .signpost a{display:flex;flex-direction:column;gap:8px;padding:22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;transition:border-color 120ms,background 120ms}
+  .signpost a:hover{border-color:var(--line-strong);background:var(--bg-card)}
+  .signpost a .lab{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
+  .signpost a .v{color:var(--ink);font-weight:540;font-size:16px}
+  .signpost a .v .arrow{color:var(--accent);margin-left:6px}
+  .signpost a p{margin:4px 0 0;font-size:13.5px;color:var(--ink-mute);line-height:1.5}
+
+  footer.site{padding:56px 0 40px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+  footer.site .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span>Engineering &middot; 2026-05-09 &middot; 9 min read</span>
+    <h1>Why we built <span class="tone">.kolm.</span></h1>
+    <p class="lede">The product is a file format. The reason we built it is that <b>every shipped AI feature in 2026 is held together with bash, prayers, and a credit-card autopay.</b> A file format with a build step changes the unit economics, the deployment model, and the audit trail. This is why.</p>
+    <div class="meta"><span><b>By</b>&nbsp;Kolmogorov</span><span><b>Tag</b>&nbsp;product origin &middot; build step &middot; format</span></div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="toc">
+      <h5>Contents</h5>
+      <ol>
+        <li><a href="#shape">The shape of every shipped AI feature</a></li>
+        <li><a href="#analogy">Webpack, Docker, App Store, .kolm</a></li>
+        <li><a href="#format">Why a file, not a service</a></li>
+        <li><a href="#open">Why the format is open</a></li>
+        <li><a href="#what">What we are not</a></li>
+        <li><a href="#now">Why this had to happen now</a></li>
+      </ol>
+    </div>
+
+    <h2 id="shape">The shape of every shipped AI feature.</h2>
+    <p>Pull a Series-A AI-native SaaS off the shelf and look at how its inference path is wired. There is a <code>POST /v1/chat/completions</code> on a frontier vendor. There is a prompt template glued together by <code>jinja2</code> that is <i>actually</i> the contract, even though no one has typed it. There is a regex that catches the JSON output, with a fallback for when the regex fails. There is a retry loop. There is an evaluator that runs in CI on Tuesdays if Tuesday isn't a holiday. <b>There is no artifact.</b> There is no version. There is no signature. There is no number on the cover that says whether this thing should ship.</p>
+    <p>What we built kolm to fix is the absence of a noun. There is no thing you can point to and say <i>this is the AI feature</i>. The feature is a verb tense scattered across five repos and a vendor account. <b>You cannot ship what you cannot package, and the AI feature has no package.</b></p>
+
+    <blockquote>
+      <p>The thing we&rsquo;ve been missing isn&rsquo;t a smaller model, a faster GPU, a better prompt, or a smarter eval. It&rsquo;s a file.</p>
+    </blockquote>
+
+    <h2 id="analogy">Webpack, Docker, App Store, .kolm.</h2>
+    <p>Three times in the last twenty years, an industry got a build step that turned a sprawling deployment problem into a single shippable noun.</p>
+    <ul>
+      <li><b>Webpack made web apps shippable.</b> Before it, a web app was a folder of files in a particular order, plus a server config, plus some Apache rewrites, plus the prayers of the deploy engineer. Webpack collapsed that to <code>dist/bundle.js</code>. The artifact had a hash; the hash had a deploy.</li>
+      <li><b>Docker made services shippable.</b> Before it, a service was a tarball, plus a runbook, plus six environment variables nobody documented. <code>docker build</code> collapsed that to an image. The image ran on your laptop. The image ran in prod. The image was the noun.</li>
+      <li><b>The App Store made mobile apps shippable.</b> Before it, a mobile app was a side-loaded APK and a bug report. The Store made the IPA the noun: signed, versioned, distributed, attested.</li>
+    </ul>
+    <p>Each of these formats had three properties: <b>signed, versioned, portable.</b> Each one was opinionated about a thing the industry had been refusing to standardize. Each one looked like a step backwards in flexibility and turned out to be a step forward in everything that mattered: deployability, auditability, gross margin.</p>
+    <p><code>.kolm</code> is the same shape, for AI features. <b>One signed file.</b> A manifest you can read. A K-score on the cover. A receipt chain you can verify offline. A runtime contract you can test against. The same artifact runs on a laptop, a phone, an edge box, and your prod GPU. The artifact is the noun.</p>
+
+    <h2 id="format">Why a file, not a service.</h2>
+    <p>The natural counter-argument is: why not just call our service? Why ship a file at all?</p>
+    <p>Because <b>a service is something you depend on; a file is something you own.</b> The whole point of the format is that we can disappear and your AI feature keeps shipping. The artifact does not call home. The artifact does not have a license server. The artifact verifies against a public key chain shipped inside it. The runtime that loads it is open-spec; we ship a CLI but you do not have to use ours.</p>
+    <p>This is not a defensive crouch; it&rsquo;s the only way the format becomes useful in the cases that matter most. <b>Healthcare buyers will not approve a workflow whose inference path depends on our continued existence.</b> Defense buyers will not approve a model that calls outside the air gap. Mobile teams will not put a feature in their App Store binary that breaks when we have an outage. The format had to be sovereign or it was not interesting.</p>
+
+    <pre><span class="com"># the verification ritual is offline.  always.</span>
+<span class="kw">$</span> kolm verify ./feature-2.1.0.kolm
+<span class="arg">✓</span> ring 1 (artifact):  manifest hash matches
+<span class="arg">✓</span> ring 2 (call):      hmac-sha256 valid
+<span class="arg">✓</span> ring 3 (anchor):    rekor entry 19,283,471
+<span class="arg">VERIFIED</span></pre>
+
+    <h2 id="open">Why the format is open.</h2>
+    <p>The artifact format is MIT-licensed. The K-score formula is published. The receipt chain is documented in the RS-1 spec. The signature wire format is in <a href="/whitepaper">the whitepaper appendix</a>. <b>The proprietary part is the compiler.</b> The artifact you produce is yours.</p>
+    <p>This is the same trade-off Apple made with the IPA, that Docker made with the image, that <code>.deb</code> made with the package. The format is a public convention; the tooling that produces it is competitive turf. We expect competitors to build other compilers. We expect open-source compilers to exist. <b>The point of the format is to be a substrate, not a moat.</b> The compile flywheel is the moat. Every artifact compiled enriches a public registry of deterministic patterns; the next compile is cheaper and faster because of it.</p>
+
+    <blockquote>
+      <p>The format is the contract between everyone. The compiler is the company.</p>
+    </blockquote>
+
+    <h2 id="what">What we are not.</h2>
+    <p>Three things we keep getting confused with, and explicitly are not.</p>
+    <ul>
+      <li><b>Not an inference platform.</b> We do not host your inference (well, kolm Cloud does as an option, but it&rsquo;s a thin layer; you can run the artifact yourself). We are the compiler. The runtime can be ours, llama.cpp, ExecuTorch, MLC, or anything that loads the manifest.</li>
+      <li><b>Not a fine-tuning service.</b> We use LoRA fine-tuning <i>inside</i> the compile pipeline, but the output is an artifact, not a fine-tuned model on a vendor endpoint. The fine-tune is one stage of seven; you cannot point at it as a product.</li>
+      <li><b>Not a "memory layer."</b> We have a Recall subsystem and it grounds inference in your data, but it is one component inside the artifact. The product is the compiled file.</li>
+    </ul>
+
+    <h2 id="now">Why this had to happen now.</h2>
+    <p>Three forces converged in 2026 to make the format possible. Each, alone, would not have been enough.</p>
+    <p><b>Open weights matched yesterday&rsquo;s frontier.</b> Qwen 2.5, Llama 3, Phi-3, Hermes-3 in the 3B-7B range now match GPT-4 of two years ago on narrow tasks. The student became good enough to ship.</p>
+    <p><b>Verification became cheap.</b> K-sample verified inference, recipe-drafted speculative decoding, and signed receipt chains all became table-stakes engineering. None were possible at this cost three years ago.</p>
+    <p><b>The audit pressure became real.</b> EU AI Act enforcement, HIPAA on AI workflows, SR 11-7 model risk management on LLMs. Every cloud call became an audit row. The shape of the answer had to be an artifact, not a vendor SLA.</p>
+
+    <p>The format was inevitable. We just wanted to be the ones holding the pen when it was written.</p>
+
+    <p>Most companies that build infrastructure end up trying to convince customers their layer matters. We have the opposite problem: <b>the layer is so obvious in retrospect that the question is why nobody named it sooner.</b> The build step always exists; the only question is whether anyone has bothered to call it out and put a hash on the output.</p>
+
+    <p>That&rsquo;s why we built it. The artifact had to exist; we wanted to make sure the artifact was open, signed, sovereign, and named.</p>
+
+    <p>The artifact is the noun. <code>kolm compile</code> is the verb. <b>That&rsquo;s the whole product.</b></p>
+
+    <div class="signpost">
+      <a href="/articles/distillation-vs-fine-tuning-vs-rag">
+        <span class="lab">read next</span>
+        <span class="v">Distillation vs fine-tuning vs RAG <span class="arrow">&rarr;</span></span>
+        <p>Decision tree for when to compile, when to fine-tune, and when RAG is enough.</p>
+      </a>
+      <a href="/articles/running-our-marketing-on-distilled-models">
+        <span class="lab">read next</span>
+        <span class="v">Our marketing runs on 4 distilled models <span class="arrow">&rarr;</span></span>
+        <p>The kolm marketing site is dogfood. Here&rsquo;s which Specialists run which features.</p>
+      </a>
+      <a href="/manifesto">
+        <span class="lab">manifesto</span>
+        <span class="v">The closed-API tax <span class="arrow">&rarr;</span></span>
+        <p>The economic frame: every API call you make is a tax you don&rsquo;t control. Compile your way out.</p>
+      </a>
+      <a href="/whitepaper">
+        <span class="lab">spec</span>
+        <span class="v">RS-1 specification <span class="arrow">&rarr;</span></span>
+        <p>Manifest schema, K-score formula, receipt format. MIT-licensed.</p>
+      </a>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolmogorov &middot; 2026 &middot; engineering essays</span>
+    <span><a href="/articles">All articles</a> &middot; <a href="/articles/rss.xml">RSS</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

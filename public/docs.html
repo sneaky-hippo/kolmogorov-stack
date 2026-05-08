@@ -33,7 +33,7 @@
     </nav>
     <div class="site-actions">
       <a href="/signin">sign in</a>
-      <a href="/signup" class="cta">get a key</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
     </div>
   </div>
 </header>
@@ -47,8 +47,9 @@
         <p class="lede">Everything you need to compile a task into a portable, signed file you can run anywhere. These docs describe what the repo ships today: the Node CLI, the hosted compile API, signed recipe-mode <code>.kolm</code> artifacts, HMAC receipt metadata, and local MCP serving from <code>~/.kolm/artifacts</code>. If a flag, endpoint, or field is not listed here, treat it as out of scope.</p>
         <div class="actions">
           <a href="/quickstart" class="btn primary">quickstart</a>
-          <a href="https://github.com/sneaky-hippo/kolmogorov-stack" class="btn ghost">github</a>
+          <a href="/build-your-own" class="btn ghost">build your own</a>
           <a href="/docs/rs-1.md" class="btn accent">RS-1 spec</a>
+          <a href="https://github.com/sneaky-hippo/kolmogorov-stack" class="btn ghost">github</a>
         </div>
       </div>
     </div>
@@ -212,7 +213,7 @@ kolm login
     <div class="wrap">
       <div class="eyebrow"><span class="num">05</span>artifact format</div>
       <h2>Open schemas for the artifact contract.</h2>
-      <p class="sec-lede">The current <code>.kolm</code> file is a zip artifact with manifest, model pointer metadata, recipe data, placeholder LoRA/index members where appropriate, eval data, and HMAC receipt metadata. Native LoRA training, populated vector indexes, and external receipt anchoring remain product-hardening work, not current defaults.</p>
+      <p class="sec-lede">The current <code>.kolm</code> file is a zip artifact with manifest, model pointer metadata, recipes, an optional KOLMPACK behaviour pack in the <code>lora.bin</code> slot, an optional KOLMIDX lookup index in the <code>index.sqlite-vec</code> slot, eval data, and HMAC receipt metadata. The reference fixture and the redactor / extractor / classifier examples ship populated packs and indexes the recipes call from. Native LoRA-delta encoding and sqlite-vec retrieval reuse the same slot names with richer encodings in later tiers.</p>
 
       <div class="grid-3">
         <div class="card">
@@ -235,26 +236,33 @@ kolm login
 <pre class="terminal"><span class="dim"># manifest.json (excerpt)</span>
 {
   "spec": "rs-1",
-  "schema": "manifest-v0.1",
+  "job_id": "cmp_8f2a...",
   "task": "classify support tickets",
-  "compiled_at": "2026-05-08T18:42:11Z",
-  "base_model": {
-    "name": "qwen2.5-coder-7b-instruct-q4_0",
-    "sha256": "4f1c…b9a2"
-  },
-  "recipe_registry": {
-    "version": "2026-05-01",
-    "url": "https://kolm.ai/v1/registry/export"
-  },
+  "created_at": "2026-05-08T18:42:11Z",
+  "runtime": "cloud",
+  "base_model": "qwen2.5-coder-7b-instruct-q4_0",
+  "tier": "recipe",
+  "judge_id": "kolm-pattern-synth-1",
+  "eval_score": 0.91,
+  "recipes": { "n": 7, "registry_hash": "sha256:..." },
+  "lora": null,
+  "recall": { "namespace": "tenant/tickets" },
+  "training": { "distilled_pairs": 0, "accuracy": null },
+  "evals":    { "n": 24, "spec": "rs-1", "hash": "sha256:..." },
   "k_score": {
-    "spec": "k-score-1",
     "composite": 0.84,
     "accuracy": 0.91,
     "coverage": 0.78,
     "size_bytes": 3221225472,
     "p50_latency_us": 142000
   },
-  "compiler": { "name": "kolm", "version": "0.4.0" }
+  "hashes": {
+    "model_pointer": "sha256:...",
+    "recipes_json":  "sha256:...",
+    "lora_bin":      "sha256:...",
+    "index_bin":     "sha256:...",
+    "evals_json":    "sha256:..."
+  }
 }</pre>
     </div>
   </section>
@@ -267,19 +275,26 @@ kolm login
 
 <pre class="terminal"><span class="dim"># receipt.json (excerpt)</span>
 {
-  "spec": "receipt-v0.1",
-  "alg": "HMAC-SHA256",
-  "signed_at": "2026-05-08T18:42:14Z",
-  "signer": "kolm-cloud@kolm.ai",
+  "kolm_version":   "0.1",
+  "receipt_id":     "8a1b3c...-...-...",
+  "artifact_hash":  "sha256:...",
+  "eval_set_hash":  "sha256:...",
+  "eval_score":     0.91,
+  "judge_id":       "kolm-pattern-synth-1",
+  "tier":           "recipe",
   "chain": [
-    { "member": "manifest.json",  "sha256": "8b2e…01af", "size_bytes": 1822 },
-    { "member": "recipes.json",   "sha256": "61c4…dd09", "size_bytes": 4120 },
-    { "member": "evals.jsonl",    "sha256": "9a7f…42b1", "size_bytes": 9211 },
-    { "member": "model.ptr",      "sha256": "21d8…77ee", "size_bytes": 96   },
-    { "member": "lora.bin",       "sha256": "00…00",     "optional": true   },
-    { "member": "index.sqlite-vec","sha256": "00…00",    "optional": true   }
+    { "step": "task",    "input_hash": "sha256:...", "output_hash": "sha256:...", "hmac": "8b2e…01af" },
+    { "step": "seeds",   "input_hash": "sha256:...", "output_hash": "sha256:...", "hmac": "61c4…dd09" },
+    { "step": "recipes", "input_hash": "sha256:...", "output_hash": "sha256:...", "hmac": "9a7f…42b1" },
+    { "step": "evals",   "input_hash": "sha256:...", "output_hash": "sha256:...", "hmac": "21d8…77ee" },
+    { "step": "package", "input_hash": "sha256:...", "output_hash": "sha256:...", "hmac": "f0a3…b4c8" }
   ],
-  "signature": "f0a3…b4c8"
+  "anchors":        [],
+  "signed_at":      "2026-05-08T18:42:14Z",
+  "signed_by":      "kolm-dev-hmac-1",
+  "signature_alg":  "hmac-sha256",
+  "hmac_alg":       "HMAC-SHA256",
+  "signature":      "f0a3…b4c8"
 }</pre>
 
       <div class="kv">
@@ -349,6 +364,7 @@ kolm login
         <a href="/privacy">privacy</a>
       </div>
     </div>
+    <small class="footer-tag" style="display:block;margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#1a1d24);font-family:var(--mono);font-size:11px;color:var(--ink-faint,#6b7280);letter-spacing:0;">kolm &middot; open spec &middot; MIT licensed runtime &middot; kolm.ai</small>
   </div>
 </footer>
 

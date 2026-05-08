@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Benchmarks — kolm</title>
+<title>Benchmarks · kolm</title>
 <meta name="description" content="kolm benchmarks: every .kolm artifact ships its own eval set. Offline-capable, network-egress monitored, K-score signed into the manifest.">
 <meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
@@ -143,7 +143,7 @@
     </div>
     <div class="right">
       <a href="/signin" class="ghost">sign in</a>
-      <a href="/signup" class="cta">get a key</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
     </div>
   </div>
 </header>
@@ -195,12 +195,12 @@
           <tr>
             <td class="row-h" data-l="field">k_score</td>
             <td data-l="what">"Is this artifact good and small?"</td>
-            <td data-l="from">manifest.json — composite, signed at compile time</td>
+            <td data-l="from">manifest.json composite, signed at compile time</td>
           </tr>
           <tr>
             <td class="row-h" data-l="field">evals.accuracy</td>
             <td data-l="what">"How many embedded cases pass right now?"</td>
-            <td data-l="from">replay against evals.cases — no API call</td>
+            <td data-l="from">replay against evals.cases, no API call</td>
           </tr>
           <tr>
             <td class="row-h" data-l="field">latency_us.p50</td>
@@ -224,7 +224,7 @@
 
     <div class="group">
       <h2>The compile-time gate</h2>
-      <p>Before an artifact is signed and sealed, it has to pass a sandbox verifier (<code>src/verifier.js</code>). The verifier runs the candidate generator against three sets — positives, negatives, property tests — and computes a quality score:</p>
+      <p>Before an artifact is signed and sealed, it has to pass a sandbox verifier (<code>src/verifier.js</code>). The verifier runs the candidate generator against three sets (positives, negatives, property tests) and computes a quality score:</p>
       <div class="math">
         <div class="lab">verifier quality_score</div>
         Q = 0.5·<span class="var">positive_pass_rate</span> + 0.4·<span class="var">negative_pass_rate</span> + 0.1·<span class="var">property_pass_rate</span><br>
@@ -240,7 +240,7 @@
         <div class="lab">verified-inference accuracy</div>
         accuracy(k) = 1 − (1 − <span class="var">p</span>·<span class="var">v</span>)<sup>k</sup>
       </div>
-      <p>This is the SOTA-amplifier. It is not a claim — it is monotone in <i>k</i> by construction, and the verifier's soundness is what bounds it. Worked numbers for a verifiable coding task with <i>p</i>≈0.91 and <i>v</i>≈1.0:</p>
+      <p>This is the SOTA-amplifier. It is not a claim; it is monotone in <i>k</i> by construction, and the verifier's soundness is what bounds it. Worked numbers for a verifiable coding task with <i>p</i>≈0.91 and <i>v</i>≈1.0:</p>
       <table class="tbl">
         <thead>
           <tr><th>k</th><th>accuracy</th><th>cost (relative)</th><th>note</th></tr>
@@ -277,14 +277,14 @@ kolm compile "classify support emails" \
 <span class="c"># run the embedded eval set offline</span>
 kolm bench support.kolm --runs 10 --out report.json
 
-<span class="c"># report.json conforms to spec kolm-benchmark-1 (sample run, see /benchmarks for real fixture)</span>
+<span class="c"># report.json conforms to spec kolm-benchmark-1 (real run against test/fixtures/sample.kolm)</span>
 {
   "spec": "kolm-benchmark-1",
-  "artifact_sha256": "sha256:c23273dc…b5cc67d2",
-  "artifact_bytes": 5815,
-  "k_score": 612.34,
-  "evals": { "n": 24, "passed": 24, "accuracy": 1.0 },
-  "latency_us": { "p50": 311, "p95": 431, "max": 626 },
+  "artifact_sha256": "sha256:b8344082…1089880e0",
+  "artifact_bytes": 3259,
+  "k_score": 424.57,
+  "evals": { "n": 4, "graded": 400, "passed": 400, "accuracy": 1.0 },
+  "latency_us": { "p50": 274, "p95": 335, "max": 639 },
   <span class="ok">"privacy": { "runtime_egress_attempts": 0, "blocked": false }</span>,
   <span class="ok">"integrity": { "signature_valid": true, "receipt_chain_steps": 5 }</span>
 }</pre>
@@ -292,33 +292,29 @@ kolm bench support.kolm --runs 10 --out report.json
     </div>
 
     <div class="group">
-      <h2>A real run, pinned to a fixture</h2>
-      <p>The numbers below come from a fresh <code>npm i -g github:sneaky-hippo/kolmogorov-stack</code> on Windows 11 + Node v24, run against the 5,815-byte fixture at <code>test/fixtures/sample.kolm</code> in the public repo. Anyone can rerun the exact command and get a JSON report shaped by spec <code>kolm-benchmark-1</code>.</p>
-      <pre class="code"><code>$ kolm bench test/fixtures/sample.kolm --runs 100 --target kolm-public-v0.1.0 --device win11-node24</code></pre>
+      <h2>Four real fixtures, four real runs</h2>
+      <p>Every number below comes from running <code>kolm bench</code> against the four signed fixtures shipped in this repo, on Windows 11 + Node v24.14.0. Anyone can rerun the exact commands. The fixtures are the same artifacts the cookbook and <a href="/build-your-own">/build-your-own</a> templates produce. <code>kolm-benchmark-1</code> is the report schema.</p>
+      <pre class="code"><code>$ RECIPE_RECEIPT_SECRET=kolm-public-fixture-v0-1-0 \
+  kolm bench test/fixtures/&lt;name&gt;.kolm --runs 50 \
+  --target kolm-public-v0.1.0 --device win11-node24</code></pre>
       <table class="tbl">
         <thead>
-          <tr><th>field</th><th>value</th></tr>
+          <tr><th>fixture</th><th>bytes</th><th>evals</th><th>accuracy</th><th>p50 us</th><th>p95 us</th><th>K-score</th><th>egress</th><th>signed</th></tr>
         </thead>
         <tbody>
-          <tr><td class="row-h" data-l="field">spec</td><td class="num">kolm-benchmark-1</td></tr>
-          <tr><td class="row-h" data-l="field">artifact_sha256</td><td class="num">c23273dc…b5cc67d2</td></tr>
-          <tr><td class="row-h" data-l="field">artifact_bytes</td><td class="num">5,815</td></tr>
-          <tr><td class="row-h" data-l="field">runs</td><td class="num">100</td></tr>
-          <tr><td class="row-h" data-l="field">latency_us.min</td><td class="num">264</td></tr>
-          <tr><td class="row-h" data-l="field">latency_us.p50</td><td class="num">311</td></tr>
-          <tr><td class="row-h" data-l="field">latency_us.p95</td><td class="num">431</td></tr>
-          <tr><td class="row-h" data-l="field">latency_us.max</td><td class="num">626</td></tr>
-          <tr><td class="row-h" data-l="field">privacy.runtime_egress_attempts</td><td class="win">0</td></tr>
-          <tr><td class="row-h" data-l="field">errors</td><td class="win">0</td></tr>
+          <tr><td class="row-h" data-l="fixture"><b>sample.kolm</b><br><span class="dim">uppercase reference</span></td><td class="num">3,259</td><td class="num">4</td><td class="win">1.0</td><td class="num">286</td><td class="num">363</td><td class="num">424.57</td><td class="win">0</td><td class="win">true</td></tr>
+          <tr><td class="row-h" data-l="fixture"><b>redactor.kolm</b><br><span class="dim">PII / PHI redactor</span></td><td class="num">4,933</td><td class="num">6</td><td class="win">1.0</td><td class="num">288</td><td class="num">351</td><td class="num">362.96</td><td class="win">0</td><td class="win">true</td></tr>
+          <tr><td class="row-h" data-l="fixture"><b>extractor.kolm</b><br><span class="dim">structured-field extractor</span></td><td class="num">4,571</td><td class="num">5</td><td class="win">1.0</td><td class="num">256</td><td class="num">342</td><td class="num">373.48</td><td class="win">0</td><td class="win">true</td></tr>
+          <tr><td class="row-h" data-l="fixture"><b>classifier.kolm</b><br><span class="dim">rule-based classifier</span></td><td class="num">4,649</td><td class="num">5</td><td class="win">1.0</td><td class="num">269</td><td class="num">337</td><td class="num">371.00</td><td class="win">0</td><td class="win">true</td></tr>
         </tbody>
       </table>
-      <p class="footnote">Fixture and full report at <a href="https://github.com/sneaky-hippo/kolmogorov-stack/blob/main/docs/benchmark-results-v0.1.0.md">github.com/sneaky-hippo/kolmogorov-stack/docs/benchmark-results-v0.1.0.md</a>. Latency varies with hardware; <code>artifact_sha256</code>, <code>evals.accuracy</code>, and <code>integrity.signature_valid</code> do not.</p>
+      <p class="footnote">Each row is a 50-run benchmark. The fixtures sign under <code>RECIPE_RECEIPT_SECRET=kolm-public-fixture-v0-1-0</code>; this is also the secret the smoke battery and the e2e tests use. Each artifact ships its own embedded eval set, so the harness re-runs those evals offline with <code>fetch</code>/<code>http</code>/<code>https</code>/<code>net</code>/<code>tls</code>/<code>dns</code> all monitored. Latency varies with hardware; <code>evals.accuracy</code>, <code>privacy.runtime_egress_attempts</code>, and <code>integrity.signature_valid</code> do not. Reproducer notes at <a href="https://github.com/sneaky-hippo/kolmogorov-stack/blob/main/docs/benchmark-results-v0.1.0.md">docs/benchmark-results-v0.1.0.md</a>.</p>
     </div>
 
     <div class="group">
       <h2>What we do <em>not</em> claim</h2>
       <p>kolm does not appear on the SWE-bench Verified leaderboard. It does not claim to make Opus or any frontier model better at coding in general. The compile-time gate either produces an artifact that passes its embedded evals, or it doesn't ship.</p>
-      <p>Verified inference (k-sample + sound verifier) is monotone in k <em>by construction</em>. The interesting empirical question is what the cost-vs-accuracy curve looks like for a given task and verifier — that is the per-task compile decision, made in your account, not on a leaderboard.</p>
+      <p>Verified inference (k-sample + sound verifier) is monotone in k <em>by construction</em>. The interesting empirical question is what the cost-vs-accuracy curve looks like for a given task and verifier; that is the per-task compile decision, made in your account, not on a leaderboard.</p>
       <p>If your task isn't verifiable (no machine-checkable ground truth), kolm tells you. The amplifier doesn't fire and the artifact isn't sealed. We say no on builds we can't gate.</p>
     </div>
 

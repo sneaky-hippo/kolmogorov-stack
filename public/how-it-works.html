@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>How it works - kolm</title>
+<meta name="description" content="The kolm distillation pipeline, end-to-end: how the compiler turns a task description, examples, and a frontier model into a signed .kolm artifact that runs offline. Engineering depth, not marketing.">
+<meta name="theme-color" content="#0b0d10">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="How kolm works">
+<meta property="og:description" content="The compile pipeline, end-to-end. How a task becomes a signed, portable, runnable artifact.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/how-it-works">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/how-it-works">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .hiw-step { display: grid; grid-template-columns: 60px 1fr; gap: 28px; margin-bottom: 48px; padding-bottom: 36px; border-bottom: 1px solid var(--line); }
+  .hiw-step:last-child { border-bottom: 0; }
+  .hiw-num { font-family: var(--mono); font-size: 32px; font-weight: 540; color: var(--violet, #4c7dff); line-height: 1; }
+  .hiw-step h2 { margin: 0 0 8px; font-size: 22px; font-weight: 540; line-height: 1.2; }
+  .hiw-step .summary { margin: 0 0 16px; font-size: 14px; color: var(--ink-mute, #b5bdb1); line-height: 1.6; max-width: 70ch; }
+  .hiw-step h4 { margin: 18px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint, #737c73); font-family: var(--mono); }
+  .hiw-step p { margin: 0 0 10px; font-size: 13.5px; color: var(--fg-2, #c9c2b2); line-height: 1.6; max-width: 70ch; }
+  .hiw-step pre { margin: 8px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,0.32); font-family: var(--mono); font-size: 12px; color: var(--ink, #faf2e1); line-height: 1.7; overflow-x: auto; }
+  .hiw-step .out { border-color: rgba(126,240,210,0.20); }
+  .hiw-step .in { border-color: rgba(76,125,255,0.20); }
+  .hiw-step ul { margin: 0; padding-left: 20px; font-size: 13px; color: var(--ink-mute, #b5bdb1); line-height: 1.7; }
+  .pipe-svg { display: block; margin: 56px auto 24px; max-width: 1100px; padding: 0 24px; }
+  .pipe-svg svg { display: block; width: 100%; height: auto; }
+  .pipe-cap { text-align: center; font-family: var(--mono); font-size: 11px; color: var(--ink-faint, #737c73); letter-spacing: 0.04em; margin: 0 0 56px; }
+  .spec-table { width: 100%; max-width: 70ch; border-collapse: collapse; margin: 8px 0 0; font-size: 13px; }
+  .spec-table th, .spec-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .spec-table th { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint, #737c73); font-weight: 540; width: 30%; }
+  .spec-table td { color: var(--ink-mute, #b5bdb1); line-height: 1.55; }
+  .spec-table td code { font-size: 12px; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/compile">Compile</a>
+      <a href="/serve">Serve</a>
+      <a href="/anatomy">.kolm</a>
+      <a href="/k-score">K-score</a>
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/signin">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div class="eyebrow"><span class="pulse"></span>How it works</div>
+      <h1>Compile, end-to-end.</h1>
+      <p class="lede">The compiler is eight stages: gather, spec, synthesize, k-sample, verify, fit, observe, sign. The frontier model is the teacher. The artifact is the student. The receipt is the audit row. This page reads like a paper because it should - the only credible answer to "how does it work" is one that an engineer can implement.</p>
+    </div>
+  </section>
+
+  <div class="pipe-svg">
+    <svg viewBox="0 0 1080 240" role="img" aria-labelledby="pipeline-title pipeline-desc" xmlns="http://www.w3.org/2000/svg">
+      <title id="pipeline-title">The kolm compile pipeline</title>
+      <desc id="pipeline-desc">Eight stages from inputs to a signed artifact: gather, spec, synthesize, k-sample, verify, fit, observe, sign.</desc>
+      <defs>
+        <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#737c73"/>
+        </marker>
+        <linearGradient id="boxFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="rgba(76,125,255,0.10)"/>
+          <stop offset="1" stop-color="rgba(76,125,255,0.03)"/>
+        </linearGradient>
+      </defs>
+      <style>
+        .stg-box{fill:url(#boxFill);stroke:rgba(76,125,255,0.30);stroke-width:1;}
+        .stg-num{font-family:ui-monospace,monospace;font-size:9.5px;fill:#4c7dff;letter-spacing:0.06em;font-weight:540;}
+        .stg-label{font-family:ui-monospace,monospace;font-size:11px;fill:#faf2e1;font-weight:540;}
+        .stg-glyph{stroke:#4c7dff;stroke-width:1.4;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+        .stg-fill{fill:#4c7dff;}
+        .flow{stroke:#3a423a;stroke-width:1;fill:none;}
+        .annot{font-family:ui-monospace,monospace;font-size:9.5px;fill:#737c73;}
+        .annot-em{font-family:ui-monospace,monospace;font-size:9.5px;fill:#b5bdb1;font-weight:540;}
+      </style>
+
+      <!-- top annotation row: data flowing between stages -->
+      <text x="540" y="18" text-anchor="middle" class="annot-em">what flows between stages</text>
+
+      <!-- stage rectangles, evenly spaced. 8 stages, 105px wide, 11.4px gap -->
+      <!-- positions: x = 30 + i*116.25 -->
+
+      <!-- 01 gather -->
+      <g transform="translate(30,90)">
+        <rect class="stg-box" width="105" height="100" rx="6"/>
+        <text x="9" y="17" class="stg-num">01</text>
+        <!-- folder + split -->
+        <path class="stg-glyph" d="M30,42 L42,42 L46,38 L70,38 L70,58 L30,58 Z"/>
+        <line class="stg-glyph" x1="38" y1="68" x2="50" y2="68"/>
+        <line class="stg-glyph" x1="55" y1="68" x2="68" y2="68"/>
+        <line class="stg-glyph" x1="50" y1="58" x2="44" y2="68"/>
+        <line class="stg-glyph" x1="55" y1="58" x2="60" y2="68"/>
+        <text x="52" y="90" class="stg-label" text-anchor="middle">gather</text>
+      </g>
+
+      <!-- 02 spec -->
+      <g transform="translate(146.25,90)">
+        <rect class="stg-box" width="105" height="100" rx="6"/>
+        <text x="9" y="17" class="stg-num">02</text>
+        <!-- bracket and check -->
+        <path class="stg-glyph" d="M32,38 L28,38 L28,68 L32,68"/>
+        <path class="stg-glyph" d="M72,38 L76,38 L76,68 L72,68"/>
+        <path class="stg-glyph" d="M42,52 L50,60 L66,44"/>
+        <text x="52" y="90" class="stg-label" text-anchor="middle">spec</text>
+      </g>
+
+      <!-- 03 synthesize -->
+      <g transform="translate(262.5,90)">
+        <rect class="stg-box" width="105" height="100" rx="6"/>
+        <text x="9" y="17" class="stg-num">03</text>
+        <!-- branching tree -->
+        <line class="stg-glyph" x1="52" y1="38" x2="52" y2="48"/>
+        <line class="stg-glyph" x1="52" y1="48" x2="38" y2="58"/>
+        <line class="stg-glyph" x1="52" y1="48" x2="66" y2="58"/>
+        <line class="stg-glyph" x1="38" y1="58" x2="32" y2="68"/>
+        <line class="stg-glyph" x1="38" y1="58" x2="44" y2="68"/>
+        <line class="stg-glyph" x1="66" y1="58" x2="60" y2="68"/>
+        <line class="stg-glyph" x1="66" y1="58" x2="72" y2="68"/>
+        <circle class="stg-fill" cx="52" cy="38" r="2"/>
+        <circle class="stg-fill" cx="32" cy="68" r="1.6"/>
+        <circle class="stg-fill" cx="44" cy="68" r="1.6"/>
+        <circle class="stg-fill" cx="60" cy="68" r="1.6"/>
+        <circle class="stg-fill" cx="72" cy="68" r="1.6"/>
+        <text x="52" y="90" class="stg-label" text-anchor="middle">synthesize</text>
+      </g>
+
+      <!-- 04 k-sample -->
+      <g transform="translate(378.75,90)">
+        <rect class="stg-box" width="105" height="100" rx="6"/>
+        <text x="9" y="17" class="stg-num">04</text>
+        <!-- 1 input fanning to 4 outputs -->
+        <circle class="stg-fill" cx="30" cy="53" r="2.4"/>
+        <line class="stg-glyph" x1="34" y1="53" x2="68" y2="38"/>
+        <line class="stg-glyph" x1="34" y1="53" x2="68" y2="46"/>
+        <line class="stg-glyph" x1="34" y1="53" x2="68" y2="60"/>
+        <line class="stg-glyph" x1="34" y1="53" x2="68" y2="68"/>
+        <circle class="stg-fill" cx="72" cy="38" r="1.8"/>
+        <circle class="stg-fill" cx="72" cy="46" r="1.8"/>
+        <circle class="stg-fill" cx="72" cy="60" r="1.8"/>
+        <circle class="stg-fill" cx="72" cy="68" r="1.8"/>
+        <text x="52" y="90" class="stg-label" text-anchor="middle">k-sample</text>
+      </g>
+
+      <!-- 05 verify -->
+      <g transform="translate(495,90)">
+        <rect class="stg-box" width="105" height="100" rx="6"/>
+        <text x="9" y="17" class="stg-num">05</text>
+        <!-- funnel filter -->
+        <path class="stg-glyph" d="M30,38 L74,38 L58,56 L58,68 L46,68 L46,56 Z"/>
+        <line class="stg-glyph" x1="38" y1="44" x2="66" y2="44"/>
+        <text x="52" y="90" class="stg-label" text-anchor="middle">verify</text>
+      </g>
+
+      <!-- 06 fit -->
+      <g transform="translate(611.25,90)">
+        <rect class="stg-box" width="105" height="100" rx="6"/>
+        <text x="9" y="17" class="stg-num">06</text>
+        <!-- base layer + overlay (LoRA on base) -->
+        <rect class="stg-glyph" x="30" y="40" width="44" height="14" rx="2"/>
+        <rect class="stg-glyph" x="30" y="58" width="44" height="14" rx="2"/>
+        <line class="stg-glyph" x1="36" y1="47" x2="68" y2="47"/>
+        <path class="stg-glyph" d="M40,65 L52,65 L52,69 L62,65 L52,61 L52,65"/>
+        <text x="52" y="90" class="stg-label" text-anchor="middle">fit</text>
+      </g>
+
+      <!-- 07 observe -->
+      <g transform="translate(727.5,90)">
+        <rect class="stg-box" width="105" height="100" rx="6"/>
+        <text x="9" y="17" class="stg-num">07</text>
+        <!-- ring with inner dot, two convergent ticks -->
+        <circle class="stg-glyph" cx="52" cy="53" r="14"/>
+        <circle class="stg-fill" cx="52" cy="53" r="2.6"/>
+        <line class="stg-glyph" x1="52" y1="35" x2="52" y2="39"/>
+        <line class="stg-glyph" x1="52" y1="67" x2="52" y2="71"/>
+        <line class="stg-glyph" x1="34" y1="53" x2="38" y2="53"/>
+        <line class="stg-glyph" x1="66" y1="53" x2="70" y2="53"/>
+        <text x="52" y="90" class="stg-label" text-anchor="middle">observe</text>
+      </g>
+
+      <!-- 08 sign -->
+      <g transform="translate(843.75,90)">
+        <rect class="stg-box" width="105" height="100" rx="6"/>
+        <text x="9" y="17" class="stg-num">08</text>
+        <!-- lock with hash chain -->
+        <path class="stg-glyph" d="M44,46 L44,40 a8,8 0 0 1 16,0 L60,46"/>
+        <rect class="stg-glyph" x="38" y="46" width="28" height="20" rx="2"/>
+        <circle class="stg-fill" cx="52" cy="56" r="1.8"/>
+        <line class="stg-glyph" x1="52" y1="56" x2="52" y2="62"/>
+        <text x="52" y="90" class="stg-label" text-anchor="middle">sign</text>
+      </g>
+
+      <!-- output box on the right (.kolm artifact) -->
+      <g transform="translate(960,114)">
+        <rect width="100" height="52" rx="6" fill="rgba(126,240,210,0.06)" stroke="rgba(126,240,210,0.32)" stroke-width="1"/>
+        <text x="50" y="22" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#7ef0d2" font-weight="540">.kolm</text>
+        <text x="50" y="38" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#7ef0d2" opacity="0.75">signed artifact</text>
+      </g>
+
+      <!-- flow lines + arrow markers between stage boxes -->
+      <line class="flow" x1="135" y1="140" x2="146.25" y2="140" marker-end="url(#arr)"/>
+      <line class="flow" x1="251.25" y1="140" x2="262.5" y2="140" marker-end="url(#arr)"/>
+      <line class="flow" x1="367.5" y1="140" x2="378.75" y2="140" marker-end="url(#arr)"/>
+      <line class="flow" x1="483.75" y1="140" x2="495" y2="140" marker-end="url(#arr)"/>
+      <line class="flow" x1="600" y1="140" x2="611.25" y2="140" marker-end="url(#arr)"/>
+      <line class="flow" x1="716.25" y1="140" x2="727.5" y2="140" marker-end="url(#arr)"/>
+      <line class="flow" x1="832.5" y1="140" x2="843.75" y2="140" marker-end="url(#arr)"/>
+      <line class="flow" x1="948.75" y1="140" x2="960" y2="140" marker-end="url(#arr)"/>
+
+      <!-- inputs box on the left -->
+      <g transform="translate(0,114)">
+        <text x="0" y="14" class="annot-em">inputs</text>
+        <text x="0" y="30" class="annot">examples.jsonl</text>
+        <text x="0" y="44" class="annot">corpus/</text>
+        <text x="0" y="58" class="annot">policy.md</text>
+      </g>
+
+      <!-- under-row data flow annotations -->
+      <g>
+        <text x="92.5" y="208" text-anchor="middle" class="annot">data_hash</text>
+        <text x="208.75" y="208" text-anchor="middle" class="annot">verifier.json</text>
+        <text x="325" y="208" text-anchor="middle" class="annot">recipe pack</text>
+        <text x="441.25" y="208" text-anchor="middle" class="annot">k candidates</text>
+        <text x="557.5" y="208" text-anchor="middle" class="annot">verified labels</text>
+        <text x="673.75" y="208" text-anchor="middle" class="annot">LoRA delta</text>
+        <text x="790" y="208" text-anchor="middle" class="annot">tightened pack</text>
+        <text x="906.25" y="208" text-anchor="middle" class="annot">HMAC chain</text>
+      </g>
+    </svg>
+  </div>
+  <p class="pipe-cap">Eight stages. Frontier as teacher. Artifact as student. Receipt as audit row.</p>
+
+  <section class="section">
+    <div class="wrap">
+
+      <div class="hiw-step">
+        <div class="hiw-num">01</div>
+        <div>
+          <h2>Gather: collect the gold examples and the corpus.</h2>
+          <p class="summary">The compile starts with what you bring. 30&ndash;200 input/output pairs (the gold set) and the directory of related documents (the corpus). The compiler holds 20% of the gold out for the eval set and never peeks at it during synthesis or training.</p>
+
+          <h4>Inputs</h4>
+          <ul>
+            <li><code>examples.jsonl</code> - one input/output pair per line</li>
+            <li><code>./corpus/</code> - text, PDFs, images, audio, video. Mixed modalities are auto-detected (<code>magika</code>) and routed to the right embedder</li>
+            <li><code>policy.md</code> (optional) - refusal patterns, formatting constraints, regulatory language</li>
+            <li>frontier API key - Anthropic, OpenAI, Google, or your own. Used as the teacher.</li>
+          </ul>
+
+          <h4>What the compiler does</h4>
+          <ul>
+            <li>parses, deduplicates, normalizes encoding</li>
+            <li>splits 80/20 train/eval with a deterministic seed (so re-compiles produce identical splits)</li>
+            <li>indexes the corpus into a tenant-scoped sqlite-vec namespace</li>
+            <li>writes the deterministic <code>data_hash</code> into the manifest - same inputs, same hash, every time</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="hiw-step">
+        <div class="hiw-num">02</div>
+        <div>
+          <h2>Spec: derive the verifier from the examples.</h2>
+          <p class="summary">A task is only compilable if there's a deterministic check on the output. The compiler synthesizes that check from your examples: a JSON schema, a regex, a custom function - or a learned classifier when the output is free-form. This is what makes the K-score quantitative instead of vibes.</p>
+
+          <h4>Verifier types</h4>
+          <ul>
+            <li><b>schema</b> - JSON Schema synthesized from output shape (most common)</li>
+            <li><b>regex</b> - for structured strings (patient IDs, claim numbers, redactions)</li>
+            <li><b>function</b> - user-supplied <code>verify.js</code> or <code>verify.py</code> for arbitrary checks</li>
+            <li><b>classifier</b> - a small learned head (logistic regression on frontier embeddings) when outputs are free-form - trained on the gold set</li>
+            <li><b>composite</b> - AND/OR combinations of the above</li>
+          </ul>
+
+          <h4>Output</h4>
+          <pre class="out">verifier.json - deterministic, hashed, embedded in the artifact.
+score(input, output) -> [0,1]
+the K-score is the mean over the held-out eval set.</pre>
+        </div>
+      </div>
+
+      <div class="hiw-step">
+        <div class="hiw-num">03</div>
+        <div>
+          <h2>Synthesize: draft the recipe pack from the examples.</h2>
+          <p class="summary">Most tokens in a structured task are deterministic given the prefix: opening brackets, field names, fixed framings. The compiler observes those patterns across the gold set and emits a <em>recipe pack</em> - a deterministic draft table indexed by prefix shape and by the embedding of the recalled context. This is the speculative-decoding moat: at run time, the recipe pack drafts the boring tokens, the LoRA fills in the substantive ones.</p>
+
+          <h4>What ships in the pack</h4>
+          <ul>
+            <li><b>prefix-shape entries</b> - e.g., <code>{"triage":</code> always followed by one of <code>"urgent"|"routine"|"escalate"</code></li>
+            <li><b>embedding-shape entries</b> - e.g., when the recalled context resembles "ER intake form", the field order is fixed</li>
+            <li><b>fallback</b> - if no recipe matches, the LoRA decodes from scratch (no quality cost)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="hiw-step">
+        <div class="hiw-num">04</div>
+        <div>
+          <h2>k-sample: query the frontier as the teacher.</h2>
+          <p class="summary">For each training example, the compiler asks the frontier model <em>k</em> times (default <code>k=4</code>) for the answer. The verifier scores all <em>k</em> outputs. The winner advances; the losers are discarded. This is verified inference: the labels we use to train the LoRA are not "what the frontier said" - they are "what the frontier said that the verifier accepts."</p>
+
+          <h4>Why k-sampling instead of a single call</h4>
+          <p>Single frontier calls are unreliable on the long tail. <em>k</em>=4 with deterministic verification gets you to &ge;0.95 label correctness on most structured tasks. The cost is 4&times; the frontier API spend per training example - amortized to zero after compile, because every call against the artifact thereafter is local.</p>
+
+          <h4>Recall injection</h4>
+          <p>If a corpus namespace was provided, every k-sample request is grounded in the top-k recalled chunks. The frontier never sees the whole corpus; it sees the <em>relevant</em> chunks per example, retrieved by embedding similarity.</p>
+        </div>
+      </div>
+
+      <div class="hiw-step">
+        <div class="hiw-num">05</div>
+        <div>
+          <h2>verify: the deterministic gate.</h2>
+          <p class="summary">Every k-sampled output is run through the verifier. The score determines acceptance. If no sample passes, the example is dropped from training (we'd rather train on less than train on a wrong label). The fraction of examples that produced a passing sample is the <em>label coverage</em>; it goes into the manifest.</p>
+
+          <h4>Failure handling</h4>
+          <ul>
+            <li>if &lt;80% of examples produce passing samples, the compile pauses and asks for more or higher-quality gold</li>
+            <li>if the frontier consistently fails the verifier, you get a "the frontier cannot do this task at this gate" error - the compile fails fast, you re-spec the task</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="hiw-step">
+        <div class="hiw-num">06</div>
+        <div>
+          <h2>fit: train the LoRA.</h2>
+          <p class="summary">The verified label set is the training data for a LoRA delta over the chosen base model. Training runs server-side (or on a customer-hosted bridge) on a single H100 / 5090; typical compile takes 8&ndash;25 minutes for a 3B-class base.</p>
+
+          <h4>Hyperparameters &amp; bases</h4>
+          <table class="spec-table">
+            <tbody>
+              <tr><th>bases</th><td>Qwen 2.5 / 3.x (1B, 3B, 7B, 14B), Llama-3 8B, Phi-3 3.8B, Hermes-3 8B, Gemma 2 9B. All open weights, all INT4-quantizable.</td></tr>
+              <tr><th>LoRA rank</th><td>16 default, 32 for high-coverage tasks. Adapter &le; 100MB at rank 16 on a 7B base.</td></tr>
+              <tr><th>quantization</th><td>INT4 GGUF for portability (CPU / phone), bf16 for GPU. Both produced in one compile.</td></tr>
+              <tr><th>training</th><td>3 to 5 epochs, bf16 mixed-precision, gradient checkpointing on a single H100 or 5090.</td></tr>
+            </tbody>
+          </table>
+
+          <h4>What "Hermes-class on your task" actually means</h4>
+          <p>We don't claim 3B-with-LoRA matches a 70B raw on arbitrary inputs. We claim - and measure - that on the task you compiled (your eval set, your input distribution), the resulting artifact achieves &ge;K-score-floor accuracy. The eval set is held out from training; you can re-run it offline at any time.</p>
+        </div>
+      </div>
+
+      <div class="hiw-step">
+        <div class="hiw-num">07</div>
+        <div>
+          <h2>observe: harden the recipe pack from the trained model.</h2>
+          <p class="summary">After the LoRA is trained, the compiler runs it across the eval set with verbose logging on. Tokens that the LoRA emits with &ge;99% confidence and that are predicted by the recipe pack are <em>confirmed</em>. Tokens predicted by the recipe pack but where the LoRA disagrees are <em>removed</em>. Tokens emitted with high confidence but not in the pack are <em>candidates</em> for inclusion in the next compile. The pack tightens with every compile.</p>
+
+          <h4>This is the compounding loop</h4>
+          <p>Every public compile feeds candidate patterns to the public registry. Every registry growth shrinks the marginal observation budget for the next compile. Over time, the pack covers a higher fraction of every task's structured-token surface, which means smaller models can draft faster, which means cheaper compiles, which means more compiles. The flywheel is real.</p>
+        </div>
+      </div>
+
+      <div class="hiw-step">
+        <div class="hiw-num">08</div>
+        <div>
+          <h2>sign: bundle and seal.</h2>
+          <p class="summary">The compiler bundles model + LoRA + recipes + verifier + recall index + manifest into a single signed zip. The signature is HMAC-SHA256 over the canonical hash chain of every component. The receipt secret is held by the registry; the public key is published. Anyone can verify a receipt offline against the published key.</p>
+
+          <h4>Manifest fields</h4>
+          <pre class="out">{
+  "name":             "patient-intake.kolm",
+  "version":          "0.3.1",
+  "task":             "...",
+  "base_model":       { "tag": "qwen3-7b", "sha": "..." },
+  "lora_sha":         "...",
+  "recipe_sha":       "...",
+  "verifier_sha":     "...",
+  "recall_sha":       "...",
+  "k_score":          0.913,
+  "k_score_floor":    0.85,
+  "label_coverage":   0.94,
+  "data_hash":        "...",
+  "compile_id":       "cmp_...",
+  "compiled_at":      "2026-05-08T17:30:00Z",
+  "compile_runtime":  "kolm/0.1.0",
+  "registry_anchor":  "https://registry.kolm.ai/v1/anchor/...",
+  "signature":        "hmac-sha256:..."
+}</pre>
+
+          <h4>What it means at the receiving end</h4>
+          <ul>
+            <li>any output the artifact produces ships with a per-call receipt over <code>(input_hash, output_hash, manifest_sha)</code></li>
+            <li>any auditor with the published public key can re-verify any receipt offline, without contacting kolm</li>
+            <li>artifact tampering invalidates the signature; the runtime refuses to load it</li>
+            <li>frontier-model drift over time has no effect - the artifact is sealed; output is reproducible</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">09</span>Properties</div>
+      <h2>Why this shape produces what it does.</h2>
+      <p class="sec-lede">A compiled artifact is small (3B + 100MB LoRA + 10MB recipes &asymp; 2&ndash;3GB), portable (runs on phone, laptop, edge box), reproducible (sealed manifest), auditable (HMAC receipt per output), and offline-first (no run-time network). The trade-offs are explicit: it does not generalize beyond the compiled task, and the K-score is the contract on its accuracy.</p>
+      <h4>What it is not</h4>
+      <ul style="margin:0;padding-left:20px;font-size:13.5px;color:var(--ink-mute,#b5bdb1);line-height:1.7;max-width:70ch">
+        <li>not a quantized 70B running on a phone - it's a 3B-class artifact that <em>behaves</em> 70B-class on the compiled task</li>
+        <li>not memory or context-management - the corpus is grounding, not personality</li>
+        <li>not a frontier-model wrapper - the frontier is used at compile time only; runtime is local</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">10</span>Read more</div>
+      <h2>The papers, specs, and code that ground this.</h2>
+      <ul style="margin:0;padding-left:20px;font-size:14px;color:var(--ink,#faf2e1);line-height:1.9">
+        <li><a href="/anatomy" style="color:var(--violet,#4c7dff)">.kolm anatomy</a> - the artifact format byte-for-byte</li>
+        <li><a href="/k-score" style="color:var(--violet,#4c7dff)">K-score spec</a> - how the compile-time gate is computed</li>
+        <li><a href="/api" style="color:var(--violet,#4c7dff)">API reference</a> - every endpoint, request, response</li>
+        <li><a href="/failure-modes" style="color:var(--violet,#4c7dff)">Failure modes</a> - how the compiler fails closed</li>
+        <li><a href="/benchmarks" style="color:var(--violet,#4c7dff)">Benchmark protocol</a> - reproducible methodology</li>
+        <li><a href="https://github.com/sneaky-hippo/kolmogorov-stack" style="color:var(--violet,#4c7dff)">GitHub</a> - the compiler source, MIT</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="meta"><img src="/logo-mark.svg" alt="" style="width:18px;height:18px;margin-right:8px;vertical-align:-4px;">kolm how it works / <a href="/anatomy">.kolm anatomy</a> / <a href="/k-score">K-score</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

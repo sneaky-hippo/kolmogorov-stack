@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The .kolm Specification (RS-1) · Whitepaper · kolm</title>
+<meta name="description" content="Formal technical specification of the .kolm artifact format, the K-score methodology, the 8-stage compile pipeline, and the HMAC-chained receipt protocol. Public, MIT-licensed, RS-1.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="The .kolm Specification: RS-1 whitepaper">
+<meta property="og:description" content="The 14-section formal spec for the AI compiler: artifact format, compile pipeline, K-score, receipts, conformance.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/whitepaper">
+<link rel="canonical" href="https://kolm.ai/whitepaper">
+<meta property="og:image" content="https://kolm.ai/img/brand-og.png">
+<meta property="twitter:card" content="summary_large_image">
+<meta property="twitter:image" content="https://kolm.ai/img/brand-og.png">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#4c7dff;--accent-soft:rgba(76,125,255,0.10);--good:#7ef0d2;--bad:#ff6b91;--warn:#f6c177;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:rgba(76,125,255,0.30)}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand span{font-weight:540;font-size:16px;letter-spacing:0}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover,header.site nav a.active{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .ghost:hover{color:var(--ink)}
+  header.site .right .cta{display:inline-flex;align-items:center;gap:6px;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540}
+
+  section.cover{padding:88px 0 56px;border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+  section.cover::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 980px 480px at 24% 18%,rgba(76,125,255,0.12),transparent 60%);pointer-events:none}
+  section.cover .wrap{position:relative}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:0;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .eyebrow .num{color:var(--accent)}
+  h1.cover-title{margin:0 0 22px;font-size:clamp(36px,5vw,60px);line-height:1.04;font-weight:500;color:var(--ink);max-width:18ch}
+  h1.cover-title .tone{color:var(--accent)}
+  p.lede{font-size:clamp(17px,1.6vw,20px);line-height:1.55;color:var(--ink-mute);max-width:62ch;margin:0 0 20px}
+  p.lede b{color:var(--ink);font-weight:540}
+  p.lede code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+
+  .meta-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:36px 0 0}
+  @media(max-width:720px){.meta-bar{grid-template-columns:repeat(2,1fr)}}
+  .meta-bar .cell{padding:18px 22px;background:var(--bg-elev)}
+  .meta-bar .cell .k{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0;color:var(--ink-faint);margin:0 0 6px}
+  .meta-bar .cell .v{font-family:var(--mono);font-size:13px;color:var(--ink)}
+  .meta-bar .cell .v.accent{color:var(--accent)}
+
+  .body-grid{display:grid;grid-template-columns:240px 1fr;gap:56px;align-items:start;padding:48px 0 64px}
+  @media(max-width:980px){.body-grid{grid-template-columns:1fr;gap:32px}}
+
+  aside.toc{position:sticky;top:84px;border-left:1px solid var(--line);padding:4px 0 4px 18px;font-size:13px;line-height:1.7;max-height:calc(100vh - 120px);overflow:auto}
+  @media(max-width:980px){aside.toc{position:static;border-left:none;padding:0;border:1px solid var(--line);border-radius:8px;background:var(--bg-elev);padding:18px 22px}}
+  aside.toc h4{margin:0 0 10px;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;color:var(--ink-faint);font-weight:540;letter-spacing:0}
+  aside.toc ol{list-style:none;padding:0;margin:0}
+  aside.toc li{margin:4px 0}
+  aside.toc li a{color:var(--ink-mute);transition:color 120ms}
+  aside.toc li a:hover{color:var(--ink)}
+  aside.toc li .num{font-family:var(--mono);color:var(--ink-faint);font-size:11.5px;display:inline-block;width:24px}
+
+  article{max-width:760px}
+  article section{padding:0 0 36px;border-bottom:1px solid var(--line);margin:0 0 36px}
+  article section:last-child{border-bottom:none}
+  article h2{margin:0 0 14px;font-size:clamp(22px,2.4vw,28px);line-height:1.2;font-weight:540;color:var(--ink);scroll-margin-top:80px}
+  article h2 .num{font-family:var(--mono);color:var(--accent);font-size:0.78em;font-weight:500;margin-right:14px;letter-spacing:0}
+  article h3{margin:24px 0 10px;font-size:16px;font-weight:540;color:var(--ink);letter-spacing:0}
+  article h4{margin:18px 0 8px;font-size:13px;font-weight:540;color:var(--ink-mute);font-family:var(--mono);text-transform:uppercase;letter-spacing:0}
+  article p{color:var(--ink-mute);margin:0 0 12px;max-width:62ch}
+  article p code, article li code, article td code{font-family:var(--mono);font-size:0.9em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  article ul, article ol{padding-left:22px;margin:0 0 14px;color:var(--ink-mute)}
+  article li{margin:4px 0}
+  article b{color:var(--ink);font-weight:540}
+
+  pre{background:#0b0f10;border:1px solid var(--line);border-radius:8px;padding:18px 20px;overflow:auto;color:#e2e8f0;font-family:var(--mono);font-size:12.5px;line-height:1.7;margin:18px 0}
+  pre .com{color:var(--ink-faint)}
+  pre .key{color:var(--accent)}
+  pre .ok{color:var(--good)}
+  pre .str{color:#e2e8f0}
+  pre .num{color:var(--good)}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0 20px;font-size:13.5px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  thead th{text-align:left;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0;color:var(--ink-faint);font-weight:540;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--bg-elev)}
+  tbody td{padding:10px 14px;border-bottom:1px solid var(--line);color:var(--ink-mute);vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--bg-card)}
+  tbody td b{color:var(--ink)}
+  tbody td code{white-space:nowrap}
+
+  .kw{font-family:var(--mono);font-size:0.86em;color:var(--accent);font-weight:540;letter-spacing:0}
+  .normative{padding:14px 18px;border-left:2px solid var(--accent);background:rgba(76,125,255,0.06);border-radius:0 6px 6px 0;margin:14px 0;font-size:14px;color:var(--ink)}
+  .normative b{color:var(--ink);font-weight:540}
+  .note{padding:12px 16px;border-left:2px solid var(--ink-faint);background:var(--bg-elev);border-radius:0 6px 6px 0;margin:14px 0;font-size:13.5px;color:var(--ink-mute)}
+  .note b{color:var(--ink)}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(76,125,255,0.18);padding:3px 8px;border-radius:3px;line-height:1}
+  .pill.warn{color:var(--warn);background:rgba(246,193,119,0.08);border-color:rgba(246,193,119,0.18)}
+  .pill.bad{color:var(--bad);background:rgba(255,107,145,0.08);border-color:rgba(255,107,145,0.18)}
+
+  footer{border-top:1px solid var(--line);padding:48px 0 36px;color:var(--ink-faint);font-size:12.5px}
+  footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:24px}
+  @media(max-width:720px){footer .cols{grid-template-columns:1fr 1fr;gap:24px}}
+  footer h4{font-size:11px;color:var(--ink-mute);letter-spacing:0;text-transform:uppercase;margin:0 0 10px;font-weight:540}
+  footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+  footer ul a{color:var(--ink-faint);transition:color 120ms}
+  footer ul a:hover{color:var(--ink)}
+  footer .legal{padding-top:18px;border-top:1px solid var(--line);color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap"><div class="row">
+    <div class="left">
+      <a class="brand" href="/" aria-label="kolm home"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div></div>
+</header>
+
+<section class="cover">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">RS-1</span> · Whitepaper</div>
+    <h1 class="cover-title">The <code style="font-family:var(--mono);font-size:0.78em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:6px;padding:0 12px">.kolm</code> <span class="tone">specification.</span></h1>
+    <p class="lede">A formal description of the artifact format, the 8-stage compile pipeline, the K-score
+      gate, and the HMAC-chained receipt protocol that anchors every byte to a public registry.
+      Implementations that conform to this document MAY use the name <b>kolm</b> and the file extension <b>.kolm</b>.</p>
+
+    <div class="meta-bar">
+      <div class="cell"><div class="k">spec id</div><div class="v accent">RS-1</div></div>
+      <div class="cell"><div class="k">version</div><div class="v">1.0.0 · 2026-05-08</div></div>
+      <div class="cell"><div class="k">status</div><div class="v">Stable / Public</div></div>
+      <div class="cell"><div class="k">license</div><div class="v">MIT · CC-BY-4.0</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+<div class="body-grid">
+
+<aside class="toc" aria-label="Table of contents">
+  <h4>Sections</h4>
+  <ol>
+    <li><a href="#abstract"><span class="num">§0</span> Abstract</a></li>
+    <li><a href="#intro"><span class="num">§1</span> Introduction</a></li>
+    <li><a href="#terms"><span class="num">§2</span> Terminology</a></li>
+    <li><a href="#format"><span class="num">§3</span> Artifact format</a></li>
+    <li><a href="#manifest"><span class="num">§4</span> Manifest schema</a></li>
+    <li><a href="#pipeline"><span class="num">§5</span> Compile pipeline</a></li>
+    <li><a href="#kscore"><span class="num">§6</span> K-score</a></li>
+    <li><a href="#verifiers"><span class="num">§7</span> Verifier types</a></li>
+    <li><a href="#receipts"><span class="num">§8</span> Receipt chain</a></li>
+    <li><a href="#repro"><span class="num">§9</span> Reproducibility</a></li>
+    <li><a href="#threat"><span class="num">§10</span> Threat model</a></li>
+    <li><a href="#conform"><span class="num">§11</span> Conformance</a></li>
+    <li><a href="#refs"><span class="num">§12</span> References</a></li>
+    <li><a href="#appendix-a"><span class="num">§A</span> Manifest JSON schema</a></li>
+    <li><a href="#appendix-b"><span class="num">§B</span> Signature wire format</a></li>
+  </ol>
+</aside>
+
+<article>
+
+<section id="abstract">
+  <h2><span class="num">§0</span> Abstract</h2>
+  <p>This document specifies <b>RS-1</b>, the wire format and protocol for <code>.kolm</code>
+    artifacts. A <code>.kolm</code> is a single-file, deterministic, signed bundle that
+    encodes a base model, a personal LoRA adapter, a recipe pack of deterministic-token drafts,
+    a multimodal recall index, an evaluation suite, and a manifest with cryptographic anchors
+    to a public registry. The compiler that produces <code>.kolm</code> files is called
+    <b>kolm</b>; the compile pipeline has eight normative stages
+    (gather → spec → synthesize → k-sample → verify → fit → observe → sign).</p>
+  <p>RS-1 is designed to satisfy three goals simultaneously: <b>portability</b> (the same
+    artifact runs on commodity CPUs, consumer GPUs, and mobile NPUs without a network),
+    <b>verifiability</b> (any third party can byte-for-byte reproduce an artifact from its
+    inputs, and any consumer of an artifact's output can verify the output's lineage offline),
+    and <b>compositionality</b> (artifacts may import other artifacts, with the receipt chain
+    surviving composition).</p>
+</section>
+
+<section id="intro">
+  <h2><span class="num">§1</span> Introduction</h2>
+  <p>The current AI deployment stack forces three undesirable choices:
+    (a) call a closed remote model and accept opacity, latency, and per-token cost;
+    (b) self-host an open-weight model and accept poor task-specific quality;
+    (c) fine-tune an open-weight model and accept fragile, undocumented, unverifiable artifacts.</p>
+  <p>RS-1 is a fourth option: <b>compile</b> a task into a portable artifact. The compiler
+    distills a frontier model's behavior on the task into an open-weight base model + personal
+    adapter + draft pack, signs every layer, and emits a single file. The artifact is owned by
+    the operator, runs offline, and proves its own provenance.</p>
+  <p>This document is the normative spec. Implementations MAY add capabilities, but MUST NOT
+    rename existing fields, change layer ordering inside the zip, or break receipt verification
+    against the public registry at <code>registry.kolm.ai</code>.</p>
+  <div class="normative">
+    <b>Status of this memo.</b> RS-1 is a public specification published under MIT (code) and
+    CC-BY-4.0 (text). Errata, additions, and the test suite live at
+    <code>github.com/sneaky-hippo/kolmogorov-stack</code>. Specification changes follow
+    semantic versioning; backward-incompatible changes increment the major version
+    (RS-1 → RS-2) and require a registry epoch transition.
+  </div>
+</section>
+
+<section id="terms">
+  <h2><span class="num">§2</span> Terminology</h2>
+  <p>The key words <span class="kw">MUST</span>, <span class="kw">MUST NOT</span>,
+    <span class="kw">REQUIRED</span>, <span class="kw">SHALL</span>, <span class="kw">SHALL NOT</span>,
+    <span class="kw">SHOULD</span>, <span class="kw">SHOULD NOT</span>, <span class="kw">RECOMMENDED</span>,
+    <span class="kw">MAY</span>, and <span class="kw">OPTIONAL</span> in this document are to be
+    interpreted as described in BCP 14 [RFC2119] [RFC8174].</p>
+
+  <table>
+    <thead><tr><th style="width:200px">Term</th><th>Definition</th></tr></thead>
+    <tbody>
+      <tr><td><b>artifact</b></td><td>A <code>.kolm</code> file conforming to §3.</td></tr>
+      <tr><td><b>base model</b></td><td>An open-weight LLM whose weights are referenced by SHA-256 hash and quantization profile in the manifest. The student.</td></tr>
+      <tr><td><b>frontier model</b></td><td>A closed or remote LLM used during distillation as a label source. The teacher.</td></tr>
+      <tr><td><b>recipe</b></td><td>A deterministic-token draft pattern indexed by prefix-shape and embedding-shape, drawn from a public registry.</td></tr>
+      <tr><td><b>recall</b></td><td>A multimodal vector index over the operator's corpus, packaged inside the artifact.</td></tr>
+      <tr><td><b>k-sample</b></td><td>The protocol of querying a frontier model <i>k</i> times for the same input and selecting the verifier-passing winner (§5.4).</td></tr>
+      <tr><td><b>verifier</b></td><td>A deterministic checker that decides whether a candidate output is accepted (§7).</td></tr>
+      <tr><td><b>K-score</b></td><td>A composite quality metric in [0, 100] computed against the artifact's bundled eval suite (§6).</td></tr>
+      <tr><td><b>receipt</b></td><td>An HMAC-SHA256 over a canonical statement of (input, output, artifact, timestamp) that anchors the inference event to the registry (§8).</td></tr>
+      <tr><td><b>registry</b></td><td>The public service at <code>registry.kolm.ai</code> that serves recipe packs, anchors receipts, and tracks specification epochs.</td></tr>
+      <tr><td><b>conformant runtime</b></td><td>A program that loads and executes a <code>.kolm</code> per §11.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="format">
+  <h2><span class="num">§3</span> Artifact format</h2>
+  <p>A <code>.kolm</code> is a ZIP archive (PKZip 2.0 / DEFLATE) with a fixed inner layout.
+    Stored entries <span class="kw">MUST</span> appear in the canonical order below, written
+    with deterministic ZIP options (mtime fixed to <code>2020-01-01T00:00:00Z</code>, extra
+    fields stripped, UTF-8 names, no Zip64 unless any single layer exceeds 4 GiB).</p>
+
+  <table>
+    <thead><tr><th>#</th><th>Path</th><th>Required</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>01</td><td><code>manifest.json</code></td><td>yes</td><td>The single source of truth for every other layer's hash, size, and role. Read first by every runtime.</td></tr>
+      <tr><td>02</td><td><code>signature.sig</code></td><td>yes</td><td>HMAC-SHA256 chain root. 256 bytes binary. See §8 and Appendix B.</td></tr>
+      <tr><td>03</td><td><code>model.gguf</code></td><td>yes</td><td>The base model in GGUF format [GGUF-v3]. Quantization profile <span class="kw">MUST</span> match <code>manifest.base_model.quantization</code>.</td></tr>
+      <tr><td>04</td><td><code>lora.bin</code></td><td>conditional</td><td>The personal adapter in GGUF-LoRA format. <span class="kw">REQUIRED</span> if any compile stage produced training labels (§5.6).</td></tr>
+      <tr><td>05</td><td><code>recipes.json</code></td><td>yes</td><td>The recipe pack: deterministic-token drafts indexed by prefix-shape and embedding-shape (§7.5).</td></tr>
+      <tr><td>06</td><td><code>index.sqlite-vec</code></td><td>conditional</td><td>The multimodal recall index. <span class="kw">REQUIRED</span> if a corpus was supplied; otherwise <span class="kw">MAY</span> be omitted.</td></tr>
+      <tr><td>07</td><td><code>tests.jsonl</code></td><td>yes</td><td>The evaluation suite the artifact passed at compile time. Used for K-score recompute (§6.3).</td></tr>
+      <tr><td>08</td><td><code>verifiers.json</code></td><td>yes</td><td>The verifier definitions referenced by <code>tests.jsonl</code> (§7).</td></tr>
+      <tr><td>09</td><td><code>provenance/</code></td><td>OPTIONAL</td><td>Audit material: prompts, k-sample logs, label-acceptance traces. Operators MAY strip this for privacy without breaking signature verification; the signature commits to a stripped-tree hash.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="normative"><b>Layer ordering invariant.</b> The first 4 KiB of any conformant
+    <code>.kolm</code> <span class="kw">MUST</span> contain the local file header for
+    <code>manifest.json</code>. Runtimes MAY read only the first 4 KiB to detect format
+    and version, before deciding whether to stream the rest.</div>
+</section>
+
+<section id="manifest">
+  <h2><span class="num">§4</span> Manifest schema</h2>
+  <p>The manifest is a UTF-8 JSON document with the following top-level shape. Full JSON Schema
+    is in Appendix A.</p>
+
+<pre><span class="com">// manifest.json - RS-1 1.0.0</span>
+{
+  <span class="key">"rs"</span>: <span class="str">"1.0.0"</span>,                          <span class="com">// spec version</span>
+  <span class="key">"id"</span>: <span class="str">"kolm:8b73e9...02"</span>,                <span class="com">// artifact id = sha256(zip)[:32]</span>
+  <span class="key">"created_at"</span>: <span class="str">"2026-05-08T14:31:00Z"</span>,
+  <span class="key">"compiler"</span>: { <span class="key">"name"</span>: <span class="str">"kolm"</span>, <span class="key">"version"</span>: <span class="str">"6.5.0"</span> },
+  <span class="key">"task"</span>: {
+    <span class="key">"description"</span>: <span class="str">"detect whether a short text is a greeting"</span>,
+    <span class="key">"intent_hash"</span>: <span class="str">"7c1af2..."</span>            <span class="com">// see §5.2</span>
+  },
+  <span class="key">"base_model"</span>: {
+    <span class="key">"name"</span>: <span class="str">"qwen2.5-3b-instruct"</span>,
+    <span class="key">"weights_sha256"</span>: <span class="str">"3a92c1..."</span>,
+    <span class="key">"quantization"</span>: <span class="str">"Q4_K_M"</span>
+  },
+  <span class="key">"adapter"</span>: {
+    <span class="key">"format"</span>: <span class="str">"gguf-lora"</span>,
+    <span class="key">"rank"</span>: <span class="num">16</span>, <span class="key">"alpha"</span>: <span class="num">32</span>, <span class="key">"epochs"</span>: <span class="num">3</span>,
+    <span class="key">"weights_sha256"</span>: <span class="str">"4d22ef..."</span>
+  },
+  <span class="key">"recipes"</span>: {
+    <span class="key">"registry_epoch"</span>: <span class="str">"rs-1@2026-05-06"</span>,
+    <span class="key">"pack_sha256"</span>: <span class="str">"ab02f1..."</span>,
+    <span class="key">"count"</span>: <span class="num">142</span>
+  },
+  <span class="key">"recall"</span>: {
+    <span class="key">"embedder"</span>: <span class="str">"bge-m3"</span>,
+    <span class="key">"chunks"</span>: <span class="num">412</span>,
+    <span class="key">"index_sha256"</span>: <span class="str">"8b73e9..."</span>
+  },
+  <span class="key">"verifiers"</span>: [
+    { <span class="key">"id"</span>: <span class="str">"v_schema_0"</span>, <span class="key">"type"</span>: <span class="str">"schema"</span>, <span class="key">"sha256"</span>: <span class="str">"..."</span> },
+    { <span class="key">"id"</span>: <span class="str">"v_regex_1"</span>, <span class="key">"type"</span>: <span class="str">"regex"</span>,  <span class="key">"sha256"</span>: <span class="str">"..."</span> }
+  ],
+  <span class="key">"k_score"</span>: {
+    <span class="key">"composite"</span>: <span class="num">94.2</span>,
+    <span class="key">"components"</span>: { <span class="key">"task"</span>: <span class="num">96</span>, <span class="key">"calibration"</span>: <span class="num">91</span>, <span class="key">"latency"</span>: <span class="num">95</span> },
+    <span class="key">"gate"</span>: <span class="str">"passed"</span>,                     <span class="com">// "passed" | "warned" | "failed"</span>
+    <span class="key">"floor"</span>: <span class="num">85</span>
+  },
+  <span class="key">"signature"</span>: {
+    <span class="key">"alg"</span>: <span class="str">"hmac-sha256"</span>,
+    <span class="key">"anchored_to"</span>: <span class="str">"registry.kolm.ai/anchor/2026-05-08-31415"</span>,
+    <span class="key">"layer_hashes"</span>: { <span class="key">"manifest"</span>: <span class="str">"..."</span>, <span class="key">"model"</span>: <span class="str">"..."</span>, <span class="com">/* ... */</span> }
+  }
+}</pre>
+
+  <div class="normative"><b>Field stability.</b> Field names listed in Appendix A are
+    <span class="kw">REQUIRED</span> and <span class="kw">MUST</span> appear under their
+    documented paths. Implementations <span class="kw">MAY</span> add extension fields under
+    a top-level key prefixed with <code>x_</code> (e.g. <code>x_acme_metadata</code>); such
+    fields <span class="kw">MUST NOT</span> be assumed present by other implementations.</div>
+</section>
+
+<section id="pipeline">
+  <h2><span class="num">§5</span> Compile pipeline</h2>
+  <p>The compile process has eight stages. Stages <span class="kw">MUST</span> execute in the
+    order below; a conformant compiler <span class="kw">MAY</span> elide stages 4 (recall),
+    5 (k-sample), or 6 (fit) when their inputs are absent, but stages 1, 2, 3, 7, and 8 are
+    <span class="kw">REQUIRED</span>.</p>
+
+  <h3>5.1 Stage 1: Gather</h3>
+  <p>Inputs: a task description, optional examples (<code>jsonl</code>), optional corpus
+    (any directory). The compiler MUST canonicalize examples to UTF-8, strip BOMs, and
+    record the SHA-256 of the canonicalized input bundle as <code>task.input_hash</code>.</p>
+
+  <h3>5.2 Stage 2: Spec</h3>
+  <p>The compiler synthesizes a structured task specification: input shape, output shape,
+    desiderata, edge cases. The spec is hashed to <code>task.intent_hash</code>; two compiles
+    with semantically equivalent task descriptions <span class="kw">SHOULD</span> produce the
+    same intent hash up to documented normalization rules (whitespace, casing, punctuation).</p>
+
+  <h3>5.3 Stage 3: Synthesize verifier</h3>
+  <p>From the spec the compiler emits one or more verifiers (§7). At least one verifier
+    <span class="kw">MUST</span> be of a deterministic type (schema, regex, or function);
+    classifier-typed verifiers <span class="kw">MAY</span> only be used in composite mode
+    where a deterministic verifier dominates.</p>
+
+  <h3>5.4 Stage 4: K-sample</h3>
+  <p>For each example or generated input, the compiler queries a frontier model <i>k</i> times
+    (default <i>k</i>=5, range 1–32) and applies the synthesized verifier to each output. The
+    first verifier-passing output is selected as the label. If no output passes within <i>k</i>
+    attempts, the example is recorded as <code>frontier.unverified</code> and excluded from
+    training (FM-001 budget tracking applies; see §10.3).</p>
+
+  <h3>5.5 Stage 5: Verify</h3>
+  <p>An independent verifier pass is run over all accepted (input, output) pairs to detect
+    label drift. Pairs that fail re-verification are dropped. The acceptance rate
+    is recorded in <code>provenance/k-sample.log</code>.</p>
+
+  <h3>5.6 Stage 6: Fit</h3>
+  <p>If at least one accepted pair exists, the compiler fits a LoRA adapter on the verified
+    pairs against the chosen base model. Default hyperparameters are listed in §A.adapter.
+    Implementations <span class="kw">MAY</span> use INT4 + bf16 mixed-precision training when
+    the host has sufficient VRAM; otherwise full-precision training on CPU is permitted but
+    not <span class="kw">RECOMMENDED</span>.</p>
+
+  <h3>5.7 Stage 7: Observe</h3>
+  <p>The compiler runs the fitted artifact against the bundled eval suite (<code>tests.jsonl</code>)
+    and computes the K-score (§6). Recipe candidates extracted from accepted outputs are
+    proposed back to the registry; recipes that pass the registry's gated synthesis become
+    part of future epochs.</p>
+  <p>If the K-score gate fails, the compiler <span class="kw">MUST NOT</span> emit a signed
+    artifact. It <span class="kw">SHOULD</span> emit a diagnostic bundle under
+    <code>./build/</code> for the operator to inspect. See FM-001 in §10.3.</p>
+
+  <h3>5.8 Stage 8: Sign</h3>
+  <p>The compiler computes layer hashes, builds the manifest, computes the signature chain
+    (§8), writes the artifact, and posts the anchor record to the registry. After registry
+    acknowledgment the artifact's signature is considered <i>anchored</i>; consumers may
+    verify the anchor at any later time, including offline against a previously cached
+    epoch root.</p>
+</section>
+
+<section id="kscore">
+  <h2><span class="num">§6</span> K-score</h2>
+  <p>K-score is the composite quality metric reported by every compile. It is a single number
+    in [0, 100] and three named subcomponents.</p>
+
+  <h3>6.1 Definition</h3>
+  <p>Let <code>T</code> be the task accuracy on the bundled eval suite (proportion of
+    verifier-passing outputs). Let <code>C</code> be the calibration score: 1 minus the
+    mean absolute deviation between the artifact's stated confidence and its observed
+    accuracy on a 10-bucket reliability diagram. Let <code>L</code> be the latency score:
+    a step function over p50 inference time (<10 ms = 100, <50 ms = 95, <250 ms = 85,
+    <1 s = 70, <5 s = 50, ≥5 s = 0). Then:</p>
+  <pre><span class="com">// composite K-score</span>
+K = round( 100 · ( 0.60·T + 0.25·C + 0.15·L ) , 1 )</pre>
+  <p>The weights (0.60, 0.25, 0.15) are normative for K-score 1.0; they
+    <span class="kw">MAY</span> be overridden by a task-specific profile (e.g. for latency-critical
+    or calibration-critical workloads), in which case the profile name and weights
+    <span class="kw">MUST</span> appear in <code>manifest.k_score.profile</code>.</p>
+
+  <h3>6.2 Gate semantics</h3>
+  <table>
+    <thead><tr><th>Gate</th><th>Condition</th><th>Behavior</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill">passed</span></td><td>K ≥ floor and T ≥ 0.85</td><td>Artifact emitted normally.</td></tr>
+      <tr><td><span class="pill warn">warned</span></td><td>floor &gt; K ≥ floor − 5 or 0.85 &gt; T ≥ 0.75</td><td>Artifact emitted with a warning record. Operators are advised to inspect the eval suite.</td></tr>
+      <tr><td><span class="pill bad">failed</span></td><td>K &lt; floor − 5 or T &lt; 0.75</td><td>Artifact <span class="kw">MUST NOT</span> be emitted. Compile exits non-zero. See FM-001.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>6.3 Recompute protocol</h3>
+  <p>Any party with the artifact <span class="kw">MAY</span> recompute the K-score by:
+    (1) loading <code>tests.jsonl</code> and <code>verifiers.json</code>;
+    (2) running the artifact's inference path on each test input;
+    (3) applying the verifier;
+    (4) recomputing T, C, L per §6.1.
+    A divergence of more than ±0.5 K-points between recomputed and stated values
+    <span class="kw">SHOULD</span> be reported as a tampering signal.</p>
+</section>
+
+<section id="verifiers">
+  <h2><span class="num">§7</span> Verifier types</h2>
+  <p>A verifier is a deterministic decision procedure on (input, candidate_output) → boolean.
+    Five verifier types are normative.</p>
+
+  <table>
+    <thead><tr><th>Type</th><th>Form</th><th>Deterministic?</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><b>schema</b></td><td>JSON Schema 2020-12 over output</td><td>yes</td><td>Structured outputs (extraction, function-calls).</td></tr>
+      <tr><td><b>regex</b></td><td>RE2 regular expression over output</td><td>yes</td><td>Format constraints (dates, IDs, classification labels).</td></tr>
+      <tr><td><b>function</b></td><td>Pure JavaScript / Python evaluator referenced by SHA-256</td><td>yes</td><td>Computable predicates (parser, math, code-runs-and-returns).</td></tr>
+      <tr><td><b>classifier</b></td><td>Bundled small model (≤200 MB) with a calibrated threshold</td><td>no, but stable</td><td>Subjective tasks (style, tone, harmlessness). <span class="kw">MUST</span> be paired with a deterministic gate inside a composite.</td></tr>
+      <tr><td><b>composite</b></td><td>Boolean combination over the above</td><td>follows leaves</td><td>Real tasks. AND/OR with a documented short-circuit order.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Verifiers are referenced from <code>tests.jsonl</code> by ID and their full body is stored
+    in <code>verifiers.json</code>. The body is content-addressed; renaming a verifier
+    invalidates the receipt chain.</p>
+</section>
+
+<section id="receipts">
+  <h2><span class="num">§8</span> Receipt chain</h2>
+  <p>A receipt is an HMAC-SHA256 over a canonical statement of an inference event. Receipts
+    are emitted at every <code>kolm run</code> invocation and chain to an artifact's signature,
+    which itself anchors to the public registry.</p>
+
+  <h3>8.1 Statement form</h3>
+<pre><span class="com">// canonical receipt statement (CSON, sorted keys)</span>
+{
+  <span class="key">"v"</span>: <span class="str">"rs-1-receipts/1.0.0"</span>,
+  <span class="key">"artifact"</span>: <span class="str">"kolm:8b73e9...02"</span>,
+  <span class="key">"input_hash"</span>: <span class="str">"sha256:7c1af2..."</span>,
+  <span class="key">"output_hash"</span>: <span class="str">"sha256:e84b91..."</span>,
+  <span class="key">"runtime"</span>: { <span class="key">"name"</span>: <span class="str">"kolm-run"</span>, <span class="key">"version"</span>: <span class="str">"6.5.0"</span>, <span class="key">"host"</span>: <span class="str">"linux-x86_64"</span> },
+  <span class="key">"observed_at"</span>: <span class="str">"2026-05-08T14:32:11Z"</span>,
+  <span class="key">"k_score_passed"</span>: <span class="ok">true</span>
+}</pre>
+
+  <h3>8.2 Chain construction</h3>
+  <p>The receipt body is HMAC-SHA256'd under a per-artifact key derived from the artifact's
+    signature and the operator's tenant secret. The resulting MAC is appended to the
+    receipt body to form the wire-format receipt.</p>
+
+  <p>An artifact's <code>signature.sig</code> is itself an HMAC over the canonical concatenation
+    of every layer hash listed in the manifest, computed under the registry epoch key. Anchor
+    posts to the registry are inserted into a Merkle tree; the registry publishes the daily
+    root at <code>registry.kolm.ai/epoch/&lt;date&gt;/root.json</code>.</p>
+
+  <h3>8.3 Offline verification</h3>
+  <p>To verify a receipt offline a verifier needs: (1) the receipt body and its MAC,
+    (2) the artifact's <code>signature.sig</code> and manifest, (3) the registry epoch
+    root for the day the artifact was anchored. Given those three inputs the verifier
+    can reconstruct every link in the chain without any network access.</p>
+  <div class="normative"><b>Tenant secret rotation.</b> If a tenant rotates its secret,
+    all receipts signed under the old secret remain verifiable against the previous epoch
+    snapshot. New receipts are signed under the new secret. See FM-202.</div>
+</section>
+
+<section id="repro">
+  <h2><span class="num">§9</span> Reproducibility</h2>
+  <p>RS-1 commits to <b>byte-identical reproducibility</b>: given the same
+    <code>(task, examples, corpus, base_model, recipe_registry@epoch)</code>, two
+    independent compiles <span class="kw">MUST</span> produce the same artifact bytes:
+    not merely an artifact with the same K-score, but the identical zip.</p>
+
+  <p>Mechanism:</p>
+  <ul>
+    <li>K-sample selection ties broken by lexicographic comparison of canonical output strings, not wall-clock arrival.</li>
+    <li>LoRA training uses fixed seeds derived from <code>task.intent_hash</code>; data shuffling is a deterministic permutation of <code>(intent_hash, example_index)</code>.</li>
+    <li>ZIP entries written with fixed mtime, no extra fields, and stable per-file order (§3).</li>
+    <li>Floating-point determinism on GPU is achieved via cuBLAS workspace limits and the deterministic-cudnn flag; on CPU via single-threaded BLAS for the final norm-and-clip pass.</li>
+  </ul>
+
+  <p>A frontier model that is non-deterministic at temperature 0 (e.g. due to provider-side
+    batching) is the only legitimate source of irreproducibility. The compiler caches the
+    first compile's k-sample winners under <code>provenance/k-sample.log</code>; replays
+    use the cached winners when present and the same inputs are given.</p>
+</section>
+
+<section id="threat">
+  <h2><span class="num">§10</span> Threat model & failure modes</h2>
+  <h3>10.1 In scope</h3>
+  <ul>
+    <li>Tampered artifacts (modified weights, swapped LoRA, edited eval suite).</li>
+    <li>Forged receipts (claiming an output came from a given artifact when it did not).</li>
+    <li>Registry-side recipe corruption (a malicious draft pattern that biases inference).</li>
+    <li>Frontier-model failure during compile (rate limit, content policy, downtime).</li>
+    <li>Runtime failure on the consumer device (missing CPU instructions, OOM).</li>
+  </ul>
+
+  <h3>10.2 Out of scope</h3>
+  <ul>
+    <li>Side-channel attacks on the operator's machine.</li>
+    <li>Plaintext exfiltration before compile begins (the operator owns their inputs and is responsible for transport).</li>
+    <li>Inverting an artifact to reconstruct training data. A compiled <code>.kolm</code> stores neither raw examples nor raw corpus; only embedded chunks and verifier-passing labels are committed.</li>
+  </ul>
+
+  <h3>10.3 Failure modes (FM)</h3>
+  <p>Twelve normative failure modes are defined. Each has an exit code, an HTTP status (when
+    surfaced via the API), and a recovery action. The complete table is at <a href="/failure-modes">/failure-modes</a>;
+    a representative slice:</p>
+  <table>
+    <thead><tr><th>Code</th><th>Phase</th><th>Severity</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td><code>FM-001</code></td><td>compile</td><td><span class="pill bad">fail</span></td><td>K-score below floor; emit diagnostic bundle, exit 65.</td></tr>
+      <tr><td><code>FM-002</code></td><td>compile</td><td><span class="pill warn">degraded</span></td><td>Corpus partially unreadable; proceed, warn, list skipped files.</td></tr>
+      <tr><td><code>FM-003</code></td><td>compile</td><td><span class="pill warn">degraded</span></td><td>Frontier quota exceeded; fall back to cached k-sample winners; mark <code>recompile_recommended</code>.</td></tr>
+      <tr><td><code>FM-101</code></td><td>runtime</td><td><span class="pill bad">fail</span></td><td>Signature invalid; refuse to execute, exit 70.</td></tr>
+      <tr><td><code>FM-103</code></td><td>runtime</td><td><span class="pill bad">fail</span></td><td>OOM. Return <code>503</code>, suggest smaller quantization.</td></tr>
+      <tr><td><code>FM-201</code></td><td>registry</td><td><span class="pill warn">degraded</span></td><td>Registry unavailable; verify against last-cached epoch root.</td></tr>
+      <tr><td><code>FM-301</code></td><td>auth</td><td><span class="pill bad">fail</span></td><td>Bearer invalid. Return <code>401</code>.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="conform">
+  <h2><span class="num">§11</span> Conformance</h2>
+  <p>An implementation is <b>conformant</b> if it satisfies the rules in this section. The
+    public test suite at <code>github.com/sneaky-hippo/kolmogorov-stack/tree/main/conformance</code>
+    is the operational definition; this section is the human-readable summary.</p>
+
+  <h3>11.1 Compiler conformance</h3>
+  <ul>
+    <li><span class="kw">MUST</span> implement stages 1, 2, 3, 7, 8 (§5).</li>
+    <li><span class="kw">MUST</span> emit byte-identical artifacts for identical inputs (§9).</li>
+    <li><span class="kw">MUST NOT</span> emit a signed artifact if the K-score gate fails (§6.2).</li>
+    <li><span class="kw">MUST</span> include at least one deterministic verifier per task (§7).</li>
+    <li><span class="kw">MUST</span> post anchor records to the registry on success.</li>
+  </ul>
+
+  <h3>11.2 Runtime conformance</h3>
+  <ul>
+    <li><span class="kw">MUST</span> verify <code>signature.sig</code> before executing any layer.</li>
+    <li><span class="kw">MUST</span> emit a receipt per inference event (§8).</li>
+    <li><span class="kw">MUST</span> refuse to execute artifacts whose <code>rs</code> field is a higher major version than the runtime supports.</li>
+    <li><span class="kw">SHOULD</span> support offline operation. Receipt verification and inference both <span class="kw">MUST</span> work without network when the epoch root is locally cached.</li>
+    <li><span class="kw">MAY</span> implement recipe-driven speculative decoding (§7.5); doing so does not affect output correctness, only latency.</li>
+  </ul>
+
+  <h3>11.3 Naming</h3>
+  <p>Implementations that pass the conformance suite <span class="kw">MAY</span> use the
+    name <i>kolm</i>, the file extension <i>.kolm</i>, and the registered MIME type
+    <code>application/vnd.kolm.rs1+zip</code>. The names <i>kolm</i> and
+    <i>Kolmogorov</i> are trademarks of Kolmogorov, Inc. Use is permitted in the context of
+    conformant implementations and in editorial reference. The names
+    <i>RS-1</i>, <i>K-score</i>, and <i>recipe pack</i> are public terms.</p>
+</section>
+
+<section id="refs">
+  <h2><span class="num">§12</span> References</h2>
+  <ul>
+    <li>[RFC2119] Bradner, S. <i>Key words for use in RFCs to Indicate Requirement Levels.</i> 1997.</li>
+    <li>[RFC8174] Leiba, B. <i>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words.</i> 2017.</li>
+    <li>[GGUF-v3] Gerganov, G. et al. <i>GGUF: GPT-Generated Unified Format, version 3.</i> 2024.</li>
+    <li>[LoRA] Hu, E. et al. <i>LoRA: Low-Rank Adaptation of Large Language Models.</i> 2021.</li>
+    <li>[SpecDec] Leviathan, Y. et al. <i>Fast Inference from Transformers via Speculative Decoding.</i> 2023.</li>
+    <li>[BGE-M3] Xiao, S. et al. <i>BGE M3-Embedding.</i> 2024.</li>
+    <li>[SQLITE-VEC] Asg, A. <i>sqlite-vec: A vector search SQLite extension.</i> 2024.</li>
+    <li>[JSON-SCHEMA-2020-12] <i>JSON Schema Draft 2020-12.</i> json-schema.org.</li>
+    <li>Reproducibility appendix and conformance test vectors live at <code>github.com/sneaky-hippo/kolmogorov-stack</code>.</li>
+  </ul>
+</section>
+
+<section id="appendix-a">
+  <h2><span class="num">§A</span> Appendix A: manifest JSON Schema</h2>
+  <p>The full JSON Schema for <code>manifest.json</code> is published at
+    <code>kolm.ai/schemas/manifest-1.0.0.json</code>. Required top-level keys are:</p>
+  <table>
+    <thead><tr><th>Key</th><th>Type</th><th>Constraint</th></tr></thead>
+    <tbody>
+      <tr><td><code>rs</code></td><td>string</td><td>SemVer; major <span class="kw">MUST</span> match runtime major.</td></tr>
+      <tr><td><code>id</code></td><td>string</td><td>Pattern <code>kolm:[0-9a-f]{32}</code>.</td></tr>
+      <tr><td><code>created_at</code></td><td>string</td><td>RFC 3339 UTC.</td></tr>
+      <tr><td><code>compiler</code></td><td>object</td><td>Required keys: <code>name</code>, <code>version</code>.</td></tr>
+      <tr><td><code>task</code></td><td>object</td><td>Required keys: <code>description</code>, <code>intent_hash</code>.</td></tr>
+      <tr><td><code>base_model</code></td><td>object</td><td>Required keys: <code>name</code>, <code>weights_sha256</code>, <code>quantization</code>.</td></tr>
+      <tr><td><code>adapter</code></td><td>object</td><td>Required when stage 6 ran. Keys: <code>format</code>, <code>rank</code>, <code>alpha</code>, <code>epochs</code>, <code>weights_sha256</code>.</td></tr>
+      <tr><td><code>recipes</code></td><td>object</td><td>Required keys: <code>registry_epoch</code>, <code>pack_sha256</code>, <code>count</code>.</td></tr>
+      <tr><td><code>recall</code></td><td>object</td><td>Required when corpus supplied. Keys: <code>embedder</code>, <code>chunks</code>, <code>index_sha256</code>.</td></tr>
+      <tr><td><code>verifiers</code></td><td>array</td><td>Min length 1. Each entry: <code>id</code>, <code>type</code>, <code>sha256</code>.</td></tr>
+      <tr><td><code>k_score</code></td><td>object</td><td>Required keys: <code>composite</code>, <code>components</code>, <code>gate</code>, <code>floor</code>.</td></tr>
+      <tr><td><code>signature</code></td><td>object</td><td>Required keys: <code>alg</code>, <code>anchored_to</code>, <code>layer_hashes</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>A.adapter: default LoRA hyperparameters</h3>
+  <table>
+    <thead><tr><th>Param</th><th>Default</th><th>Range</th></tr></thead>
+    <tbody>
+      <tr><td><code>rank</code></td><td>16</td><td>4–64</td></tr>
+      <tr><td><code>alpha</code></td><td>32</td><td>= 2·rank</td></tr>
+      <tr><td><code>epochs</code></td><td>3</td><td>1–10</td></tr>
+      <tr><td><code>learning_rate</code></td><td>2e-4</td><td>1e-5–1e-3</td></tr>
+      <tr><td><code>batch_size</code></td><td>auto</td><td>scaled to host VRAM</td></tr>
+      <tr><td><code>quantization</code></td><td>INT4 + bf16</td><td>{INT4, INT8, fp16, bf16}</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="appendix-b">
+  <h2><span class="num">§B</span> Appendix B: signature wire format</h2>
+  <p>The <code>signature.sig</code> file is a 256-byte binary blob with the following layout:</p>
+<pre><span class="com">// signature.sig - RS-1 1.0.0</span>
+offset  size  field
+0       4     magic                <span class="ok">"KOLM"</span>
+4       2     version              0x0100  (= 1.0)
+6       2     reserved             0x0000
+8       32    manifest_sha256
+40      32    layers_concat_sha256 <span class="com">// sha256 of sorted (path, sha256) tuples</span>
+72      32    epoch_root           <span class="com">// registry root at anchor time</span>
+104     32    anchor_record_id     <span class="com">// id assigned by registry post</span>
+136     32    hmac                 <span class="com">// hmac-sha256 over bytes 0..135 under epoch key</span>
+168     88    reserved (zeros)
+256     EOF</pre>
+
+  <p>Verification: a runtime computes <code>HMAC-SHA256(epoch_key, bytes[0..135])</code> and
+    compares to <code>bytes[136..167]</code>. The epoch key is published at
+    <code>registry.kolm.ai/epoch/&lt;anchor_date&gt;/key.json</code> and signed by the
+    registry's long-term Ed25519 key.</p>
+
+  <div class="note"><b>End of specification.</b> Errata, change proposals, and the official
+    conformance test vectors live at <code>github.com/sneaky-hippo/kolmogorov-stack</code>.
+    The maintainers can be reached at <code>spec@kolm.ai</code>.</div>
+</section>
+
+</article>
+</div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <a class="brand" href="/" style="display:inline-flex;align-items:center;gap:9px;color:var(--ink);margin-bottom:10px">
+          <span style="font-weight:540;font-size:15px">kolm</span>
+        </a>
+        <p style="font-size:12.5px;margin:0;max-width:36ch">The AI compiler. Compile any task into a signed Specialist you own.</p>
+      </div>
+      <div><h4>Product</h4><ul>
+        <li><a href="/compile">Compile</a></li>
+        <li><a href="/serve">Serve --mcp</a></li>
+        <li><a href="/anatomy">.kolm format</a></li>
+        <li><a href="/k-score">K-score</a></li>
+        <li><a href="/benchmarks">Benchmarks</a></li>
+        <li><a href="/compare">Compare</a></li>
+      </ul></div>
+      <div><h4>Develop</h4><ul>
+        <li><a href="/api">API reference</a></li>
+        <li><a href="/whitepaper">Whitepaper</a></li>
+        <li><a href="/how-it-works">How it works</a></li>
+        <li><a href="/failure-modes">Failure modes</a></li>
+        <li><a href="/articles">Articles</a></li>
+      </ul></div>
+      <div><h4>Trust</h4><ul>
+        <li><a href="/security">Security</a></li>
+        <li><a href="/trust">Trust</a></li>
+        <li><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></li>
+      </ul></div>
+    </div>
+    <div class="legal">
+      <span>© 2026 Kolmogorov, Inc. · the AI compiler</span>
+      <span>RS-1 spec: MIT (code) · CC-BY-4.0 (text)</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

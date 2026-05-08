@@ -3,16 +3,57 @@
 // of the four-engine compose: every other engine has fed forward; this is
 // the one that actually emits an output for an end-user input.
 //
+// Hard limits (v0.1):
+//   - input payload     : 1 MiB
+//   - per-recipe timeout: 1000 ms (cooperative)
+//   - max recipes tried : artifact-defined (no upper bound, but each is timed)
+//
+// Errors carry a stable `code` so MCP clients and SDKs can branch on them:
+//   KOLM_E_INPUT_TOO_LARGE   - input bytes exceeded MAX_INPUT_BYTES
+//   KOLM_E_NO_RECIPES        - artifact has zero executable recipes
+//   KOLM_E_NO_RECIPE_HANDLED - all recipes threw or timed out
+//   KOLM_E_RECIPE_TIMEOUT    - a recipe exceeded the per-call timeout
+//   KOLM_E_SIGNATURE_INVALID - signature failed to verify (thrown from loadArtifact)
+//
 // Usage from JS:
 //   const r = await runArtifact('./support-triage.kolm', { text: '...' })
-//   // r = { output, recipe_id, latency_us, k_score, receipt }
+//   // r = { output, recipe_id, latency_us, k_score, receipt, audit }
 //
 // Usage from CLI:
 //   kolm run support-triage.kolm '{"text":"..."}'
 
 import AdmZip from 'adm-zip';
+import crypto from 'node:crypto';
 import { compileJs } from './verifier.js';
-import { verifyManifestSignature } from './artifact.js';
+import { verifyManifestSignature, decodePack, decodeIndex } from './artifact.js';
+
+const MAX_INPUT_BYTES = 1024 * 1024;          // 1 MiB
+const DEFAULT_TIMEOUT_MS = 1000;              // 1 s per recipe
+const MAX_AUDIT_INPUT_PREVIEW = 200;
+
+function kolmError(code, message) {
+  const e = new Error(message);
+  e.code = code;
+  return e;
+}
+
+function inputBytes(input) {
+  if (input == null) return 0;
+  if (typeof input === 'string') return Buffer.byteLength(input, 'utf8');
+  try { return Buffer.byteLength(JSON.stringify(input), 'utf8'); }
+  catch { return Number.POSITIVE_INFINITY; }
+}
+
+function previewInput(input) {
+  try {
+    const s = typeof input === 'string' ? input : JSON.stringify(input);
+    return s.length > MAX_AUDIT_INPUT_PREVIEW ? s.slice(0, MAX_AUDIT_INPUT_PREVIEW) + '…' : s;
+  } catch { return '[unserializable]'; }
+}
+
+function sha256Hex(buf) {
+  return crypto.createHash('sha256').update(buf).digest('hex');
+}
 
 // Open a .kolm and return its contents as a structured bundle. Verifies the
 // signature; throws if mangled.
@@ -34,7 +75,7 @@ export function loadArtifact(artifactPath) {
 
   const verification = verifyManifestSignature(manifest_json, signature);
   if (!verification.valid) {
-    throw new Error(`signature invalid: ${verification.reason}`);
+    throw kolmError('KOLM_E_SIGNATURE_INVALID', `signature invalid: ${verification.reason}`);
   }
 
   const manifest = JSON.parse(manifest_json);
@@ -43,38 +84,89 @@ export function loadArtifact(artifactPath) {
   const receipt = receipt_json ? JSON.parse(receipt_json) : null;
   const model = model_pointer ? (() => { try { return JSON.parse(model_pointer); } catch { return null; } })() : null;
 
+  // Optional behaviour-pack and lookup-index slots. Missing or empty buffers
+  // are normal for v0.1 'recipe' tier with no pack supplied.
+  let pack = null;
+  let index = null;
+  try { pack = decodePack(entries['lora.bin']); }
+  catch (e) { throw kolmError('KOLM_E_PACK_DECODE', `lora.bin pack decode failed: ${e.message}`); }
+  try { index = decodeIndex(entries['index.sqlite-vec']); }
+  catch (e) { throw kolmError('KOLM_E_INDEX_DECODE', `index.sqlite-vec decode failed: ${e.message}`); }
+
   return {
     manifest,
     recipes,
     evals,
     receipt,
     model,
+    pack,
+    index,
     signature_valid: true,
     artifact_path: artifactPath,
   };
 }
 
-// Run the artifact against a single input. Returns { output, recipe_id, latency_us, receipt }.
+// Run the artifact against a single input. Returns { output, recipe_id, latency_us, receipt, audit }.
 //
-// Sprint 1 dispatch: try each recipe in order, return the first one that
-// compiles + executes without throwing. Sprint 2 will add structural matching
-// (input shape → recipe selection) and the LoRA fallback for fuzzy inputs.
-export async function runArtifact(artifactPath, input) {
+// Recipe dispatch: try each recipe in order, return the first one that
+// compiles + executes within the timeout without throwing. The artifact
+// author orders recipes by specificity (most-specific first); the runner
+// trusts that order.
+//
+// opts.timeoutMs   - per-recipe timeout (default 1000ms)
+// opts.maxBytes    - input size cap (default 1 MiB)
+// opts.audit       - optional audit-sink callback({ artifact_job_id, recipe_id, input_sha256, input_bytes, latency_us, ok })
+export async function runArtifact(artifactPath, input, opts = {}) {
   const bundle = loadArtifact(artifactPath);
-  const { recipes, manifest } = bundle;
+  const { recipes, manifest, pack, index } = bundle;
   if (!recipes.recipes || !recipes.recipes.length) {
-    throw new Error('artifact has no executable recipes');
+    throw kolmError('KOLM_E_NO_RECIPES', 'artifact has no executable recipes');
   }
 
+  const maxBytes = opts.maxBytes || MAX_INPUT_BYTES;
+  const timeout = opts.timeoutMs || DEFAULT_TIMEOUT_MS;
+  const bytes = inputBytes(input);
+  if (bytes > maxBytes) {
+    throw kolmError('KOLM_E_INPUT_TOO_LARGE', `input ${bytes}B exceeds limit ${maxBytes}B`);
+  }
+
+  // Tenant-supplied parameters: any buyer can pass per-call config (extra
+  // patterns, allowlists, vertical-specific rules) via opts.params or as
+  // input.params on a structured input. Tenant params are NEVER persisted
+  // by the runtime and never re-signed into the artifact.
+  const params = opts.params || (input && typeof input === 'object' && !Array.isArray(input) ? input.params : null) || null;
+
+  const inputSha = sha256Hex(Buffer.from(typeof input === 'string' ? input : JSON.stringify(input ?? null), 'utf8')).slice(0, 16);
   const t0 = process.hrtime.bigint();
+  const tried = [];
   let lastError = null;
+
   for (const r of recipes.recipes) {
     if (!r.source) continue;
     let fn;
-    try { fn = compileJs(r.source); } catch (e) { lastError = `compile ${r.id}: ${e.message}`; continue; }
     try {
-      const output = fn(input);
+      fn = compileJs(r.source);
+    } catch (e) {
+      tried.push({ id: r.id, stage: 'compile', error: e.message });
+      lastError = `compile ${r.id}: ${e.message}`;
+      continue;
+    }
+    try {
+      const output = fn(input, { timeout, pack, index, params });
       const us = Number(process.hrtime.bigint() - t0) / 1000;
+      const audit = {
+        spec: 'kolm-audit-1',
+        artifact_job_id: manifest.job_id,
+        recipe_id: r.id,
+        recipe_name: r.name,
+        input_sha256_prefix: inputSha,
+        input_bytes: bytes,
+        input_preview: previewInput(input),
+        latency_us: Math.round(us),
+        ran_at: new Date().toISOString(),
+        ok: true,
+      };
+      if (typeof opts.audit === 'function') { try { opts.audit(audit); } catch {} }
       return {
         output,
         recipe_id: r.id,
@@ -88,19 +180,41 @@ export async function runArtifact(artifactPath, input) {
           version_id: r.version_id,
           ran_at: new Date().toISOString(),
         },
+        audit,
       };
     } catch (e) {
+      const code = /exceeded \d+ms/.test(e.message || '') ? 'KOLM_E_RECIPE_TIMEOUT' : null;
+      tried.push({ id: r.id, stage: 'run', error: e.message, code });
       lastError = `run ${r.id}: ${e.message}`;
       continue;
     }
   }
-  throw new Error('no recipe in artifact handled the input. last error: ' + lastError);
+
+  const err = kolmError('KOLM_E_NO_RECIPE_HANDLED', `no recipe in artifact handled the input. tried ${tried.length}; last: ${lastError}`);
+  err.tried = tried;
+  if (typeof opts.audit === 'function') {
+    try {
+      opts.audit({
+        spec: 'kolm-audit-1',
+        artifact_job_id: manifest.job_id,
+        input_sha256_prefix: inputSha,
+        input_bytes: bytes,
+        input_preview: previewInput(input),
+        latency_us: Math.round(Number(process.hrtime.bigint() - t0) / 1000),
+        ran_at: new Date().toISOString(),
+        ok: false,
+        error_code: 'KOLM_E_NO_RECIPE_HANDLED',
+        tried,
+      });
+    } catch {}
+  }
+  throw err;
 }
 
 // Re-run the embedded eval suite against the artifact's recipes. This is
 // what backs `kolm eval <artifact>` — recompute K-score axes from scratch
 // to confirm the bundle still passes.
-export async function evalArtifact(artifactPath) {
+export async function evalArtifact(artifactPath, opts = {}) {
   const bundle = loadArtifact(artifactPath);
   const cases = bundle.evals?.cases || [];
   if (!cases.length) {
@@ -111,8 +225,7 @@ export async function evalArtifact(artifactPath) {
   const errors = [];
   for (const c of cases) {
     try {
-      const t0 = process.hrtime.bigint();
-      const r = await runArtifact(artifactPath, c.input);
+      const r = await runArtifact(artifactPath, c.input, { params: c.params || opts.params });
       latencies.push(r.latency_us);
       if (deepEqual(r.output, c.expected)) passed++;
       else errors.push({ id: c.id, expected: c.expected, got: r.output });
@@ -154,11 +267,16 @@ export function inspectArtifact(artifactPath) {
     job_id: bundle.manifest.job_id,
     task: bundle.manifest.task,
     runtime: bundle.manifest.runtime,
+    tier: bundle.manifest.tier || 'recipe',
     base_model: bundle.manifest.base_model,
     created_at: bundle.manifest.created_at,
     recipes_n: bundle.recipes.n || (bundle.recipes.recipes?.length || 0),
     evals_n: bundle.evals?.cases?.length || 0,
     k_score: bundle.manifest.k_score,
+    pack_present: !!bundle.pack,
+    index_present: !!bundle.index,
+    pack_keys: bundle.pack ? Object.keys(bundle.pack).slice(0, 8) : [],
+    index_keys: bundle.index ? Object.keys(bundle.index).slice(0, 8) : [],
     signature_valid: bundle.signature_valid,
     recipe_names: (bundle.recipes.recipes || []).slice(0, 8).map(r => r.name),
   };

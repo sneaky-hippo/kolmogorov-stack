@@ -17,7 +17,18 @@ export function compileJs(source) {
   const fn = script.runInContext(ctx);
   return (input, opts = {}) => {
     const timeout = opts.timeout || DEFAULT_TIMEOUT_MS;
-    return runWithTimeout(() => fn(input, subroutines), timeout);
+    // Extend the standard subroutine library with optional artifact-bound
+    // (pack, index) and tenant-bound (params) slots. Recipes that don't
+    // reference them get the original behaviour exactly.
+    const lib = (opts.pack || opts.index || opts.params)
+      ? Object.freeze({
+          ...subroutines,
+          pack: opts.pack || null,
+          index: opts.index || null,
+          params: opts.params || null,
+        })
+      : subroutines;
+    return runWithTimeout(() => fn(input, lib), timeout);
   };
 }
 

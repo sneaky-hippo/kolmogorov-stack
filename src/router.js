@@ -15,6 +15,7 @@ import { all, findOne, insert, update, stats as storeStats } from './store.js';
 import { verifiedInference } from './verified.js';
 import { createJob, getJob, listJobs, runJob } from './compile.js';
 import * as recall from './recall.js';
+import { verifyStripeSignature, planFromAmount, appendCheckoutParams } from './stripe.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -173,6 +174,42 @@ export function buildRouter() {
 
   r.get('/v1/pricing', (_req, res) => res.json({ currency: 'USD', units: PRICING }));
 
+  // ---------- Plan catalog ----------
+  // Single source of truth for self-serve signup + plan-change. Mirrors
+  // /pricing exactly. STRIPE_PAYMENT_LINK_<PLAN> env vars wire each paid
+  // plan to a Stripe Payment Link (operator-supplied; absent => billing_url
+  // is null and the tenant is provisioned with a 30-day trial banner).
+  const PLAN_CATALOG = {
+    free:       { id: 'free',       label: 'Developer',  price_usd_month: 0,    quota: 10000,    seats: 1,   billing_env: null,                          stripe_link_env: null },
+    starter:    { id: 'starter',    label: 'Starter',    price_usd_month: 9,    quota: 50000,    seats: 1,   billing_env: 'STRIPE_PAYMENT_LINK_STARTER', stripe_link_env: 'STRIPE_PAYMENT_LINK_STARTER' },
+    pro:        { id: 'pro',        label: 'Pro',        price_usd_month: 49,   quota: 200000,   seats: 1,   billing_env: 'STRIPE_PAYMENT_LINK_PRO',     stripe_link_env: 'STRIPE_PAYMENT_LINK_PRO' },
+    teams:      { id: 'teams',      label: 'Teams',      price_usd_month: 149,  quota: 1000000,  seats: 5,   billing_env: 'STRIPE_PAYMENT_LINK_TEAMS',     stripe_link_env: 'STRIPE_PAYMENT_LINK_TEAMS' },
+    business:   { id: 'business',   label: 'Business',   price_usd_month: 1499, quota: 5000000,  seats: 25,  billing_env: 'STRIPE_PAYMENT_LINK_BUSINESS', stripe_link_env: 'STRIPE_PAYMENT_LINK_BUSINESS' },
+    enterprise: { id: 'enterprise', label: 'Enterprise', price_usd_month: 2999, quota: 10000000, seats: 25,  billing_env: 'STRIPE_PAYMENT_LINK_ENT',       stripe_link_env: 'STRIPE_PAYMENT_LINK_ENT' },
+  };
+  const PLAN_IDS = new Set(Object.keys(PLAN_CATALOG));
+
+  function billingLinkFor(planId, opts = {}) {
+    const env = PLAN_CATALOG[planId]?.stripe_link_env;
+    if (!env) return null;
+    const url = process.env[env];
+    if (!url || !/^https?:\/\//.test(url)) return null;
+    return appendCheckoutParams(url, opts);
+  }
+
+  r.get('/v1/plans', (_req, res) => {
+    const plans = Object.values(PLAN_CATALOG).map(p => ({
+      id: p.id,
+      label: p.label,
+      price_usd_month: p.price_usd_month,
+      quota: p.quota,
+      seats: p.seats,
+      self_serve: true,
+      billing_link_configured: !!billingLinkFor(p.id),
+    }));
+    res.json({ plans });
+  });
+
   // ---------- Anonymous CLI auth (robots / agents) ----------
   // Bootstrap: returns an anon_token that the CLI stores locally. 30-day TTL.
   // No email, no signup. Designed for agents that need to start working in <1 second.
@@ -215,17 +252,50 @@ export function buildRouter() {
     if (process.env.INVITE_ONLY === 'true') {
       return res.status(403).json({ error: 'public signup disabled — invite required' });
     }
-    const { email, name } = req.body || {};
+    const { email, name, plan: rawPlan } = req.body || {};
     if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return res.status(400).json({ error: 'valid email required' });
     }
+    // Plan-aware self-serve signup. Free is provisioned immediately. For paid
+    // plans, we provision the tenant on the FREE quota and record a
+    // `pending_plan` flag; the Stripe webhook flips the plan to the requested
+    // tier on `checkout.session.completed`. This means nobody gets paid
+    // features without paying.
+    const planLower = (rawPlan || 'free').toString().toLowerCase();
+    const requestedPlan = PLAN_IDS.has(planLower) ? planLower : 'free';
+    const requestedMeta = PLAN_CATALOG[requestedPlan];
+    const isPaid = requestedMeta.price_usd_month > 0;
     const slug = (name || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 32) || 'user';
     const uniq = `${slug}-${Date.now().toString(36).slice(-4)}`;
-    const t = provisionTenant(uniq, { quota: 10000, plan: 'free', email });
+
+    // Always provision on free quota; webhook upgrades after payment.
+    const provisionedPlan = isPaid ? 'free' : requestedPlan;
+    const provisionedMeta = PLAN_CATALOG[provisionedPlan];
+    const t = provisionTenant(uniq, { quota: provisionedMeta.quota, plan: provisionedPlan, email });
+
+    let billingUrl = null;
+    if (isPaid) {
+      billingUrl = billingLinkFor(requestedPlan, { tenantId: t.id, email });
+      try { update('tenants', x => x.id === t.id, { pending_plan: requestedPlan }); } catch (_) {}
+    }
+
     res.status(201).json({
-      tenant: { id: t.id, name: t.name, plan: t.plan, quota: t.quota },
+      tenant: {
+        id: t.id,
+        name: t.name,
+        plan: provisionedPlan,
+        quota: provisionedMeta.quota,
+        seats: provisionedMeta.seats,
+        pending_plan: isPaid ? requestedPlan : null,
+      },
       api_key: t.api_key,
-      message: 'Save this key. You can rotate it from /v1/account/rotate-key.',
+      billing_url: billingUrl,
+      billing_required: isPaid,
+      message: !isPaid
+        ? 'Save this key. You can rotate it from /v1/account/rotate-key or upgrade with /v1/account/change-plan.'
+        : (billingUrl
+            ? `Save this key. Complete payment at ${billingUrl} to activate your ${requestedMeta.label} tier. Until payment is confirmed your account is on the Developer (free) tier.`
+            : `Save this key. Billing for the ${requestedMeta.label} tier is not yet enabled by the operator; your account is on the Developer (free) tier.`),
     });
   });
 
@@ -920,6 +990,177 @@ export function buildRouter() {
     if (!req.tenant_record) return res.status(403).json({ error: 'admin tokens cannot rotate' });
     const k = rotateTenantKey(req.tenant_record.id);
     res.json({ api_key: k });
+  });
+
+  // Self-serve plan changes. Free is applied instantly (this is also the
+  // downgrade / cancel path). Paid plans return a Stripe Payment Link with
+  // `client_reference_id=<tenant_id>`; the plan is flipped only when the
+  // webhook receives `checkout.session.completed`. This guarantees the
+  // tenant cannot get paid features without paying.
+  r.post('/v1/account/change-plan', (req, res) => {
+    if (!req.tenant_record) return res.status(403).json({ error: 'admin tokens cannot change plan' });
+    const target = String((req.body || {}).plan || '').toLowerCase();
+    if (!PLAN_IDS.has(target)) return res.status(400).json({ error: 'invalid plan', allowed: Array.from(PLAN_IDS) });
+    const meta = PLAN_CATALOG[target];
+    const isUpgrade = meta.price_usd_month > 0;
+
+    if (!isUpgrade) {
+      update('tenants', x => x.id === req.tenant_record.id, {
+        plan: 'free',
+        quota: PLAN_CATALOG.free.quota,
+        pending_plan: null,
+        trial_ends_at: null,
+      });
+      return res.json({
+        ok: true,
+        plan: 'free',
+        quota: PLAN_CATALOG.free.quota,
+        seats: PLAN_CATALOG.free.seats,
+        billing_url: null,
+        billing_required: false,
+        message: 'Plan changed to Developer (free).',
+      });
+    }
+
+    const billingUrl = billingLinkFor(target, {
+      tenantId: req.tenant_record.id,
+      email: req.tenant_record.email,
+    });
+    if (!billingUrl) {
+      return res.status(503).json({
+        ok: false,
+        plan: req.tenant_record.plan,
+        billing_required: true,
+        billing_url: null,
+        error: 'billing_not_configured',
+        message: `Billing for the ${meta.label} tier is not yet enabled. Contact the operator at hello@kolm.ai.`,
+      });
+    }
+
+    update('tenants', x => x.id === req.tenant_record.id, {
+      pending_plan: target,
+    });
+
+    res.json({
+      ok: true,
+      plan: req.tenant_record.plan,
+      pending_plan: target,
+      billing_url: billingUrl,
+      billing_required: true,
+      message: `Complete payment at ${billingUrl} to activate the ${meta.label} tier.`,
+    });
+  });
+
+  // ---------- Stripe webhook ----------
+  // Receives Stripe webhook events. Verifies signature with
+  // STRIPE_WEBHOOK_SECRET, decodes the event, and flips tenant plans on
+  // `checkout.session.completed` (upgrade) or `customer.subscription.deleted`
+  // (downgrade to free). Idempotent: each Stripe event id is recorded once.
+  //
+  // The route is mounted with `express.raw({ type: '*/*' })` ahead of
+  // `express.json()` in server.js — req.body must be a Buffer for signature
+  // verification to work (canonical JSON reordering breaks the HMAC).
+  r.post('/v1/stripe/webhook', (req, res) => {
+    const secret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!secret) return res.status(503).type('text/plain').send('webhook secret not configured');
+
+    const sigHeader = req.header('stripe-signature') || '';
+    const rawBody = Buffer.isBuffer(req.body)
+      ? req.body.toString('utf8')
+      : (typeof req.body === 'string' ? req.body : '');
+    if (!rawBody) return res.status(400).type('text/plain').send('empty body');
+
+    const verified = verifyStripeSignature(rawBody, sigHeader, secret);
+    if (!verified.ok) {
+      return res.status(400).type('text/plain').send(`Webhook Error: ${verified.reason}`);
+    }
+
+    let event;
+    try { event = JSON.parse(rawBody); }
+    catch (_) { return res.status(400).type('text/plain').send('invalid JSON'); }
+    if (!event || typeof event !== 'object' || !event.id || !event.type) {
+      return res.status(400).type('text/plain').send('malformed event');
+    }
+
+    // Idempotency: skip if we've already processed this event id.
+    try {
+      const seen = all('stripe_events').some(e => e.id === event.id);
+      if (seen) return res.json({ received: true, idempotent: true, id: event.id });
+      insert('stripe_events', { id: event.id, type: event.type, received_at: new Date().toISOString() });
+    } catch (_) {}
+
+    if (event.type === 'checkout.session.completed') {
+      const s = event.data && event.data.object || {};
+      const tenantId = s.client_reference_id;
+      const planId = planFromAmount(s.amount_total);
+      if (!tenantId) {
+        return res.json({ received: true, warning: 'no client_reference_id', id: event.id });
+      }
+      const tenant = all('tenants').find(t => t.id === tenantId);
+      if (!tenant) {
+        return res.json({ received: true, warning: 'tenant not found', id: event.id });
+      }
+      const resolvedPlan = planId || tenant.pending_plan || null;
+      if (!resolvedPlan || !PLAN_CATALOG[resolvedPlan]) {
+        return res.json({ received: true, warning: 'no plan match', amount_total: s.amount_total, id: event.id });
+      }
+      const meta = PLAN_CATALOG[resolvedPlan];
+      update('tenants', x => x.id === tenantId, {
+        plan: resolvedPlan,
+        quota: meta.quota,
+        pending_plan: null,
+        stripe_customer_id: s.customer || null,
+        stripe_subscription_id: s.subscription || null,
+        paid_at: new Date().toISOString(),
+        cancelled_at: null,
+      });
+      return res.json({ received: true, plan: resolvedPlan, tenant: tenantId, id: event.id });
+    }
+
+    if (event.type === 'customer.subscription.deleted') {
+      const sub = event.data && event.data.object || {};
+      const tenant = all('tenants').find(t => t.stripe_subscription_id === sub.id);
+      if (!tenant) return res.json({ received: true, warning: 'tenant not found', id: event.id });
+      update('tenants', x => x.id === tenant.id, {
+        plan: 'free',
+        quota: PLAN_CATALOG.free.quota,
+        pending_plan: null,
+        cancelled_at: new Date().toISOString(),
+      });
+      return res.json({ received: true, plan: 'free', tenant: tenant.id, id: event.id });
+    }
+
+    if (event.type === 'invoice.payment_failed') {
+      // Stripe handles retries via dunning; no immediate downgrade.
+      return res.json({ received: true, action: 'noted', id: event.id });
+    }
+
+    return res.json({ received: true, type: event.type, action: 'ignored' });
+  });
+
+  // Self-serve cancel / downgrade-to-free. Any paid tenant can drop to the
+  // free tier without contacting anyone.
+  r.post('/v1/account/cancel', (req, res) => {
+    if (!req.tenant_record) return res.status(403).json({ error: 'admin tokens cannot cancel' });
+    update('tenants', x => x.id === req.tenant_record.id, {
+      plan: 'free',
+      quota: PLAN_CATALOG.free.quota,
+      trial_ends_at: null,
+      cancelled_at: new Date().toISOString(),
+    });
+    res.json({ ok: true, plan: 'free', message: 'Subscription cancelled. Your tenant is now on the Developer (free) plan; existing artifacts and registry data are untouched.' });
+  });
+
+  // Self-serve account delete. Soft-delete the tenant; receipts and artifacts
+  // already shipped to users keep verifying since the cloud signing key is
+  // unchanged. The tenant can no longer authenticate.
+  r.post('/v1/account/delete', (req, res) => {
+    if (!req.tenant_record) return res.status(403).json({ error: 'admin tokens cannot delete' });
+    update('tenants', x => x.id === req.tenant_record.id, {
+      _deleted: true,
+      deleted_at: new Date().toISOString(),
+    });
+    res.json({ ok: true, message: 'Account deleted. Receipts already issued remain verifiable.' });
   });
 
   // ---------- Layer 1: Synthesis ----------

@@ -176,7 +176,8 @@ const PUBLIC_API = (p) =>
   p === '/v1/specialists/waitlist' ||
   p === '/v1/anon/bootstrap' ||
   p === '/v1/anon/claim' ||
-  p === '/v1/registry/public';
+  p === '/v1/registry/public' ||
+  p === '/v1/stripe/webhook';
 
 export function adminApiKey() {
   return process.env.ADMIN_KEY || (isProductionRuntime() ? null : 'ks_admin_change_me');

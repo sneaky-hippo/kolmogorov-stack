@@ -3,100 +3,84 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>The case for compiled AI - kolm</title>
-<meta name="description" content="Cloud AI gets smart by sending your users' data away. Compiled AI gets smart by leaving it there. The case for a new category - and the file format that defines it.">
+<title>The closed-API tax · kolm</title>
+<meta name="description" content="Every AI feature shipped over a closed API is a variable cost you do not control. The closed-API tax is the gap between what you charge and what you keep. The exit is a compiled model.">
 <meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
-<meta property="og:title" content="kolm - the case for compiled AI">
-<meta property="og:description" content="Cloud AI gets smart by sending data away. Compiled AI gets smart by leaving it there. A manifesto.">
+<meta property="og:title" content="kolm · the closed-API tax">
+<meta property="og:description" content="Every AI feature you ship over a closed API is a tax. Compile your way out.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://kolm.ai/manifesto">
 <meta property="og:image" content="https://kolm.ai/og-card.svg">
 <link rel="canonical" href="https://kolm.ai/manifesto">
-<link rel="preload" as="image" href="/img/kolm-artifact-system.svg" fetchpriority="high">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>
-  :root {
-    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
-    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
-    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
-    --accent: #4c7dff; --accent-soft: rgba(76,125,255,0.10); --accent-strong: #9db6ff;
-    --good: #7ef0d2; --bad: #ff6b91;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-  a { color: inherit; text-decoration: none; }
-  .wrap { max-width: 760px; margin: 0 auto; padding: 0 32px; }
-  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
-  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#4c7dff;--accent-soft:rgba(76,125,255,0.10);--good:#7ef0d2;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:760px;margin:0 auto;padding:0 32px}
+  .wrap-wide{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap,.wrap-wide{padding:0 20px}}
 
-  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
-  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
-  header.site .left { display: flex; align-items: center; gap: 36px; }
-  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
-  header.site .brand img { height: 18px; width: 18px; }
-  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: 0; }
-  header.site nav { display: flex; gap: 22px; }
-  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
-  header.site nav a:hover { color: var(--ink); }
-  header.site .right { display: flex; align-items: center; gap: 14px; }
-  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
-  header.site .right .ghost:hover { color: var(--ink); }
-  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
-  header.site .right .cta:hover { background: #fff; }
-  @media (max-width: 720px) { header.site nav { display: none; } }
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand img{height:18px;width:18px}
+  header.site .brand span{font-weight:540;font-size:16px}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .cta{display:inline-flex;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540}
+  @media(max-width:720px){header.site nav{display:none}}
 
-  section.hero { padding: 88px 0 56px; position: relative; overflow: hidden; }
-  section.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 900px 460px at 22% 12%, rgba(76,125,255,0.10), transparent 60%); }
-  section.hero .wrap { position: relative; }
+  section.hero{padding:88px 0 56px;position:relative;overflow:hidden}
+  section.hero::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 900px 460px at 22% 12%,rgba(76,125,255,0.10),transparent 60%)}
+  section.hero .wrap{position:relative}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-mute);border:1px solid var(--line-strong);border-radius:999px;padding:5px 12px;background:var(--bg-elev)}
+  h1{margin:24px 0 22px;font-size:clamp(40px,6vw,68px);line-height:1.02;font-weight:500;max-width:14ch}
+  h1 .tone{color:var(--accent)}
+  p.lede{margin:0 0 0;font-size:clamp(17px,1.4vw,21px);line-height:1.55;color:var(--ink-mute)}
+  p.lede b{color:var(--ink);font-weight:540}
 
-  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  article{padding:48px 0 96px}
+  article h2{margin:64px 0 18px;font-size:clamp(24px,2.6vw,30px);line-height:1.18;font-weight:540;color:var(--ink)}
+  article h2 .tone{color:var(--accent)}
+  article h3{margin:28px 0 10px;font-size:18px;font-weight:540;color:var(--ink)}
+  article p{margin:0 0 16px;font-size:16.5px;line-height:1.7;color:var(--ink-mute)}
+  article p b{color:var(--ink);font-weight:540}
+  article p code{font-family:var(--mono);font-size:0.92em;background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--ink)}
+  article blockquote{margin:28px 0;padding:16px 22px;border-left:2px solid var(--accent);background:var(--bg-elev);border-radius:0 8px 8px 0;font-size:17px;line-height:1.6;color:var(--ink)}
+  article blockquote p{color:var(--ink);margin:0;font-weight:480}
+  article ul{padding-left:0;list-style:none;margin:16px 0 24px}
+  article ul li{padding:8px 0 8px 22px;position:relative;font-size:16px;line-height:1.6;color:var(--ink-mute)}
+  article ul li::before{content:"-";color:var(--accent);position:absolute;left:6px;font-weight:560}
+  article ul li b{color:var(--ink);font-weight:540}
 
-  h1 { margin: 24px 0 22px; font-size: clamp(38px, 5.6vw, 60px); line-height: 1.05; font-weight: 500; letter-spacing: 0; }
-  h1 .tone { color: var(--accent); }
-  p.lede { margin: 0 0 0; font-size: clamp(17px, 1.4vw, 21px); line-height: 1.55; color: var(--ink-mute); }
-  p.lede b { color: var(--ink); font-weight: 540; }
+  .tax-tbl{width:100%;border-collapse:collapse;margin:20px 0 8px;font-size:14px}
+  .tax-tbl th{text-align:left;font-family:var(--mono);font-weight:500;font-size:10.5px;text-transform:uppercase;color:var(--ink-faint);padding:12px 14px;border-bottom:1px solid var(--line-strong);background:rgba(0,0,0,0.2)}
+  .tax-tbl td{padding:12px 14px;border-bottom:1px solid var(--line);color:var(--ink-mute);vertical-align:top}
+  .tax-tbl td:first-child{color:var(--ink);font-weight:500}
+  .tax-tbl tbody tr:last-child td{border-bottom:none}
+  .tax-tbl-wrap{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0 0}
+  .tax-tbl .neg{color:var(--bad)}
+  .tax-tbl .pos{color:var(--good)}
 
-  article { padding: 40px 0 96px; }
-  article h2 { margin: 56px 0 14px; font-size: clamp(24px, 2.6vw, 30px); line-height: 1.18; font-weight: 540; letter-spacing: 0; color: var(--ink); }
-  article h2 .tone { color: var(--accent); }
-  article p { margin: 0 0 16px; font-size: 16.5px; line-height: 1.7; color: var(--ink-mute); }
-  article p b { color: var(--ink); font-weight: 540; }
-  article p code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
-  article blockquote { margin: 28px 0; padding: 16px 22px; border-left: 2px solid var(--accent); background: var(--bg-elev); border-radius: 0 8px 8px 0; font-size: 17px; line-height: 1.6; color: var(--ink); }
-  article blockquote p { color: var(--ink); margin: 0; font-weight: 480; }
-  article ul { padding-left: 0; list-style: none; margin: 16px 0 24px; }
-  article ul li { padding: 8px 0 8px 22px; position: relative; font-size: 16px; line-height: 1.6; color: var(--ink-mute); }
-  article ul li::before { content: "-"; color: var(--accent); position: absolute; left: 6px; font-weight: 560; }
-  article ul li b { color: var(--ink); font-weight: 540; }
+  .signpost{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:48px 0 0}
+  @media(max-width:720px){.signpost{grid-template-columns:1fr}}
+  .signpost a{display:flex;flex-direction:column;gap:8px;padding:22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;transition:border-color 120ms,background 120ms}
+  .signpost a:hover{border-color:var(--line-strong);background:var(--bg-card)}
+  .signpost a .lab{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
+  .signpost a .v{color:var(--ink);font-weight:540;font-size:16px}
+  .signpost a .v .arrow{color:var(--accent);margin-left:6px}
+  .signpost a p{margin:4px 0 0;font-size:13.5px;color:var(--ink-mute);line-height:1.5}
 
-  .signpost { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 36px 0 0; }
-  @media (max-width: 720px) { .signpost { grid-template-columns: 1fr; } }
-  .signpost a { display: flex; flex-direction: column; gap: 8px; padding: 22px 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; transition: border-color 120ms, background 120ms; }
-  .signpost a:hover { border-color: var(--line-strong); background: var(--bg-card); }
-  .signpost a .lab { font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
-  .signpost a .v { color: var(--ink); font-weight: 540; font-size: 16px; letter-spacing: 0; }
-  .signpost a .v .arrow { color: var(--accent); margin-left: 6px; }
-  .signpost a p { margin: 4px 0 0; font-size: 13.5px; color: var(--ink-mute); line-height: 1.5; }
-
-  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--ink-faint); }
-  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-
-  .plate{position:relative;margin:32px 0 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#050607;isolation:isolate}
-  .plate .img{position:relative;aspect-ratio:16/9;background-position:center;background-size:cover;background-repeat:no-repeat}
-  .plate .img::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 50%,rgba(8,8,10,0.78) 100%),linear-gradient(90deg,rgba(8,8,10,0.55) 0%,transparent 30%,transparent 70%,rgba(8,8,10,0.55) 100%)}
-  .plate .img::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(76,125,255,0.5),transparent);pointer-events:none;z-index:2}
-  .plate .stamp{position:absolute;top:18px;left:20px;z-index:3;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing: 0;text-transform:uppercase;color:var(--ink-mute);border:1px solid rgba(76,125,255,0.22);background:rgba(8,9,8,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:5px 11px;border-radius:4px}
-  .plate .stamp .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(76,125,255,0.85)}
-  .plate .cap{position:absolute;left:24px;right:24px;bottom:20px;z-index:3;display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
-  .plate .cap .title{font-family:var(--sans);font-size:clamp(17px,1.8vw,22px);font-weight:540;letter-spacing: 0;line-height:1.18;color:var(--ink);max-width:62%;text-shadow:0 1px 2px rgba(0,0,0,0.55)}
-  .plate .cap .title .tone{background:linear-gradient(170deg,#faf2e1 0%,#9db6ff 50%,#4c7dff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .plate .cap .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute);letter-spacing: 0;text-align:right;line-height:1.7}
-  .plate .cap .meta b{color:var(--ink);font-weight:520}
-  @media(max-width:720px){.plate .cap{left:14px;right:14px;bottom:12px;flex-direction:column;align-items:flex-start;gap:8px}.plate .cap .title{font-size:14px;max-width:100%}.plate .cap .meta{text-align:left;font-size:10px}.plate .stamp{top:12px;left:12px;font-size:9px;padding:4px 9px}}
+  footer.site{padding:56px 0 40px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+  footer.site .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
 </style>
 <link rel="stylesheet" href="/brand-refresh.css">
 </head>
@@ -105,8 +89,7 @@
 <header class="site">
   <div class="wrap-wide row">
     <div class="left">
-      <a href="/" class="brand" aria-label="kolm"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span>
-      </a>
+      <a href="/" class="brand" aria-label="kolm"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
       <nav>
         <a href="/compile">Compile</a>
         <a href="/serve">Serve</a>
@@ -118,79 +101,100 @@
     </div>
     <div class="right">
       <a href="/signin" class="ghost">sign in</a>
-      <a href="/signup" class="cta">get a key</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
     </div>
   </div>
 </header>
 
 <section class="hero">
   <div class="wrap">
-    <span class="pill">Manifesto - 2026-05-07</span>
-    <h1>The case for <span class="tone">compiled AI.</span></h1>
-    <p class="lede">Cloud AI got smart by sending your users' data away. Compiled AI gets smart by leaving it there. A short argument for a new category, and the file format that defines it.</p>
-
-    <figure class="plate" role="img" aria-label="A new category: compiled AI. The signed .kolm artifact.">
-      <div class="img" style="background-image:url(/img/kolm-artifact-system.svg)"></div>
-      <span class="stamp"><span class="dot"></span>manifesto - compiled AI</span>
-      <div class="cap">
-        <div class="title">A file you <span class="tone">own.</span></div>
-        <div class="meta">data stays put<br><b>category</b>, not feature</div>
-      </div>
-    </figure>
+    <span class="pill">Manifesto &middot; 2026-05-09</span>
+    <h1>The <span class="tone">closed-API tax.</span></h1>
+    <p class="lede">Every AI feature you ship over a closed API is a tax you cannot stop paying. <b>It scales with your usage. It compounds with every customer you add. It is set by a vendor whose pricing is a 14-day notice.</b> This is the argument that the tax is real, that it is bigger than it looks, and that the only honest exit is a compiled artifact you own.</p>
   </div>
 </section>
 
 <article>
   <div class="wrap">
 
-    <h2>The dirty secret of cloud AI.</h2>
-    <p>Every powerful AI product today rests on a hidden assumption: that to be useful, it has to read everything you give it, on a server you don't control, run by a company you have no leverage over. Your prompt becomes a row in their log. Your photo becomes a tensor on their GPU. Your medical record, your inbox, your location, your calendar: all of it ends up in a third-party perimeter, even when the privacy policy says otherwise.</p>
-    <p>That's not a bug of the architecture, it's the architecture. <b>The model lives where the GPUs are. The data has to come to the model.</b> Privacy and personalization are presented as a tradeoff. The more your AI knows about you, the more your data has to leave.</p>
+    <p style="margin:0 0 8px;font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint)">A note on the name.</p>
+    <p>We chose <b>Kolmogorov</b> because the question we are answering (what is the smallest specialist program that produces a given behavior) is exactly what Andrey Kolmogorov asked in 1965. The CLI is <code>kolm</code> because, like <code>gcc</code> or <code>git</code>, the binary is small enough to type. The artifact is <code>.kolm</code> because, like <code>.tar</code> or <code>.deb</code>, the file is the unit of distribution. The spec is <b>RS-1</b>, MIT-licensed, so anyone can implement a compatible compiler. The company is the steward, not the gatekeeper. <a href="/brand" style="color:var(--accent)">More on the brand stack &rarr;</a></p>
 
-    <p>The privacy/personality tradeoff is an artifact of first-generation cloud deployment, not a law of physics. Modern local hardware is capable; the gap was a build step.</p>
-    <p>You bring the frontier model API key you already pay for. <code>kolm compile</code> turns task, examples, and policy into a signed recipe + eval + receipt artifact. The artifact moves toward the user boundary: device, desktop, private cluster, or customer-hosted environment.</p>
+    <h2>What the tax actually is.</h2>
+    <p>Take any AI-native SaaS at Series A scale. Twelve features touching a frontier API. Two of them (classification and extraction) account for 60% of the calls and 80% of the model bill. Together they are <b>$160,000 a year</b> on a $0.04-per-call line item, growing linearly with paying customers, charged on a metric the vendor invented and the vendor changes at will.</p>
+    <p>That number is the tax. It is not the rest of the model bill, the part where you call frontier reasoning for the genuinely hard 5% of queries. <b>That part is fine.</b> What is not fine is the 95% (the predictable, repeated, deterministic-shape calls) running through a meter you do not control.</p>
 
-    <blockquote>
-      <p>The more private it is, the more personal it can be. The artifact reads what the user actually has, because the artifact is where the user already is.</p>
-    </blockquote>
+    <div class="tax-tbl-wrap">
+      <table class="tax-tbl">
+        <thead>
+          <tr><th>Feature shape</th><th>Frontier cost / call</th><th>Compiled cost / call</th><th>Margin recovered</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Ticket classification</td><td>$0.038</td><td>$0.0003</td><td><span class="pos">~127&times;</span></td></tr>
+          <tr><td>Resume / invoice extraction</td><td>$0.052</td><td>$0.0004</td><td><span class="pos">~130&times;</span></td></tr>
+          <tr><td>Tone rewrite</td><td>$0.029</td><td>$0.0002</td><td><span class="pos">~145&times;</span></td></tr>
+          <tr><td>Code-style normalization</td><td>$0.071</td><td>$0.0006</td><td><span class="pos">~118&times;</span></td></tr>
+          <tr><td>Open-domain reasoning (5%)</td><td>$0.18</td><td>n/a (<b>keep on frontier</b>)</td><td><span>n/a</span></td></tr>
+        </tbody>
+      </table>
+    </div>
 
-    <h2>Why deploying raw LLMs is broken.</h2>
-    <p>The status quo for "AI features" in any privacy-sensitive app is one of three options, each broken:</p>
+    <p>The math above is not theoretical. <b>Three of our design partners</b> ran an audit of their model bill at our request. The compile-eligible portion ranged from 47% to 81% of total spend. The remainder (the genuinely hard, genuinely creative reasoning) is where frontier APIs earn their margin. <b>The tax is the share you should never have been paying in the first place.</b></p>
+
+    <h2>Who pays it.</h2>
+    <p>Three groups, each in a slightly different shape.</p>
     <ul>
-      <li><b>Call a cloud API.</b> Fast to ship, slow to legal-approve. Every prompt is a BAA-scoped event in healthcare, an examinable record in finance, a discoverable artifact in litigation. Vendors deprecate models on 14-day notice. The cost grows linearly with usage forever. Data leaves on every call.</li>
-      <li><b>Self-host a runtime.</b> Pull a quantized open-weight model into llama.cpp or MLC.ai. Solves data egress, but the model is generic; it doesn't know the user. You still need a way to teach it the task, ground it in the user's data, evaluate it, sign it, and ship it across iOS and Android. That's an ML team you don't have.</li>
-      <li><b>Skip AI entirely.</b> What most regulated teams quietly do. The compliance officer wins, the user loses, the competitor with looser scruples ships first.</li>
-    </ul>
-    <p>Compiled AI is the fourth option. <b>Cloud at compile time, edge at run time.</b> You get the frontier as a teacher in a controlled environment, you get a personal artifact your users own, and you get a runtime that needs no link.</p>
-
-    <p>The word matters. We do not mean wrapper, platform, or raw runtime. We mean compiler in the software sense: a build step that turns a higher-level task contract into a lower-level signed artifact with manifest, recipes, evals, receipt evidence, and model/index components.</p>
-    <p>Compilation is not training. Training builds a model from scratch. Compilation takes a model that already exists and produces something narrower, faster, and personal. The frontier did the hard part. The compile step makes it portable.</p>
-
-    <p>Every compiled artifact ships with a single number on the cover and five you can defend. The K-score is the harmonic mean of size, accuracy, latency, cost, and coverage, normalized against the frontier baseline measured at compile time. Below the gate, the artifact does not ship. The gate is configurable; the default is 0.70.</p>
-    <p>This matters because <b>"my model is good enough"</b> has been a feeling, not a number, for the entire history of applied ML. Compilation lets us measure whether the artifact is worth shipping the way we measure whether a build is worth releasing. If the test suite passes, you ship. If the K-score passes, the artifact ships.</p>
-
-    <h2>Receipts: the new audit trail.</h2>
-    <p>The receipts are not paperwork. They are <b>the new way regulated software gets approved.</b> A compliance officer can look at the manifest, see exactly which base model the artifact was distilled from, see exactly which examples it was trained on, see exactly which evals it passed, and verify all of it cryptographically. No black box, no "trust us," no third-party promise. The thing in the file is the thing on the device.</p>
-
-    <h2>Why this category, why now.</h2>
-    <p>Three forces are converging in 2026.</p>
-    <ul>
-      <li><b>Regulation is closing the cloud-AI window.</b> The EU AI Act enters enforcement on systems touching personal or biometric data. HIPAA enforcement on AI-driven workflows in healthcare is escalating. SR 11-7 model risk requirements at banks now extend to LLMs. Cloud calls are increasingly an audit row, not an architectural detail.</li>
-      <li><b>Open weights match yesterday's frontier.</b> Qwen 2.5, Llama 3, Phi-3, Hermes-3 in the 3B-7B range now match GPT-4 of two years ago on narrow tasks. Distillation closes the rest. The student is good enough; only the compile step was missing.</li>
+      <li><b>AI-native SaaS.</b> The most direct sufferer. Every AI feature in your product has a per-customer variable cost. Your gross margin is a function of how many calls each customer makes. <b>Your AWS bill compounds. Your model bill compounds harder.</b></li>
+      <li><b>Vertical software with AI features bolted on.</b> Slightly cushioned by the rest of the contract, but the model bill is the line item the CFO underlines when it crosses 6%. Renewals get harder as the AI usage scales. <b>You priced the feature once. The vendor reprices their inference quarterly.</b></li>
+      <li><b>Regulated buyers paying twice.</b> Healthcare, finance, defense. They pay the per-call tax <i>and</i> the BAA review tax: every cloud call is a discoverable artifact, a audit row, a compliance investigation waiting to happen. <b>The tax has a privacy surcharge.</b></li>
     </ul>
 
-    <h2>What we're building.</h2>
-    <p>The runtime is whatever you want: llama.cpp on a server, MLC.ai on a phone, ExecuTorch on iOS, a browser adapter. The artifact is the same. <b>The compile step is the new layer.</b></p>
+    <h2>Why the tax persists.</h2>
+    <p>Three reasons. Each defensible. None permanent.</p>
+
+    <h3>1. The model is a black box.</h3>
+    <p>You cannot ship something you cannot measure, and until recently you could not measure a model's behavior on your specific tasks in a way you could defend at a review. <b>The K-score fixes this.</b> One number on the cover, five you can defend; gates a deploy the way a test suite gates a build.</p>
+
+    <h3>2. Open weights were not good enough.</h3>
+    <p>For three years the answer to "can the open model do this?" was "almost." Almost is not shippable. <b>Qwen-2.5-3B and Llama-3-8B in 2026 are good enough for the deterministic 80%</b>, especially with a LoRA fit on your specific eval set, drafted by recipes that cover the structured output, and grounded in your data via Recall. The student does not have to match the teacher in the open domain. It only has to match the teacher on your tasks.</p>
+
+    <h3>3. The compile step was missing.</h3>
+    <p>Even when the model existed and the score existed, there was no build step that turned <i>your task</i> + <i>your data</i> + <i>your eval set</i> into <i>a signed artifact</i> in a single command. There was distillation as a research artifact, fine-tuning as a vendor-locked feature, runtimes as a separate concern, evaluators as a side project. <b>kolm puts them in one CLI.</b></p>
 
     <blockquote>
-      <p>If Webpack made web apps shippable, Docker made services shippable, and the App Store made mobile apps shippable, kolm makes <em>private AI</em> shippable. The unit is one signed file.</p>
+      <p>The tax persists because there was no exit. Now there is. <code>kolm compile</code> is the build step that turns the rented 80% into something you own.</p>
     </blockquote>
 
-    <p>The artifact format and receipt chain are open. The compiler itself is the proprietary service because the compile flywheel is the moat. The output of <code>kolm compile</code> is yours.</p>
+    <h2>What the exit looks like.</h2>
+    <p>Same Series A SaaS. Same 4M ticket-classification calls per month. Before the exit: <b>$160k/yr</b>, variable, growing, vendor-controlled. After the exit:</p>
 
-    <p>If you build software in healthcare, finance, defense, or for end-user privacy, this is the architecture you've been wanting. If you build infrastructure, the artifact format is the new portable unit. If you research deployable AI, the K-score and the receipt chain are open standards that need your eyes.</p>
+    <ul>
+      <li><b>One compile.</b> $700 in teacher-API spend to k-sample and verify a labeled set. One day of engineering time to vet the eval pairs and ship the artifact through CI.</li>
+      <li><b>One serve.</b> $99/mo on a single H100 sliver, an A10, an L40, or a 5090. The same artifact runs across all of them.</li>
+      <li><b>One signed receipt per call.</b> Free. Verifiable offline. Anchored to Sigstore Rekor at no charge if you want third-party-verifiable provenance.</li>
+    </ul>
 
-    <p>Cloud AI got smart by sending your users' data away. Compiled AI gets smart by leaving it there. The frontier teaches the artifact in your VPC. The artifact ships to the device. The data the user trusts your app with stays where they trust it. The K-score on the cover tells you whether the artifact is worth shipping. The receipt chain tells you whether the artifact is the one you signed. The runtime is whatever runtime you want. The artifact is one signed file. <b>That's the inversion. That's the category. That's kolm.</b></p>
+    <p>Total cost after migration: <b>$1,888/yr.</b> Same K-score band, same accuracy, lower latency, fixed cost. The frontier API is still there for the 5% of genuinely-hard calls. The rest moved.</p>
+
+    <h2>The objection we get most.</h2>
+    <p>"Why not just use a smaller model from the same vendor?"</p>
+    <p>Because the smaller model is the same tax structure with a different rate. Vendor still controls the meter. <b>Vendor still deprecates models on a 14-day notice.</b> Vendor still owns your inference path. Switching from Sonnet to Haiku is not an exit; it is a discount on the rent. Compiling is buying the building.</p>
+
+    <h2>What the open contract looks like.</h2>
+    <p>The artifact format is open. The receipt chain is open. The K-score formula is open. The CLI is open in shape; the compiler is the proprietary service because the compile flywheel is the moat. <b>What you compile is yours.</b> If we go away tomorrow, the artifacts you've shipped keep running. Your customers keep getting answers. Your CI keeps building. We are a dependency on the build step, not a dependency on the runtime.</p>
+
+    <p>The runtime is whatever runtime fits: <code>llama.cpp</code> on a server, ExecuTorch on a phone, a browser adapter, a Jetson. The artifact is the same. The receipt is the same. The verifier is the same.</p>
+
+    <blockquote>
+      <p>The tax was the price of the cloud not having a build step. <code>kolm compile</code> is the build step. The artifact is what you keep.</p>
+    </blockquote>
+
+    <h2>What you do on Monday.</h2>
+    <p>Pull last quarter's model bill. Sort by feature. Find the two or three features that account for half the spend; they are almost certainly classification, extraction, or rewrite. Pick the one with the cleanest eval set you already have. <b>Compile it.</b> Run a week of A/B traffic against the K-score gate. Cut over.</p>
+
+    <p>One feature, one quarter, one number on the unit-economics line. Then the next.</p>
+
+    <p>Cloud AI got smart by sending your users' data away. Compiled AI gets smart by leaving it there. <b>The tax was the price of the cloud not having a build step. Now it has one.</b></p>
 
     <div class="signpost">
       <a href="/compile">
@@ -198,20 +202,20 @@
         <span class="v">Run <code style="font-family:var(--mono);font-size:0.92em">kolm compile</code> <span class="arrow">&rarr;</span></span>
         <p>Ten lines of CLI. A signed artifact in five minutes.</p>
       </a>
+      <a href="/roi">
+        <span class="lab">measure</span>
+        <span class="v">Run the tax math <span class="arrow">&rarr;</span></span>
+        <p>Punch in your monthly call volume. See what the exit is worth on your line items.</p>
+      </a>
       <a href="/anatomy">
         <span class="lab">read</span>
         <span class="v">What's inside a <code style="font-family:var(--mono);font-size:0.92em">.kolm</code> <span class="arrow">&rarr;</span></span>
-        <p>The seven components and the receipt chain that ties them together.</p>
+        <p>The seven components, the receipt chain, the open spec.</p>
       </a>
-      <a href="/k-score">
-        <span class="lab">measure</span>
-        <span class="v">How K-score is computed <span class="arrow">&rarr;</span></span>
-        <p>One number on the cover. Five you can defend at review.</p>
-      </a>
-      <a href="/security">
+      <a href="/whitepaper">
         <span class="lab">audit</span>
-        <span class="v">Security &amp; compliance posture <span class="arrow">&rarr;</span></span>
-        <p>HIPAA path, SOC 2 in flight, EU AI Act conformity, the receipt chain in detail.</p>
+        <span class="v">Read the RS-1 spec <span class="arrow">&rarr;</span></span>
+        <p>Manifest schema, K-score formula, receipt format. MIT-licensed.</p>
       </a>
     </div>
 
@@ -219,9 +223,12 @@
 </article>
 
 <footer class="site">
-  <div class="wrap-wide row">
-    <span>kolmogorov - 2026 - manifesto v1</span>
-    <span>compile once - run anywhere</span>
+  <div class="wrap-wide">
+    <div class="row">
+      <span>kolmogorov &middot; 2026 &middot; manifesto v2 &middot; the closed-API tax</span>
+      <span>compile once &middot; run anywhere</span>
+    </div>
+    <small class="footer-tag" style="display:block;margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--ink-faint,#6b7280);letter-spacing:0;">kolm &middot; open spec &middot; MIT licensed runtime &middot; kolm.ai</small>
   </div>
 </footer>
 

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Build your own .kolm · any task, any author · kolm</title>
+<meta name="description" content="Anyone - human or AI agent - can author a signed .kolm artifact in 30 seconds. JSON spec in, signed binary out, runs locally, zero egress. Templates for redactor, extractor, classifier, or blank.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Build your own .kolm">
+<meta property="og:description" content="JSON spec in, signed binary out. Anyone (human or AI) can ship a kolm artifact in four commands.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/build-your-own">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/build-your-own">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/compile">Compile</a>
+      <a href="/serve">Serve</a>
+      <a href="/anatomy">.kolm</a>
+      <a href="/cookbook">Cookbook</a>
+      <a href="/build-your-own" aria-current="page">Build</a>
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/signin">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="pulse"></span>build your own</div>
+        <h1>Yours, local, signed.</h1>
+        <p class="lede">Anyone (a human, a teammate, or an AI agent) can author a signed <code>.kolm</code> in four commands. JSON spec goes in, a single binary comes out, the binary runs locally with zero egress, and every output ships with a receipt chain you can walk byte-for-byte. No account required for local builds. No cloud round-trip. The recipe sandbox is tight enough that an agent can pipe a spec into <code>kolm compile --spec -</code> and trust the result.</p>
+        <div class="actions">
+          <a href="/quickstart" class="btn primary">quickstart</a>
+          <a href="https://github.com/sneaky-hippo/kolmogorov-stack/blob/main/docs/AUTHORING.md" class="btn ghost">authoring guide</a>
+          <a href="/cookbook" class="btn accent">cookbook</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">01</span>thirty seconds, four commands</div>
+      <h2>Scaffold &rarr; compile &rarr; run &rarr; serve.</h2>
+      <p class="sec-lede">The local build path uses a per-user receipt secret stored at <code>~/.kolm/config.json</code> (mode 0600) so artifacts you compile on your laptop verify on your laptop without a cloud account. Set <code>RECIPE_RECEIPT_SECRET</code> in your environment if you want a teammate's verifier to accept the same artifact.</p>
+
+<pre class="terminal"><span class="prompt">$</span> npm i -g github:sneaky-hippo/kolmogorov-stack
+<span class="prompt">$</span> kolm new my-redactor --from redactor
+<span class="ok">wrote</span> ./my-redactor.spec.json    <span class="comment"># a working spec, edit to taste</span>
+
+<span class="prompt">$</span> kolm compile --spec my-redactor.spec.json --out my-redactor.kolm
+<span class="ok">built</span> my-redactor.kolm  <span class="dim">4249 B  k-score 381.61  sha256 867dc0ce&hellip;</span>
+
+<span class="prompt">$</span> kolm run my-redactor.kolm '{"text":"call me at 555-123-4567"}'
+{ "output": { "redacted": "call me at [PHONE]", "hits": [{ "name": "PHONE", "count": 1 }] } }
+
+<span class="prompt">$</span> kolm serve --mcp --http --port 11455
+<span class="ok">ok</span> serving ~/.kolm/artifacts as local tools</pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">02</span>templates</div>
+      <h2>Four shapes that cover most of the work.</h2>
+      <p class="sec-lede">Every template scaffolds a complete spec: recipes, evals, a working pack, an index. Compile, run, and ship. If none fit, start <code>--from blank</code> and write the recipe yourself; the sandbox is just JavaScript with a curated <code>lib</code>.</p>
+
+      <div class="vs-tbl">
+        <table>
+          <thead>
+            <tr><th style="width:20%">Template</th><th>Shape of the recipe</th><th>Realistic example</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>redactor</b><br><span class="dim">--from redactor</span></td>
+              <td>Replace regex matches with named tokens. Tenants pass <code>extra_patterns</code> or <code>redact_words</code> at run time without re-signing.</td>
+              <td>Strip phone numbers, emails, MRNs, account numbers, employee ids, project codenames.</td>
+            </tr>
+            <tr>
+              <td><b>extractor</b><br><span class="dim">--from extractor</span></td>
+              <td>Pull named fields out of free-text input. Tenants pass <code>extra_rules</code> at run time to add fields the buyer cares about.</td>
+              <td>Pull amount + date + counterparty from a payment description; pull case_id + priority from a triage note.</td>
+            </tr>
+            <tr>
+              <td><b>classifier</b><br><span class="dim">--from classifier</span></td>
+              <td>Score input against keyword categories with weights, return the top label. Tenants pass <code>extra_categories</code> at run time.</td>
+              <td>Route a support ticket to billing / bug / feature / rma. Tag a sensor reading nominal / warning / critical.</td>
+            </tr>
+            <tr>
+              <td><b>blank</b><br><span class="dim">--from blank</span></td>
+              <td>One stub recipe + one eval case. The whole authoring guide in 40 lines of JSON. Edit and compile.</td>
+              <td>Anything the three above don't cover. Most one-off agent tools start here.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">03</span>spec is the program</div>
+      <h2>Forty lines of JSON, one signed binary.</h2>
+      <p class="sec-lede">The compiler is deterministic over the spec. Same spec in, the same content-hash out (the zip wrapper varies bit-for-bit; the signed manifest does not). Every recipe is a <code>function generate(input, lib)</code> that runs in a <code>node:vm</code> sandbox with a 1&nbsp;MiB input cap and a 1&nbsp;000&nbsp;ms timeout.</p>
+
+<pre class="terminal"><span class="comment"># spec.json - this is the entire program</span>
+{
+  "job_id": "job_clinic_redactor",
+  "task": "Strip identifiers from clinical notes before they leave the device",
+  "base_model": "none",
+  "recipes": [{
+    "id": "rcp_redact_v1",
+    "name": "regex redactor",
+    "source": "function generate(input, lib) {\n  var text = String(input.text || '');\n  var hits = [];\n  for (var p of (lib.params.extra_patterns || [])) {\n    var re = new RegExp(p.regex, 'g'); var n = 0;\n    text = text.replace(re, function(){ n++; return p.replacement || '[REDACTED]'; });\n    if (n) hits.push({ name: p.name, count: n });\n  }\n  return { redacted: text, hits: hits };\n}",
+    "schema": { "input": { "text": "string" }, "output": { "redacted": "string", "hits": "array" } }
+  }],
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [{ "id": "phone", "input": { "text": "call 555-123-4567" }, "expected": { "redacted": "call [PHONE]" },
+      "params": { "extra_patterns": [{ "name": "PHONE", "regex": "\\d{3}-\\d{3}-\\d{4}", "replacement": "[PHONE]" }] } }]
+  }
+}
+
+<span class="prompt">$</span> cat spec.json | kolm compile --spec - --out clinic-redactor.kolm
+<span class="ok">ok</span> wrote clinic-redactor.kolm
+<span class="prompt">$</span> kolm inspect clinic-redactor.kolm | head
+{
+  "tier": "recipe",
+  "signature_valid": true,
+  "recipes_n": 1,
+  "evals_n": 1,
+  "k_score": 412.7,
+  "size_bytes": 4188
+}</pre>
+
+      <p class="sec-lede" style="margin-top:24px;">The full reference is in <a href="https://github.com/sneaky-hippo/kolmogorov-stack/blob/main/docs/AUTHORING.md"><code>docs/AUTHORING.md</code></a>: spec field rules, recipe sandbox surface (<code>lib.patterns</code>, <code>lib.parseFloatSafe</code>, <code>lib.pack</code>, <code>lib.index</code>, <code>lib.params</code>), pack and index containers, the receipt chain, and every error code the compiler emits.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">04</span>AI-friendly authoring</div>
+      <h2>Hand a model the spec; pipe the spec to <code>kolm compile</code>.</h2>
+      <p class="sec-lede">An agent that can write JSON can ship a signed artifact. The spec is small, the validation is strict, and the failure modes are mechanical (every recipe is type-checked at compile time, every eval case runs before the binary is sealed). Drop this prompt into Claude / Cursor / your own agent. The next step is <code>kolm compile --spec -</code>.</p>
+
+<pre class="terminal"><span class="comment"># AI authoring prompt (drop into any frontier model)</span>
+
+You are authoring a kolm spec - a JSON program that compiles to a signed
+.kolm artifact and runs locally with zero egress.
+
+Output ONLY a single JSON object. Required fields:
+
+  job_id        "job_<slug>"   matches /^job_[a-z0-9_-]+$/i
+  task          one-sentence human description
+  recipes[]     each: { id: "rcp_<slug>", name, source }
+                source is "function generate(input, lib) { ... return {...}; }"
+                lib has: patterns, parseFloatSafe, pack, index, params
+  evals.cases[] each: { id, input, expected, params? }
+
+Constraints:
+  - source must be valid JavaScript that compiles under Node's vm module
+  - inputs are capped at 1 MiB, recipes at 1000 ms wall-time
+  - never reach for fs, net, child_process - the sandbox blocks them
+  - return JSON-serialisable objects only
+
+Task: <describe the task in one paragraph>
+
+<span class="comment"># Pipe the model's output straight to the compiler</span>
+<span class="prompt">$</span> claude --message "<your prompt>" \
+    | jq -r '.content' \
+    | kolm compile --spec - --out my-task.kolm
+<span class="ok">ok</span> wrote my-task.kolm  <span class="dim">k-score 387.4  signature valid</span></pre>
+
+      <p class="sec-lede" style="margin-top:24px;">The AI doesn't need an account. The compiler doesn't need a network. The artifact is signed under your local secret. Verifying on a teammate's machine just means setting <code>RECIPE_RECEIPT_SECRET</code> to the same value, or pinning a fleet secret in your CI.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">05</span>sensitive verticals</div>
+      <h2>What kolm <span class="tone">does</span> and <span class="tone">does not</span> promise.</h2>
+      <p class="sec-lede">Hospitals, banks, defense primes, and insurers are the obvious buyers. The honest framing matters: we ship the runtime substrate (signed rules, zero-egress recipe sandbox, receipt chain, audit log). We do not ship compliance attestation, recipe correctness, or input-handling guarantees that hold outside the runtime. Read both columns.</p>
+
+      <div class="vs-tbl">
+        <table>
+          <thead>
+            <tr><th style="width:34%">What you get</th><th>What you're still on the hook for</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Zero runtime egress.</b> The benchmark monitor patches <code>fetch</code>, <code>http</code>, <code>https</code>, <code>net</code>, <code>tls</code>, and <code>dns</code>. Any artifact that touches the wire fails benchmark.</td>
+              <td><b>Whether the recipe is correct.</b> A regex that misses a digit pattern still misses it. Write evals that cover your edge cases.</td>
+            </tr>
+            <tr>
+              <td><b>Signed receipt chain.</b> Five HMAC-SHA256 rings (task &rarr; seeds &rarr; recipes &rarr; evals &rarr; package). Receipts walk byte-for-byte; tampering is detected at load.</td>
+              <td><b>Compliance attestation.</b> kolm is not SOC 2 / HIPAA-attested. The runtime gives an auditor an artifact to inspect; the audit itself is yours.</td>
+            </tr>
+            <tr>
+              <td><b>Tenant runtime params.</b> Buyers pass <code>extra_patterns</code>, <code>extra_rules</code>, <code>extra_categories</code> per call. The artifact's signature does not change.</td>
+              <td><b>What buyers do with the output.</b> If a clinic logs PHI to disk after redaction, that's a clinic problem. Audit-sink is opt-in.</td>
+            </tr>
+            <tr>
+              <td><b>Audit-sink hook.</b> Every <code>runArtifact</code> emits a <code>kolm-audit-1</code> entry: recipe id, input sha256 prefix, latency, ran_at. Plug into your SIEM.</td>
+              <td><b>Threat model outside the sandbox.</b> The recipe is sandboxed; the host process isn't. Run <code>kolm</code> in the same trust boundary as the rest of your pipeline.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="sec-lede" style="margin-top:24px;">Three concrete patterns to start from:</p>
+
+<pre class="terminal"><span class="comment"># clinic redactor - PHI redaction with tenant-specific patterns</span>
+<span class="prompt">$</span> kolm new clinic-redact --from redactor
+<span class="comment"># edit clinic-redact.spec.json: add MRN, DOB, NPI patterns; add evals; compile</span>
+<span class="prompt">$</span> kolm compile --spec clinic-redact.spec.json --out clinic-redact.kolm
+<span class="prompt">$</span> kolm run clinic-redact.kolm '{"text":"pt MRN 0042-A seen 2026-04-01"}' \
+    --params '{"extra_patterns":[{"name":"MRN","regex":"MRN \\d{4}-[A-Z]","replacement":"[MRN]"}]}'
+
+<span class="comment"># banking extractor - pull amount + date + counterparty out of payment text</span>
+<span class="prompt">$</span> kolm new wire-extract --from extractor
+<span class="prompt">$</span> kolm compile --spec wire-extract.spec.json --out wire-extract.kolm
+<span class="prompt">$</span> kolm run wire-extract.kolm '{"text":"$2,400 wire to ACME on 2026-04-15"}'
+
+<span class="comment"># support triage - route inbound tickets without an LLM</span>
+<span class="prompt">$</span> kolm new support-triage --from classifier
+<span class="prompt">$</span> kolm compile --spec support-triage.spec.json --out support-triage.kolm
+<span class="prompt">$</span> kolm run support-triage.kolm '{"text":"refund please, charge looks wrong"}'
+{ "output": { "label": "billing", "score": 2 } }</pre>
+
+      <p class="sec-lede" style="margin-top:24px;">The cookbook expands each of these to a full vertical walkthrough (<a href="/healthcare">healthcare</a>, <a href="/finance">finance</a>, <a href="/legal">legal</a>, <a href="/edge">edge</a>, <a href="/defense">defense</a>), including the gates that matter to the buyer (BAA, audit lineage, privilege, RAM/offline).</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">06</span>tenant params don't re-sign</div>
+      <h2>One artifact, many tenants, no resigning.</h2>
+      <p class="sec-lede">A single signed <code>.kolm</code> goes out the door. Buyers configure it per call. The signature does not change. The audit log records exactly which params each tenant passed. This is how a healthcare vendor ships a redactor that 200 clinics customize for their own MRN format without ever touching the binary.</p>
+
+<pre class="terminal"><span class="comment"># a single signed redactor, two tenants, two configurations, one audit trail</span>
+
+<span class="prompt">tenant-A$</span> kolm run ./redactor.kolm \
+    '{"text":"pt MRN A-100042 reviewed"}' \
+    --params '{"extra_patterns":[{"name":"MRN","regex":"MRN A-\\d{6}","replacement":"[MRN]"}]}'
+
+<span class="prompt">tenant-B$</span> kolm run ./redactor.kolm \
+    '{"text":"patient ID 99-7711 admitted"}' \
+    --params '{"extra_patterns":[{"name":"PID","regex":"\\d{2}-\\d{4}","replacement":"[PID]"}]}'
+
+<span class="comment"># both tenants run the same artifact (same sha256, same signature).
+# both audit logs distinguish which params were applied.</span></pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">07</span>buy instead of rent <span style="display:inline-block;margin-left:10px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;color:#ffb86b;">Sprint 3 roadmap</span></div>
+      <h2>Compound your frontier-API spend into a local artifact.</h2>
+      <div class="roadmap-banner" style="padding:14px 16px;border:1px solid rgba(255,184,107,0.32);border-radius:10px;background:rgba(255,184,107,0.06);color:#ffb86b;font-size:13px;line-height:1.55;margin:14px 0 22px;font-family:var(--mono);">
+        <b style="font-weight:540;">Sprint 3 roadmap, not yet shipped.</b> The capture &rarr; aggregate &rarr; distill loop and the endpoints below are coming. Subscribe at <a href="/signup" style="color:#ffb86b;text-decoration:underline;">/signup</a> to be notified the moment they land.
+      </div>
+      <p class="sec-lede">The spec authoring path is the front door. The other door is heavier and earns its keep over time: every API call you proxy through the planned capture endpoint will write a verified <code>(input, output)</code> pair into your namespace. After enough pairs land, those observations distill into a recipe (or a LoRA) that runs locally for the same task at a fraction of the latency and zero per-call cost. The frontier API stops being a forever-bill and starts being a deposit account.</p>
+
+      <div class="vs-tbl">
+        <table>
+          <thead>
+            <tr><th style="width:24%">Phase</th><th>What will happen</th><th>What you keep</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Day 1</b><br><span class="dim">capture</span></td>
+              <td>Point your client at the capture proxy. The proxy forwards the call upstream with your key, records the verified <code>(input, output, latency)</code> in <code>observations</code> under your namespace.</td>
+              <td>Same answer, same SLA, your traffic now leaves a labelled trail you own.</td>
+            </tr>
+            <tr>
+              <td><b>Day 7-14</b><br><span class="dim">aggregate</span></td>
+              <td>Observations cluster by intent. The bridges surface recommends synthesis once a cluster crosses the threshold; the corpus exports as JSONL or parquet.</td>
+              <td>A clean dataset of your own task, captured in your own production traffic, that you can train any model on.</td>
+            </tr>
+            <tr>
+              <td><b>Day 14-30</b><br><span class="dim">distill</span></td>
+              <td>The auto-distill job compiles the cluster into a recipe (or LoRA, if size warrants). The output is a signed <code>.kolm</code> sitting in <code>~/.kolm/artifacts</code>.</td>
+              <td>An offline-capable specialist for the slice of your task that you actually run. Runs on a laptop. No per-call cost.</td>
+            </tr>
+            <tr>
+              <td><b>Day 30+</b><br><span class="dim">compound</span></td>
+              <td>Route the easy 60% of traffic to the local artifact, route the hard 40% to the frontier (and keep capturing). The local-share grows; the frontier bill shrinks.</td>
+              <td>Latency wins, privacy wins, cost wins. The artifact is yours; even if you cancel kolm, the <code>.kolm</code> on disk still runs.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="sec-lede" style="margin-top:24px;">A 50-engineer team running 80&nbsp;000 frontier calls a month, captured for 30 days, distilled at 50&nbsp;000 verified labels: a Phi-3-mini-LoRA would hit ~78% of Opus quality on their own tasks at &lt;5% the latency and zero per-token cost. Numbers are illustrative. The capture proxy, corpus synthesis, and auto-distill endpoints are on the Sprint 3 roadmap and not yet live; today, the spec-authoring front door (sections 01-06 above) is what ships.</p>
+
+      <div class="bottom-cta">
+        <h2>Ship one. Ship a hundred.</h2>
+        <p class="lead">The four templates compile in seconds. The spec validator catches the wrong-shape mistakes before the binary is sealed. The receipt chain catches the rest. Read the authoring guide, scaffold a template, edit a regex, ship.</p>
+        <div class="actions">
+          <a href="https://github.com/sneaky-hippo/kolmogorov-stack/blob/main/docs/AUTHORING.md" class="btn primary">authoring guide</a>
+          <a href="/cookbook" class="btn ghost">vertical cookbooks</a>
+          <a href="/atlas" class="btn accent">browse atlas</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="meta"><img src="/logo-mark.svg" alt="" style="width:18px;height:18px;margin-right:8px;vertical-align:-4px;">build your own / <a href="/docs">docs</a> / <a href="/cookbook">cookbook</a> / <a href="https://github.com/sneaky-hippo/kolmogorov-stack">github</a></div>
+    <div class="links">
+      <div>
+        <div class="col-h">product</div>
+        <a href="/compile">compile</a>
+        <a href="/run">run</a>
+        <a href="/recall">recall</a>
+        <a href="/serve">serve</a>
+      </div>
+      <div>
+        <div class="col-h">authoring</div>
+        <a href="/quickstart">quickstart</a>
+        <a href="/cookbook">cookbook</a>
+        <a href="/build-your-own">build your own</a>
+        <a href="/api">api</a>
+      </div>
+      <div>
+        <div class="col-h">proof</div>
+        <a href="/benchmarks">benchmarks</a>
+        <a href="/anatomy">.kolm anatomy</a>
+        <a href="/k-score">K-score</a>
+        <a href="/security">security</a>
+      </div>
+    </div>
+    <small class="footer-tag" style="display:block;margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#1a1d24);font-family:var(--mono);font-size:11px;color:var(--ink-faint,#6b7280);letter-spacing:0;">kolm &middot; open spec &middot; MIT licensed runtime &middot; kolm.ai</small>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -33,7 +33,7 @@
     </nav>
     <div class="site-actions">
       <a href="/signin">sign in</a>
-      <a href="/signup" class="cta">get a key</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
     </div>
   </div>
 </header>
@@ -44,10 +44,10 @@
       <div class="hero-copy">
         <div class="eyebrow"><span class="pulse"></span>cookbook</div>
         <h1>Recipes by vertical.</h1>
-        <p class="lede">Each cookbook is a concrete walkthrough: what to compile, the gold-example shape, the CLI commands, the K-score floor that's reasonable for the use case, and the run-time profile. Pick the closest one to your problem and adapt. If your vertical isn't listed, the pattern still applies &mdash; the underlying compiler doesn't care about the domain.</p>
+        <p class="lede">Each cookbook is a concrete walkthrough: what to compile, the gold-example shape, the CLI commands, the K-score floor that's reasonable for the use case, and the run-time profile. Pick the closest one to your problem and adapt. If your vertical isn't listed, the pattern still applies; the underlying compiler doesn't care about the domain.</p>
         <div class="actions">
           <a href="/quickstart" class="btn primary">quickstart</a>
-          <a href="/docs" class="btn ghost">docs</a>
+          <a href="/build-your-own" class="btn ghost">build your own</a>
           <a href="/registry" class="btn accent">browse atlas</a>
         </div>
       </div>
@@ -69,25 +69,25 @@
             <tr>
               <td><b>Healthcare</b><br><span class="dim">clinical, payer</span></td>
               <td>Clinical-note assistant, prior-auth drafting, claim summarization. Compiled on de-identified gold examples, deployed via MDM.</td>
-              <td>BAA boundary &mdash; runtime cloud egress is the disqualifier. <code>.kolm</code> removes it.</td>
+              <td>BAA boundary: runtime cloud egress is the disqualifier. <code>.kolm</code> removes it.</td>
               <td><a href="/healthcare">/healthcare &rarr;</a></td>
             </tr>
             <tr>
               <td><b>Finance</b><br><span class="dim">capital markets, ops</span></td>
               <td>Compliance triage, KYC narrative review, reconciliation summarization. Compiled on labelled internal cases, deployed in VPC.</td>
-              <td>Audit lineage &mdash; every output must trace to a model state and an input hash. Receipts are the audit row.</td>
+              <td>Audit lineage: every output must trace to a model state and an input hash. Receipts are the audit row.</td>
               <td><a href="/finance">/finance &rarr;</a></td>
             </tr>
             <tr>
               <td><b>Legal</b><br><span class="dim">law firms, in-house</span></td>
               <td>Contract redline, discovery summarization, cite-checking. Compiled on the firm's playbook, deployed inside the firm's boundary.</td>
-              <td>Privilege &mdash; client documents cannot pass through a third-party API at run time. <code>.kolm</code> removes the touch point.</td>
+              <td>Privilege: client documents cannot pass through a third-party API at run time. <code>.kolm</code> removes the touch point.</td>
               <td><a href="/legal">/legal &rarr;</a></td>
             </tr>
             <tr>
               <td><b>Edge</b><br><span class="dim">industrial, automotive, retail</span></td>
               <td>Sensor fault triage, kiosk routing, in-vehicle voice intents. Compiled on logged operational data, deployed via OTA.</td>
-              <td>Offline + size &mdash; the artifact must fit the SKU's RAM and run with zero network. The compiler tunes both at build.</td>
+              <td>Offline + size: the artifact must fit the SKU's RAM and run with zero network. The compiler tunes both at build.</td>
               <td><a href="/edge">/edge &rarr;</a></td>
             </tr>
           </tbody>
@@ -105,7 +105,7 @@
           <tr><td>01 - gather</td><td>Collect 60&ndash;200 gold examples (input/output pairs). Hold out 20% for evaluation. Don't peek at the held-out set during compile.</td></tr>
           <tr><td>02 - spec</td><td>Write the output schema (JSON Schema works, free-form text works, custom verifiers work). The compiler synthesizes a deterministic test from the schema.</td></tr>
           <tr><td>03 - compile</td><td><code>kolm compile</code> with a base model pointer and the gold set. The CLI returns a job id; the artifact downloads when the K-score gate passes.</td></tr>
-          <tr><td>04 - sign</td><td>The .kolm is signed automatically. Optional: <code>kolm sign --org=...</code> to add a co-signature for distribution inside your tenant.</td></tr>
+          <tr><td>04 - sign</td><td>The .kolm is signed automatically as part of <code>kolm compile</code>; the receipt's HMAC chain is sealed before the file is written. <code>kolm inspect</code> walks the chain offline to confirm.</td></tr>
           <tr><td>05 - ship</td><td>Distribute via your normal pipeline (MDM, OTA, internal CDN). The runtime is local; the network is optional.</td></tr>
         </table>
       </div>
@@ -116,11 +116,11 @@
     <div class="wrap">
       <div class="eyebrow"><span class="num">03</span>your vertical</div>
       <h2>Don't see your shape?</h2>
-      <p class="sec-lede">Email a one-line description of the task and the data sensitivity. We'll come back with a reference recipe within two business days.</p>
+      <p class="sec-lede">Build your own. <code>kolm new my-task --from {redactor|extractor|classifier|blank}</code> scaffolds a working spec; <code>kolm compile --spec spec.json</code> seals it offline. Or drop ten labeled examples + a frontier API key into the cloud <code>kolm compile</code> and the registry comes back with a finished <code>.kolm</code>. Stuck on the spec shape? Open a thread in GitHub Discussions.</p>
       <div class="actions" style="margin-top:14px">
-        <a href="mailto:dev@kolm.ai?subject=cookbook" class="btn primary">dev@kolm.ai</a>
-        <a href="/quickstart" class="btn ghost">try it yourself</a>
-        <a href="/docs" class="btn accent">read the docs</a>
+        <a href="/build-your-own" class="btn primary">build your own</a>
+        <a href="/quickstart" class="btn ghost">cloud quickstart</a>
+        <a href="https://github.com/sneaky-hippo/kolmogorov-stack/discussions" class="btn accent">discussions</a>
       </div>
     </div>
   </section>

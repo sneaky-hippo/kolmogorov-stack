@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>kolm vs Core ML, LiteRT, ONNX Runtime, and ExecuTorch</title>
-<meta name="description" content="A practical comparison of kolm against Core ML, LiteRT, ONNX Runtime Mobile, and ExecuTorch. kolm is the signed compiler and compliance layer above device runtimes.">
+<title>kolm vs OpenPipe, Predibase, Core ML, LiteRT, ONNX · kolm</title>
+<meta name="description" content="kolm head-to-head with distillation platforms (Predibase, OpenPipe, Fireworks, Together) and on-device runtimes (Core ML, LiteRT, ONNX, ExecuTorch). What kolm replaces.">
 <meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
 <meta property="og:site_name" content="kolm">
-<meta property="og:title" content="kolm vs on-device AI runtimes">
-<meta property="og:description" content="kolm is not another runtime. It is the signed compiler, artifact, receipt, and compliance layer above Core ML, LiteRT, ONNX Runtime, and ExecuTorch.">
+<meta property="og:title" content="kolm vs distillation platforms and device runtimes">
+<meta property="og:description" content="kolm is the signed compiler that emits a portable .kolm artifact. Distillation platforms emit hosted endpoints; runtimes emit nothing, they execute. kolm sits between.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://kolm.ai/compare">
 <meta property="og:image" content="https://kolm.ai/og-card.svg">
@@ -37,7 +37,7 @@
     </nav>
     <div class="site-actions">
       <a href="/signin">sign in</a>
-      <a href="/signup" class="cta">get a key</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
     </div>
   </div>
 </header>
@@ -95,7 +95,7 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="eyebrow"><span class="num">01</span>runtime landscape</div>
+    <div class="eyebrow"><span class="num">01</span>runtimes</div>
     <h2>Do not fight the runtimes. Compile for them.</h2>
     <p class="sec-lede">The serious competitors are free, mature, and backed by Apple, Google, Microsoft, Meta, and the PyTorch ecosystem. The credible kolm strategy is to sit above them as the workflow compiler, quality gate, and trust layer.</p>
 
@@ -148,7 +148,81 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="eyebrow"><span class="num">02</span>what must be true</div>
+    <div class="eyebrow"><span class="num">02</span>distillation platforms</div>
+    <h2>kolm vs Predibase, OpenPipe, Fireworks, Together.</h2>
+    <p class="sec-lede">The closest substitutes are the platforms that promise "fine-tuning made easy" or "your own model on our infrastructure." They emit a hosted endpoint. kolm emits a signed file you own. The two are usable together, but only one compounds when you stop paying.</p>
+
+    <div class="card" style="overflow-x:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Vendor</th>
+            <th>What you get</th>
+            <th>Where it runs</th>
+            <th>Lock-in</th>
+            <th>kolm position</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Predibase</strong></td>
+            <td>LoRA / adapter training on managed serverless infra; API endpoint per fine-tune.</td>
+            <td>Predibase cloud only.</td>
+            <td>Adapters portable; runtime inference is theirs.</td>
+            <td>kolm packages the same LoRA into a runnable <code>.kolm</code> with eval, K-score, and receipts. You can keep Predibase as a training back-end and ship a portable artifact.</td>
+          </tr>
+          <tr>
+            <td><strong>OpenPipe</strong></td>
+            <td>Production capture &rarr; auto-fine-tune &rarr; hosted inference; cost-reduction wedge.</td>
+            <td>OpenPipe cloud (or BYO inference).</td>
+            <td>The pipeline lives on OpenPipe. Pulling out is a project.</td>
+            <td>kolm is the artifact pipeline. Capture &rarr; verifier &rarr; LoRA &rarr; signed file. The artifact moves with you; the registry replaces the platform graph.</td>
+          </tr>
+          <tr>
+            <td><strong>Fireworks AI</strong></td>
+            <td>Fast inference for open weights, with fine-tuning in beta. The throughput-per-dollar play.</td>
+            <td>Fireworks cloud.</td>
+            <td>Endpoint stays on their infra. No artifact you can mail.</td>
+            <td>kolm is offline-first. The same compiled artifact runs on Fireworks (hot path) <em>and</em> on a phone (cold/private path). Fireworks becomes one optional run target, not the only one.</td>
+          </tr>
+          <tr>
+            <td><strong>Together AI</strong></td>
+            <td>Open-model serving + fine-tune; OSS-friendly, broad model menu.</td>
+            <td>Together cloud, with private deploy contracts.</td>
+            <td>Weights are theoretically portable; the running config and eval pipeline are not.</td>
+            <td>kolm packages weights + adapter + recipe pack + verifier + eval suite + receipts in one zip. The eval and the gate travel with the model; that's what makes it auditable, not just hostable.</td>
+          </tr>
+          <tr>
+            <td><strong>kolm</strong></td>
+            <td>A signed <code>.kolm</code> file: model + LoRA + recipe pack + recall index + eval suite + manifest + receipts.</td>
+            <td>Anywhere: laptop, phone, server, edge box, or any of the above platforms.</td>
+            <td>None. The artifact is yours; the registry is open (RS-1, MIT).</td>
+            <td>kolm is the compiler. The output is the product, not the endpoint.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid-3" style="margin-top:32px">
+      <div class="card">
+        <h3>What only kolm gives you</h3>
+        <p>A single signed file. Byte-identical reproducibility. K-score gate before emit. HMAC-chained receipts at every inference. Offline runtime as a first-class target.</p>
+      </div>
+      <div class="card">
+        <h3>What the platforms still do better</h3>
+        <p>Hosted GPU throughput at production scale, batched serving, vendor-managed uptime. If your only deploy target is a hosted API, a platform is a fine choice, but you do not own the artifact.</p>
+      </div>
+      <div class="card">
+        <h3>Useful combinations</h3>
+        <p>Use Together or Fireworks as a hot inference target for the same <code>.kolm</code> you ship to phones. Use Predibase as a training back-end behind a kolm bridge. Same artifact, more places it runs.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">03</span>what must be true</div>
     <h2>The bar for winning is evidence.</h2>
     <p class="sec-lede">A developer will not switch because a landing page says "private AI." They switch when kolm gives them a workflow they cannot get from free runtime tooling alone.</p>
 
@@ -179,7 +253,7 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="eyebrow"><span class="num">03</span>when not to use kolm</div>
+    <div class="eyebrow"><span class="num">04</span>when not to use kolm</div>
     <h2>Use the runtime directly when trust evidence is not the bottleneck.</h2>
     <p class="sec-lede">If you already have a model, a single platform, no regulated data, and no need for receipts, use the native runtime directly. kolm is for teams whose blocker is shipping a private AI workflow through engineering, security, legal, and procurement.</p>
 
@@ -202,11 +276,15 @@
 
 <section class="section">
   <div class="wrap">
-    <div class="eyebrow"><span class="num">04</span>primary sources</div>
-    <h2>Official runtime references.</h2>
-    <p class="sec-lede">This comparison is based on each runtime's official positioning, not secondhand summaries.</p>
+    <div class="eyebrow"><span class="num">05</span>primary sources</div>
+    <h2>Official references.</h2>
+    <p class="sec-lede">Every claim above is from the vendor's own positioning. Where a feature is in beta or behind contract, we say so; we do not editorialize.</p>
 
     <div class="grid-4">
+      <div class="card"><h3>Predibase</h3><p><a href="https://predibase.com">predibase.com</a></p></div>
+      <div class="card"><h3>OpenPipe</h3><p><a href="https://openpipe.ai">openpipe.ai</a></p></div>
+      <div class="card"><h3>Fireworks AI</h3><p><a href="https://fireworks.ai">fireworks.ai</a></p></div>
+      <div class="card"><h3>Together AI</h3><p><a href="https://together.ai">together.ai</a></p></div>
       <div class="card"><h3>Apple Core ML</h3><p><a href="https://developer.apple.com/documentation/CoreML">developer.apple.com/documentation/CoreML</a></p></div>
       <div class="card"><h3>Google LiteRT</h3><p><a href="https://ai.google.dev/edge/litert/">ai.google.dev/edge/litert</a></p></div>
       <div class="card"><h3>ONNX Runtime</h3><p><a href="https://onnxruntime.ai/docs">onnxruntime.ai/docs</a></p></div>
@@ -221,8 +299,8 @@
       <h2>Ship private AI as an artifact, not a promise.</h2>
       <p class="lead">Start with the compiler. Prove the artifact. Then dispatch to the best runtime for each device.</p>
       <div class="actions">
-        <a href="/signup" class="btn primary">get a key</a>
-        <a href="/docs" class="btn ghost">read docs</a>
+        <a href="/signup" class="btn primary">Get API key &rarr;</a>
+        <a href="/docs" class="btn ghost">Read quickstart &rarr;</a>
       </div>
     </div>
   </div>

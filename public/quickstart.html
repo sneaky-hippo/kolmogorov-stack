@@ -28,7 +28,7 @@
     </nav>
     <div class="site-actions">
       <a href="/signin">sign in</a>
-      <a href="/signup" class="cta">get a key</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
     </div>
   </div>
 </header>
@@ -41,10 +41,22 @@
         <h1>Compile your first artifact.</h1>
         <p class="lede">Install <code>kolm</code> from GitHub, point it at <code>https://kolm.ai</code>, log in with your key, compile a task, run it on your laptop, and inspect the receipt. Five minutes, no servers to spin up, your data stays put.</p>
         <div class="actions">
-          <a href="/signup" class="btn primary">get a key</a>
+          <a href="/signup" class="btn primary">Get API key &rarr;</a>
           <a href="/docs" class="btn ghost">full docs</a>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="section qs-fast" aria-label="60-second path">
+    <div class="wrap">
+      <h2>60-second path</h2>
+      <ol class="qs-steps-fast" style="list-style:decimal;padding-left:24px;line-height:2;color:var(--ink-mute,#b5bdb1);max-width:62ch">
+        <li><code>npm i -g @kolmogorov/kolm</code></li>
+        <li><code>kolm login</code></li>
+        <li><code>kolm compile "your task" --examples ./examples.jsonl</code></li>
+        <li><code>kolm run your-artifact.kolm "new input"</code></li>
+      </ol>
     </div>
   </section>
 
@@ -84,7 +96,8 @@ kolm login
       <h2>Turn the task into a <span class="tone">.kolm</span>.</h2>
       <p class="sec-lede">The v0 compiler posts the task and examples to the configured cloud, downloads the completed artifact, and stores it in <code>~/.kolm/artifacts</code> unless you pass <code>--out</code>.</p>
 
-<pre class="terminal"><span class="prompt">$</span> kolm compile "classify support tickets" \
+<pre class="terminal"><span class="dim"># Minimal example - replace with your task and files</span>
+<span class="prompt">$</span> kolm compile "classify support tickets" \
   --examples ./support.examples.jsonl \
   --data ./support-policy \
   --base-model qwen2.5-coder-7b-instruct-q4_0 \
@@ -107,7 +120,13 @@ kolm login
   "output": "bug",
   "latency_us": 82000,
   "k_score": { "composite": 0.92 },
-  "receipt": { "verifier": "pass" }
+  "receipt": {
+    "spec":            "rs-1",
+    "artifact_job_id": "cmp_8f2a...",
+    "recipe_id":       "rcp_classify_v1",
+    "version_id":      "ver_...",
+    "ran_at":          "2026-05-08T17:30:00Z"
+  }
 }
 
 <span class="prompt">$</span> kolm inspect ./artifacts/support-tickets.kolm
@@ -126,13 +145,15 @@ kolm login
 <span class="ok">ok</span> serving ~/.kolm/artifacts as local tools</pre>
 
       <div class="bottom-cta">
-        <h2>Next: understand the artifact.</h2>
-        <p class="lead">Read the anatomy page to see the manifest, recipe, recall, verifier, receipt, and signature layers.</p>
+        <h2>Next: build your own from scratch.</h2>
+        <p class="lead">The cloud compile path takes a task plus examples. The local spec path takes a JSON program any human or AI can write, compiles it offline, signs it under your local secret. Pick whichever fits the work.</p>
         <div class="actions">
-          <a href="/anatomy" class="btn primary">artifact anatomy</a>
-          <a href="/k-score" class="btn ghost">K-score methodology</a>
+          <a href="/build-your-own" class="btn primary">build your own</a>
+          <a href="/anatomy" class="btn ghost">artifact anatomy</a>
+          <a href="/k-score" class="btn accent">K-score methodology</a>
         </div>
       </div>
+      <p class="lead">See the full artifact structure on the <a href="/">homepage</a>.</p>
     </div>
   </section>
 </main>
@@ -156,6 +177,7 @@ kolm login
         <a href="/security">security</a>
       </div>
     </div>
+    <small class="footer-tag" style="display:block;margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#1a1d24);font-family:var(--mono);font-size:11px;color:var(--ink-faint,#6b7280);letter-spacing:0;">kolm &middot; open spec &middot; MIT licensed runtime &middot; kolm.ai</small>
   </div>
 </footer>
 

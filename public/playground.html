@@ -43,8 +43,9 @@ nav.top .signin .ar{color:var(--fg-3);margin-left:4px}
 main{max-width:980px;margin:0 auto;padding:48px var(--pad-x) 96px}
 .head{margin-bottom:32px}
 .eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);letter-spacing: 0;text-transform:uppercase;padding:6px 13px;border-radius:6px;background:linear-gradient(180deg,rgba(76,125,255,0.10),rgba(76,125,255,0.04));border:1px solid rgba(76,125,255,0.22);margin-bottom:22px}
-.eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 3px rgba(109,255,189,0.18);animation:pulse 1.6s ease-in-out infinite}
+.eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 3px rgba(109,255,189,0.18);animation:pulse 1.6s ease-in-out infinite;will-change:transform,opacity}
 @keyframes pulse{50%{transform:scale(1.3);opacity:0.6}}
+@media (prefers-reduced-motion: reduce){.eyebrow .dot{animation:none}}
 h1{font-size:clamp(34px,4.4vw,52px);font-weight:600;letter-spacing: 0;line-height:1.05;margin-bottom:14px}
 .lede{color:var(--fg-3);font-size:16.5px;line-height:1.6;max-width:600px}
 
@@ -115,7 +116,7 @@ footer .col a:hover{color:var(--fg)}
         <a href="/articles">Articles</a></li>
     <li><a href="/pricing">Pricing</a></li>
   </ul>
-  <a class="signin" href="/signin">Sign in <span class="ar">&rsaquo;</span></a>
+  <a class="signin" href="/signin">Sign in <span class="ar">&rarr;</span></a>
 </nav>
 
 <main>
@@ -138,7 +139,7 @@ footer .col a:hover{color:var(--fg)}
         <textarea id="inp" placeholder="hi, my order #4193 hasn't shipped yet"></textarea>
         <div class="actions">
           <div class="examples" id="examples"></div>
-          <button id="btn-run" class="btn btn-primary">Run <span class="ar">&rsaquo;</span></button>
+          <button id="btn-run" class="btn btn-primary">Run <span class="ar">&rarr;</span></button>
         </div>
 
         <div class="trace" id="trace">
@@ -188,10 +189,10 @@ footer .col a:hover{color:var(--fg)}
       ],
       gen: function(input){
         var i = (input || '').toLowerCase();
-        if (i.indexOf('refund') > -1) return 'Sorry about the size — happy to refund. Reply with your order number and I\'ll process it within one business day.';
-        if (i.indexOf('cancel') > -1) return 'No problem at all — cancellation is one click. Could you confirm the email on the account so I can pull it up-';
+        if (i.indexOf('refund') > -1) return 'Sorry about the size. Happy to refund: reply with your order number and I\'ll process it within one business day.';
+        if (i.indexOf('cancel') > -1) return 'No problem at all. Cancellation is one click. Could you confirm the email on the account so I can pull it up-';
         if (i.indexOf('ship') > -1 || i.indexOf('order') > -1) return 'Thanks for the patience. I\'m looking up #' + (i.match(/#-\d{3,}/) || ['the order'])[0].replace('#','') + ' now and will reply with carrier + ETA in this thread within an hour.';
-        return 'Thanks for reaching out — I\'ll look into this right now and reply with details shortly.';
+        return 'Thanks for reaching out. I\'ll look into this right now and reply with details shortly.';
       }
     },
     {

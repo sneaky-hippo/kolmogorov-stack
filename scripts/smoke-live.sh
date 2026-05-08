@@ -11,6 +11,7 @@ check() {
 
 has() { local body="$1"; local needle="$2"; echo "$body" | grep -q -e "$needle"; }
 hashi() { local body="$1"; local needle="$2"; echo "$body" | grep -qi -e "$needle"; }
+lacks() { local body="$1"; local needle="$2"; ! echo "$body" | grep -q -e "$needle"; }
 eq() { [ "$1" = "$2" ]; }
 
 echo "=== 1. Public + auto-mint ==="
@@ -558,7 +559,7 @@ check "/architecture mentions K-score gate" has "$ARCH" "K-score"
 
 # Launch page is honest
 LAUNCH=$(curl -s "$URL/launch")
-check "/launch SWE-bench reproducer" has "$LAUNCH" "SWE-bench"
+check "/launch K-score guarantee"    has "$LAUNCH" "K-score"
 check "/launch honesty bar"          has "$LAUNCH" "not"
 
 # Troubleshooting covers k-score-under-floor + verify-offline
@@ -649,7 +650,7 @@ check "homepage anti-incumbent"        has "$H2" 'Stop renting'
 check "homepage GitHub star button"    has "$H2" 'gh-star-count'
 check "homepage triple-pillar"         has "$H2" 'sovereignty\|verifiability\|portability'
 check "homepage registry counter"      has "$H2" 'registry/public/count'
-check "homepage compiler-positioning"  has "$H2" 'compiler is to code'
+check "homepage compiler-positioning"  has "$H2" 'kolm compiles a task into a working AI you own'
 check "homepage motion link"           has "$H2" '/motion'
 check "homepage roi link"              has "$H2" '/roi'
 
@@ -677,6 +678,149 @@ check "/roi teacher math"              has "$ROI" 'teacher'
 SM3=$(curl -s "$URL/sitemap.xml")
 check "sitemap has /motion"            has "$SM3" '/motion'
 check "sitemap has /roi"               has "$SM3" '/roi'
+
+echo ""
+echo "=== 29. v6.5 — depth pages + self-serve enterprise ==="
+for p in api failure-modes how-it-works; do
+  C=$(curl -s -o /dev/null -w "%{http_code}" "$URL/$p")
+  check "GET /$p -> 200" test "$C" = "200"
+done
+
+API_REF=$(curl -s "$URL/api")
+check "/api lists /v1/compile"         has "$API_REF" '/v1/compile'
+check "/api lists /v1/account/change-plan" has "$API_REF" '/v1/account/change-plan'
+check "/api lists error codes"         has "$API_REF" '402\|429'
+check "/api SDK install lines"         has "$API_REF" '@kolmogorov/kolm'
+
+FM=$(curl -s "$URL/failure-modes")
+check "/failure-modes FM-001"          has "$FM" 'FM-001'
+check "/failure-modes FM-303"          has "$FM" 'FM-303'
+check "/failure-modes operator action" has "$FM" 'k_score'
+
+HOW=$(curl -s "$URL/how-it-works")
+check "/how-it-works 8 stages"         has "$HOW" 'gather\|spec\|synthesize\|k-sample'
+check "/how-it-works verifier types"   has "$HOW" 'schema\|regex\|classifier'
+check "/how-it-works manifest"         has "$HOW" 'manifest'
+
+# Self-serve enterprise — no mailto in cloud, fa, integrations
+CLOUD=$(curl -s "$URL/cloud")
+check "/cloud Enterprise self-serve"   has "$CLOUD" '/signup?plan=enterprise'
+FAQ=$(curl -s "$URL/faq")
+check "/faq Enterprise self-serve"     has "$FAQ" 'self-serve'
+
+# Plans endpoint surfaces all 5 tiers
+PLANS=$(curl -s "$URL/v1/plans")
+check "/v1/plans free"                 has "$PLANS" '"id":"free"'
+check "/v1/plans starter"              has "$PLANS" '"id":"starter"'
+check "/v1/plans pro"                  has "$PLANS" '"id":"pro"'
+check "/v1/plans teams"                has "$PLANS" '"id":"teams"'
+check "/v1/plans enterprise"           has "$PLANS" '"id":"enterprise"'
+
+# Homepage three-box explainer
+check "homepage three-box 01 inputs"   has "$H2" 'three-box\|inputs'
+check "homepage three-box 02 compile"  has "$H2" 'kolm compiles'
+
+echo ""
+echo "=== 30. v7.0 day-1 — brand anchor + rent-vs-buy + /brand ==="
+B30_HOME=$(curl -s "$URL/")
+check "homepage H1 lock 'compiled to your task'" has "$B30_HOME" 'compiled to your task'
+check "homepage brand-anchor 'Built by Kolmogorov'" has "$B30_HOME" 'Built by .b.Kolmogorov'
+check "homepage rent-vs-buy thesis line"           has "$B30_HOME" 'local LoRA you keep forever'
+check "GET /brand -> 200"                          curl -fsS "$URL/brand"
+B30_BRAND=$(curl -s "$URL/brand")
+check "/brand 'kolm is the binary'"                hashi "$B30_BRAND" 'kolm.*is the binary\|the binary'
+check "/brand mentions Andrey Kolmogorov"          hashi "$B30_BRAND" 'andrey kolmogorov\|1965'
+check "/brand mentions RS-1 spec"                  has "$B30_BRAND" 'RS-1'
+B30_MAN=$(curl -s "$URL/manifesto")
+check "/manifesto has brand-anchor paragraph"      hashi "$B30_MAN" 'andrey kolmogorov\|smallest specialist program'
+B30_CSS=$(curl -s "$URL/brand-refresh.css")
+check "brand-refresh.css has footer brand-tag"     has "$B30_CSS" 'kolm is the binary'
+check "sitemap lists /brand"                       has "$(curl -s "$URL/sitemap.xml")" 'https://kolm.ai/brand'
+
+echo ""
+echo "=== 31. v7.0 day-2 — REM-era claims stripped, kolm-native framing ==="
+B31_AGENT=$(curl -s "$URL/use-cases/agentic-coding")
+check "agentic-coding has compiled-specialist H1"  has "$B31_AGENT" 'compiled coding specialist'
+check "agentic-coding mentions tools/call"         has "$B31_AGENT" 'tools/call'
+check "agentic-coding mentions tools/list"         has "$B31_AGENT" 'tools/list'
+check "agentic-coding mentions MCP"                has "$B31_AGENT" 'MCP'
+check "agentic-coding mentions K-score"            has "$B31_AGENT" 'K-score'
+check "agentic-coding pinned to fixture latency"   has "$B31_AGENT" 'p50.*274'
+check "agentic-coding NO SWE-bench claim"          lacks "$B31_AGENT" 'SWE-bench'
+check "agentic-coding NO +15.33pp"                 lacks "$B31_AGENT" '\+15\.33'
+check "agentic-coding NO n=150"                    lacks "$B31_AGENT" 'n=150'
+check "agentic-coding NO 'memory layer' claim"     lacks "$B31_AGENT" 'memory layer your'
+B31_UC=$(curl -s "$URL/use-cases")
+check "use-cases hub NO SWE-bench"                 lacks "$B31_UC" 'SWE-bench'
+check "use-cases hub NO +15.33pp"                  lacks "$B31_UC" '\+15\.33'
+check "GET /articles/how-we-benchmark -> 404"      bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' '$URL/articles/how-we-benchmark')\" = '404' ]"
+B31_SITEMAP=$(curl -s "$URL/sitemap.xml")
+check "sitemap NO how-we-benchmark"                lacks "$B31_SITEMAP" 'how-we-benchmark'
+B31_ARTICLES=$(curl -s "$URL/articles")
+check "articles index NO how-we-benchmark"         lacks "$B31_ARTICLES" 'how-we-benchmark'
+B31_BENCH=$(curl -s "$URL/benchmarks")
+check "benchmarks page kolm-benchmark-1 intact"    has "$B31_BENCH" 'kolm-benchmark-1'
+check "benchmarks page disowns SWE-bench leaderboard" has "$B31_BENCH" 'does not appear on the SWE-bench'
+
+echo ""
+echo "=== 32. v7.0 — /build-your-own + spec-driven authoring + 4 fixtures ==="
+B32_BYO=$(curl -s "$URL/build-your-own")
+check "/build-your-own resolves 200"               bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' '$URL/build-your-own')\" = '200' ]"
+check "/build-your-own H1 yours-local-signed"      has "$B32_BYO" 'Yours, local, signed'
+check "/build-your-own kolm new --from"            has "$B32_BYO" 'kolm new'
+check "/build-your-own kolm compile --spec"        has "$B32_BYO" 'kolm compile --spec'
+check "/build-your-own template: redactor"         has "$B32_BYO" '--from redactor'
+check "/build-your-own template: extractor"        has "$B32_BYO" '--from extractor'
+check "/build-your-own template: classifier"       has "$B32_BYO" '--from classifier'
+check "/build-your-own template: blank"            has "$B32_BYO" '--from blank'
+check "/build-your-own AI-friendly section"        has "$B32_BYO" 'AI-friendly authoring'
+check "/build-your-own honest sensitive caveat"    has "$B32_BYO" 'is not SOC 2 / HIPAA-attested\|compliance attestation'
+check "/build-your-own rent-vs-buy section"        has "$B32_BYO" 'buy instead of rent\|capture frontier API\|distill the cluster'
+check "/build-your-own links AUTHORING.md"         has "$B32_BYO" 'docs/AUTHORING.md'
+check "/build-your-own links cookbook"             has "$B32_BYO" 'href="/cookbook"'
+check "sitemap lists /build-your-own"              has "$(curl -s "$URL/sitemap.xml")" 'https://kolm.ai/build-your-own'
+B32_HOME=$(curl -s "$URL/")
+check "homepage CTA links /build-your-own"         has "$B32_HOME" 'href="/build-your-own"'
+B32_QS=$(curl -s "$URL/quickstart")
+check "quickstart CTA links /build-your-own"       has "$B32_QS" 'href="/build-your-own"'
+B32_COOK=$(curl -s "$URL/cookbook")
+check "cookbook CTA links /build-your-own"         has "$B32_COOK" 'href="/build-your-own"'
+B32_DOCS=$(curl -s "$URL/docs")
+check "docs CTA links /build-your-own"             has "$B32_DOCS" 'href="/build-your-own"'
+check "benchmarks page lists 4 fixtures"           has "$B31_BENCH" 'redactor.kolm'
+check "benchmarks page lists extractor"            has "$B31_BENCH" 'extractor.kolm'
+check "benchmarks page lists classifier"           has "$B31_BENCH" 'classifier.kolm'
+
+echo ""
+echo "=== 33. v7.0 — Stripe billing gate ==="
+# Paid signup: tenant must be provisioned on FREE quota with pending_plan set,
+# never on the paid quota directly. This is the "no-paid-without-paying" gate.
+B33_SIG=$(curl -sX POST "$URL/v1/signup" -H 'Content-Type: application/json' \
+  -d "{\"email\":\"stripegate$(date +%s)@smoke.test\",\"plan\":\"pro\"}")
+check "paid signup quota = free (10000)"          has "$B33_SIG" '"quota":10000'
+check "paid signup pending_plan = pro"            has "$B33_SIG" '"pending_plan":"pro"'
+check "paid signup billing_required = true"       has "$B33_SIG" '"billing_required":true'
+check "paid signup plan = free at provision"      has "$B33_SIG" '"plan":"free"'
+B33_KEY=$(echo "$B33_SIG" | grep -oE 'ks_[a-z0-9]+' | head -1)
+
+# change-plan to free (downgrade) flips immediately.
+B33_DOWN=$(curl -sX POST "$URL/v1/account/change-plan" -H "Content-Type: application/json" \
+  -H "X-API-Key: $B33_KEY" -d '{"plan":"free"}')
+check "change-plan to free returns ok=true"       has "$B33_DOWN" '"ok":true'
+check "change-plan to free returns plan=free"     has "$B33_DOWN" '"plan":"free"'
+check "change-plan to free no billing"            has "$B33_DOWN" '"billing_required":false'
+
+# change-plan to a paid tier that has no Stripe link returns 503 (this is the
+# expected state on a fresh deploy where STRIPE_PAYMENT_LINK_* are unset).
+# In CI we accept either 503 (no link) or 200 with billing_url (link configured).
+B33_UP=$(curl -sX POST "$URL/v1/account/change-plan" -H "Content-Type: application/json" \
+  -H "X-API-Key: $B33_KEY" -d '{"plan":"pro"}')
+check "change-plan to pro never auto-flips"       lacks "$B33_UP" '"plan":"pro"'
+
+# Webhook endpoint exists (returns 503 if secret unset, 400 if signed wrong).
+B33_WH=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/v1/stripe/webhook" \
+  -H 'Content-Type: application/json' -d '{"id":"evt_smoke","type":"test"}')
+check "webhook reachable (503 or 400)"            bash -c "[ '$B33_WH' = '503' ] || [ '$B33_WH' = '400' ]"
 
 echo ""
 echo "================================================"

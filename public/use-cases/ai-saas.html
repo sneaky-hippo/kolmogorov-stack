@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AI-native SaaS · kolm</title>
+<meta name="description" content="The 90%-deterministic features paying frontier prices. Compile each one once, ship the artifact in your own infra, charge a flat rate.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm · AI-native SaaS">
+<meta property="og:description" content="Stop paying GPT-class margins on your most predictable features. Compile them once, run them everywhere, charge a flat rate.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/use-cases/ai-saas">
+<link rel="canonical" href="https://kolm.ai/use-cases/ai-saas">
+<meta property="og:image" content="https://kolm.ai/img/brand-og.png">
+<meta property="twitter:card" content="summary_large_image">
+<meta property="twitter:image" content="https://kolm.ai/img/brand-og.png">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#4c7dff;--accent-soft:rgba(76,125,255,0.10);--good:#7ef0d2;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand span{font-weight:540;font-size:16px}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .cta{display:inline-flex;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540}
+  @media(max-width:720px){header.site nav{display:none}}
+
+  section.hero{padding:88px 0 56px;position:relative;overflow:hidden}
+  section.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 900px 460px at 22% 12%,rgba(76,125,255,0.10),transparent 60%);pointer-events:none}
+  section.hero .wrap{position:relative}
+  .crumbs{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:var(--ink-faint)}
+  .crumbs a:hover{color:var(--ink-mute)}
+  .crumbs .sep{color:var(--ink-faint);opacity:0.5}
+  .crumbs .here{color:var(--accent)}
+  h1{margin:14px 0 22px;font-size:clamp(36px,5.4vw,58px);line-height:1.05;font-weight:500;max-width:18ch;letter-spacing:0}
+  h1 .tone{color:var(--accent)}
+  p.lede{margin:0 0 28px;font-size:clamp(16px,1.3vw,18.5px);line-height:1.55;color:var(--ink-mute);max-width:60ch}
+  p.lede b{color:var(--ink);font-weight:540}
+  p.lede code{font-family:var(--mono);font-size:0.9em;background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--ink)}
+  .cta-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  a.btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);border-radius:6px;padding:11px 18px;font-size:14px;font-weight:540;transition:background 120ms}
+  a.btn-primary:hover{background:#fff}
+  a.btn-link{display:inline-flex;align-items:center;gap:6px;color:var(--ink);padding:11px 14px;font-size:14px;font-weight:500;transition:color 120ms}
+  a.btn-link:hover{color:var(--accent)}
+
+  section{padding:80px 0}
+  section + section{border-top:1px solid var(--line)}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .eyebrow .num{color:var(--accent)}
+  h2{margin:0 0 18px;font-size:clamp(24px,2.8vw,34px);line-height:1.12;font-weight:540;max-width:24ch;letter-spacing:0}
+  h2 .tone{color:var(--accent)}
+  p.sec-lede{margin:0 0 36px;font-size:15.5px;line-height:1.55;color:var(--ink-mute);max-width:62ch}
+
+  .pain{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:880px){.pain{grid-template-columns:1fr}}
+  .pain-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:22px;display:flex;flex-direction:column;min-height:184px}
+  .pain-card .lab{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;color:var(--ink-faint)}
+  .pain-card .big{margin:14px 0 10px;font-size:36px;font-weight:540;line-height:1;color:var(--ink)}
+  .pain-card .big .u{font-size:13px;font-weight:400;color:var(--ink-mute);margin-left:4px}
+  .pain-card p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+  .pain-card p b{color:var(--accent);font-weight:540}
+
+  .triplets{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:880px){.triplets{grid-template-columns:1fr}}
+  .trip{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:24px}
+  .trip .icn{display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:6px;background:var(--accent-soft);color:var(--accent);font-family:var(--mono);font-size:14px;font-weight:540;margin-bottom:16px}
+  .trip h3{margin:0 0 10px;font-size:17px;font-weight:540;line-height:1.3;color:var(--ink)}
+  .trip p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+  .trip p b{color:var(--ink);font-weight:500}
+
+  .term{background:var(--bg-elev);border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;box-shadow:0 30px 80px -30px rgba(0,0,0,0.6)}
+  .term .hd{padding:12px 18px;border-bottom:1px solid var(--line);background:rgba(0,0,0,0.25);display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--ink-mute)}
+  .term .hd .dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good)}
+  .term pre{margin:0;padding:24px 26px;font-family:var(--mono);font-size:13px;line-height:1.6;color:var(--ink);overflow-x:auto;white-space:pre}
+  .term .pmt{color:var(--accent)}
+  .term .cm{color:var(--ink-faint)}
+  .term .ok{color:var(--good)}
+  .term .ng{color:var(--bad)}
+
+  .econ{display:grid;grid-template-columns:1fr 1fr;gap:14px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  @media(max-width:720px){.econ{grid-template-columns:1fr}}
+  .econ > div{padding:28px;background:var(--bg-elev)}
+  .econ > div + div{border-left:1px solid var(--line)}
+  @media(max-width:720px){.econ > div + div{border-left:none;border-top:1px solid var(--line)}}
+  .econ .lab{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;color:var(--ink-faint)}
+  .econ .big{margin:8px 0 6px;font-size:30px;font-weight:540;color:var(--ink)}
+  .econ .big.acc{color:var(--accent)}
+  .econ p{margin:8px 0 0;font-size:13.5px;color:var(--ink-mute);line-height:1.55}
+
+  .closing{padding:100px 0;position:relative;text-align:center}
+  .closing::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 700px 400px at 50% 50%,rgba(76,125,255,0.08),transparent 60%);pointer-events:none}
+  .closing .wrap{position:relative}
+  .closing h2{margin:0 auto 24px;max-width:22ch;font-size:clamp(28px,4vw,44px)}
+  .closing .cta-row{justify-content:center}
+
+  footer{border-top:1px solid var(--line);padding:48px 0 36px;color:var(--ink-faint);font-size:12.5px}
+  footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:24px}
+  @media(max-width:720px){footer .cols{grid-template-columns:1fr 1fr;gap:24px}}
+  footer h4{font-size:11px;color:var(--ink-mute);text-transform:uppercase;margin:0 0 10px;font-weight:540}
+  footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+  footer ul a{color:var(--ink-faint);transition:color 120ms}
+  footer ul a:hover{color:var(--ink)}
+  footer .legal{padding-top:18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap"><div class="row">
+    <div class="left">
+      <a class="brand" href="/" aria-label="kolm home"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div></div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs">
+      <a href="/use-cases">use cases</a>
+      <span class="sep">/</span>
+      <span class="here">UC-02 &middot; AI-native SaaS</span>
+    </div>
+    <h1>The 90%-deterministic features paying <span class="tone">frontier prices.</span></h1>
+    <p class="lede">Every AI-native SaaS has a handful of features that <b>do the same shape of thing every time</b> (classify, extract, reformat, score). They make 60% of the calls and burn 80% of the model bill. <b>kolm</b> compiles each one once and ships you a <code>.kolm</code> artifact you serve from your own infra at fixed cost.</p>
+    <div class="cta-row">
+      <a href="/signup?plan=pro" class="btn-primary">Start Pro &rarr;</a>
+      <a href="/roi" class="btn-link">ROI calculator <span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">01</span> &middot; the gross-margin tax</div>
+    <h2>Where SaaS gross margin <span class="tone">goes to die.</span></h2>
+    <p class="sec-lede">Pricing rounds usually expose this in the fundraise: AI features that should be 80%-margin SaaS plumbing end up at 30% because every customer call hits a frontier API. The fix is not a smaller model. The fix is the right artifact.</p>
+    <div class="pain">
+      <div class="pain-card">
+        <div class="lab">Cost per task</div>
+        <div class="big">$0.04<span class="u">/ call</span></div>
+        <p>Typical Sonnet/GPT-class call for a 1.5k-input / 600-output extraction task. <b>Pure variable cost,</b> charged on every customer click.</p>
+      </div>
+      <div class="pain-card">
+        <div class="lab">Marginal kolm cost</div>
+        <div class="big">$0.0003<span class="u">/ call</span></div>
+        <p>3B-class Specialist serving the same task. <b>~130&times; cheaper</b> on a $99/mo GPU sliver after the one-time compile fee. Latency drops 3-8&times; alongside.</p>
+      </div>
+      <div class="pain-card">
+        <div class="lab">Compile cost (once)</div>
+        <div class="big">$200<span class="u">- $2k</span></div>
+        <p>The teacher-model bill to <b>k-sample &amp; verify</b> a labeled set big enough to LoRA-tune the student. Amortizes over the next million calls.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">02</span> &middot; what compiles cleanly</div>
+    <h2>The features built for <span class="tone">.kolm</span></h2>
+    <p class="sec-lede">Not every feature should be compiled. The criterion is honest: <b>does the task have a verifier?</b> If a deterministic check (regex, JSON schema, AST diff, exact match, BLEU&gt;cutoff) can distinguish a good output from a bad one, kolm can compile it.</p>
+    <div class="triplets">
+      <div class="trip">
+        <div class="icn">EX</div>
+        <h3>Extraction.</h3>
+        <p>Resume parsing, invoice line-items, contract clauses, support-ticket field-tagging. <b>JSON-schema verifiers</b> run in microseconds; the verifier is the spec.</p>
+      </div>
+      <div class="trip">
+        <div class="icn">CL</div>
+        <h3>Classification + routing.</h3>
+        <p>Intent detection, ticket routing, content moderation, lead scoring. <b>Confusion-matrix verifiers</b> over a held-out set, K-score gates production.</p>
+      </div>
+      <div class="trip">
+        <div class="icn">RW</div>
+        <h3>Rewrite + reformat.</h3>
+        <p>Tone shifting, summarization at fixed length, translation pairs you ship for, code-style normalization. <b>Reference-output verifiers</b> via BLEU/ROUGE thresholds.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">03</span> &middot; the migration</div>
+    <h2>Compile a feature in <span class="tone">90 seconds.</span></h2>
+    <p class="sec-lede">Bring 50-200 (input, expected) pairs from your prod logs. The compiler synthesizes the verifier, k-samples the teacher, fits a LoRA, runs the K-score gate, and signs the artifact.</p>
+    <div class="term" style="max-width:880px">
+      <div class="hd"><span class="dot"></span><span>~/myco-saas</span></div>
+      <pre><span class="cm"># 1. drop your eval pairs in</span>
+<span class="pmt">$</span> ls examples/
+ticket-router-train.jsonl    <span class="cm"># 200 pairs from prod logs</span>
+ticket-router-eval.jsonl     <span class="cm"># 50 holdout</span>
+
+<span class="cm"># 2. compile</span>
+<span class="pmt">$</span> kolm compile "route a support ticket to one of 12 queues" \
+    --examples examples/ticket-router-train.jsonl \
+    --eval examples/ticket-router-eval.jsonl \
+    --base qwen2.5-3b-instruct
+<span class="ok">✓</span> verifier synthesized: schema + label-set match (47 lines)
+<span class="ok">✓</span> k-sampled teacher (claude-opus-4-7) on 200 pairs
+<span class="ok">✓</span> LoRA fit: 14 min, 3 epochs, loss 0.18 → 0.04
+<span class="ok">✓</span> K-score: <span class="ok">94.2</span> (T 95.8 / C 91.1 / L 99.7)
+<span class="ok">✓</span> signed: ticket-router-1.0.0.kolm (1.4GB)
+
+<span class="cm"># 3. ship it</span>
+<span class="pmt">$</span> kolm serve ticket-router-1.0.0.kolm --port 8000 --mcp
+<span class="ok">▸</span> serving on http://localhost:8000  (cold start: 1.2s)</pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">04</span> &middot; the model after vs before</div>
+    <h2>One feature. <span class="tone">Eight months of margin.</span></h2>
+    <p class="sec-lede">Worked example: a Series A company processing 4M ticket-routing calls / month. Before kolm, that&rsquo;s a $160k/yr line item with growth-elastic exposure. After: a fixed $99/mo GPU and a one-time compile.</p>
+    <div class="econ">
+      <div>
+        <div class="lab">Before kolm &middot; SonnetX API</div>
+        <div class="big">$160,128<span style="font-size:13px;color:var(--ink-mute);font-weight:400">&nbsp;/ year</span></div>
+        <p>4M calls &times; $0.04/call. Variable. Grows with usage. Vendor pricing changes outside your control. Per-call latency 1.4s p50.</p>
+      </div>
+      <div>
+        <div class="lab">After kolm &middot; compiled Specialist</div>
+        <div class="big acc">$1,888<span style="font-size:13px;color:var(--ink-mute);font-weight:400">&nbsp;/ year</span></div>
+        <p>$99/mo GPU + $700 one-time compile. <b>Fixed.</b> Latency 180ms p50. K-score 94.2 monitored continuously, regressions block deploys.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">05</span> &middot; how it ships</div>
+    <h2>Three ways to serve <span class="tone">a .kolm.</span></h2>
+    <p class="sec-lede">Same artifact, three places it can run. The CI pipeline produces the artifact; what changes is where the inference happens.</p>
+    <div class="triplets">
+      <div class="trip">
+        <div class="icn">DC</div>
+        <h3>Your own GPU.</h3>
+        <p>Serve <b>.kolm</b> via <code>kolm serve</code> on a single H100 sliver, A10, L40, or 5090. OpenAI-compatible <code>/v1/chat/completions</code> + MCP. Drop-in replace your existing API client.</p>
+      </div>
+      <div class="trip">
+        <div class="icn">EG</div>
+        <h3>Edge / per-customer.</h3>
+        <p>Ship the artifact <b>to the customer&rsquo;s VPC</b> for their compliance posture. Same artifact, different infra. The receipt chain proves it&rsquo;s the same model.</p>
+      </div>
+      <div class="trip">
+        <div class="icn">CL</div>
+        <h3>kolm Cloud.</h3>
+        <p>Don&rsquo;t want to operate GPUs at all? <b>Cloud</b> serves your artifacts on managed infra, billed by request, with the same receipt chain. Same gross margin shape.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="closing">
+  <div class="wrap">
+    <h2>Stop renting your gross margin <span class="tone">from a closed model API.</span></h2>
+    <p class="sec-lede" style="margin:0 auto 28px;text-align:center">Every shipped Specialist is a margin you got back. Compile your three biggest cost-center features and watch the unit economics shift in a quarter.</p>
+    <div class="cta-row">
+      <a href="/signup?plan=pro" class="btn-primary">Start Pro &rarr;</a>
+      <a href="/roi" class="btn-link">Run the ROI math <span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <a class="brand" href="/" style="display:inline-flex;align-items:center;gap:9px;color:var(--ink);margin-bottom:10px"><span style="font-weight:540;font-size:15px">kolm</span></a>
+        <p style="font-size:12.5px;margin:0;max-width:36ch">The AI compiler. Compile any task into a signed Specialist you own.</p>
+      </div>
+      <div><h4>Product</h4><ul><li><a href="/compile">Compile</a></li><li><a href="/anatomy">.kolm format</a></li><li><a href="/k-score">K-score</a></li><li><a href="/benchmarks">Benchmarks</a></li><li><a href="/compare">Compare</a></li></ul></div>
+      <div><h4>Develop</h4><ul><li><a href="/api">API reference</a></li><li><a href="/whitepaper">Whitepaper</a></li><li><a href="/use-cases">Use cases</a></li><li><a href="/articles">Articles</a></li></ul></div>
+      <div><h4>Trust</h4><ul><li><a href="/security">Security</a></li><li><a href="/customers">Design partners</a></li><li><a href="/trust">Trust</a></li></ul></div>
+    </div>
+    <div class="legal"><span>&copy; 2026 Kolmogorov, Inc. &middot; the AI compiler</span></div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,8 +1,17 @@
 # kolm
 
-kolm is the private AI compiler: it turns a task, examples, and private data into a signed `.kolm` artifact with a manifest, verifier evidence, receipt chain, and runtime contract.
+The AI compiler. Compile a task into a signed `.kolm` artifact you own, run it offline on any device, verify every output.
 
-The product direction is simple: compile inside a controlled boundary, then run locally or at the edge with receipts and no runtime data egress. The current repo is the public web/API implementation plus the v0 artifact pipeline.
+```bash
+npm i -g @kolmogorov/kolm
+kolm login
+kolm compile "your task" --examples ./examples.jsonl
+kolm run your-artifact.kolm "new input"
+```
+
+You bring your own frontier API key. kolm uses it once, during compile. The result is a single signed file with model, examples, evaluator, and receipt chain. Runs on a laptop, phone, or in your VPC. Your data never moves.
+
+Live: https://kolm.ai · Open spec: [public/docs/rs-1.md](public/docs/rs-1.md) · MIT licensed.
 
 ## Status
 

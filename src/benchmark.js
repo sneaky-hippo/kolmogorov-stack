@@ -23,7 +23,7 @@ export async function benchmarkArtifact(artifactPath, opts = {}) {
     for (const c of cases) {
       for (let i = 0; i < runs; i++) {
         try {
-          const result = await runArtifact(artifactPath, c.input);
+          const result = await runArtifact(artifactPath, c.input, { params: c.params });
           latencies.push(result.latency_us);
           if (c.expected !== undefined) {
             graded++;
@@ -99,6 +99,7 @@ function benchmarkCases(bundle, input) {
       id: c.id || `case-${i + 1}`,
       input: c.input,
       expected: c.expected,
+      params: c.params,
     }));
   }
   if (input !== undefined) return [{ id: 'input-1', input, expected: undefined }];

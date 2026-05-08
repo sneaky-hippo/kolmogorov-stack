@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>API reference - kolm</title>
+<meta name="description" content="kolm HTTP API reference. Every endpoint, request schema, response schema, error code, and authentication path. Plain HTTP. Bearer auth. JSON in, JSON out.">
+<meta name="theme-color" content="#0b0d10">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm HTTP API reference">
+<meta property="og:description" content="Every kolm endpoint with request/response schemas. Plain HTTP, bearer auth, JSON.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/api">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/api">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .api-hero { padding: 56px 0 24px; }
+  .api-hero h1 { font-size: clamp(28px, 4vw, 44px); margin: 12px 0 14px; font-weight: 540; letter-spacing: -0.01em; }
+  .api-hero p { max-width: 64ch; color: var(--ink-mute, #b5bdb1); font-size: 15px; line-height: 1.6; }
+  .api-grid { display: grid; grid-template-columns: 240px 1fr; gap: 36px; padding: 24px 0 96px; }
+  @media (max-width: 880px) { .api-grid { grid-template-columns: 1fr; gap: 18px; } }
+  .api-toc { position: sticky; top: 88px; align-self: start; border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px; background: var(--bg-2, #11151b); font-family: var(--mono); font-size: 12px; }
+  .api-toc h4 { margin: 0 0 12px; font-size: 11px; text-transform: uppercase; color: var(--ink-faint, #737c73); letter-spacing: 0.05em; font-weight: 540; }
+  .api-toc a { display: block; color: var(--ink-mute, #b5bdb1); text-decoration: none; padding: 4px 0; border-radius: 4px; }
+  .api-toc a:hover { color: var(--violet, #4c7dff); }
+  .api-toc .grp { margin-top: 14px; }
+  .api-section { margin-bottom: 56px; }
+  .api-section h2 { margin: 0 0 14px; font-size: 22px; font-weight: 540; letter-spacing: -0.005em; }
+  .api-section .lede { color: var(--ink-mute, #b5bdb1); font-size: 14px; line-height: 1.6; max-width: 70ch; margin: 0 0 22px; }
+  .endpoint { border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2, #11151b); margin-bottom: 22px; overflow: hidden; }
+  .endpoint .ep-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); background: rgba(0,0,0,0.18); }
+  .endpoint .method { font-family: var(--mono); font-size: 11px; font-weight: 540; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .endpoint .method.get { background: rgba(76,125,255,0.12); color: #4c7dff; }
+  .endpoint .method.post { background: rgba(126,240,210,0.12); color: #7ef0d2; }
+  .endpoint .method.delete { background: rgba(255,107,145,0.12); color: #ff6b91; }
+  .endpoint .path { font-family: var(--mono); font-size: 13.5px; color: var(--ink, #faf2e1); }
+  .endpoint .auth-pill { margin-left: auto; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--line); color: var(--ink-faint, #737c73); }
+  .endpoint .auth-pill.bearer { color: #4c7dff; border-color: rgba(76,125,255,0.32); }
+  .endpoint .auth-pill.public { color: #7ef0d2; border-color: rgba(126,240,210,0.28); }
+  .endpoint .ep-body { padding: 18px 18px; }
+  .endpoint .ep-body p { margin: 0 0 10px; font-size: 13.5px; color: var(--fg-2, #c9c2b2); line-height: 1.55; }
+  .endpoint h5 { margin: 14px 0 6px; font-size: 11px; text-transform: uppercase; color: var(--ink-faint, #737c73); letter-spacing: 0.05em; font-weight: 540; font-family: var(--mono); }
+  .endpoint pre { margin: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,0.32); font-family: var(--mono); font-size: 12px; color: var(--ink, #faf2e1); line-height: 1.65; overflow-x: auto; }
+  .endpoint pre.req { border-color: rgba(76,125,255,0.20); }
+  .endpoint pre.res { border-color: rgba(126,240,210,0.20); }
+  .endpoint .errors { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-family: var(--mono); font-size: 12px; }
+  .endpoint .errors .code { color: #ff6b91; }
+  .endpoint .errors .desc { color: var(--ink-mute, #b5bdb1); }
+  .auth-block { padding: 22px 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2, #11151b); margin-bottom: 36px; }
+  .auth-block pre { margin: 8px 0 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 6px; background: rgba(0,0,0,0.32); font-family: var(--mono); font-size: 12px; color: var(--ink, #faf2e1); }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/compile">Compile</a>
+      <a href="/serve">Serve</a>
+      <a href="/anatomy">.kolm</a>
+      <a href="/k-score">K-score</a>
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/signin">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="api-hero">
+    <div class="wrap">
+      <div class="eyebrow"><span class="pulse"></span>HTTP API reference</div>
+      <h1>Every endpoint. Every schema.</h1>
+      <p>Plain HTTP. Bearer auth on private endpoints. JSON in, JSON out. Versioned at <code>/v1</code>. The CLI and SDKs wrap this surface; you can hit it directly with <code>curl</code>.</p>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <div class="api-grid">
+      <aside class="api-toc" aria-label="API table of contents">
+        <h4>Auth</h4>
+        <a href="#auth">Bearer keys</a>
+        <a href="#sessions">Browser sessions</a>
+        <a href="#errors">HTTP error codes</a>
+        <div class="grp">
+          <h4>Account</h4>
+          <a href="#signup">POST /v1/signup</a>
+          <a href="#signin">POST /v1/signin</a>
+          <a href="#account">GET /v1/account</a>
+          <a href="#change-plan">POST /v1/account/change-plan</a>
+          <a href="#cancel">POST /v1/account/cancel</a>
+          <a href="#delete">POST /v1/account/delete</a>
+          <a href="#rotate-key">POST /v1/account/rotate-key</a>
+          <a href="#plans">GET /v1/plans</a>
+        </div>
+        <div class="grp">
+          <h4>Compile</h4>
+          <a href="#compile-create">POST /v1/compile</a>
+          <a href="#compile-list">GET /v1/compile</a>
+          <a href="#compile-get">GET /v1/compile/:id</a>
+          <a href="#compile-download">GET /v1/compile/:id/.kolm</a>
+          <a href="#artifacts-list">GET /v1/artifacts</a>
+        </div>
+        <div class="grp">
+          <h4>Run</h4>
+          <a href="#run">POST /v1/run</a>
+          <a href="#wrap-verified">POST /v1/wrap/verified</a>
+          <a href="#recall">POST /v1/recall</a>
+          <a href="#embed">POST /v1/embed</a>
+        </div>
+        <div class="grp">
+          <h4>Receipts</h4>
+          <a href="#verify">POST /v1/receipts/verify</a>
+        </div>
+        <div class="grp">
+          <h4>Registry</h4>
+          <a href="#registry-public">GET /v1/registry/public</a>
+          <a href="#registry-export">GET /v1/registry/export</a>
+        </div>
+        <div class="grp">
+          <h4>Health</h4>
+          <a href="#health">GET /health</a>
+          <a href="#ready">GET /ready</a>
+        </div>
+      </aside>
+
+      <div>
+        <section class="api-section" id="auth">
+          <h2>Authentication</h2>
+          <p class="lede">Bearer-token auth on every <code>/v1</code> endpoint that touches tenant state. Public endpoints (health, public registry, receipts/verify) have no auth.</p>
+
+          <div class="auth-block">
+            <h5>Bearer keys</h5>
+            <pre>X-API-Key: ks_&lt;your-key&gt;
+# or, equivalently (for SDK compatibility):
+Authorization: Bearer ks_&lt;your-key&gt;</pre>
+            <p style="margin:10px 0 0;font-size:13px;color:var(--fg-2,#c9c2b2)"><code>X-API-Key</code> is the canonical header. <code>Authorization: Bearer</code> is also accepted for SDK compatibility. Issued at signup. Rotate via <code>POST /v1/account/rotate-key</code>. Stored as a <code>scrypt</code> hash - we never see your raw key after rotation.</p>
+          </div>
+
+          <div class="auth-block" id="sessions">
+            <h5>Browser sessions</h5>
+            <pre>Cookie: kolm_session=&lt;httpOnly-cookie&gt;</pre>
+            <p style="margin:10px 0 0;font-size:13px;color:var(--fg-2,#c9c2b2)">Web dashboard uses an httpOnly session cookie. SameSite=Lax, 30-day rolling. <code>POST /v1/session/login</code> issues; <code>POST /v1/session/logout</code> revokes.</p>
+          </div>
+        </section>
+
+        <section class="api-section" id="errors">
+          <h2>HTTP error codes</h2>
+          <p class="lede">Every endpoint returns errors as JSON: <code>{ "error": "&lt;message&gt;", "code": "&lt;machine_code&gt;", "request_id": "..." }</code>. Status codes follow standard HTTP semantics. <a href="/failure-modes" style="color:var(--violet,#4c7dff)">Failure modes</a> covers the operator action for each.</p>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:9px 18px;font-family:var(--mono);font-size:13px;color:var(--ink-mute,#b5bdb1);padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:var(--bg-2,#11151b)">
+            <code style="color:#7ef0d2">2xx</code><span>Success.</span>
+            <code style="color:#4c7dff">3xx</code><span>Redirect or not-modified.</span>
+            <code style="color:#ff6b91">400</code><span>Bad request: malformed body, missing fields, invalid types.</span>
+            <code style="color:#ff6b91">401</code><span>Missing or invalid bearer / session.</span>
+            <code style="color:#ff6b91">402</code><span>Quota exhausted on current plan. <a href="/pricing" style="color:var(--violet,#4c7dff)">Upgrade</a> or wait for reset.</span>
+            <code style="color:#ff6b91">403</code><span>Authenticated but not authorized (wrong tenant, signup disabled).</span>
+            <code style="color:#ff6b91">404</code><span>Not found.</span>
+            <code style="color:#ff6b91">409</code><span>Conflict: duplicate id, signature mismatch, version skew.</span>
+            <code style="color:#ff6b91">422</code><span>Semantically wrong: k-score below floor, verifier rejects.</span>
+            <code style="color:#ff6b91">429</code><span>Rate-limited. <code>Retry-After</code> header indicates when.</span>
+            <code style="color:#ff6b91">500</code><span>Server error. Includes a <code>request_id</code> you can quote in <a href="https://github.com/sneaky-hippo/kolmogorov-stack/issues" style="color:var(--violet,#4c7dff)">an issue</a>.</span>
+            <code style="color:#ff6b91">503</code><span>Upstream dependency unavailable (frontier API down, secret unset).</span>
+          </div>
+        </section>
+
+        <section class="api-section">
+          <h2>Account &amp; plans</h2>
+          <p class="lede">Self-serve provisioning, plan changes, cancellation, deletion. No mailto, no scoping calls.</p>
+
+          <div class="endpoint" id="signup">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/signup</span><span class="auth-pill public">public</span></div>
+            <div class="ep-body">
+              <p>Provisions a new tenant. Returns the bearer key plus the Stripe Payment Link for paid plans (or trial mode if the link isn't configured).</p>
+              <h5>Request</h5>
+              <pre class="req">{
+  "email": "you@example.com",
+  "name":  "your-org",
+  "plan":  "free | starter | pro | teams | enterprise"
+}</pre>
+              <h5>Response (201)</h5>
+              <pre class="res">{
+  "tenant": {
+    "id": "...",
+    "name": "your-org-x4f8",
+    "plan": "pro",
+    "quota": 100000,
+    "seats": 3,
+    "trial_ends_at": "2026-06-08T00:00:00Z"
+  },
+  "api_key": "ks_...",
+  "billing_url": "https://buy.stripe.com/...",
+  "billing_required": true
+}</pre>
+              <h5>Errors</h5>
+              <div class="errors">
+                <span class="code">400</span><span class="desc">valid email required</span>
+                <span class="code">403</span><span class="desc">public signup disabled (INVITE_ONLY=true)</span>
+                <span class="code">429</span><span class="desc">10 signups per IP per 24 hours exceeded</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="endpoint" id="signin">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/signin</span><span class="auth-pill public">public</span></div>
+            <div class="ep-body">
+              <p>Exchange an API key for a session cookie. Useful when wiring a web dashboard to an existing tenant key.</p>
+              <h5>Request</h5>
+              <pre class="req">{ "api_key": "ks_..." }</pre>
+              <h5>Response (200)</h5>
+              <pre class="res">{ "ok": true, "tenant": { "id": "...", "name": "...", "plan": "pro" } }</pre>
+              <h5>Errors</h5>
+              <div class="errors">
+                <span class="code">401</span><span class="desc">invalid api key</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="endpoint" id="account">
+            <div class="ep-head"><span class="method get">GET</span><span class="path">/v1/account</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Returns tenant metadata: plan, quota, seats, usage, trial_ends_at, signup time.</p>
+              <h5>Response</h5>
+              <pre class="res">{
+  "id": "...",
+  "name": "your-org",
+  "plan": "pro",
+  "quota": 100000,
+  "seats": 3,
+  "usage": { "compiles_30d": 12, "calls_30d": 8421 },
+  "trial_ends_at": null,
+  "created_at": "2026-05-01T00:00:00Z"
+}</pre>
+            </div>
+          </div>
+
+          <div class="endpoint" id="change-plan">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/account/change-plan</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Self-serve upgrade or downgrade. Returns the new Stripe Payment Link if the plan requires one. Free is always free.</p>
+              <h5>Request</h5>
+              <pre class="req">{ "plan": "teams" }</pre>
+              <h5>Response</h5>
+              <pre class="res">{
+  "tenant": { "id": "...", "plan": "teams", "quota": 1000000, "seats": 5 },
+  "billing_url": "https://buy.stripe.com/...",
+  "billing_required": true
+}</pre>
+              <h5>Errors</h5>
+              <div class="errors">
+                <span class="code">400</span><span class="desc">unknown plan</span>
+                <span class="code">401</span><span class="desc">missing/invalid bearer</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="endpoint" id="cancel">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/account/cancel</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Drops the tenant to the free tier at the end of the paid period. The key keeps working; quotas drop to free limits at period end.</p>
+              <h5>Response</h5>
+              <pre class="res">{ "ok": true, "downgrades_to": "free", "effective_at": "2026-06-01T00:00:00Z" }</pre>
+            </div>
+          </div>
+
+          <div class="endpoint" id="delete">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/account/delete</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Soft-deletes the tenant. The key stops working immediately. Artifacts already issued continue to verify.</p>
+              <h5>Request</h5>
+              <pre class="req">{ "confirm": "DELETE my-org" }</pre>
+              <h5>Response</h5>
+              <pre class="res">{ "ok": true, "deleted_at": "2026-05-08T17:30:00Z" }</pre>
+            </div>
+          </div>
+
+          <div class="endpoint" id="rotate-key">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/account/rotate-key</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Issues a fresh bearer key and revokes the previous one. The new key is shown once.</p>
+              <h5>Response</h5>
+              <pre class="res">{ "api_key": "ks_..." }</pre>
+            </div>
+          </div>
+
+          <div class="endpoint" id="plans">
+            <div class="ep-head"><span class="method get">GET</span><span class="path">/v1/plans</span><span class="auth-pill public">public</span></div>
+            <div class="ep-body">
+              <p>Static plan catalog: ids, prices, quotas, seat counts, billing-link availability.</p>
+              <h5>Response</h5>
+              <pre class="res">{
+  "plans": [
+    { "id": "free",       "label": "Developer",  "price_usd_month": 0,    "quota": 10000,    "seats": 1,  "self_serve": true, "billing_link_configured": false },
+    { "id": "starter",    "label": "Starter",    "price_usd_month": 9,    "quota": 50000,    "seats": 1,  "self_serve": true, "billing_link_configured": true },
+    { "id": "pro",        "label": "Pro",        "price_usd_month": 49,   "quota": 200000,   "seats": 1,  "self_serve": true, "billing_link_configured": true },
+    { "id": "teams",      "label": "Teams",      "price_usd_month": 149,  "quota": 1000000,  "seats": 5,  "self_serve": true, "billing_link_configured": true },
+    { "id": "business",   "label": "Business",   "price_usd_month": 1499, "quota": 5000000,  "seats": 15, "self_serve": true, "billing_link_configured": true },
+    { "id": "enterprise", "label": "Enterprise", "price_usd_month": 2999, "quota": 10000000, "seats": 25, "self_serve": true, "billing_link_configured": true }
+  ]
+}</pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="api-section">
+          <h2>Compile</h2>
+          <p class="lede">The orchestrator: synthesize a verifier, k-sample the frontier, fit a LoRA, observe deterministic patterns, sign, bundle. Returns a job id; polls become <code>.kolm</code> files.</p>
+
+          <div class="endpoint" id="compile-create">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/compile</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Starts a compile job. Synchronous compiles return when the artifact is ready; async returns a job id and you poll.</p>
+              <h5>Request</h5>
+              <pre class="req">{
+  "task":             "summarize patient intake notes for triage",
+  "examples":         [{"input": "...", "output": "..."}],
+  "corpus_namespace": "tenant/patient-corpus",
+  "base_model":       "qwen3-7b",
+  "k_score_floor":    0.85,
+  "mode":             "async"
+}</pre>
+              <h5>Response (202)</h5>
+              <pre class="res">{ "job_id": "cmp_8f2a...", "status": "queued", "poll": "/v1/compile/cmp_8f2a..." }</pre>
+              <h5>Errors</h5>
+              <div class="errors">
+                <span class="code">400</span><span class="desc">invalid task / examples / base_model</span>
+                <span class="code">402</span><span class="desc">compile quota exhausted on current plan</span>
+                <span class="code">422</span><span class="desc">k_score below floor - artifact gated, not signed</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="endpoint" id="compile-list">
+            <div class="ep-head"><span class="method get">GET</span><span class="path">/v1/compile</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>List recent compile jobs for the current tenant.</p>
+              <h5>Response</h5>
+              <pre class="res">{ "jobs": [
+  { "id": "cmp_...", "status": "ready", "k_score": 0.91, "size_mb": 142, "created_at": "..." },
+  { "id": "cmp_...", "status": "running", "stage": "k-sample", "created_at": "..." }
+]}</pre>
+            </div>
+          </div>
+
+          <div class="endpoint" id="compile-get">
+            <div class="ep-head"><span class="method get">GET</span><span class="path">/v1/compile/:id</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Job status. Stages: <code>queued &rarr; k-sample &rarr; verify &rarr; lora-fit &rarr; bundle &rarr; sign &rarr; ready</code>. <code>ready</code> means the artifact is downloadable.</p>
+              <h5>Response (ready)</h5>
+              <pre class="res">{
+  "id":           "cmp_8f2a...",
+  "status":       "completed",
+  "k_score":      0.913,
+  "size_mb":      142,
+  "manifest":     "sha256:...",
+  "signature":    "hmac-sha256:...",
+  "artifact_url": "/v1/compile/cmp_8f2a.../.kolm"
+}</pre>
+            </div>
+          </div>
+
+          <div class="endpoint" id="compile-download">
+            <div class="ep-head"><span class="method get">GET</span><span class="path">/v1/compile/:id/.kolm</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Streams the signed <code>.kolm</code> archive. Content-Type: <code>application/zip</code>. Includes manifest, recipes, evals, signature, receipt.</p>
+            </div>
+          </div>
+
+          <div class="endpoint" id="artifacts-list">
+            <div class="ep-head"><span class="method get">GET</span><span class="path">/v1/artifacts</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>List artifacts the tenant has compiled. Includes hash, size, base model, k-score, signing time.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="api-section">
+          <h2>Run</h2>
+          <p class="lede">Local-first. Use <code>kolm run</code> on the artifact when you can. The HTTP run endpoint is for the cloud runtime - same code path, different host.</p>
+
+          <div class="endpoint" id="run">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/run</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Execute a registered version (or concept) against an input. Returns the output, latency, cache flag, and an optional HMAC-bound receipt.</p>
+              <h5>Request</h5>
+              <pre class="req">{
+  "concept_id": "cpt_8f2a...",   // or "version_id": "ver_..."
+  "input":      { "note": "patient presents with..." },
+  "use_cache":  true,             // optional, defaults true
+  "receipt":    true              // optional, defaults true
+}</pre>
+              <h5>Response</h5>
+              <pre class="res">{
+  "output":     { "triage": "urgent", "confidence": 0.91 },
+  "version_id": "ver_...",
+  "latency_us": 142000,
+  "cache_hit":  null,
+  "receipt": {
+    "spec":            "rs-1",
+    "input_hash":      "sha256:...",
+    "output_hash":     "sha256:...",
+    "version_id":      "ver_...",
+    "runtime_version": "0.2.0",
+    "issued_at":       "2026-05-08T17:30:00Z",
+    "hmac":            "..."
+  }
+}</pre>
+            </div>
+          </div>
+
+          <div class="endpoint" id="wrap-verified">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/wrap/verified</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>k-sample a frontier model and pick the candidate that passes a deterministic verifier (test cases or recipe-as-judge). Drop-in shape for <code>messages.create</code>; <code>verified</code> is the kolm extension. Used during compile and as a standalone "verified inference" surface.</p>
+              <h5>Request</h5>
+              <pre class="req">{
+  "messages":          [{ "role": "user", "content": "extract invoice line items as JSON" }],
+  "system":            "You are a code generator...",   // optional
+  "model":             "claude-opus-4-7",
+  "max_tokens":        2048,                              // optional
+  "temperature":       0.7,                               // optional
+  "verified":          { "k": 4, "test_cases": [...] },  // or { judge_recipe_id, expected }
+  "corpus_namespace":  "tenant/patient-corpus"            // optional Recall grounding
+}</pre>
+              <h5>Response</h5>
+              <pre class="res">{
+  "id":          "wrap_...",
+  "model":       "claude-opus-4-7",
+  "role":        "assistant",
+  "stop_reason": "end_turn",                  // or "verifier_unsatisfied"
+  "content":     [{ "type": "text", "text": "..." }],
+  "_kolm": {
+    "verified":      true,
+    "chosen":        { "source": "...", "passes": 4, "total": 4 },
+    "candidates":    [...],
+    "cost_usd":      0.0123,
+    "elapsed_ms":    1840,
+    "recall_chunks": 0,
+    "receipt":       { "spec": "rs-1", "primitive": "verified-inference", ... }
+  }
+}</pre>
+            </div>
+          </div>
+
+          <div class="endpoint" id="recall">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/recall</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Top-k retrieval over a tenant corpus. Multimodal: text, image, audio, video, PDF.</p>
+              <h5>Request</h5>
+              <pre class="req">{
+  "namespace": "tenant/patient-corpus",
+  "query":     "patients reporting chest pain in the last week",
+  "k":         8
+}</pre>
+              <h5>Response</h5>
+              <pre class="res">{
+  "namespace": "tenant/patient-corpus",
+  "n":         3,
+  "chunks": [
+    { "path": "...", "snippet": "...", "score": 0.91 }
+  ]
+}</pre>
+            </div>
+          </div>
+
+          <div class="endpoint" id="embed">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/embed</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Tokenize-and-ingest absolute paths from a server-mounted corpus into a tenant namespace. Routes to the right embedder by modality. Server-mounted absolute paths only; SaaS upload is on the Sprint 2 roadmap.</p>
+              <h5>Request</h5>
+              <pre class="req">{
+  "namespace": "tenant/patient-corpus",
+  "paths":     ["/abs/path/to/doc1.pdf", "/abs/path/to/notes.md"],
+  "force":     false
+}</pre>
+              <h5>Response</h5>
+              <pre class="res">{ "indexed": 2, "skipped": 0, "namespace": "tenant/patient-corpus" }</pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="api-section">
+          <h2>Receipts</h2>
+          <p class="lede">Every <code>/v1/run</code> output ships with an HMAC-bound receipt. Anyone can re-verify offline. The verifier is part of the artifact; this endpoint is for convenience.</p>
+
+          <div class="endpoint" id="verify">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/receipts/verify</span><span class="auth-pill public">public</span></div>
+            <div class="ep-body">
+              <p>Verifies a receipt against the registry's published HMAC chain. Public - any auditor can call without a key.</p>
+              <h5>Request</h5>
+              <pre class="req">{ "receipt": { "kolm_version": "0.1", "artifact_hash": "...", "chain": [...], "signature": "..." } }</pre>
+              <h5>Response</h5>
+              <pre class="res">{
+  "verified": true,
+  "reasons":  [],
+  "mode":     "drive-by"   // or omitted for full-receipt mode
+}</pre>
+              <h5>Errors</h5>
+              <div class="errors">
+                <span class="code">400</span><span class="desc">malformed receipt</span>
+                <span class="code">409</span><span class="desc">signature does not match (tampered)</span>
+                <span class="code">410</span><span class="desc">receipt secret rotated - this receipt cannot be re-verified by us; verify offline against your archived secret</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="api-section">
+          <h2>Registry</h2>
+          <p class="lede">The public artifact and recipe index. Read-only on this surface; submit through the CLI or <code>/v1/publish</code>.</p>
+
+          <div class="endpoint" id="registry-public">
+            <div class="ep-head"><span class="method get">GET</span><span class="path">/v1/registry/public</span><span class="auth-pill public">public</span></div>
+            <div class="ep-body">
+              <p>Browse the public registry: featured recipes, base-model fingerprints, RS-1 spec entries.</p>
+            </div>
+          </div>
+
+          <div class="endpoint" id="registry-export">
+            <div class="ep-head"><span class="method get">GET</span><span class="path">/v1/registry/export</span><span class="auth-pill public">public</span></div>
+            <div class="ep-body">
+              <p>Bulk export of the registry as NDJSON. Rate-limited to 60/min/IP. Cache headers honored.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="api-section">
+          <h2>Health</h2>
+          <p class="lede">Probe endpoints. Use <code>/health</code> for liveness, <code>/ready</code> for readiness (dependencies + secrets).</p>
+
+          <div class="endpoint" id="health">
+            <div class="ep-head"><span class="method get">GET</span><span class="path">/health</span><span class="auth-pill public">public</span></div>
+            <div class="ep-body">
+              <p>Liveness probe. Always 200 unless the process is dead.</p>
+              <h5>Response</h5>
+              <pre class="res">{
+  "status":          "ok",
+  "version":         "0.2.0",
+  "library_version": "...",
+  "region":          "local",
+  "uptime_s":        81342,
+  "stats": {
+    "concepts":    12,
+    "versions":    34,
+    "syntheses":   8,
+    "invocations": 2104,
+    "tenants":     5
+  }
+}</pre>
+            </div>
+          </div>
+
+          <div class="endpoint" id="ready">
+            <div class="ep-head"><span class="method get">GET</span><span class="path">/ready</span><span class="auth-pill public">public</span></div>
+            <div class="ep-body">
+              <p>Readiness probe. Returns the state of all upstream dependencies (frontier API, registry, embedder, store, receipt secret). 200 when ready, 503 when a required check fails.</p>
+              <h5>Response</h5>
+              <pre class="res">{
+  "status":          "ready",
+  "production_like": false,
+  "checks": [
+    { "name": "receipt_secret",  "ok": true,  "required": true,  "label": "RECIPE_RECEIPT_SECRET" },
+    { "name": "anthropic_key",   "ok": true,  "required": false, "label": "ANTHROPIC_API_KEY" },
+    { "name": "store",           "ok": true,  "required": true,  "label": "store" }
+  ]
+}</pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="api-section">
+          <h2>SDKs</h2>
+          <p class="lede">Thin wrappers around this HTTP surface. Add one to your project; the underlying API is the same.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;font-family:var(--mono);font-size:12.5px">
+            <div style="padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2,#11151b)">
+              <div style="color:var(--violet,#4c7dff);text-transform:uppercase;font-size:10.5px;letter-spacing:0.05em;margin-bottom:6px">Node / TS</div>
+              <div style="color:var(--ink,#faf2e1)">npm i @kolmogorov/kolm</div>
+            </div>
+            <div style="padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2,#11151b)">
+              <div style="color:var(--violet,#4c7dff);text-transform:uppercase;font-size:10.5px;letter-spacing:0.05em;margin-bottom:6px">Python</div>
+              <div style="color:var(--ink,#faf2e1)">pip install kolm</div>
+            </div>
+            <div style="padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2,#11151b)">
+              <div style="color:var(--violet,#4c7dff);text-transform:uppercase;font-size:10.5px;letter-spacing:0.05em;margin-bottom:6px">CLI</div>
+              <div style="color:var(--ink,#faf2e1)">brew install kolm</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="meta"><img src="/logo-mark.svg" alt="" style="width:18px;height:18px;margin-right:8px;vertical-align:-4px;">kolm API reference / <a href="/docs">docs</a> / <a href="/quickstart">quickstart</a></div>
+    <div class="links">
+      <div>
+        <div class="col-h">surface</div>
+        <a href="/api">api reference</a>
+        <a href="/docs">docs</a>
+        <a href="/sdk.js">js sdk</a>
+        <a href="/glossary">glossary</a>
+      </div>
+      <div>
+        <div class="col-h">trust</div>
+        <a href="/security">security</a>
+        <a href="/status">status</a>
+        <a href="/privacy">privacy</a>
+        <a href="/terms">terms</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

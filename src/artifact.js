@@ -1,18 +1,33 @@
 // .kolm artifact packager.
 //
 // A `.kolm` is a signed zip containing:
-//   manifest.json     - task descriptor, hashes, training stats
-//   recipes.json      - deterministic draft pack (registry slice)
-//   model.gguf        - base model pointer (cloud-runtime stage 1) or
-//                       file (sprint 3 once the LoRA bridge ships)
-//   lora.bin          - LoRA delta (sprint 3 — empty placeholder today)
-//   index.sqlite-vec  - multimodal recall index (sprint 1 — empty placeholder
-//                       today; populated in sprint 1 once /v1/embed is live)
+//   manifest.json     - task descriptor, hashes, training stats, tier
+//   recipes.json      - deterministic recipe pack (executed in a vm sandbox)
+//   evals.json        - eval cases that ship inside the artifact
+//   model.gguf        - base-model pointer record. v0.1 is recipe-tier so this
+//                       is metadata only; the LoRA tier will resolve it to
+//                       real weights at first launch.
+//   lora.bin          - artifact-bound binary slot. v0.1 carries an optional
+//                       behaviour pack here (KOLMPACK\x01 magic + length-
+//                       prefixed UTF-8 JSON body — patterns, lookup tables,
+//                       rule packs that recipes call into via `lib.pack`).
+//                       The LoRA tier (v0.2+) will swap this for a real
+//                       weight delta. Empty buffer when no pack is supplied.
+//   index.sqlite-vec  - artifact-bound lookup slot. v0.1 carries an optional
+//                       JSON lookup index (KOLMIDX\x01 magic + length-prefixed
+//                       UTF-8 JSON body — keyword→recipe maps, embedded
+//                       lookup tables that recipes call via `lib.index`).
+//                       The retrieval tier (v0.3+) will swap this for a real
+//                       sqlite-vec database. Empty buffer when no index supplied.
 //   signature.sig     - HMAC chain bound to the artifact receipt
+//   receipt.json      - 5-step HMAC chain, body sig, anchor list
 //
-// We do NOT embed real model weights in the v0 artifact. The cloud signs
-// a *pointer* to the base model + per-recipe drafts + recall namespace
-// + LoRA pointer. `kolm run` resolves those pointers at first launch.
+// Tenant-runtime customisation: callers of runArtifact can supply a `params`
+// object that recipes read via `lib.params`. The artifact does NOT embed
+// tenant data — params are passed at run time, never re-signed, never
+// persisted by the runtime. This lets any buyer customise an artifact for
+// their use case (extra patterns, vertical-specific rules, allowlists) while
+// the signed artifact stays the same byte-exact bundle the issuer published.
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -22,6 +37,45 @@ import archiver from 'archiver';
 import { effectiveReceiptSecret, isProductionRuntime } from './env.js';
 
 const ARTIFACT_SPEC = 'kolm-1';
+const PACK_MAGIC = 'KOLMPACK\x01';
+const INDEX_MAGIC = 'KOLMIDX\x01';
+
+// Encode an optional behaviour pack for the lora.bin slot. Returns an empty
+// Buffer when no pack is supplied so v0.1 artifacts that don't ship one are
+// byte-stable with prior releases.
+function encodePack(pack) {
+  if (!pack || (typeof pack === 'object' && Object.keys(pack).length === 0)) return Buffer.alloc(0);
+  const body = Buffer.from(JSON.stringify(pack), 'utf8');
+  const head = Buffer.from(PACK_MAGIC, 'binary');
+  const len = Buffer.alloc(4);
+  len.writeUInt32LE(body.length, 0);
+  return Buffer.concat([head, len, body]);
+}
+
+function encodeIndex(index) {
+  if (!index || (typeof index === 'object' && Object.keys(index).length === 0)) return Buffer.alloc(0);
+  const body = Buffer.from(JSON.stringify(index), 'utf8');
+  const head = Buffer.from(INDEX_MAGIC, 'binary');
+  const len = Buffer.alloc(4);
+  len.writeUInt32LE(body.length, 0);
+  return Buffer.concat([head, len, body]);
+}
+
+// Decode a pack or index buffer. Tolerates empty buffers (returns null) and
+// throws on magic mismatch so a corrupt slot doesn't silently expose
+// arbitrary bytes to recipes.
+export function decodePack(buf) { return decodeContainer(buf, PACK_MAGIC); }
+export function decodeIndex(buf) { return decodeContainer(buf, INDEX_MAGIC); }
+function decodeContainer(buf, magic) {
+  if (!buf || !buf.length) return null;
+  if (buf.length < magic.length + 4) throw new Error('container too short');
+  const head = buf.slice(0, magic.length).toString('binary');
+  if (head !== magic) throw new Error(`container magic mismatch: expected ${JSON.stringify(magic)}`);
+  const len = buf.readUInt32LE(magic.length);
+  const body = buf.slice(magic.length + 4, magic.length + 4 + len);
+  if (body.length !== len) throw new Error('container length mismatch');
+  return JSON.parse(body.toString('utf8'));
+}
 // IMPORTANT: keep this in lock-step with router.js's RECEIPT_SECRET. The
 // receipt the artifact builder seals here is verified by /v1/receipts/verify
 // using that same secret — a mismatch produces "signature mismatch" + "chain
@@ -97,7 +151,7 @@ export function computeKScore({ size_bytes, accuracy, coverage, p50_latency_us, 
 // receipt binds (artifact_hash, eval_set_hash, eval_score, judge_id) via an
 // HMAC chain so any third party can re-verify offline without trusting the
 // runtime that produced the artifact.
-export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id, eval_score, tier }) {
+export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id, eval_score, tier, pack, index }) {
   const secret = requireSignSecret();
   const recipes_json = JSON.stringify({
     spec: 'rs-1',
@@ -113,9 +167,13 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
     })),
   }, null, 2);
 
-  // Empty placeholder LoRA + sqlite-vec index until Sprints 1 & 3 fill them in.
-  const lora_bin = Buffer.from('');
-  const index_bin = Buffer.from('');
+  // v0.1 'recipe' tier:
+  //   - lora.bin carries an optional KOLMPACK behaviour pack (or stays empty)
+  //   - index.sqlite-vec carries an optional KOLMIDX lookup index (or stays empty)
+  // When the caller doesn't pass `pack`/`index`, both slots are empty buffers
+  // so byte counts and hashes match prior recipe-tier artifacts exactly.
+  const lora_bin = encodePack(pack);
+  const index_bin = encodeIndex(index);
 
   // model.gguf is a pointer record, not weights. `kolm run` resolves it.
   const model_pointer = JSON.stringify({
@@ -307,15 +365,15 @@ export function packageArtifact({ job_id, payload, outPath }) {
 // with the size-aware K-score patched into the manifest. The double-zip is
 // cheap (≤10ms for 5KB artifacts) and keeps the K-score honest — the size
 // axis includes the K-score bytes themselves.
-export async function buildAndZip({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, outDir, judge_id, tier }) {
+export async function buildAndZip({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, outDir, judge_id, tier, pack, index }) {
   requireSignSecret();
   const dir = outDir || path.join(os.tmpdir(), 'kolm-artifacts');
   fs.mkdirSync(dir, { recursive: true });
 
   // Derive eval_score from the synthesis result. Pattern-mode synthesis
   // returns pass_rate_positive in [0..1]; the artifact tier defaults to
-  // "recipe" (the only tier Sprint 1 produces — adapter/specialist/bundle
-  // ship in Sprints 2/3).
+  // "recipe" (the only tier the Sprint-1 toolchain produces today —
+  // adapter/specialist/bundle land in later sprints).
   const accuracy = training_stats?.pass_rate_positive ?? (training_stats?.verifier_accepted ? 1.0 : 0.0);
   const coverage = evals && evals.coverage != null ? evals.coverage : accuracy;
   const eval_score = (evals && typeof evals.coverage === 'number') ? evals.coverage : accuracy;
@@ -323,7 +381,7 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
   const _judgeId = judge_id || process.env.KOLM_JUDGE_ID || 'kolm-pattern-synth-1';
 
   // Pass 1 — zip to measure size.
-  const probePayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, judge_id: _judgeId, eval_score, tier: _tier });
+  const probePayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, judge_id: _judgeId, eval_score, tier: _tier, pack, index });
   const outPath = path.join(dir, `${job_id}.kolm`);
   await packageArtifact({ job_id, payload: probePayload, outPath });
   const probeBytes = fs.statSync(outPath).size;
@@ -343,7 +401,7 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
 
   // Pass 2 — repackage with the K-score in the manifest. Size delta is small
   // (~80 bytes); we re-derive K-score on the final artifact below.
-  const finalPayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id: _judgeId, eval_score, tier: _tier });
+  const finalPayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id: _judgeId, eval_score, tier: _tier, pack, index });
   await packageArtifact({ job_id, payload: finalPayload, outPath });
   const stat = fs.statSync(outPath);
 

@@ -4,13 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Sign in - kolm</title>
-<meta name="description" content="Sign in to kolm with an API key or create a free account.">
+<meta name="description" content="Sign in to kolm with an API key, or create an account on any plan in under a minute. Fully self-serve, including Enterprise.">
 <meta name="theme-color" content="#0b0d10">
 <meta name="color-scheme" content="dark">
 <link rel="canonical" href="https://kolm.ai/signin">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .plan-banner{display:flex;align-items:flex-start;gap:14px;padding:14px 16px;border:1px solid var(--line-strong);border-radius:12px;background:var(--bg-elev);margin-bottom:20px}
+  .plan-banner .plan-name{font-weight:600;color:var(--ink)}
+  .plan-banner .plan-price{font-family:var(--mono);color:var(--accent);font-size:13px}
+  .plan-banner .plan-meta{color:var(--ink-mute);font-size:13px;margin-top:4px;line-height:1.5}
+  .plan-banner .plan-switch{margin-left:auto;font-size:12px}
+  .plan-banner .plan-switch a{color:var(--ink-faint);text-decoration:none}
+  .plan-banner .plan-switch a:hover{color:var(--ink)}
+</style>
 </head>
 <body>
 <header class="site-header">
@@ -32,7 +41,7 @@
   <section class="auth-card" aria-labelledby="auth-title">
     <div class="eyebrow"><span class="pulse"></span>account</div>
     <h1 id="auth-title">Sign in to kolm.</h1>
-    <p class="lede" id="auth-sub">Paste your API key. kolm does not use passwords yet.</p>
+    <p class="lede" id="auth-sub">Paste your API key. Every plan, including Enterprise, is fully self-serve.</p>
 
     <div class="auth-tabs" role="tablist" aria-label="Account mode">
       <button id="tab-in" class="active" type="button" role="tab" aria-selected="true">Sign in</button>
@@ -41,13 +50,21 @@
 
     <div id="msg" class="auth-msg" role="status" aria-live="polite"></div>
 
+    <div id="plan-banner" class="plan-banner" hidden>
+      <div>
+        <div><span class="plan-name" id="plan-name">Developer</span> &middot; <span class="plan-price" id="plan-price">$0</span></div>
+        <div class="plan-meta" id="plan-meta">No card. No email approval. Your key works the second this form returns.</div>
+      </div>
+      <div class="plan-switch"><a href="/pricing">change plan</a></div>
+    </div>
+
     <form id="form-in" autocomplete="on" novalidate>
       <label class="field">
         <span class="lbl">API key</span>
         <input id="api_key" name="api_key" type="text" autocomplete="off" required placeholder="ks_..." spellcheck="false">
       </label>
       <button id="submit-in" class="btn primary" type="submit">Sign in</button>
-      <p class="auth-note">Only API-key sign-in is shown until OAuth is wired end to end.</p>
+      <p class="auth-note">Use the API key from your /v1/signup response. The dashboard, the CLI, and the SDK all accept the same key.</p>
     </form>
 
     <form id="form-up" autocomplete="on" novalidate hidden>
@@ -59,8 +76,9 @@
         <span class="lbl">Name optional</span>
         <input id="name" name="name" type="text" autocomplete="name" placeholder="Your name">
       </label>
+      <input id="plan-input" type="hidden" name="plan" value="free">
       <button id="submit-up" class="btn primary" type="submit">Create account</button>
-      <p class="auth-note">The API returns a one-time key. Save it before leaving this page.</p>
+      <p class="auth-note">Free tiers activate instantly. Paid tiers return a Stripe payment link in the same response. Click through, complete billing, your key is already live.</p>
     </form>
 
     <div id="key-display" class="key-display" hidden>
@@ -68,22 +86,34 @@
       <div class="key" id="key-value"></div>
       <div class="actions">
         <button class="btn ghost" id="copy-key" type="button">Copy key</button>
-        <a class="btn accent" href="/dashboard">Go to dashboard</a>
+        <a class="btn accent" href="/dashboard" id="continue-btn">Go to dashboard</a>
       </div>
-      <p><strong>Save this key.</strong> It is shown once. You can rotate it from your dashboard.</p>
+      <p><strong>Save this key.</strong> It is shown once. You can rotate it from your dashboard or via <code>POST /v1/account/rotate-key</code>.</p>
+      <div id="billing-row" hidden style="margin-top:14px;padding:12px 14px;border:1px solid var(--accent);border-radius:10px;background:var(--bg-elev)">
+        <strong style="color:var(--accent)">Payment required.</strong>
+        <p style="margin:6px 0 10px 0;color:var(--ink-mute);font-size:13px">Your API key is on the free Developer tier until payment is confirmed. Redirecting to Stripe&hellip; If the redirect doesn&rsquo;t fire, click below.</p>
+        <a id="billing-link" class="btn primary" href="#" rel="noopener">Pay with Stripe &rarr;</a>
+      </div>
     </div>
   </section>
 </main>
 
 <footer class="site-footer auth-footer">
   <div class="wrap">
-    <div class="meta">kolm account / <a href="/security">security</a> / <a href="/docs">docs</a></div>
+    <div class="meta">kolm account / <a href="/security">security</a> / <a href="/docs">docs</a> / <a href="/pricing">pricing</a></div>
   </div>
 </footer>
 
 <script>
 (function(){
   var KEY_NAMES = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
+  var PLANS = {
+    free:       { label: 'Developer',  price: '$0 forever',          meta: 'No card. Your API key works the second this form returns.' },
+    starter:    { label: 'Starter',    price: '$9 / month',          meta: 'Provisioned instantly. Stripe payment link returned in the same response. Complete billing within 30 days to stay on Starter.' },
+    pro:        { label: 'Pro',        price: '$49 / month',         meta: 'Provisioned instantly. Stripe payment link returned in the same response. Complete billing within 30 days to stay on Pro.' },
+    teams:      { label: 'Teams',      price: '$149 / month',        meta: 'Provisioned instantly with 5 seats. Stripe payment link returned in the same response. Complete billing within 30 days to stay on Teams.' },
+    enterprise: { label: 'Enterprise', price: '$2,999 / month',      meta: 'Provisioned instantly. SSO/SCIM/BAA paths via /trust. Stripe payment link returned in the same response. SOC 2 Type I (Q4 2026) and DPA available without contacting sales.' },
+  };
   function $(id){ return document.getElementById(id); }
   function saveKey(key){
     try { KEY_NAMES.forEach(function(name){ localStorage.setItem(name, key); }); } catch (_) {}
@@ -92,6 +122,22 @@
     var el = $('msg');
     el.className = 'auth-msg ' + kind;
     el.textContent = text;
+  }
+  function getQueryPlan(){
+    var match = location.search.match(/[?&]plan=([a-z0-9_-]+)/i);
+    if (!match) return null;
+    var v = match[1].toLowerCase();
+    return PLANS[v] ? v : null;
+  }
+  function applyPlanBanner(){
+    var planId = getQueryPlan();
+    if (!planId) { $('plan-banner').hidden = true; return; }
+    var p = PLANS[planId];
+    $('plan-name').textContent = p.label;
+    $('plan-price').textContent = p.price;
+    $('plan-meta').innerHTML = p.meta;
+    $('plan-input').value = planId;
+    $('plan-banner').hidden = false;
   }
   function mode(next){
     var signin = next === 'in';
@@ -104,13 +150,15 @@
     $('key-display').hidden = true;
     $('auth-title').textContent = signin ? 'Sign in to kolm.' : 'Create your kolm account.';
     $('auth-sub').textContent = signin
-      ? 'Paste your API key. kolm does not use passwords yet.'
-      : 'Create an account and save the one-time API key.';
+      ? 'Paste your API key. Every plan, including Enterprise, is fully self-serve.'
+      : 'Choose a plan, drop your email, get a key. Paid plans return a Stripe link in the same response.';
     $('msg').className = 'auth-msg';
     $('msg').textContent = '';
+    $('plan-banner').hidden = signin || !getQueryPlan();
   }
   $('tab-in').addEventListener('click', function(){ mode('in'); });
   $('tab-up').addEventListener('click', function(){ mode('up'); });
+  applyPlanBanner();
   if (location.hash === '#up' || location.search.indexOf('plan=') !== -1) mode('up');
 
   $('form-in').addEventListener('submit', function(event){
@@ -142,6 +190,7 @@
     event.preventDefault();
     var email = $('email').value.trim();
     var name = $('name').value.trim();
+    var plan = $('plan-input').value || 'free';
     if (!/.+@.+\..+/.test(email)) return show('err', 'Enter a valid email.');
     $('submit-up').disabled = true;
     show('info', 'Creating account...');
@@ -149,7 +198,7 @@
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ email: email, name: name || undefined })
+      body: JSON.stringify({ email: email, name: name || undefined, plan: plan })
     }).then(function(res){
       return res.json().catch(function(){ return {}; }).then(function(body){ return { ok: res.ok, status: res.status, body: body }; });
     }).then(function(result){
@@ -159,13 +208,27 @@
       saveKey(key);
       $('key-value').textContent = key;
       $('key-display').hidden = false;
-      show('ok', 'Account created. Save your key.');
+      var planLabel = (PLANS[plan] || PLANS.free).label;
+      // Background sign-in so the dashboard recognizes the new key.
       fetch('/v1/signin', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ api_key: key })
       }).catch(function(){});
+      if (result.body.billing_url) {
+        // Paid plan: account is provisioned on the free tier; payment is
+        // required to activate the requested tier. Redirect immediately.
+        $('billing-link').href = result.body.billing_url;
+        $('billing-row').hidden = false;
+        $('continue-btn').textContent = 'Skip for now &rarr;';
+        show('ok', planLabel + ' account on hold. Save your key, then complete payment.');
+        setTimeout(function(){
+          window.location.assign(result.body.billing_url);
+        }, 1500);
+      } else {
+        show('ok', planLabel + ' account live. Save your key.');
+      }
     }).catch(function(){
       $('submit-up').disabled = false;
       show('err', 'Network error. Try again.');

@@ -45,12 +45,18 @@ function listTools(artifactsDir) {
       description: `${info.task || 'compiled kolm skill'} — k=${info.k_score?.composite ?? '?'}, recipes=${info.recipes_n}, ${info.signature_valid ? 'signed' : 'UNSIGNED'}`,
       inputSchema: {
         type: 'object',
-        properties: { input: { description: 'whatever the recipe expects (string, number, object, array)' } },
+        properties: {
+          input: { description: 'whatever the recipe expects (string, number, object, array)' },
+          params: { type: 'object', description: 'optional tenant-runtime config (extra patterns, vertical-specific rules) — never re-signed into the artifact' },
+        },
         required: ['input'],
       },
       _kolm: {
         artifact_path: ap,
         k_score: info.k_score,
+        tier: info.tier,
+        pack_present: info.pack_present,
+        index_present: info.index_present,
         job_id: info.job_id,
       },
     });
@@ -87,7 +93,7 @@ async function handleRpc(req, ctx) {
       const ap = listArtifacts(ctx.artifactsDir).find(p => safeName(p) === name);
       if (!ap) return fail(-32602, 'no such tool: ' + name);
       try {
-        const r = await runArtifact(ap, args?.input);
+        const r = await runArtifact(ap, args?.input, { params: args?.params });
         return reply({
           content: [{
             type: 'text',
@@ -99,10 +105,11 @@ async function handleRpc(req, ctx) {
             latency_us: r.latency_us,
             k_score: r.k_score,
             receipt: r.receipt,
+            audit: r.audit,
           },
         });
       } catch (e) {
-        return fail(-32000, 'kolm run failed: ' + (e.message || String(e)));
+        return fail(-32000, `kolm run failed${e.code ? ` [${e.code}]` : ''}: ` + (e.message || String(e)));
       }
     }
 
