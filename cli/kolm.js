@@ -103,7 +103,7 @@ COMMANDS
   compile "<task>" [opts]          compile a task into a .kolm artifact
   run <art.kolm> '<input>'         execute a .kolm against an input
   eval <art.kolm>                  re-run embedded evals, print K-score
-  benchmark <art.kolm> [opts]      emit artifact benchmark JSON
+  bench <art.kolm> [opts]          emit artifact benchmark JSON (alias: benchmark)
   score <art.kolm>                 print just the K-score
   inspect <art.kolm>               manifest + recipes + signature
   serve [--mcp] [--http] [--port]  expose ~/.kolm/artifacts/* as MCP tools
@@ -149,10 +149,10 @@ The input is parsed as JSON when possible; otherwise passed as a bare string.
 USAGE
   kolm eval <artifact.kolm>
 `,
-  benchmark: `kolm benchmark - reproducible artifact benchmark.
+  benchmark: `kolm bench - reproducible artifact benchmark (alias: benchmark).
 
 USAGE
-  kolm benchmark <artifact.kolm> [opts]
+  kolm bench <artifact.kolm> [opts]
 
 OPTIONS
   --runs <n>                   runs per embedded eval case (default: 1)
@@ -160,6 +160,12 @@ OPTIONS
   --target <name>              target label for the report
   --device <name>              device label for the report
   --out <file>                 also write the JSON report to a file
+  --json                       emit JSON to stdout (default; reserved for future formats)
+
+The report follows the kolm-benchmark-1 spec. It includes k_score, evals.accuracy,
+latency_us.p50/p95, privacy.runtime_egress_attempts, integrity.signature_valid.
+The harness patches fetch / http / https / net / tls / dns at process boundary —
+egress attempts are recorded and blocked.
 `,
   score: `kolm score - print the K-score on an artifact's manifest.
 
@@ -500,7 +506,8 @@ async function main() {
       case 'compile':  await cmdCompile(rest); break;
       case 'run':      await cmdRun(rest); break;
       case 'eval':     await cmdEval(rest); break;
-      case 'benchmark': await cmdBenchmark(rest); break;
+      case 'benchmark':
+      case 'bench':    await cmdBenchmark(rest); break;
       case 'score':    await cmdScore(rest); break;
       case 'inspect':  await cmdInspect(rest); break;
       case 'serve':    await cmdServe(rest); break;

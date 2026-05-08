@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Show HN: kolm - your own AI in a single file</title>
-<meta name="description" content="kolm is the AI compiler. Tell it what you want. It distills a frontier model down to one signed .kolm file that runs offline on your machine. Reproducible benchmark: +15.33pp on SWE-bench Lite vs cold Opus.">
+<meta name="description" content="kolm is the AI compiler. Tell it what you want. It distills a frontier model down to one signed .kolm file that runs offline on your machine, gated by K-score, verified by HMAC chain, and shipped with its own eval set.">
 <meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
 <meta property="og:title" content="Show HN: kolm - the AI compiler">
-<meta property="og:description" content="Compile any AI task into a signed file that runs anywhere. +15.33pp SWE-bench Lite vs cold Opus, reproducible.">
+<meta property="og:description" content="Compile any AI task into a signed file. Runs offline. Egress=0. Microsecond latency. Each .kolm carries its own evals.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kolm.ai/launch">
 <meta property="og:image" content="https://kolm.ai/og-card.svg">
@@ -22,7 +22,7 @@
 
 <header class="site-header">
   <div class="wrap">
-    <a href="/" class="brand"><span class="brand-dot" aria-hidden="true"></span>kolm</a>
+    <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
     <nav class="site-nav" aria-label="Primary">
       <a href="/compile">Compile</a>
       <a href="/serve">Serve</a>
@@ -48,13 +48,13 @@
         <div class="actions">
           <a href="/quickstart" class="btn primary">try it (5 min)</a>
           <a href="https://github.com/sneaky-hippo/kolmogorov-stack" class="btn ghost">github</a>
-          <a href="#repro" class="btn accent">reproduce the benchmark</a>
+          <a href="#repro" class="btn accent">run the harness</a>
         </div>
         <div class="hero-trust">
-          <span>+15.33pp SWE-bench Lite vs cold Opus</span>
-          <span>n=150, p&lt;0.05</span>
-          <span>RS-1 spec MIT</span>
-          <span>SDK MIT</span>
+          <span>signed .kolm artifacts</span>
+          <span>egress=0 by harness</span>
+          <span>microsecond local exec</span>
+          <span>K-score gate at compile</span>
           <span>HMAC-chained receipts</span>
         </div>
       </div>
@@ -93,47 +93,53 @@ receipt chain     ok    chained-from registry@v2026-04-30</pre>
 
   <section class="section">
     <div class="wrap">
-      <div class="eyebrow"><span class="num">02</span>numbers</div>
-      <h2>What you get on a real benchmark.</h2>
-      <p class="sec-lede">SWE-bench Lite, n=150, Anthropic-pinned. Same model, same tasks, same evaluator. The only delta is whether the agent has access to the kolm-compiled tool-error memory.</p>
+      <div class="eyebrow"><span class="num">02</span>guarantees</div>
+      <h2>What every <code>.kolm</code> guarantees.</h2>
+      <p class="sec-lede">Not a leaderboard claim. A set of properties enforced by <code>src/verifier.js</code> at compile time and by <code>src/benchmark.js</code> at run time. If any property fails, the build doesn't sign.</p>
       <div class="kvtable">
         <table>
-          <tr><td>cold Opus</td><td>30.0% strict (45/150 resolved)</td></tr>
-          <tr><td>Opus + kolm</td><td><b>45.3% strict</b> (68/150 resolved)</td></tr>
-          <tr><td>delta</td><td><b>+15.33pp</b>, 95% CI [+9.33, +22.00], p&lt;0.05</td></tr>
-          <tr><td>recovered tasks</td><td>26 (cold failed, +kolm passed)</td></tr>
-          <tr><td>regressed tasks</td><td>3 (cold passed, +kolm failed) &mdash; provider noise at temp=0</td></tr>
-          <tr><td>apply errors</td><td>&minus;48% (kolm reduces patch-format failures by injecting test bodies into context)</td></tr>
+          <tr><td>compile-time gate</td><td>quality_score &ge; 0.85 AND positive_pass_rate &ge; 0.85 against the embedded eval set. Fail &rarr; no artifact.</td></tr>
+          <tr><td>verified-inference math</td><td>k-sample frontier + sound verifier &rarr; accuracy = 1 &minus; (1 &minus; p&middot;v)<sup>k</sup>. Monotone in k by construction.</td></tr>
+          <tr><td>local execution</td><td>vm.Script sandbox; latency in microseconds via <code>process.hrtime.bigint</code>. No network call to run.</td></tr>
+          <tr><td>egress monitor</td><td>bench harness patches fetch / http / https / net / tls / dns. Any phone-home is recorded.</td></tr>
+          <tr><td>integrity</td><td>HMAC-SHA256 over manifest.json. <code>signature_valid: true</code> or the artifact is rejected.</td></tr>
+          <tr><td>receipt chain</td><td>task &rarr; seeds &rarr; recipes &rarr; evals &rarr; package, each step seals the previous.</td></tr>
         </table>
       </div>
-      <p class="sec-lede" style="margin-top:18px">This is one shipped benchmark on one shape (coding agents). The same architecture &mdash; compile-then-run with verified context &mdash; transfers to email, document review, vertical assistants. We publish only what we can reproduce.</p>
+      <p class="sec-lede" style="margin-top:18px">The artifact is the benchmark. Every <code>.kolm</code> ships with the eval set used to gate it. <code>kolm bench file.kolm</code> reruns those evals offline and emits a signed JSON report. That is the unit of proof. <a href="/benchmarks" style="color:var(--accent)">&rarr; benchmark spec &amp; harness source</a></p>
     </div>
   </section>
 
   <section class="section" id="repro">
     <div class="wrap">
       <div class="eyebrow"><span class="num">03</span>reproduce</div>
-      <h2>Run the benchmark yourself.</h2>
-      <p class="sec-lede">No magic numbers. The exact harness lives in the public repo. You bring an Anthropic key; this costs about $11 of API budget.</p>
+      <h2>Run the harness yourself.</h2>
+      <p class="sec-lede">No magic numbers. The harness is one file. You compile an artifact, you run the bench, you get JSON. The same artifact on different machines should produce the same accuracy and the same signature hash.</p>
       <pre class="terminal">$ git clone https://github.com/sneaky-hippo/kolmogorov-stack
 $ cd kolmogorov-stack
 $ npm install
 $ export ANTHROPIC_API_KEY=sk-ant-&hellip;
-$ bash bench/swe-bench-lite-reproduce.sh --n 150 --seed 42
-                                                # ~3h on a laptop
-result.json:
-  pass1_strict: 0.300   (45/150)
-  pass2_strict: 0.453   (68/150)
-  delta:        +0.1533
-  ci_95:        [+0.0933, +0.2200]
-  p_value:      0.0381</pre>
+$ kolm compile "classify support emails" \
+    --examples examples.jsonl --out support.kolm
+$ kolm bench support.kolm --runs 10
+report.json:
+  spec:                       kolm-benchmark-1
+  artifact_sha256:            sha256:7e3b&hellip;
+  artifact_bytes:              4827
+  k_score:                     612.34
+  evals.accuracy:              1.0
+  latency_us.p50:              41
+  latency_us.p95:              73
+  privacy.runtime_egress_attempts: 0
+  integrity.signature_valid:   true
+  integrity.receipt_chain_steps: 5</pre>
     </div>
   </section>
 
   <section class="section">
     <div class="wrap">
       <div class="eyebrow"><span class="num">04</span>what it isn't</div>
-      <h2>Honesty bar.</h2>
+      <h2>Scope bar.</h2>
       <div class="kvtable">
         <table>
           <tr><td>not a quantized 70B</td><td>We don't claim to run frontier weights on a phone. We compile a small model whose <i>behavior</i> on your task matches frontier &mdash; because it was distilled on your task.</td></tr>
@@ -147,13 +153,13 @@ result.json:
 
   <section class="section">
     <div class="wrap">
-      <div class="eyebrow"><span class="num">05</span>roadmap</div>
-      <h2>What's next, in plain English.</h2>
+      <div class="eyebrow"><span class="num">05</span>release schedule</div>
+      <h2>What ships, and when.</h2>
       <div class="kvtable">
         <table>
-          <tr><td>now</td><td>Recipe-mode compile, signed artifacts, MCP server, atlas browser, K-score gate, CLI on macOS / Linux / WSL.</td></tr>
-          <tr><td>Q3 2026</td><td>LoRA-mode compile end-to-end (training bridge already shipped), Python SDK, GitHub Action.</td></tr>
-          <tr><td>Q4 2026</td><td>Native iOS + Android adapters. Public Specialist gallery. SOC 2 Type I.</td></tr>
+          <tr><td>shipped</td><td>Recipe-mode compile, signed artifacts, MCP server, atlas browser, K-score gate, CLI on macOS, Linux, and Windows.</td></tr>
+          <tr><td>Q3 2026</td><td>LoRA-mode compile end-to-end, Python SDK, GitHub Action.</td></tr>
+          <tr><td>Q4 2026</td><td>Native iOS + Android adapters, public Specialist gallery, SOC 2 Type I.</td></tr>
           <tr><td>2027</td><td>Recipe Speculative Decoding (3&times; cold-inference speedup), boxed mobile app, Specialist marketplace.</td></tr>
         </table>
       </div>

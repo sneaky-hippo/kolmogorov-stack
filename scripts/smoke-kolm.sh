@@ -270,12 +270,14 @@ fi
 
 # --- 19. RS-1 schemas served at /docs/* ---
 hit GET "/docs/manifest-v0.1.json" 200
-contains '"kolm_version"' "manifest schema exists"
-contains '"artifact_id"' "manifest schema has artifact_id"
+contains '"manifest-v0.1"' "manifest schema id present"
+contains '"k_score"' "manifest schema has k_score"
+contains '"recipe_registry"' "manifest schema has recipe_registry"
 
 hit GET "/docs/receipt-v0.1.json" 200
 contains '"chain"' "receipt schema has chain"
-contains '"artifact_hash"' "receipt schema has artifact_hash"
+contains '"HMAC-SHA256"' "receipt schema declares HMAC-SHA256"
+contains '"signature"' "receipt schema has signature"
 
 hit GET "/docs/rs-1.md" 200
 contains "RS-1" "rs-1.md mentions RS-1"

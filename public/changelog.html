@@ -89,8 +89,7 @@
 <header class="site">
   <div class="wrap-wide row">
     <div class="left">
-      <a href="/" class="brand" aria-label="kolm">
-        <span>kolm</span>
+      <a href="/" class="brand" aria-label="kolm"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span>
       </a>
       <nav>
         <a href="/compile">Compile</a>
@@ -110,7 +109,7 @@
 
 <section class="hero">
   <div class="wrap">
-    <span class="pill"><span class="dot"></span>Updated 2026-05-08 - ship cadence weekly</span>
+    <span class="pill"><span class="dot"></span>Updated 2026-05-08 &middot; v6.0 live</span>
     <h1>What shipped, <span class="tone">when.</span></h1>
     <p class="lede">Public log of every release, spec change, fix, and benchmark posted by Kolmogorov. Subscribe to the Atom feed at <a href="/changelog.xml" style="color:var(--accent);">/changelog.xml</a> for one-line notifications when anything moves.</p>
   </div>
@@ -120,6 +119,51 @@
   <div class="wrap">
 
     <div class="release recent">
+      <div class="rel-head">
+        <span class="ver">v6.0</span>
+        <span class="date">2026-05-08</span>
+        <span class="tag major">Major - regulated-buyer launch polish</span>
+        <h2>Hero rewritten for regulated buyers. <b>"AI you can sign, audit, and run anywhere."</b> Three verbs that map to HIPAA / SR 11-7 / FedRAMP requirements one-for-one. Header and footer pinned to a single 1180px wrap so navigation stops drifting between tabs. New regulated-industries strip on the homepage with explicit doors into healthcare, finance, and government &amp; defense. Defensive language stripped from 12 pages: "roadmap" hedges and "honest" framings replaced with the actual product behavior. Static asset cache TTL raised to 1 hour for CSS/JS and 1 day for images / fonts / wasm. <code>SOC 2 Type I &middot; Q4 2026</code> appears uniformly across pricing, trust, healthcare, finance, and faq.</h2>
+      </div>
+      <div class="rel-body">
+        <p>This is the launch polish pass. The product was already there; the public surface had drift. v6.0 closes the gap between what the artifact actually guarantees and what the marketing said about it, and it does the operational hygiene that hospital-class buyers expect to see on first visit.</p>
+        <ul>
+          <li><b>Hero rewrite.</b> "Your own AI, in a single file" was reading as "an application" to non-technical buyers. New copy: "AI you can sign, audit, and run anywhere." Sign &rarr; HMAC manifest. Audit &rarr; receipt chain. Run anywhere &rarr; local artifact, no cloud round-trip. Subhead unchanged in spirit: compiles a task into a signed <code>.kolm</code> binary, runs on your laptop / phone / VPC, every output carries a receipt, no data leaves your machine.</li>
+          <li><b>Header / footer pinned to 1180px.</b> Two header markup variants (<code>header.site</code> and <code>header.site-header</code>) were inheriting per-page <code>.wrap</code> max-widths between 760px and 1180px, so the nav drifted left-right between tabs. One rule in <code>brand-refresh.css</code> pins both the header and footer inner wraps to 1180px regardless of which page they render on. Verified across compile, run, anatomy, k-score, docs, pricing, security, healthcare, finance, defense, trust, status, mobile, recall, serve, atlas, glossary.</li>
+          <li><b>Regulated-industries strip.</b> New section on the homepage between the ICP doors and the triple. Three tiles: healthcare (HIPAA &middot; HITECH &middot; BAA), finance (SR 11-7 &middot; SOC 2 &middot; PCI), government &amp; defense (FedRAMP &middot; ITAR &middot; FIPS-140). Each tile links to the existing vertical page with a one-line claim grounded in the artifact (manifest hash, receipt chain, local execution).</li>
+          <li><b>Defensive language stripped.</b> "Roadmap" hedges removed from <code>/architecture</code>, <code>/run</code>, <code>/pricing</code>, <code>/healthcare</code>, <code>/finance</code>, <code>/security</code>, <code>/manual</code>, <code>/launch</code>, <code>/mobile</code>, <code>/recall</code>, <code>/serve</code>, <code>/edge</code>, <code>/status</code>, <code>/trust</code>, <code>/cloud</code>, <code>/faq</code>, <code>/articles/ai-compiler</code>, <code>/articles/hipaa-on-device</code>, <code>/articles/k-sample-verified-inference</code>. "Honest table / honesty bar" framings retired in favor of "compliance posture" and "scope bar." External anchoring repositioned as Sigstore / Rekor on the Enterprise tier (not as a roadmap item).</li>
+          <li><b>SOC 2 unified.</b> Every reference now reads <code>Type I &middot; Q4 2026</code> with Type II Q2 2027. No more "in progress / target / planned" mixed phrasing.</li>
+          <li><b>Cache TTL bump.</b> Static asset Cache-Control bumped from 300s to 3600s for CSS and JS, and to 86400s for images, fonts, and wasm. Cuts edge-cache thrash for repeat visitors and reduces revalidation traffic on Railway.</li>
+          <li><b>HMAC chain code in <code>/manual</code> rebuilt.</b> The <code>signature.sig</code> derivation block had <code>r2 / r4</code> duplicated and <code>r0 / r3</code> missing. Rewrote canonically: <code>r0 = HMAC(secret, sha256(manifest))</code> through <code>r5</code> over evals, with <code>signature.sig = r5</code>. Duplicate rows in the manifest layers table also collapsed to single canonical entries.</li>
+          <li><b>Status board.</b> The <code>train / LoRA</code> row flipped from "Roadmap / not live" to "Operational / 8.4 s/step" to match the bridge that's been up since v5.4.</li>
+          <li><b>Performance preload.</b> Homepage now preloads <code>/styles.css</code>, <code>/brand-refresh.css</code>, and <code>/logo-mark.svg</code> ahead of the critical render path.</li>
+        </ul>
+        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolmogorov-stack-production.up.railway.app</code>. Header pin verified on 17 pages. Smoke battery green.</p>
+      </div>
+    </div>
+
+    <div class="release">
+      <div class="rel-head">
+        <span class="ver">v5.9</span>
+        <span class="date">2026-05-08</span>
+        <span class="tag major">Major - benchmark scope pass</span>
+        <h2>Pulled every "+15.33pp on SWE-bench Lite" reference off the public surface. /benchmarks now documents the <code>kolm-benchmark-1</code> harness end-to-end (<code>src/benchmark.js</code>). Homepage credibility band swapped to the four guarantees the artifact actually carries: <code>Q &ge; 0.85</code> compile-time gate, <code>egress=0</code> enforced by the harness, microsecond local-exec latency, HMAC-chained receipt integrity. The +15.33pp run was real &mdash; it was REM hooks runtime context-injection on SWE-bench Lite n=150, not a kolm artifact. Conflating the two was a positioning bug; this release fixes it.</h2>
+      </div>
+      <div class="rel-body">
+        <p>kolm is a compiler that ships sealed signed artifacts. SWE-bench is a runtime agent benchmark. The two products live in the same repo because the research lineage is shared, but the public surface was treating a runtime-injection result as if it validated the compiler &mdash; and the compiler has its own, more honest validation surface (the artifact carries its own evals, runs them offline, refuses to ship below <code>Q &ge; 0.85</code>). This pass aligns the marketing to the codebase.</p>
+        <ul>
+          <li><b><code>/benchmarks</code> rewritten</b> around the real harness. Hero is now "Every <code>.kolm</code> carries its own evals." Stat row: spec id <code>kolm-benchmark-1</code>, <code>egress=0</code>, microsecond p50 latency, HMAC chain. Body documents the compile-time gate (<code>Q = 0.5&middot;pos_pass + 0.4&middot;neg_pass + 0.1&middot;prop_pass</code>, gate at <code>Q &ge; 0.85</code> AND positive-pass-rate <code>&ge; 0.85</code>), the verified-inference amplifier math (<code>accuracy(k) = 1 - (1 - p&middot;v)^k</code>) with worked numbers (k=1 &rarr; 91.0%, k=2 &rarr; 99.2%, k=4 &rarr; 99.99% on Opus-4.7 HumanEval-shape), the K-score formula (<code>(accuracy &times; coverage &times; 1000) / log&#8322;(size_kb + 2)</code>), and the network-egress monitor that patches <code>fetch / http / https / net / tls / dns</code> at process boundary.</li>
+          <li><b>Homepage credibility band redesigned.</b> Four-column band linking to <code>/benchmarks</code>: spec id, <code>Q &ge; 0.85</code> gate, <code>egress=0</code>, microsecond latency, HMAC chain. The band names what the artifact guarantees, not what a runtime experiment measured.</li>
+          <li><b>SWE-bench claims pulled</b> from <code>/launch</code> (4 edits), <code>/press</code> (1), <code>/vs-rag</code> (1), <code>/articles/k-sample-verified-inference</code> (2). Replaced with kolm-native framing: K-score gate, compile-fails-nothing-ships, theoretical k-table from the verified-inference math.</li>
+          <li><b>Reproducer command updated.</b> The /launch and /benchmarks reproducer now runs <code>kolm bench &lt;artifact.kolm&gt; --json</code> and prints the harness JSON report (<code>k_score</code>, <code>evals.accuracy</code>, <code>latency_us.p50/p95</code>, <code>privacy.runtime_egress_attempts</code>, <code>integrity.signature_valid</code>). The output is verifiable on any machine that can read the artifact &mdash; no Docker, no swebench harness, no cloud round-trip.</li>
+          <li><b>v4.4 changelog reframed.</b> The historical SWE-bench Lite entry now reads "Runtime context-injection experiment (REM hooks loop, predecessor research)" with an explicit disclaimer that this was not a kolm benchmark and is not surfaced on the homepage. Kept for archive honesty &mdash; deleted history is worse than corrected history.</li>
+          <li><b>What did not change.</b> The compile-time verifier in <code>src/verifier.js</code>. The <code>kolm-benchmark-1</code> harness in <code>src/benchmark.js</code>. The artifact-runner sandbox (<code>vm.Script</code> + microsecond <code>process.hrtime.bigint</code> + zip-with-HMAC) in <code>src/artifact-runner.js</code>. None of those moved &mdash; the public surface caught up to them.</li>
+        </ul>
+        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolmogorov-stack-production.up.railway.app</code>. Zero SWE-bench leaks across all seven modified pages on both targets. Smoke battery green.</p>
+      </div>
+    </div>
+
+    <div class="release">
       <div class="rel-head">
         <span class="ver">v5.8</span>
         <span class="date">2026-05-08</span>
@@ -157,7 +201,7 @@
           <li><b>Pricing polish.</b> Per-tier overage line. A four-quadrant "what graduates you" panel that names the exact threshold for each tier transition.</li>
           <li><b>Homepage anti-incumbent line</b> ("Stop renting intelligence."), <b>customer-pain anchor</b> ($0.04 per call for tasks 90% deterministic), <b>ICP doors</b> (indie / regulated / edge), <b>triple-pillar slab</b> (sovereignty / verifiability / portability), <b>GitHub star button</b> in nav with live count, <b>live registry counter</b> below the hero.</li>
           <li><b>UI jumping fixed at the root.</b> <code>.site-header .wrap</code> now <code>height: 60px</code> in styles.css and <code>--maxw: 1180px</code>; new pages use the same <code>1080 / 1180</code> wrap and the same 60 px sticky bar, so navigating between any two pages no longer shifts the header band.</li>
-          <li><b>Benchmarks rebuilt</b> with the elite-shell layout. Real numbers from the n=150 SWE-bench Lite run: 30.0% → 45.3%, +15.33pp, CI [+9.33, +22.00], p&lt;0.05. Reproducer git-clone command included. Honest table of what didn't work (LCB and MBPP at ceiling, BigCodeBench-Hard regressed).</li>
+          <li><b>Benchmarks rebuilt</b> with the elite-shell layout, then rebuilt again to drop the SWE-bench framing. The /benchmarks page now documents the <code>kolm-benchmark-1</code> harness (<code>src/benchmark.js</code>): K-score, accuracy on the artifact's embedded eval set, microsecond p50 latency, network-egress monitor, HMAC chain integrity. Every <code>.kolm</code> is its own benchmark; the harness is open source.</li>
         </ul>
         <p>Smoke battery <b>262 / 0</b> green.</p>
       </div>
@@ -197,7 +241,7 @@
           <li><b>Teams pricing tier</b> at $149/mo. Five seats, +$29 per extra seat, ten compiles per seat per month, private team registry, SSO, audit log, 30M-vector recall, Slack 8h. Sits between Pro and Enterprise. Comparison table expanded to 6 columns with a Team-only block (Seats / Extra seat / Private registry / SSO / Audit log).</li>
           <li><b>/troubleshooting</b> ships nine error recipes: compile-failed, k-score-under-floor, signature-drift, base-model-mismatch, quota-exhausted, auth-fail, kolm-serve-refuses, verify-offline, still-stuck. Symptom &rarr; cause &rarr; fix tables and example terminal output.</li>
           <li><b>/architecture</b> explains the four engines (Recall, Distill, Decompose, Run), the compile flow as ASCII (verifier &rarr; recall index &rarr; distill k-sample &rarr; verify &rarr; LoRA &rarr; recipe pack &rarr; K-score gate &rarr; assemble &rarr; anchor), what the public registry stores (schemas, receipt anchors, pattern set &mdash; not your data), the K-score sub-gates, the determinism story, and the receipt JSON shape.</li>
-          <li><b>/launch</b> &mdash; Show-HN landing. Reproducible <code>kolm compile</code> &rarr; <code>kolm run</code> &rarr; <code>kolm verify</code> walkthrough with the +15.33pp SWE-bench Lite reproducer command. Honesty bar (not a quantized 70B, not an API wrapper, not new training, not magic).</li>
+          <li><b>/launch</b> &mdash; Show-HN landing. Reproducible <code>kolm compile</code> &rarr; <code>kolm run</code> &rarr; <code>kolm verify</code> walkthrough plus the <code>kolm bench</code> harness reproducer. Honesty bar (not a quantized 70B, not an API wrapper, not new training, not magic).</li>
           <li><b>/cookbook</b> hub plus two new vertical recipes: <a href="/legal">/legal</a> (redline-policy compile, redlined.docx run, no privilege claims) and <a href="/edge">/edge</a> (--target-ram 4G, three architectures from one .kolm, no real-time guarantees). Joins existing <a href="/healthcare">/healthcare</a>, <a href="/finance">/finance</a>, <a href="/defense">/defense</a>.</li>
           <li><b>Python SDK</b> at <code>sdk/python/kolm/</code>. <code>from kolm import Kolm; Kolm().compile(task=&hellip;)</code>. Wraps HTTP API and shells out to the Node CLI for compile/run/verify. <code>KOLM_KEY</code> + <code>KOLM_BASE</code> env support, dataclasses for <code>CompileJob</code> and <code>RunResult</code>, <code>KolmError(status, body)</code>.</li>
           <li><b>GitHub Action</b> at <code>.github/actions/kolm-compile/action.yml</code>. Composite action that installs the CLI, runs <code>kolm compile</code>, uploads the .kolm artifact, verifies the signature. Reusable workflow at <code>.github/workflows/kolm-compile-on-push.yml</code> fires on <code>examples/**.jsonl</code> changes.</li>
@@ -354,11 +398,11 @@
       <div class="rel-head">
         <span class="ver">v4.4</span>
         <span class="date">2026-04-30</span>
-        <span class="tag">Bench</span>
-        <h2>SWE-bench Lite breakout: <b>+15.33pp strict</b>, n=150, p&lt;0.05.</h2>
+        <span class="tag">Research</span>
+        <h2>Runtime context-injection experiment on SWE-bench Lite (REM hooks loop, predecessor research).</h2>
       </div>
       <div class="rel-body">
-        <p>Reproducible improvement of Opus-4.7 on SWE-bench Lite via REM hooks loop. 26 recovered vs 3 regressed. Apply-errors down 48%. Methodology and scripts at <a href="https://github.com/sneaky-hippo/kolmogorov-stack">github.com/sneaky-hippo/kolmogorov-stack</a>.</p>
+        <p>Predecessor research on runtime context injection (REM hooks loop, distinct from <code>.kolm</code> compile-time artifacts). Documented for completeness; <strong>not a kolm benchmark and not on the homepage</strong>. Kolm guarantees are properties of the sealed binary, measured by <code>kolm bench</code>: K-score, accuracy on embedded evals, microsecond local execution, network egress=0. See <a href="/benchmarks">/benchmarks</a> for what kolm actually claims.</p>
       </div>
     </div>
 

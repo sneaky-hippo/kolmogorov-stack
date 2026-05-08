@@ -75,11 +75,38 @@ header.site > .wrap > .row,
 header.site .wrap,
 .site-header .wrap,
 nav.top {
-  height: 52px !important;
-  min-height: 52px !important;
+  height: 60px !important;
+  min-height: 60px !important;
   display: flex !important;
   align-items: center !important;
   gap: 24px !important;
+}
+
+/* Pin the header AND footer's inner wrap to one canonical width across
+ * every page. Without this, the per-page .wrap (760-1180px on article
+ * vs landing pages) made the nav visibly shift left/right when switching
+ * tabs, and the footer drifted in the same way. */
+header.site > .wrap,
+header.site > .wrap.row,
+.site-header > .wrap,
+footer.site > .wrap,
+footer.site > .wrap.row,
+.site-footer > .wrap {
+  max-width: 1180px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  padding: 0 32px !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 720px) {
+  header.site > .wrap,
+  header.site > .wrap.row,
+  .site-header > .wrap,
+  footer.site > .wrap,
+  footer.site > .wrap.row,
+  .site-footer > .wrap {
+    padding: 0 20px !important;
+  }
 }
 
 header.site .left,
@@ -114,21 +141,26 @@ nav.top .brand span {
   letter-spacing: 0 !important;
 }
 
-/* Hide any leftover SVG brand mark on inline-style pages. Replaced by a CSS dot. */
+/* Canonical brand mark — show the SVG glyph everywhere. */
 header.site .brand img,
 .site-header .brand img,
 nav.top .brand img,
 img.brand-mark,
-.brand .brand-mark,
+.brand .brand-mark {
+  display: inline-block !important;
+  width: 22px !important;
+  height: 22px !important;
+  margin-right: 2px;
+  vertical-align: -4px;
+  flex-shrink: 0;
+}
 .sidebar h1 .glyph {
   display: none !important;
 }
 
-/* Pseudo-dot only on legacy headers (header.site, nav.top) and footer marks.
- * Canonical .site-header pages have an inline <span class="brand-dot"> already,
- * so adding ::before there double-renders the dot. */
-nav.top .brand::before,
-header.site .brand::before,
+/* Pseudo-dot fallback — only when the SVG mark is absent. Footer keeps the dot. */
+nav.top .brand:not(:has(img))::before,
+header.site .brand:not(:has(img)):not(:has(.brand-dot))::before,
 footer .brand-row .mark::before {
   content: "";
   width: 7px;
@@ -305,10 +337,14 @@ header.site .brand,
   letter-spacing: 0 !important;
 }
 
-/* Footer brand mark stays as a small dot. */
+/* Footer brand mark — show the SVG glyph at small size. */
 footer img.brand-mark,
 .site-footer .meta img {
-  display: none !important;
+  display: inline-block !important;
+  width: 18px !important;
+  height: 18px !important;
+  vertical-align: -4px;
+  margin-right: 6px;
 }
 footer .brand-row .mark::before {
   width: 6px !important;

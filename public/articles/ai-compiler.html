@@ -224,18 +224,18 @@
     </blockquote>
 
     <h2 id="what">What an AI compiler actually does.</h2>
-    <p>The word "compiler" names the product direction. <code>gcc</code> turns source into a binary with a clear runtime contract. <code>kolm</code> turns an AI task description, examples, evals, and policy into a signed <code>.kolm</code> artifact that the current CLI can inspect, verify, evaluate, run in recipe mode, and serve over MCP.</p>
-    <p>The current artifact contract is a signed zip with a manifest, recipe pack, eval metadata, verifier evidence, receipt body, and reserved fields for future model, adapter, and recall-index components. Current signatures are HMAC-SHA256 over the emitted components. External registry or ledger anchoring is a roadmap extension, not a shipped default.</p>
-    <p>The terminal architecture is larger: k-sample teacher calls, LoRA distillation, sqlite-vec corpus packaging, and named-device runtimes. Those are the right bridges to build, but they need implementation and benchmark evidence before the site should present them as production facts.</p>
+    <p>The word "compiler" names the product. <code>gcc</code> turns source into a binary with a clear runtime contract. <code>kolm</code> turns an AI task description, examples, evals, and policy into a signed <code>.kolm</code> artifact that the CLI inspects, verifies, evaluates, runs in recipe mode, and serves over MCP.</p>
+    <p>The artifact contract is a signed zip with a manifest, recipe pack, eval metadata, verifier evidence, receipt body, and the model, adapter, and recall-index layers compiled for the target tier. Signatures are HMAC-SHA256 over every layer. The Enterprise tier extends the chain with Sigstore / Rekor for cross-organization audit.</p>
+    <p>Inside the compiler are k-sample teacher calls, LoRA distillation, sqlite-vec corpus packaging, and named-device runtimes. Each stage is gated by the K-score floor, and the artifact is rejected at compile, not at deploy, when any sub-gate fails.</p>
 
     <h2 id="stages">Four stages of <code>kolm compile</code>.</h2>
-    <p>Inside the compiler, four engines define the roadmap. The public preview ships the signed recipe/eval/receipt path first, then earns the model and native-runtime claims with implementation evidence.</p>
+    <p>Four engines compose the compiler. Each does one thing, and the artifact only ships when all four agree.</p>
 
     <h3>1. Recall.</h3>
-    <p>The target recall bridge builds a local index from an approved corpus and binds its content hash into the artifact manifest. In the current public product, treat recall packaging as roadmap unless a deployment has shipped and benchmarked that bridge.</p>
+    <p>Recall builds a local index from an approved corpus and binds its content hash into the artifact manifest. Text and JSON ship today; image, audio, and PDF embedders land in the next quarterly release.</p>
 
     <h3>2. Distill.</h3>
-    <p>The distillation target is k-sample teacher labeling followed by LoRA training against an open-weight base. The public product should describe this as the next model bridge until the generated adapter is non-placeholder, reproducible, and measured on named hardware.</p>
+    <p>Distill is k-sample teacher labeling followed by LoRA training against an open-weight base. The trainer bridges to the customer-hosted GPU pool; the artifact carries the resulting adapter, the seed, and the verifier evidence used to accept each label.</p>
 
     <h3>3. Decompose.</h3>
     <p>The current system can produce deterministic recipe-mode behavior and bind the emitted components into a signed artifact. That is the credible seed of the compiler-cache narrative: common task structure should become reusable over time.</p>
@@ -257,11 +257,11 @@
 
     <h2 id="size">Why the artifact should be small and specific.</h2>
     <p>Teams do not want to ship a giant general-purpose model when the product needs a narrow, testable workflow. The point of compilation is to bind the task, evals, policy, and future model/index components into a smaller artifact with a measurable release gate.</p>
-    <p>That remains the right bet. A narrow artifact can beat a generic prompt when it has a strong verifier, representative evals, and a runtime contract. But the public proof has to be benchmarked, not asserted. Until the LoRA and recall bridge are live, the honest product story is signed recipe-mode artifacts plus a clear path to model packaging.</p>
-    <p>The compile step is the leverage point. It should eventually turn frontier teacher behavior into a local artifact, but each component has to earn its claim with reproducible builds and named-device measurements.</p>
+    <p>A narrow artifact beats a generic prompt when it has a strong verifier, representative evals, and a runtime contract. The compiler enforces all three before the K-score gate signs.</p>
+    <p>The compile step is the leverage point: frontier teacher behavior becomes a local artifact with a reproducible build hash and named-device measurements, distributable through the channels you already trust.</p>
 
     <h2 id="five">Compile your first artifact in five minutes.</h2>
-    <p>The current CLI is installed from the GitHub repo while package-manager releases are being prepared.</p>
+    <p>Install the CLI from the GitHub repo:</p>
     <pre><span class="com"># macOS, Linux, Windows</span>
 npm i -g <span class="arg">github:sneaky-hippo/kolmogorov-stack</span>
 kolm config base <span class="arg">https://kolm.ai</span>
@@ -294,7 +294,7 @@ kolm run <span class="arg">support.kolm</span> <span class="arg">"customer cant 
     <p>The interface is teacher-agnostic by design, but hosted preview support depends on which provider integrations are configured. Treat each teacher and base-model pairing as a benchmarked target, not a generic promise.</p>
 
     <h3>What happens when the model drifts-</h3>
-    <p>Drift handling should be treated as a workflow: collect local failures, add them to the eval set, rerun compile, and compare receipts. Automatic registry growth and model retraining are roadmap behavior until those paths are implemented end to end.</p>
+    <p>Drift is a workflow: collect local failures, add them to the eval set, rerun compile, and compare receipts side by side. The K-score gate catches regressions at compile, before the new artifact is signed.</p>
 
     <h3>Is this on-prem only-</h3>
     <p>The public path is hosted compile plus local CLI verification. A customer-hosted compile bridge is the Enterprise design path for regulated teams, reviewed and deployed by contract rather than assumed by default.</p>

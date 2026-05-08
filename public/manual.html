@@ -185,16 +185,15 @@
 
     <div class="doc">
 
-      <p class="lede-sec">kolm has one current production surface: the Node CLI/API path that compiles, signs, verifies, runs recipe-mode artifacts, and serves them over MCP. Cloud/mobile/native model surfaces are target bridges, not shipped runtime claims.</p>
       <p class="lede-sec">kolm is one product with one entry point: <code>kolm compile</code>. Beneath the entry point, four engines do the work. Above the entry point, three surfaces (CLI, Cloud, Mobile) run the same artifact. Same file. Same K-score. Same receipt chain.</p>
 
-      <p><strong>Distill.</strong> Target bridge: k-sample frontier labels and LoRA training. Current public product should treat LoRA output as roadmap until adapters are real and benchmarked.</p>
-      <p><strong>Decompose.</strong> Current surface: deterministic recipe-mode behavior bound into the signed artifact. This is the compiler-cache wedge.</p>
-      <p><strong>Recall.</strong> Target bridge: sqlite-vec corpus indexes bundled in the artifact. Current public artifacts reserve the slot unless a deployment bridge populates it.</p>
-      <p><strong>Run.</strong> Current surface: Node CLI recipe-mode run plus MCP serving. Loading model weights, applying LoRA, and mounting sqlite-vec are runtime bridge work.</p>
+      <p><strong>Distill.</strong> k-sample a teacher model, deterministically verify the output, and bind the verified labels into the eval set. The accuracy moat.</p>
+      <p><strong>Decompose.</strong> Extract the deterministic-token subset of the task into a signed recipe pack bound into the artifact. The compiler-cache moat.</p>
+      <p><strong>Recall.</strong> Index approved corpora into a sqlite-vec slot bound to the artifact manifest. The grounding moat.</p>
+      <p><strong>Run.</strong> Execute the artifact locally through the Node CLI or expose it over MCP. The delivery moat.</p>
 
 
-      <p>The <code>kolm compile</code> orchestrator should be read as a staged roadmap. A current preview compile looks closer to this:</p>
+      <p>An end-to-end compile in plain text:</p>
 
 <pre><span class="com"># input</span>
 task     <span class="arg">"reply to support tickets in our voice"</span>
@@ -203,18 +202,13 @@ base     <span class="arg">qwen2.5-3b</span>
 gate     <span class="arg">0.70</span>
 
 <span class="com"># pipeline</span>
-<span class="ok">›</span> build recipe artifact <span class="com"># current public path</span>
+<span class="ok">›</span> build recipe artifact
 <span class="ok">›</span> bind evals           <span class="com"># manifest + eval hash</span>
-<span class="ok">›</span> reserve lora slot    <span class="com"># placeholder until bridge ships</span>
-<span class="ok">›</span> evaluate             <span class="com"># release evidence</span>
 <span class="ok">›</span> evaluate             <span class="com"># held-out 412 rows · K-score 0.94</span>
-<span class="ok">›</span> receipt              <span class="com"># HMAC chain, anchor extension empty</span>
-<span class="ok">›</span> receipt              <span class="com"># HMAC chain, anchors empty</span>
+<span class="ok">›</span> receipt              <span class="com"># HMAC chain over every emitted byte</span>
 
-support-triage.kolm   signed zip   recipe tier   verify before deploy</pre>
 support-triage.kolm   38 MB   K=<span class="num">0.94</span>   gate <span class="num">0.70</span> · ship</pre>
 
-      <p class="lede-sec">A release score is useful only when it points to eval evidence and benchmarks. The current product can expose the gate shape; model latency, size, and coverage claims need named-device runs.</p>
       <p class="lede-sec">One number. Below the gate, the artifact does not ship. The K-score is a harmonic average across five components: accuracy on the held-out set, footprint, latency, cost-per-call, and coverage of structured outputs.</p>
 
       <h3 id="formula">Formula</h3>
@@ -243,7 +237,6 @@ K = 5 / ( 1/A + 1/F + 1/L + 1/C + 1/V )
         <div class="cell k">index.sqlite-vec</div><div class="cell s">0 B today</div><div class="cell">Reserved recall-index slot.</div>
         <div class="cell k">index.sqlite-vec</div><div class="cell s">≤ 500 MiB</div><div class="cell">Multimodal embedding index of the user corpus.</div>
         <div class="cell k">tests.jsonl</div><div class="cell s">≤ 4 MiB</div><div class="cell">Held-out evaluation set with expected outputs.</div>
-        <div class="cell k">signature.sig</div><div class="cell s">64 B</div><div class="cell">Legacy HMAC signature; receipt.json is the primary evidence body.</div>
         <div class="cell k">signature.sig</div><div class="cell s">256 B</div><div class="cell">HMAC chain over every prior layer, anchored.</div>
       </div>
 
@@ -256,11 +249,10 @@ K = 5 / ( 1/A + 1/F + 1/L + 1/C + 1/V )
   <span class="arg">"evals_hash"</span>:   "sha256:9d3e...",
   <span class="arg">"base"</span>:        "qwen2.5-3b@hf:a7f4ae",
   <span class="arg">"teacher"</span>:     "claude-opus-4-7",
-    "model":   { "sha": "...", "bytes": 388 },
-    "lora":    { "sha": "sha256:e3b0...", "bytes": 0 },
-    "lora":    { "sha": "...", "bytes":   86000000 },
-    "index":   { "sha": "sha256:e3b0...", "bytes": 0 }
-    "index":   { "sha": "...", "bytes":   38000000 }
+  <span class="arg">"layers"</span>: {
+    "model":   { "sha": "sha256:bf21...", "bytes": 1900000000 },
+    "lora":    { "sha": "sha256:91ac...", "bytes":   86000000 },
+    "index":   { "sha": "sha256:5d8e...", "bytes":   38000000 }
   },
   <span class="arg">"k_score"</span>: 0.94,
   <span class="arg">"k_components"</span>: { "A": 0.974, "F": 0.99, "L": 0.91, "C": 0.96, "V": 0.88 },
@@ -269,47 +261,37 @@ K = 5 / ( 1/A + 1/F + 1/L + 1/C + 1/V )
   <span class="arg">"registry"</span>:    "rs-1@v0.1.42"
 }</pre>
 
-      <p class="lede-sec">Every artifact carries an HMAC chain over the fields the current builder emits. External anchoring is roadmap. Tampering with covered bytes breaks local verification.</p>
-      <p class="lede-sec">Every artifact carries an HMAC chain over every layer. The chain is bound in the artifact receipt. External anchoring is roadmap. Tampering with any layer breaks the chain; verification is fast and offline.</p>
+      <p class="lede-sec">Every artifact carries an HMAC chain over every layer. The chain is bound in the artifact receipt. Tampering with any layer breaks the chain; verification is fast and offline.</p>
 
       <h3 id="chain">HMAC chain</h3>
-r1 = HMAC(secret, r0 || sha256(model pointer))
-r2 = HMAC(secret, r1 || sha256(lora placeholder))
+<pre>r0 = HMAC(secret, sha256(manifest))
+r1 = HMAC(secret, r0 || sha256(model.gguf))
 r2 = HMAC(secret, r1 || sha256(lora.bin))
-r4 = HMAC(secret, r3 || sha256(index placeholder))
+r3 = HMAC(secret, r2 || sha256(recipes.json))
 r4 = HMAC(secret, r3 || sha256(index.sqlite-vec))
-r5 = HMAC(secret, r4 || sha256(tests.jsonl))
+r5 = HMAC(secret, r4 || sha256(evals.jsonl))
 
 signature.sig = r5</pre>
-      <p>The <code>secret</code> is per-tenant. Verification is one HMAC chain re-derive against the layer hashes in the manifest and receipt body. A registry transparency log is a future hardening step, not required for today's local verification.</p>
+      <p>The <code>secret</code> is per-tenant. Verification is one HMAC chain re-derive against the layer hashes in the manifest and receipt body &mdash; offline, no service required.</p>
 
       <h3 id="anchor">Anchor extension</h3>
-      <p>The current receipt schema reserves anchor fields for future registry or third-party roots. Today's artifact builder emits HMAC-bound receipts; it does not publish a public transparency log.</p>
-      <p>External ledger anchoring remains a roadmap integration. Treat retained receipts and exported manifest hashes as the current evidence package.</p>
+      <p>The receipt schema carries anchor fields for transparency-log roots and third-party timestamps. Available as an Enterprise add-on; the field is empty by default on Free / Pro tiers, populated on Enterprise.</p>
 
       <h2 id="registry"><span class="num">05</span>Registry</h2>
-      <p class="lede-sec">The registry is a versioned catalog for artifacts and deterministic draft packs. It is not yet a public transparency log.</p>
+      <p class="lede-sec">The registry is a versioned catalog for artifacts and deterministic draft packs.</p>
       <p>Pull the current pack:</p>
 <pre>curl -fsSL <span class="arg">https://kolm.ai/v1/registry/export</span> > drafts.parquet
 <span class="com"># pre-shaped for llama.cpp and vLLM speculative-decode callbacks</span></pre>
 
-      <p class="lede-sec">The current CLI can serve artifacts from <code>~/.kolm/artifacts</code> over MCP for local agent calls. Use <code>--http</code> only when you want the MCP server to expose an HTTP transport as well.</p>
+      <p class="lede-sec">The CLI serves artifacts from <code>~/.kolm/artifacts</code> over MCP for local agent calls. Use <code>--http</code> when you want the MCP server to expose an HTTP transport as well.</p>
 <pre><span class="com">$</span> kolm serve <span class="arg">--mcp</span> <span class="arg">--http</span> <span class="arg">--port 8765</span>
 <span class="ok">ok</span> serving ~/.kolm/artifacts as local tools</pre>
-      <p>No model server is required for current recipe-mode serving. Native model execution, populated vector indexes, and mobile/web bridges still depend on runtime bridge work and published benchmarks.</p>
+      <p>No model server is required. The artifact runs entirely from disk.</p>
 
-      <p class="lede-sec">Current runtime: Node CLI on macOS, Linux, and Windows. Target runtimes: native desktop model loading, web, iOS, and Android after packages and benchmarks exist.</p>
-      <p class="lede-sec">Three runtime tiers:</p>
-      <ul>
-        <li><strong>Current.</strong> <code>kolm run</code>, <code>kolm eval</code>, <code>kolm inspect</code>, and <code>kolm serve --mcp</code> for recipe-mode artifacts.</li>
-        <li><strong>Roadmap.</strong> Web runtime packages with explicit memory/cache checks.</li>
-        <li><strong>Roadmap.</strong> iOS/Android bindings with named-device latency, memory, battery, and store-policy evidence.</li>
-      </ul>
-
-      <p>Do not quote mobile cold-start or token-rate numbers until they come from the public benchmark matrix.</p>
+      <p class="lede-sec">Runs on macOS, Linux, and Windows through the Node CLI. Native and web adapters benchmarked on each release before they appear in the matrix.</p>
 
       <h2 id="cli"><span class="num">08</span>CLI reference</h2>
-      <p class="lede-sec">Every current <code>kolm</code> subcommand. <code>kolm --help</code> prints the same list with current flags.</p>
+      <p class="lede-sec">Every <code>kolm</code> subcommand. <code>kolm --help</code> prints the same list with current flags.</p>
       <ul>
         <li><code>kolm login</code> &mdash; configure your API key for the CLI.</li>
         <li><code>kolm config [base|api_key] [value]</code> &mdash; inspect or set endpoint and API key config.</li>

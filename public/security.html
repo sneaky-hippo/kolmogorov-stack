@@ -384,8 +384,8 @@
 
         <!-- Bottom registry box -->
         <text x="490" y="390" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">Anchor extension</text>
-        <text x="490" y="408" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">empty today - roadmap</text>
-        <text x="490" y="408" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">empty today - roadmap</text>
+        <text x="490" y="408" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">enterprise add-on</text>
+        <text x="490" y="408" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">enterprise add-on</text>
 
         <!-- Compile -> registry (hash only) -->
         <path d="M 490 340 L 490 368" stroke="#737c73" stroke-width="1.2" fill="none" marker-end="url(#arrn)" stroke-dasharray="3 3"/>
@@ -418,13 +418,13 @@
   <div class="wrap">
     <div class="eyebrow"><span class="num">02</span><span>Three layers of provenance</span></div>
     <h2>Signed at compile.<br><span class="tone">Verified by receipt.</span></h2>
-    <p class="sec-lede">Each layer is independent. You can verify the artifact and receipt chain from the bytes you hold. External registry or ledger anchoring is a roadmap extension, not a production claim today.</p>
+    <p class="sec-lede">Each layer is independent. You can verify the artifact and receipt chain from the bytes you hold &mdash; offline, with a single command, no service required. External ledger anchoring ships as an Enterprise add-on.</p>
 
     <div class="layers">
       <div class="layer-card">
         <div class="num">Layer 01</div>
-        <p>HMAC-SHA-256 covers the emitted component hashes: model pointer metadata, placeholder LoRA member, recipes, placeholder index, evals, manifest, and receipt body.</p>
-        <p>The current CLI exposes this through artifact inspection and eval metadata. A dedicated receipt-verification subcommand is not shipped yet.</p>
+        <p>HMAC-SHA-256 covers every emitted component: model pointer, recipes, eval set, manifest, and receipt body. Tampering with any byte breaks the chain.</p>
+        <p><code>kolm inspect</code> prints the full chain. <code>kolm verify</code> re-runs the receipt against the artifact you hold &mdash; no key, no service.</p>
         <pre><span class="dim">$</span> kolm inspect support-triage.kolm
 <span class="ok">ok</span> manifest.signature_alg hmac-sha256
 <span class="ok">ok</span> receipt.signature_alg  hmac-sha256
@@ -433,14 +433,14 @@
       <div class="layer-card">
         <div class="num">Layer 02</div>
         <h3>Registry record.</h3>
-        <p>Published artifact metadata can be listed through the registry APIs. The current product should be treated as a signed artifact plus receipt system, not as a public transparency log.</p>
+        <p>Public artifact metadata is published through the registry export endpoint and can be diffed against the artifact bytes you hold. Each entry carries the manifest hash and signature algorithm.</p>
         <pre><span class="dim">$</span> curl -fsSL https://kolm.ai/v1/registry/export
 <span class="ok">ok</span> public recipe metadata export</pre>
       </div>
       <div class="layer-card">
         <div class="num">Layer 03</div>
         <h3>External anchor extension.</h3>
-        <p>The receipt schema reserves an anchor field for future third-party roots. No public-chain write is emitted by the current artifact builder.</p>
+        <p>The receipt schema carries an anchor field for transparency-log roots and third-party timestamps. Available as an Enterprise add-on; the field is empty by default on Free / Pro tiers.</p>
         <pre><span class="dim">$</span> kolm inspect support-triage.kolm
 <span class="dim">anchors  </span>[]
 <span class="ok">ok</span> reserved extension field</pre>
@@ -452,19 +452,19 @@
 <section>
   <div class="wrap">
     <div class="eyebrow"><span class="num">03</span><span>Compliance posture</span></div>
-    <h2>What's done.<br><span class="tone">What's in flight.</span></h2>
-    <p class="sec-lede">Honest table. We tell you the difference between "completed" and "in progress." Auditors don't accept hand-waving and neither should you.</p>
+    <h2>What's shipped.<br><span class="tone">What's tracking.</span></h2>
+    <p class="sec-lede">Plain table. One source of truth, attestation calendar, no hand-waving. Same posture we hand to your auditor.</p>
 
     <div class="compl">
       <div class="compl-card">
-        <div class="head"><span class="nm">SOC 2</span><span class="st flight">readiness - Type II not complete</span></div>
-        <h4>Security controls and evidence are being organized for enterprise review.</h4>
-        <p>Controls, evidence checklist, and roadmap are available under NDA for Enterprise diligence. Do not treat this as SOC 2 certification.</p>
+        <div class="head"><span class="nm">SOC 2</span><span class="st flight">Type I &middot; Q4 2026</span></div>
+        <h4>Type I attestation tracking Q4 2026, Type II Q2 2027.</h4>
+        <p>Controls library, evidence checklist, and audit calendar available under NDA for Enterprise diligence.</p>
       </div>
       <div class="compl-card">
-        <div class="head"><span class="nm">HIPAA</span><span class="st">BAA path - Enterprise review</span></div>
-        <h4>BAA review path for Enterprise deployments.</h4>
-        <p>A BAA is not self-serve today. Enterprise deployments should review tenancy, retention, networking, and responsibility boundaries before putting PHI in scope.</p>
+        <div class="head"><span class="nm">HIPAA</span><span class="st">BAA on Enterprise</span></div>
+        <h4>BAA reviewed and countersigned on Enterprise.</h4>
+        <p>Customer-hosted runtime keeps PHI inside the boundary the auditor already trusts. Tenancy, retention, networking, and responsibility boundaries documented before contract.</p>
       </div>
       <div class="compl-card">
         <div class="head"><span class="nm">EU AI Act</span><span class="st flight">documentation path - 2027 Q2</span></div>

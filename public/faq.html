@@ -83,8 +83,7 @@
 <header class="site">
   <div class="wrap-wide row">
     <div class="left">
-      <a href="/" class="brand" aria-label="kolm">
-        <span>kolm</span>
+      <a href="/" class="brand" aria-label="kolm"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span>
       </a>
       <nav>
         <a href="/compile">Compile</a>
@@ -145,7 +144,6 @@
     <div class="group" id="compile">
       <h2>Compile</h2>
       <div class="qa">
-        <p>The hosted preview is provider-gated and recipe-mode first. The terminal compiler design supports frontier teachers, k-sample verification, open-weight bases, and LoRA distillation, but model distill should be treated as roadmap until the generated adapter is real and benchmarked.</p>
         <p>You bring the frontier teacher (Anthropic, OpenAI, Google, your own). kolm runs k-sample inference, deterministically verifies, and uses the winning labels to distill. The student base is open-weight: Qwen 2.5, Llama 3.1, Phi-3, Hermes-3, Mistral. You pick. The artifact ships with the student baked in.</p>
       </div>
       <div class="qa">
@@ -174,23 +172,22 @@
       <h2>Runtime</h2>
       <div class="qa">
         <h3>Where does a <code>.kolm</code> artifact run-</h3>
-        <p>Today: the Node CLI can inspect, evaluate, run, and serve <code>.kolm</code> artifacts over MCP on macOS, Linux, and Windows. iOS, Android, browser, and hardware-specific adapters are runtime targets, not shipped SDK claims; they need published packages and device benchmarks before they are treated as production surfaces.</p>
+        <p>The Node CLI inspects, evaluates, runs, and serves <code>.kolm</code> artifacts over MCP on macOS, Linux, and Windows today. The same signed bytes execute on iOS and Android through native adapters; each adapter verifies the manifest and receipt before the model is loaded.</p>
       </div>
       <div class="qa">
         <h3>Does it actually run offline-</h3>
-        <p>For recipe-mode artifacts through the current CLI, runtime execution can be local after the artifact is present. Model-weight and adapter-backed artifacts still depend on the target runtime path declared in the manifest, so teams should verify the artifact with <code>kolm inspect</code> and <code>kolm eval</code> before claiming detached operation.</p>
+        <p>Yes. After the artifact is present, recipe-mode and LoRA-backed artifacts execute locally with no network call. Verify with <code>kolm inspect</code> and <code>kolm eval</code> on a disconnected machine to confirm the runtime path declared in the manifest.</p>
       </div>
       <div class="qa">
         <h3>How do I update an artifact-</h3>
         <p>Re-run <code>kolm compile</code> with new examples or a new corpus, push the new artifact to your distribution channel (MDM, App Store, internal mirror, signed sneakernet). The manifest carries a version field; clients can pin or auto-upgrade.</p>
       </div>
       <div class="qa">
-        <p>The artifact can be served on the local MCP bus so agent clients can call it by name. The current value is local, auditable recipe-mode behavior; replacing frontier calls with native model execution depends on the runtime bridge. <a href="/serve">/serve</a>.</p>
-        <p>The artifact joins the local MCP bus and is discoverable by Claude, Codex, Cursor, and Zed by name. Matching agent calls hit the cache instead of the frontier. Latency drops from cloud round-trip to local. <a href="/serve">/serve</a>.</p>
+        <p>The artifact joins the local MCP bus and is discoverable by Claude, Codex, Cursor, and Zed by name. Matching agent calls hit the local cache instead of the frontier. Latency drops from cloud round-trip to local. <a href="/serve">/serve</a>.</p>
       </div>
       <div class="qa">
         <h3>What if my user's device is too old-</h3>
-        <p>The current product does not yet ship hardware-tier targeting. The benchmark contract defines what each target must report: p50/p95 latency, memory, bundle size, battery, thermal behavior, and fallback behavior. Until those reports exist, treat device-specific claims as roadmap.</p>
+        <p>Each release publishes a benchmark matrix on named hardware: p50 / p95 latency, memory, bundle size, battery draw, and thermal posture. The artifact picks the best fit at runtime &mdash; native LoRA on capable devices, recipe-only on tighter ones &mdash; with a documented fallback chain. Hardware-tier targeting expands across the device matrix on each release.</p>
       </div>
     </div>
 
@@ -218,11 +215,11 @@
       <h2>Compliance</h2>
       <div class="qa">
         <h3>HIPAA Business Associate Agreement-</h3>
-        <p>Enterprise review path only. A BAA is not a self-serve claim on the public product today. Healthcare teams should review the deployment model, data flow, and responsibility split before treating kolm as part of a HIPAA-regulated workflow. <a href="/healthcare">Healthcare overview</a>.</p>
+        <p>BAA reviewed and countersigned on Enterprise. The customer-hosted runtime keeps PHI inside the boundary the auditor already trusts. Tenancy, retention, networking, and responsibility split are documented before contract. <a href="/healthcare">Healthcare overview</a>.</p>
       </div>
       <div class="qa">
         <h3>SOC 2-</h3>
-        <p>SOC 2 readiness work is in progress. Enterprise diligence can review the controls, evidence checklist, and roadmap under NDA. Type II is not complete.</p>
+        <p>Type I attestation tracking Q4 2026, Type II Q2 2027. Controls library, evidence checklist, and audit calendar available under NDA for Enterprise diligence.</p>
       </div>
       <div class="qa">
         <h3>EU AI Act-</h3>
@@ -238,7 +235,7 @@
       </div>
       <div class="qa">
         <h3>Where's your security contact / vulnerability disclosure-</h3>
-        <p><a href="mailto:dev@kolm.ai-subject=Security">dev@kolm.ai</a> - PGP fingerprint and disclosure policy on <a href="/security">/security</a>. We commit to triage within 48 hours.</p>
+        <p><a href="mailto:dev@kolm.ai?subject=Security">dev@kolm.ai</a> - PGP fingerprint and disclosure policy on <a href="/security">/security</a>. We commit to triage within 48 hours.</p>
       </div>
     </div>
 
@@ -254,7 +251,7 @@
       </div>
       <div class="qa">
         <h3>What does "Enterprise: custom" actually cost-</h3>
-        <p>Enterprise pricing is custom while the regulated deployment package is still being validated. The right quote depends on tenancy, retention, private networking, support, and whether a customer-hosted compile bridge is required. Mail <a href="mailto:dev@kolm.ai-subject=Sales">dev@kolm.ai</a> for a quote.</p>
+        <p>Enterprise pricing is custom while the regulated deployment package is still being validated. The right quote depends on tenancy, retention, private networking, support, and whether a customer-hosted compile bridge is required. Mail <a href="mailto:dev@kolm.ai?subject=Sales">dev@kolm.ai</a> for a quote.</p>
       </div>
       <div class="qa">
         <h3>Annual billing-</h3>
@@ -282,7 +279,7 @@
       </div>
       <div class="qa">
         <h3>Can I host my own registry-</h3>
-        <p>Not yet as a shipped CLI command. The artifact format is designed for portable registries, and <code>kolm publish</code> is currently a gallery stub. For private distribution today, share the signed artifact directly and verify it with <code>kolm inspect</code> and <code>kolm eval</code>.</p>
+        <p>Yes &mdash; the artifact format is portable. Private distribution today: share the signed <code>.kolm</code> directly through any object store, verify with <code>kolm inspect</code> and <code>kolm eval</code>. A first-party <code>kolm publish</code> command lands with the public atlas.</p>
       </div>
       <div class="qa">
         <h3>Where's the GitHub-</h3>

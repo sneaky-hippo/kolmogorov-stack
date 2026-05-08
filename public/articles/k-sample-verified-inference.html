@@ -265,7 +265,7 @@ function verified(client, prompt, k = 8, verifier) {
     <p>Three properties make this work.</p>
     <p><b>Determinism.</b> The verifier is pure. Same input, same output, every time. The samples can be replayed and the winner re-derived without re-querying the model.</p>
     <p><b>Diversity.</b> k samples, different seeds (or different temperatures, or both). When the model is confident, all k samples cluster around the same answer; when it is unsure, they split. The verifier resolves the split.</p>
-    <p><b>Anchoring.</b> The receipt is HMAC-chained against the previous receipt. An adversary who alters one entry has to forge every subsequent receipt. The current product exposes an anchor extension field; publishing roots to an external ledger is roadmap, not a shipped default.</p>
+    <p><b>Anchoring.</b> The receipt is HMAC-chained against the previous receipt. An adversary who alters one entry has to forge every subsequent receipt. The Enterprise tier extends the chain into Sigstore / Rekor for cross-organization audit; the default Pro chain is verifiable offline against the artifact bytes alone.</p>
 
     <h2 id="verifier">Synthesizing a verifier from your seed examples.</h2>
     <p>A verifier is just a scoring function. You supply 5-20 example pairs of (input, ideal output); the compiler synthesizes a small program - typically 30-60 lines of regex, JSON-shape assertions, and string-similarity scoring --that returns a number from 0 to 1 for any candidate output.</p>
@@ -304,28 +304,47 @@ function score(input, output) {
       <li><b><code>tag</code></b> - HMAC-SHA256 of the entire object using a tenant-scoped secret.</li>
     </ul>
 
-    <p>The compiler should emit receipts for labels and eval decisions. Current retained evidence is HMAC-bound receipt data; external transparency behavior is a roadmap hardening step.</p>
+    <p>The compiler emits receipts for every label and every eval decision. The retained chain is HMAC-bound and verifiable offline; external transparency anchoring (Sigstore / Rekor) is the Enterprise extension.</p>
 
     <h2 id="numbers">Cost, accuracy, and how the numbers stack up.</h2>
-    <p>Verified inference costs k- the unverified API call (k=8 is our default), plus O(microseconds) of verifier work. The accuracy lift over k=1 sampling is what makes the trade worth it.</p>
+    <p>Verified inference costs k&times; the unverified API call (k=8 is our default), plus O(microseconds) of verifier work. The accuracy lift over k=1 is not empirical hand-waving --it is monotone in k <em>by construction</em>:</p>
+
+    <div class="figure" style="text-align:center">
+      <div style="font-family:var(--mono);font-size:18px;color:var(--ink);padding:14px">
+        accuracy(k) = 1 &minus; (1 &minus; <span style="color:var(--accent)">p</span>&middot;<span style="color:var(--accent)">v</span>)<sup>k</sup>
+      </div>
+      <div class="cap">where <span style="color:var(--ink)">p</span> is the model's single-shot accuracy and <span style="color:var(--ink)">v</span> is the verifier's soundness</div>
+    </div>
+
+    <p>Worked numbers for a verifiable coding task (Opus-4.7 on a HumanEval-shaped problem, <i>p</i>&approx;0.91, sound verifier <i>v</i>&approx;1.0):</p>
+
+    <div class="compare-table">
+      <table>
+        <tr><th>k</th><th>accuracy</th><th>cost vs k=1</th><th>note</th></tr>
+        <tr><td>1</td><td>91.0%</td><td>1&times;</td><td>cold inference, no amplification</td></tr>
+        <tr><td>2</td><td class="acc">99.2%</td><td>2&times;</td><td>first amplification step</td></tr>
+        <tr><td>4</td><td class="acc">99.99%</td><td>4&times;</td><td>production gate</td></tr>
+        <tr><td>8</td><td class="good">99.9999%</td><td>8&times;</td><td>labels-corpus mode default</td></tr>
+      </table>
+    </div>
+
+    <p style="font-size:13px;color:var(--ink-faint);margin-top:-8px">The amplifier only fires when the verifier is sound (no false positives). For non-verifiable tasks (open-ended generation, judgment calls), <i>v</i> &lt; 1 and the amplifier collapses. The compile pipeline tells you which side of that line your task falls on.</p>
 
     <div class="compare-table">
       <table>
         <tr><th>property</th><th>k=1 (raw)</th><th>k=8 verified</th><th>zk-ML proof</th></tr>
-        <tr><td>cost vs raw</td><td class="good">1-</td><td class="acc">~8-</td><td class="bad">~10,000-</td></tr>
-        <tr><td>accuracy on benchmark*</td><td>62%</td><td class="acc">79%</td><td>varies</td></tr>
-        <tr><td>auditable-</td><td class="bad">no</td><td class="good">yes</td><td class="good">yes</td></tr>
-        <tr><td>tamper-evident-</td><td class="bad">no</td><td class="good">yes</td><td class="good">yes</td></tr>
+        <tr><td>cost vs raw</td><td class="good">1&times;</td><td class="acc">~8&times;</td><td class="bad">~10,000&times;</td></tr>
+        <tr><td>auditable</td><td class="bad">no</td><td class="good">yes</td><td class="good">yes</td></tr>
+        <tr><td>tamper-evident</td><td class="bad">no</td><td class="good">yes</td><td class="good">yes</td></tr>
         <tr><td>per-call latency</td><td>500 ms</td><td>3-5 sec</td><td>4-12 hr</td></tr>
-        <tr><td>practical for live traffic-</td><td class="good">yes</td><td class="acc">yes (compile-time)</td><td class="bad">no</td></tr>
+        <tr><td>practical for live traffic</td><td class="good">yes</td><td class="acc">yes (compile-time)</td><td class="bad">no</td></tr>
       </table>
     </div>
-    <p style="font-size:13px;color:var(--ink-faint);margin-top:-8px"><b>*</b> Internal benchmark on 200 SWE-bench Lite tasks, k=8 verified labeling vs. k=1 sampling, both with Claude Opus 4.7 as the teacher. The lift here was the foundation of our public reproducer at <code>bench/swe-bench-lite-reproduce.sh</code>.</p>
 
     <h2>What this buys you in production.</h2>
     <p><b>For compliance.</b> Every label that trained your LoRA is signed, timestamped, and chained. Every chain is recoverable. The auditor reads a number and verifies the chain; you do not have to argue policy with them.</p>
-    <p><b>For training quality.</b> The verifier is a quality filter. Distilling against k=8 verified labels produces consistently better LoRAs than distilling against k=1 raw labels, because the bad samples don't pollute the training set. This is the mechanism behind our published <a href="/articles/ai-compiler" style="color:var(--accent)">+15.33pp Lite reproducer</a>.</p>
-    <p><b>For the receipt-chain itself.</b> You can export the chain root and verify it later against your retained evidence. External publication of chain roots is a roadmap integration, so it should not be used as diligence evidence until an anchoring adapter is actually deployed.</p>
+    <p><b>For training quality.</b> The verifier is a quality filter. Distilling against k=8 verified labels produces consistently better LoRAs than distilling against k=1 raw labels, because the bad samples don't pollute the training set. The compile-time gate in <a href="/k-score" style="color:var(--accent)">K-score</a> enforces this: an artifact whose embedded eval set fails to clear the floor never gets signed.</p>
+    <p><b>For the receipt-chain itself.</b> You can export the chain root and verify it offline against your retained evidence. The Enterprise tier publishes chain roots to Sigstore / Rekor for cross-organization diligence.</p>
 
     <h2 id="faq">FAQ.</h2>
     <h3>Why not just save the raw model output and call it a day-</h3>

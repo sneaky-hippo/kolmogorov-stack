@@ -90,7 +90,11 @@ app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
     else if (/sdk-[a-f0-9]{8,}\.js$/.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    else if (filePath.match(/\.(css|js|svg|png|jpg|webp|wasm)$/)) res.setHeader('Cache-Control', 'public, max-age=300');
+    // Images, fonts, and WASM rarely change between deploys — cache 1 day.
+    else if (filePath.match(/\.(svg|png|jpg|jpeg|webp|gif|ico|woff2?|wasm)$/)) res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
+    // CSS/JS change with deploys — 1 hour with revalidate keeps deploys fresh
+    // while removing the 5-minute thrash that was hammering edge caches.
+    else if (filePath.match(/\.(css|js|map)$/)) res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate');
   },
 }));
 

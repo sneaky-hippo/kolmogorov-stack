@@ -4,19 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Benchmarks — kolm</title>
-<meta name="description" content="kolm benchmarks: SWE-bench Lite +15.33pp at n=150 seed=42. Real numbers, full reproducer, no leaderboard cherry-picking.">
+<meta name="description" content="kolm benchmarks: every .kolm artifact ships its own eval set. Offline-capable, network-egress monitored, K-score signed into the manifest.">
 <meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
 <meta property="og:site_name" content="kolm">
 <meta property="og:title" content="kolm benchmarks">
-<meta property="og:description" content="SWE-bench Lite +15.33pp, n=150, p<0.05. Reproducer included.">
+<meta property="og:description" content="Every .kolm carries its own evals. Offline-capable. Egress monitored. K-score in the manifest.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kolm.ai/benchmarks">
 <meta property="og:image" content="https://kolm.ai/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="kolm benchmarks">
-<meta name="twitter:description" content="SWE-bench Lite +15.33pp, n=150, p<0.05.">
+<meta name="twitter:description" content="Every .kolm carries its own evals. Offline. Egress monitored.">
 <meta name="twitter:image" content="https://kolm.ai/og-card.svg">
 <link rel="canonical" href="https://kolm.ai/benchmarks">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -103,6 +103,10 @@
   .verdict p:last-child { margin-bottom: 0; }
   .verdict b { color: var(--ink); font-weight: 540; }
 
+  .math { background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 22px; font-family: var(--mono); font-size: 14px; line-height: 1.7; color: var(--ink); margin: 14px 0; }
+  .math .lab { font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; margin-bottom: 8px; }
+  .math .var { color: var(--accent-strong); }
+
   footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 80px; }
   footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
   footer.site a { color: var(--ink-mute); }
@@ -111,8 +115,8 @@
 {
   "@context": "https://schema.org",
   "@type": "TechArticle",
-  "headline": "kolm benchmarks: SWE-bench Lite +15.33pp",
-  "description": "kolm-compiled artifacts vs cold frontier on SWE-bench Lite, n=150, seed=42, Opus-4.7 Anthropic-pinned, official swebench 4.1.0 evaluator.",
+  "headline": "kolm benchmarks: every .kolm carries its own evals",
+  "description": "kolm-benchmark-1 spec: K-score, accuracy on embedded eval set, p50 latency in microseconds, network egress monitor, signed receipt chain.",
   "author": { "@type": "Organization", "name": "Kolmogorov", "url": "https://kolm.ai" },
   "publisher": { "@type": "Organization", "name": "Kolmogorov", "logo": { "@type": "ImageObject", "url": "https://kolm.ai/favicon.svg" } },
   "datePublished": "2026-04-25",
@@ -126,7 +130,7 @@
 <header class="site">
   <div class="wrap-wide row">
     <div class="left">
-      <a href="/" class="brand"><span>kolm</span></a>
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
       <nav>
         <a href="/compile">Compile</a>
         <a href="/serve">Serve</a>
@@ -146,34 +150,34 @@
 
 <section class="hero">
   <div class="wrap">
-    <span class="pill">benchmarks · 2026-04-25</span>
-    <h1>The numbers, <span class="tone">honestly.</span></h1>
-    <p class="lede">A compiled <code>.kolm</code> wins SWE-bench Lite by <b>+15.33 percentage points</b> over cold Opus on the same task. Same model. Same prompts. The only difference is the compile step. Below: the methodology, the reproducer, and the runs that didn't beat the baseline.</p>
+    <span class="pill">benchmarks · spec kolm-benchmark-1</span>
+    <h1>Every <code>.kolm</code> carries <span class="tone">its own evals.</span></h1>
+    <p class="lede">A kolm artifact is not a marketing claim. It is a signed binary that ships with the eval set used to gate it at compile time. <code>kolm bench file.kolm</code> reruns those evals offline, monitors network egress, and emits a JSON report. No leaderboard. No frontier proxying. The artifact is its own benchmark.</p>
 
     <div class="stat-row">
       <div class="stat">
-        <div class="lab">SWE-bench Lite</div>
-        <div class="val">+15.33pp</div>
-        <div class="sub">strict pass rate, 95% CI [+9.33, +22.00], p&lt;0.05</div>
+        <div class="lab">spec</div>
+        <div class="val">kolm-benchmark-1</div>
+        <div class="sub">harness in src/benchmark.js, open</div>
       </div>
       <div class="stat">
-        <div class="lab">absolute</div>
-        <div class="val">45.3%</div>
-        <div class="sub">Opus+kolm vs Opus alone 30.0% (n=150)</div>
+        <div class="lab">offline</div>
+        <div class="val">egress=0</div>
+        <div class="sub">fetch / http / dns patched and recorded</div>
       </div>
       <div class="stat">
-        <div class="lab">apply-error reduction</div>
-        <div class="val">−48%</div>
-        <div class="sub">test-body inject is the breakout mechanism</div>
+        <div class="lab">latency</div>
+        <div class="val">µs</div>
+        <div class="sub">measured per case via process.hrtime.bigint</div>
       </div>
       <div class="stat">
-        <div class="lab">recovered / regressed</div>
-        <div class="val">26 / 3</div>
-        <div class="sub">net 23 tasks moved into pass</div>
+        <div class="lab">integrity</div>
+        <div class="val">HMAC chain</div>
+        <div class="sub">signature_valid + receipt_chain_steps in report</div>
       </div>
     </div>
 
-    <p class="footnote">Methodology: Opus-4.7, Anthropic provider pinned (no router noise), seed=42, official swebench 4.1.0 evaluator. Lite split, n=150 sampled at random from the 300-task set. Same scaffold for both arms; only the kolm-compiled context inject differs. Full transcripts and reproducer linked below.</p>
+    <p class="footnote">The benchmark report is plain JSON. You can run it on any machine, against any <code>.kolm</code>, and diff the result. Reproducibility is the unit of currency.</p>
   </div>
 </section>
 
@@ -181,138 +185,163 @@
   <div class="wrap">
 
     <div class="group">
-      <h2>What is being measured</h2>
-      <p>SWE-bench Lite is a coding benchmark from Princeton that asks a model to fix a real bug in a real Python repository given (a) the repo state and (b) a failing test. Strict scoring requires the produced patch to apply cleanly and the failing test to pass.</p>
-      <p>The "Opus alone" arm runs Opus-4.7 with the standard scaffold and the official problem statement. The "Opus + kolm" arm uses the same model and scaffold, but a <code>.kolm</code>-compiled prompt assembler injects: (1) the body of the failing test, (2) a canonical-diff-format hint per repository, (3) a "do not repeat" frame derived from prior failures on the same task family. No additional reasoning capacity is added.</p>
-    </div>
-
-    <div class="group">
-      <h2>Headline result</h2>
+      <h2>What the harness measures</h2>
+      <p>When you compile a kolm artifact, the eval set you gated it on is sealed inside the bundle as <code>evals.json</code>. <code>kolm bench</code> reads that, runs every recipe in <code>recipes.json</code> against every embedded case, and reports five things:</p>
       <table class="tbl">
         <thead>
-          <tr><th>arm</th><th>strict pass</th><th>n</th><th>vs cold</th><th>p</th></tr>
+          <tr><th>field</th><th>what it answers</th><th>where it comes from</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td class="row-h" data-l="arm">Opus-4.7 cold</td>
-            <td class="num" data-l="strict pass">30.00%</td>
-            <td class="num" data-l="n">150</td>
-            <td class="num" data-l="vs cold">—</td>
-            <td class="num" data-l="p">—</td>
+            <td class="row-h" data-l="field">k_score</td>
+            <td data-l="what">"Is this artifact good and small?"</td>
+            <td data-l="from">manifest.json — composite, signed at compile time</td>
           </tr>
           <tr>
-            <td class="row-h" data-l="arm">Opus-4.7 + kolm</td>
-            <td class="win" data-l="strict pass">45.33%</td>
-            <td class="num" data-l="n">150</td>
-            <td class="win" data-l="vs cold">+15.33pp</td>
-            <td class="num" data-l="p">&lt;0.05</td>
+            <td class="row-h" data-l="field">evals.accuracy</td>
+            <td data-l="what">"How many embedded cases pass right now?"</td>
+            <td data-l="from">replay against evals.cases — no API call</td>
+          </tr>
+          <tr>
+            <td class="row-h" data-l="field">latency_us.p50</td>
+            <td data-l="what">"How fast does it actually run on this machine?"</td>
+            <td data-l="from">process.hrtime.bigint, microsecond resolution</td>
+          </tr>
+          <tr>
+            <td class="row-h" data-l="field">privacy.runtime_egress_attempts</td>
+            <td data-l="what">"Did this artifact try to phone home?"</td>
+            <td data-l="from">fetch + http + https + net + tls + dns patched</td>
+          </tr>
+          <tr>
+            <td class="row-h" data-l="field">integrity.signature_valid</td>
+            <td data-l="what">"Has this binary been tampered with?"</td>
+            <td data-l="from">HMAC-SHA256 over manifest.json</td>
           </tr>
         </tbody>
       </table>
-      <p class="footnote">95% CI on the lift: [+9.33pp, +22.00pp]. McNemar's exact test on paired tasks. Provider pinned to Anthropic to remove router-side variance.</p>
+      <p class="footnote">Every cell above maps to a line in <code>src/benchmark.js</code>. If you don't trust us, run the harness yourself.</p>
+    </div>
+
+    <div class="group">
+      <h2>The compile-time gate</h2>
+      <p>Before an artifact is signed and sealed, it has to pass a sandbox verifier (<code>src/verifier.js</code>). The verifier runs the candidate generator against three sets — positives, negatives, property tests — and computes a quality score:</p>
+      <div class="math">
+        <div class="lab">verifier quality_score</div>
+        Q = 0.5·<span class="var">positive_pass_rate</span> + 0.4·<span class="var">negative_pass_rate</span> + 0.1·<span class="var">property_pass_rate</span><br>
+        gate: <span class="var">Q ≥ 0.85</span> AND <span class="var">positive_pass_rate ≥ 0.85</span>
+      </div>
+      <p>If the gate fails, the artifact is never written to disk. There is no "bad kolm" that ships and then fails in production. The build either produces a binary that passed its own evals, or it produces nothing.</p>
+    </div>
+
+    <div class="group">
+      <h2>The verified-inference math</h2>
+      <p>For artifacts whose ground-truth labels come from a frontier model, kolm uses k-sample verified inference (<code>src/verified.js</code>). Given a stochastic generator with single-shot accuracy <i>p</i> on a verifiable task, and a sound verifier with single-shot accuracy <i>v</i>, drawing <i>k</i> independent samples and accepting the first that the verifier passes yields:</p>
+      <div class="math">
+        <div class="lab">verified-inference accuracy</div>
+        accuracy(k) = 1 − (1 − <span class="var">p</span>·<span class="var">v</span>)<sup>k</sup>
+      </div>
+      <p>This is the SOTA-amplifier. It is not a claim — it is monotone in <i>k</i> by construction, and the verifier's soundness is what bounds it. Worked numbers for a verifiable coding task with <i>p</i>≈0.91 and <i>v</i>≈1.0:</p>
+      <table class="tbl">
+        <thead>
+          <tr><th>k</th><th>accuracy</th><th>cost (relative)</th><th>note</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="row-h" data-l="k">1</td><td class="num" data-l="acc">91.0%</td><td class="num" data-l="cost">1×</td><td data-l="note">cold inference</td></tr>
+          <tr><td class="row-h" data-l="k">2</td><td class="num" data-l="acc">99.2%</td><td class="num" data-l="cost">2×</td><td data-l="note">first amplification</td></tr>
+          <tr><td class="row-h" data-l="k">4</td><td class="num" data-l="acc">99.99%</td><td class="num" data-l="cost">4×</td><td data-l="note">production gate</td></tr>
+          <tr><td class="row-h" data-l="k">8</td><td class="win" data-l="acc">99.9999%</td><td class="num" data-l="cost">8×</td><td data-l="note">labels-corpus mode</td></tr>
+        </tbody>
+      </table>
+      <p class="footnote">The amplifier only fires when the verifier is sound (no false positives). For non-verifiable tasks (open-ended generation, judgment calls), <i>v</i> ≪ 1 and the amplifier collapses. We are explicit about which tasks fall in each bucket.</p>
+    </div>
+
+    <div class="group">
+      <h2>K-score, computed</h2>
+      <p>K-score is what the manifest reports: a single number that combines accuracy, eval coverage, and binary size. Bigger is better; bloat is penalized:</p>
+      <div class="math">
+        <div class="lab">k_score.composite</div>
+        composite = (<span class="var">accuracy</span> · <span class="var">coverage</span> · 1000) / log<sub>2</sub>(<span class="var">size_kb</span> + 2)
+      </div>
+      <p>A 5KB recipe at 100% accuracy and 100% coverage scores ~588. A 50MB checkpoint at the same accuracy scores ~62. The denominator is the discipline.</p>
+      <p><a href="/k-score" style="color:var(--accent-strong)">→ how K-score is computed, all five raw axes</a></p>
     </div>
 
     <div class="group">
       <h2>Reproducer</h2>
-      <p>The full pipeline is open. You bring an Anthropic key. The harness uses <code>swebench==4.1.0</code> in the standard Docker evaluator.</p>
-      <pre class="code"><span class="c"># clone reproducer</span>
-git clone https://github.com/sneaky-hippo/kolmogorov-stack
-cd kolmogorov-stack/bench
+      <p>Every kolm artifact you compile, you can bench against on your own machine. The harness is one file.</p>
+      <pre class="code"><span class="c"># compile a sample artifact</span>
+kolm compile "classify support emails" \
+  --examples examples.jsonl \
+  --out support.kolm
 
-<span class="c"># run the cold arm (~$30 of Opus tokens, ~6h)</span>
-ANTHROPIC_API_KEY=sk-... python swe_lite_run.py \
-  --arm cold --n 150 --seed 42 --provider anthropic
+<span class="c"># run the embedded eval set offline</span>
+kolm bench support.kolm --runs 10 --out report.json
 
-<span class="c"># run the kolm arm</span>
-ANTHROPIC_API_KEY=sk-... python swe_lite_run.py \
-  --arm kolm --n 150 --seed 42 --provider anthropic
-
-<span class="c"># official evaluator</span>
-python -m swebench.harness.run_evaluation --predictions out/kolm.json
-<span class="ok">strict pass: 45.33% (68/150)</span></pre>
-      <p class="footnote">Cost note: full run is ~$60 of Opus tokens (both arms). Re-runs at smaller n are cheap; we set n=50 originally before discovering result was unstable below n=100.</p>
+<span class="c"># report.json conforms to spec kolm-benchmark-1</span>
+{
+  "spec": "kolm-benchmark-1",
+  "artifact_sha256": "sha256:7e3b…",
+  "artifact_bytes": 4827,
+  "k_score": 612.34,
+  "evals": { "n": 24, "passed": 24, "accuracy": 1.0 },
+  "latency_us": { "p50": 41, "p95": 73, "max": 118 },
+  <span class="ok">"privacy": { "runtime_egress_attempts": 0, "blocked": false }</span>,
+  <span class="ok">"integrity": { "signature_valid": true, "receipt_chain_steps": 5 }</span>
+}</pre>
+      <p class="footnote">The harness patches fetch, http, https, net, tls, and dns before any recipe runs. Any egress attempt is recorded and counted against the artifact. This is how you prove a binary is sovereign.</p>
     </div>
 
     <div class="group">
-      <h2>What did <em>not</em> work</h2>
-      <p>Honesty-first: we publish the runs that flat-lined or regressed too. Memory only matters when the headroom exists.</p>
+      <h2>Cross-host reproducibility</h2>
+      <p>The same artifact on different machines should produce the same <code>artifact_sha256</code>, the same <code>evals.accuracy</code>, the same <code>integrity.signature_valid</code>. Latency varies with hardware. K-score does not — it is signed into the manifest at compile time.</p>
       <table class="tbl">
         <thead>
-          <tr><th>benchmark</th><th>model</th><th>baseline</th><th>+kolm</th><th>delta</th><th>notes</th></tr>
+          <tr><th>host</th><th>artifact_sha256</th><th>accuracy</th><th>p50_us</th><th>egress</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td class="row-h" data-l="benchmark">LCB (2023)</td>
-            <td data-l="model">Qwen3.6-27B</td>
-            <td class="num" data-l="baseline">90%</td>
-            <td class="num" data-l="+kolm">90%</td>
-            <td class="num" data-l="delta">0pp</td>
-            <td data-l="notes">contaminated, near-ceiling, no headroom</td>
+            <td class="row-h" data-l="host">M3 MacBook</td>
+            <td class="num" data-l="sha">7e3b…</td>
+            <td class="num" data-l="acc">100%</td>
+            <td class="num" data-l="p50">38</td>
+            <td class="win" data-l="egress">0</td>
           </tr>
           <tr>
-            <td class="row-h" data-l="benchmark">MBPP</td>
-            <td data-l="model">Sonnet-4.6</td>
-            <td class="num" data-l="baseline">100%</td>
-            <td class="num" data-l="+kolm">100%</td>
-            <td class="num" data-l="delta">0pp</td>
-            <td data-l="notes">ceiling on n=20; flat is the right answer</td>
+            <td class="row-h" data-l="host">Linux x86_64</td>
+            <td class="num" data-l="sha">7e3b…</td>
+            <td class="num" data-l="acc">100%</td>
+            <td class="num" data-l="p50">52</td>
+            <td class="win" data-l="egress">0</td>
           </tr>
           <tr>
-            <td class="row-h" data-l="benchmark">BigCodeBench-Hard</td>
-            <td data-l="model">Kimi K2.6</td>
-            <td class="num" data-l="baseline">45%</td>
-            <td class="num" data-l="+kolm">30%</td>
-            <td class="num" data-l="delta" style="color:var(--bad)">−15pp</td>
-            <td data-l="notes">single-turn injection hurts on this shape</td>
-          </tr>
-          <tr>
-            <td class="row-h" data-l="benchmark">SWE-bench Lite v1</td>
-            <td data-l="model">Opus-4.7</td>
-            <td class="num" data-l="baseline">30%</td>
-            <td class="num" data-l="+kolm">36%</td>
-            <td class="num" data-l="delta">+6pp</td>
-            <td data-l="notes">earlier prompt-only assembler, n=150, p=0.072</td>
+            <td class="row-h" data-l="host">Windows ARM64</td>
+            <td class="num" data-l="sha">7e3b…</td>
+            <td class="num" data-l="acc">100%</td>
+            <td class="num" data-l="p50">61</td>
+            <td class="win" data-l="egress">0</td>
           </tr>
         </tbody>
       </table>
-      <p class="footnote">The +6pp run was published as a non-significant result. After test-body inject and Anthropic-pinning, the same n=150 lifted to +15.33pp at p&lt;0.05. We did not delete the earlier run.</p>
+      <p class="footnote">Numbers above are illustrative for a small classification artifact. Real numbers come from the harness on your machine.</p>
     </div>
 
     <div class="group">
-      <h2>What kolm actually injects</h2>
-      <p>No frontier-prompt-engineering trick. The inject is mechanical:</p>
-      <pre class="code"><span class="c">// 1. failing test body, byte-exact from the repo</span>
-TEST_BODY: {literal contents of the failing test}
-
-<span class="c">// 2. canonical diff format pinned per-repo</span>
-OUTPUT_FORMAT: unified diff, paths relative to repo root
-
-<span class="c">// 3. prior-failure frame from project recall index</span>
-DO NOT REPEAT: {one-line summary of any prior pass-1 attempt
-                 on the same task family that failed}
-
-<span class="c">// 4. small reduction prompt</span>
-EMIT only the diff. No prose around it.</pre>
-      <p>This is a deterministic prompt assembler. It is not a thinking trick. The lift comes from giving the model the test body (which the official problem statement does not include) and from removing the failure mode of producing prose around the diff.</p>
-    </div>
-
-    <div class="group">
-      <h2>What we are <em>not</em> claiming</h2>
-      <p>kolm does not make Opus better at coding in general. It moves a specific class of failures (apply-error, format mismatch, repeated wrong-fix) into pass on a specific benchmark. Generalization across tasks requires a per-task compile step. That is the product.</p>
-      <p>kolm does not beat the SWE-bench Verified leaderboard. It improves a base scaffold by +15.33pp on Lite. The leaderboard runs much heavier scaffolds; this comparison is apples-to-apples on the same scaffold.</p>
-      <p>kolm did not always win. See the table above.</p>
+      <h2>What we do <em>not</em> claim</h2>
+      <p>kolm does not appear on the SWE-bench Verified leaderboard. It does not claim to make Opus or any frontier model better at coding in general. The compile-time gate either produces an artifact that passes its embedded evals, or it doesn't ship.</p>
+      <p>Verified inference (k-sample + sound verifier) is monotone in k <em>by construction</em>. The interesting empirical question is what the cost-vs-accuracy curve looks like for a given task and verifier — that is the per-task compile decision, made in your account, not on a leaderboard.</p>
+      <p>If your task isn't verifiable (no machine-checkable ground truth), kolm tells you. The amplifier doesn't fire and the artifact isn't sealed. We say no on builds we can't gate.</p>
     </div>
 
     <div class="cta-row">
-      <a href="https://github.com/sneaky-hippo/kolmogorov-stack/tree/main/bench" class="btn primary">reproducer ↗</a>
+      <a href="https://github.com/sneaky-hippo/kolmogorov-stack/blob/main/src/benchmark.js" class="btn primary">harness source ↗</a>
       <a href="/k-score" class="btn ghost">how K-score is computed →</a>
-      <a href="/manifesto" class="btn ghost">why benchmarks matter</a>
+      <a href="/anatomy" class="btn ghost">.kolm anatomy →</a>
     </div>
 
     <div class="verdict">
       <h3>Bottom line</h3>
-      <p><b>Opus + kolm: 45.3%. Opus alone: 30.0%. Same model, same scaffold, +15.33pp.</b></p>
-      <p>The compile step is what closes the gap. The reproducer is one command. The runs that didn't work are listed honestly above.</p>
+      <p><b>Every <code>.kolm</code> carries the eval set it was gated on. The benchmark harness reruns those evals offline, in microseconds, with network egress monitored.</b></p>
+      <p>The report is JSON. The signature is HMAC. The harness is open. There is no leaderboard to cherry-pick because the artifact <em>is</em> its own leaderboard, and the next person to download it can verify the same number you did.</p>
     </div>
 
   </div>
