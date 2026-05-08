@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Finance disclosure redact recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that redacts MNPI from a draft 10-K or earnings release before review. Trained on 400 paired drafts/finals, runs on-prem.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Finance-disclosure-redact recipe">
+<meta property="og:description" content="Local MNPI redactor for SEC filings. Signed, offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/finance-disclosure-redact">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/finance-disclosure-redact">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; finance-disclosure-redact</div>
+    <span class="pill">Recipe &middot; vertical</span>
+    <h1>Pre-disclosure drafts, <span class="tone">redacted to a public-safe surface.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that takes a draft 10-K, 10-Q, or earnings release and returns the version safe to share with PR/IR (MNPI removed, forward-looking statements flagged, named individuals masked) plus a redaction log. Trained on 400 paired drafts/finals from your past filings. Runs on-prem.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-7b-instruct</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">400 (280 train / 120 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.90</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">2.6 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~52 min (on-prem)</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">redactor + classifier</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>The 24 hours before a filing are the worst time for a security incident. A draft circulates between accounting, legal, IR, and exec, and any one inbox is a potential leak surface. This recipe gives every reviewer a redacted version with a per-line redaction log, so MNPI has a smaller blast radius until the filing window opens.</p>
+      <p>Three verifier levels: regex (numbers ±5% of consensus, employee names from cap-table), classifier (forward-looking statements flagged), and refusal (entire output suppressed if any redaction fails). A clean run produces a redacted draft <em>and</em> a legal-quality log of every change.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"redacted_text"</span>, <span class="k">"redactions"</span>, <span class="k">"flagged_statements"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"redacted_text"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> },
+      <span class="k">"redactions"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {
+        <span class="k">"required"</span>: [<span class="k">"original"</span>, <span class="k">"replaced_with"</span>, <span class="k">"reason"</span>, <span class="k">"line"</span>],
+        <span class="k">"properties"</span>: {
+          <span class="k">"original"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> },
+          <span class="k">"replaced_with"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> },
+          <span class="k">"reason"</span>: { <span class="k">"enum"</span>: [<span class="k">"mnpi_number"</span>, <span class="k">"mnpi_name"</span>, <span class="k">"mnpi_ticker"</span>, <span class="k">"forward_looking"</span>] },
+          <span class="k">"line"</span>: { <span class="k">"type"</span>: <span class="k">"integer"</span> }
+        }
+      } },
+      <span class="k">"flagged_statements"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>} }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"redact_before_train"</span>: <span class="ok">true</span>,
+    <span class="k">"redact_patterns"</span>: [<span class="k">"mnpi-numbers.regex"</span>, <span class="k">"mnpi-names.txt"</span>, <span class="k">"mnpi-tickers.txt"</span>],
+    <span class="k">"refuse_on_redaction_miss"</span>: <span class="ok">true</span>,
+    <span class="k">"forward_looking_classifier"</span>: <span class="ok">true</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"pre-disclosure MNPI redactor for 10-K/10-Q drafts"</span> \
+  --base qwen2.5-7b-instruct \
+  --pairs ./gold-pairs/ \
+  --patterns ./mnpi-{numbers,names,tickers} \
+  --verifier refuse-on-miss,forward-looking-classifier \
+  --k-floor 0.90 \
+  --output finance-disclosure-redact.kolm
+
+<span class="ok">ok</span> wrote <span class="k">finance-disclosure-redact.kolm</span>
+   k_score=0.94  signature=hmac-sha256
+   redaction-recall 100% on synthetic adversarial set (n=240)</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.94</span>
+        <span class="k-detail">held-out 120 drafts &middot; redaction-recall 100% (refuses on any miss) &middot; forward-looking-flag precision 92% &middot; reviewer-rated complete 96%</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">Hospital server</div><div class="v">2.6<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">580<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Mac mini</div><div class="v">3.0<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86</div><div class="v">4.0<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># pre-share gate — every external review gets a redacted copy + log:</span>
+share = (draft, recipient) =&gt; {
+  const r = kolm.run(<span class="k">'finance-disclosure-redact.kolm'</span>, draft);
+  vault.attach(draft.id, <span class="k">'redaction-log'</span>, r.redactions);
+  email.send(recipient, r.redacted_text, [<span class="k">'redaction-log.json'</span>]);
+};</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/legal-clause-extract"><div class="h">Legal clause extract</div><div class="d">Contract → labeled clause set.</div></a>
+        <a href="/cookbook/hipaa-summarizer"><div class="h">HIPAA summarizer</div><div class="d">Clinical note → structured summary, PHI scrubbed.</div></a>
+        <a href="/cookbook/web3-address-screener"><div class="h">Wallet screener</div><div class="d">Address + tx history → sanctioned/clean.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

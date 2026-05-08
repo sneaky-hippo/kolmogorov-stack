@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Embedded sensor classifier recipe - kolm cookbook</title>
+<meta name="description" content="Compile a sub-50MB signed model that classifies embedded sensor streams (vibration, IMU, audio) into labeled events. Runs on Cortex-M / Coral / Jetson Nano.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Embedded sensor classifier recipe">
+<meta property="og:description" content="Local sensor-event classifier sized for microcontrollers. Signed, offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/embedded-sensor-classifier">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/embedded-sensor-classifier">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; embedded-sensor-classifier</div>
+    <span class="pill">Recipe &middot; vertical</span>
+    <h1>Sensor stream in, <span class="tone">labeled events out — on a Cortex-M.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that takes a 1-second window of multi-axis IMU + audio + vibration and returns a labeled event ("bearing_fault", "normal", "belt_slip", "impact"). Sub-50MB artifact deploys to STM32H7 / Coral micro / Jetson Nano. Trained on 12,000 labeled windows from your own equipment fleet.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">tinyllama-1.1b-int8 + dsp-frontend</span></div>
+      <div class="item"><span class="label">gold windows</span><span class="value">12,000 (8.4k train / 3.6k eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.85</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">42 MB (int8)</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~38 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">closed-vocab + asymmetric cost</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>The classic embedded ML problem is the cost-asymmetric one: a missed bearing fault is a $40,000 truck breakdown, a false alarm is a five-minute walk to the bay. This recipe optimizes for the asymmetric cost from the gate: false negatives weighted 25× false positives in the K-score loss, with a confidence threshold the user controls per-deployment.</p>
+      <p>The artifact ships at 42MB int8-quantized — fits in 64MB flash on a Cortex-M7 with the DSP front-end pre-baked. The signed receipt walks identically on the device and on the cloud — a field tech can confirm the deployed model is the one QA signed off on.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"label"</span>, <span class="k">"confidence"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"label"</span>: { <span class="k">"enum"</span>: [<span class="k">"normal"</span>, <span class="k">"bearing_fault"</span>, <span class="k">"belt_slip"</span>, <span class="k">"impact"</span>, <span class="k">"unknown"</span>] },
+      <span class="k">"confidence"</span>: { <span class="k">"type"</span>: <span class="k">"number"</span>, <span class="k">"minimum"</span>: 0, <span class="k">"maximum"</span>: 1 },
+      <span class="k">"top_features"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>}, <span class="k">"maxItems"</span>: 3 }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"closed_vocab_label"</span>: <span class="ok">true</span>,
+    <span class="k">"false_negative_cost"</span>: 25,
+    <span class="k">"false_positive_cost"</span>: 1,
+    <span class="k">"calibration_target_brier_score"</span>: 0.08,
+    <span class="k">"max_artifact_bytes"</span>: 50000000
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"vibration+IMU+audio classifier for Cortex-M7"</span> \
+  --base tinyllama-1.1b-int8 \
+  --frontend dsp-mfcc-stft \
+  --pairs ./windows/*.parquet \
+  --target-arch cortex-m7 \
+  --max-bytes 50000000 \
+  --asymmetric-loss false-neg=25 \
+  --k-floor 0.85 \
+  --output embedded-sensor.kolm
+
+<span class="ok">ok</span> wrote <span class="k">embedded-sensor.kolm</span>
+   k_score=0.89  signature=hmac-sha256
+   artifact 42.0 MB int8</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.89</span>
+        <span class="k-detail">held-out 3,600 windows &middot; bearing_fault recall 99.2% (only 4 missed) &middot; overall precision 96% &middot; Brier 0.071 (target 0.08) &middot; 42 MB artifact</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">STM32H7 (480MHz)</div><div class="v">38<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Coral micro</div><div class="v">11<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Jetson Nano</div><div class="v">6<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Mac mini</div><div class="v">4<span class="u">ms</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c">// firmware loop — fire on every 1s window:</span>
+window_t w = sensor_capture_1s();
+kolm_result_t r = kolm_run(&amp;artifact_embedded_sensor, &amp;w);
+if (r.label == BEARING_FAULT &amp;&amp; r.confidence &gt; 0.7) {
+  led_set(LED_RED);
+  modbus_write(REG_FAULT, 1);
+  flash_log_event(&amp;r);
+}</pre>
+      <p>The signed receipt of the artifact is logged with each event. When QA pulls the device for inspection, the fault history is provably from the signed-off model.</p>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/hipaa-summarizer"><div class="h">HIPAA summarizer</div><div class="d">Clinical note → structured summary, PHI scrubbed.</div></a>
+        <a href="/cookbook/finance-disclosure-redact"><div class="h">Finance disclosure</div><div class="d">SEC filing → redacted public draft.</div></a>
+        <a href="/cookbook/web3-address-screener"><div class="h">Wallet screener</div><div class="d">Address + tx history → sanctioned/clean.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

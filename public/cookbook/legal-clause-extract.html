@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Legal clause extract recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that extracts and labels every clause in a contract: indemnity, liability cap, IP, termination, confidentiality. Verifier requires every label to span exact text.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Legal-clause-extract recipe">
+<meta property="og:description" content="Local contract clause extractor with span-grounded labels. Signed, offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/legal-clause-extract">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/legal-clause-extract">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; legal-clause-extract</div>
+    <span class="pill">Recipe &middot; vertical</span>
+    <h1>Contracts in, <span class="tone">labeled clauses out — with spans.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that takes a contract (PDF or DOCX) and returns every clause labeled with type, parties, governing law, monetary thresholds, and the exact character span. Verifier rejects any clause label whose span doesn't byte-match a substring of the input. Trained on 1,000 paired contracts/markups from your firm.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-7b-instruct</span></div>
+      <div class="item"><span class="label">gold contracts</span><span class="value">1,000 (700 train / 300 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.86</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">2.6 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~84 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">closed-vocab + span-grounded</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>The "ChatGPT, summarize this contract" workflow has the failure mode you'd expect: a number that isn't in the contract appears in the summary. This recipe makes that mode unreachable. Every label points to a byte-exact span in the input. If the model hallucinates a "liability cap of $5M" that isn't in the contract, the verifier rejects it before the artifact returns.</p>
+      <p>The output schema is closed-vocab on clause type (32 categories from your firm's playbook) and free-text on span. Atypical clauses get bucketed to <code>"other"</code> with a span and a free-text label — these are the rows your associates should look at first.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"clauses"</span>, <span class="k">"governing_law"</span>, <span class="k">"parties"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"clauses"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {
+        <span class="k">"required"</span>: [<span class="k">"type"</span>, <span class="k">"span"</span>, <span class="k">"start"</span>, <span class="k">"end"</span>],
+        <span class="k">"properties"</span>: {
+          <span class="k">"type"</span>: { <span class="k">"$ref"</span>: <span class="k">"clause-types.json"</span> },
+          <span class="k">"span"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> },
+          <span class="k">"start"</span>: { <span class="k">"type"</span>: <span class="k">"integer"</span> },
+          <span class="k">"end"</span>: { <span class="k">"type"</span>: <span class="k">"integer"</span> },
+          <span class="k">"monetary_thresholds"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>} },
+          <span class="k">"label_if_other"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> }
+        }
+      } },
+      <span class="k">"governing_law"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> },
+      <span class="k">"parties"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>} }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"span_must_byte_match_input"</span>: <span class="ok">true</span>,
+    <span class="k">"clause_type_must_be_in_taxonomy"</span>: <span class="ok">true</span>,
+    <span class="k">"monetary_threshold_must_appear_in_span"</span>: <span class="ok">true</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"contract clause extractor with span-grounded labels"</span> \
+  --base qwen2.5-7b-instruct \
+  --pairs ./gold-contracts/ \
+  --taxonomy ./clause-types.json \
+  --verifier span-byte-grounded,closed-vocab \
+  --k-floor 0.86 \
+  --output legal-clause-extract.kolm
+
+<span class="ok">ok</span> wrote <span class="k">legal-clause-extract.kolm</span>
+   k_score=0.89  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.89</span>
+        <span class="k-detail">held-out 300 contracts &middot; span byte-match 100% &middot; clause-type accuracy 91% &middot; missed-clause rate 6% &middot; "other" bucket precision 84%</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">Mac Studio</div><div class="v">3.6<span class="u">s</span><div class="u">/avg contract</div></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">820<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Hospital server</div><div class="v">4.2<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86</div><div class="v">5.6<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># DMS hook — every contract uploaded gets a clause-list as a sidecar:</span>
+on_contract_upload = (file) =&gt; {
+  const x = kolm.run(<span class="k">'legal-clause-extract.kolm'</span>, pdf.text(file));
+  dms.attach(file.id, <span class="k">'clause-list.json'</span>, x);
+  if (x.clauses.some(c =&gt; c.type === <span class="k">'liability_cap'</span> &amp;&amp; c.monetary_thresholds.length === 0)) {
+    review.queue(file.id, <span class="k">'liability cap clause has no number — review'</span>);
+  }
+};</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/finance-disclosure-redact"><div class="h">Finance disclosure</div><div class="d">SEC filing → redacted public draft.</div></a>
+        <a href="/cookbook/hipaa-summarizer"><div class="h">HIPAA summarizer</div><div class="d">Clinical note → structured summary, PHI scrubbed.</div></a>
+        <a href="/cookbook/web3-address-screener"><div class="h">Wallet screener</div><div class="d">Address + tx history → sanctioned/clean.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Web3 address screener recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that screens an address + tx history against OFAC, mixers, and high-risk routes. Returns risk band + cited tx hashes. On-prem only.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Web3-address-screener recipe">
+<meta property="og:description" content="Local AML screener with cited tx evidence. Signed, offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/web3-address-screener">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/web3-address-screener">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; web3-address-screener</div>
+    <span class="pill">Recipe &middot; vertical</span>
+    <h1>Wallets in, <span class="tone">risk band + cited tx out.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that takes an EVM address + 90 days of tx history and returns <em>(risk_band, reasons[], cited_tx_hashes[], action)</em>. Reasons must trace to a sanctioned-list source or a tx hash present in the input. Trained on 2,000 labeled wallets from Chainalysis-equivalent and OFAC SDN data. On-prem.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-coder-3b</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">2,000 (1.4k train / 600 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.88</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">1.6 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~46 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">grounded + asymmetric cost</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>A compliance team needs two things: a number that won't make the regulator unhappy, and an audit trail. This recipe gives both. The model returns a risk band; every reason cites either a sanctioned-list entry or a transaction hash in the input. Hallucinated risk reasons are blocked at the verifier — if the artifact says "interacted with Tornado Cash," there must be a tx in the input pointing at a Tornado contract.</p>
+      <p>Cost is asymmetric: a missed match against an OFAC SDN address is a regulatory event; a false flag is a 5-minute review. False-negative weight is 50× false-positive weight in the K-score loss. Compiled on-prem because the gold corpus contains licensed Chainalysis-equivalent labels.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"risk_band"</span>, <span class="k">"reasons"</span>, <span class="k">"action"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"risk_band"</span>: { <span class="k">"enum"</span>: [<span class="k">"clean"</span>, <span class="k">"watch"</span>, <span class="k">"high"</span>, <span class="k">"sanctioned"</span>] },
+      <span class="k">"reasons"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {
+        <span class="k">"required"</span>: [<span class="k">"reason"</span>, <span class="k">"evidence_tx"</span>],
+        <span class="k">"properties"</span>: {
+          <span class="k">"reason"</span>: { <span class="k">"$ref"</span>: <span class="k">"reasons.json"</span> },
+          <span class="k">"evidence_tx"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>} },
+          <span class="k">"sdn_match"</span>: { <span class="k">"type"</span>: [<span class="k">"string"</span>, <span class="k">"null"</span>] }
+        }
+      } },
+      <span class="k">"action"</span>: { <span class="k">"enum"</span>: [<span class="k">"allow"</span>, <span class="k">"review"</span>, <span class="k">"block"</span>] }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"reason_must_be_in_taxonomy"</span>: <span class="ok">true</span>,
+    <span class="k">"evidence_tx_must_appear_in_input"</span>: <span class="ok">true</span>,
+    <span class="k">"sdn_match_must_resolve_to_sdn_list"</span>: <span class="ok">true</span>,
+    <span class="k">"false_negative_cost"</span>: 50,
+    <span class="k">"sanctioned_band_requires_sdn_match"</span>: <span class="ok">true</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile (in your VPC, against your SDN snapshot)</h2>
+      <pre class="code">kolm compile <span class="k">"AML address screener with cited tx evidence"</span> \
+  --base qwen2.5-coder-3b \
+  --pairs ./labeled-wallets/*.jsonl \
+  --taxonomy ./reasons.json \
+  --sdn-list ./ofac-sdn-2026-05-09.json \
+  --asymmetric-loss false-neg=50 \
+  --verifier evidence-grounded,sdn-resolves \
+  --k-floor 0.88 \
+  --output web3-screener.kolm
+
+<span class="ok">ok</span> wrote <span class="k">web3-screener.kolm</span>
+   k_score=0.92  signature=hmac-sha256
+   sdn-match recall 100% on synthetic adversarial (n=240)</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.92</span>
+        <span class="k-detail">held-out 600 wallets &middot; sanctioned-recall 100% &middot; high-risk recall 96% &middot; precision-at-block 94% &middot; evidence-grounded 100%</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">Mac Studio</div><div class="v">740<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">200<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Hospital server</div><div class="v">2.1<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86</div><div class="v">2.8<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c">// pre-trade gate — every withdrawal address checked before approval:</span>
+on_withdrawal_request = async (req) =&gt; {
+  const txs = await chain.txHistory(req.address, { days: 90 });
+  const r = kolm.run(<span class="k">'web3-screener.kolm'</span>, { address: req.address, txs });
+  audit.log({ withdrawal: req.id, screener_receipt: r.receipt });
+  if (r.action === <span class="k">'block'</span>) return reject(req, r.reasons);
+  if (r.action === <span class="k">'review'</span>) return queue.compliance(req, r);
+  return approve(req);
+};</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/finance-disclosure-redact"><div class="h">Finance disclosure</div><div class="d">SEC filing → redacted public draft.</div></a>
+        <a href="/cookbook/legal-clause-extract"><div class="h">Legal clause extract</div><div class="d">Contract → labeled clause set.</div></a>
+        <a href="/cookbook/embedded-sensor-classifier"><div class="h">Sensor classifier</div><div class="d">Edge sensor stream → labeled events.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

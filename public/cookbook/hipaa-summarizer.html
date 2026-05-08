@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HIPAA summarizer recipe - kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that summarizes a clinical note with PHI scrubbed before training and zero PHI in the output. HIPAA-aligned, never crosses the network.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="HIPAA-summarizer recipe">
+<meta property="og:description" content="Local clinical-note summarizer with PHI redaction. Signed, offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/cookbook/hipaa-summarizer">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/hipaa-summarizer">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; hipaa-summarizer</div>
+    <span class="pill">Recipe &middot; vertical</span>
+    <h1>Clinical notes, <span class="tone">summarized — without the PHI ever leaving.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that summarizes a clinical note into <em>(chief_complaint, history, assessment, plan)</em>. PHI (HIPAA's 18 identifiers) is redacted before training and the verifier rejects any output that contains an HIPAA identifier or hallucinates a finding not supported by the input. Compiled in your VPC; the artifact runs on the EHR host.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-7b-instruct</span></div>
+      <div class="item"><span class="label">gold notes</span><span class="value">600 (420 train / 180 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.88</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">2.6 GB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~62 min (in your VPC)</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">redactor + grounded</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Most "AI summary" of clinical notes is impossible at most hospitals because the data can't leave the network. This recipe compiles inside your VPC: the gold corpus is never seen by us, the base weights are pulled from a signed mirror, the artifact is delivered to the EHR host. PHI handling is enforced both at training (regex+NER redactor strips the 18 identifiers from gold pairs) and at run time (output is blocked if a regex match fires on any HIPAA pattern).</p>
+      <p>The "grounded" verifier rejects any clinical claim that doesn't trace to text in the input. The model can summarize, condense, and structure — it cannot invent.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"chief_complaint"</span>, <span class="k">"history"</span>, <span class="k">"assessment"</span>, <span class="k">"plan"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"chief_complaint"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 200 },
+      <span class="k">"history"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 800 },
+      <span class="k">"assessment"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 600 },
+      <span class="k">"plan"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>}, <span class="k">"maxItems"</span>: 8 }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"redact_before_train"</span>: <span class="ok">true</span>,
+    <span class="k">"redact_pattern_file"</span>: <span class="k">"hipaa-18.regex"</span>,
+    <span class="k">"output_must_not_contain_phi"</span>: <span class="ok">true</span>,
+    <span class="k">"clinical_claim_must_be_grounded"</span>: <span class="ok">true</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile (inside the customer VPC)</h2>
+      <pre class="code">kolm compile <span class="k">"clinical-note summarizer with PHI redaction and grounded claims"</span> \
+  --base qwen2.5-7b-instruct \
+  --pairs ./gold-notes/*.jsonl \
+  --redactor ./hipaa-18.regex \
+  --verifier no-phi-in-output,clinical-claim-grounded \
+  --offline-base-mirror ./base-models/ \
+  --k-floor 0.88 \
+  --output hipaa-summarizer.kolm
+
+<span class="ok">ok</span> wrote <span class="k">hipaa-summarizer.kolm</span>
+   k_score=0.91  signature=hmac-sha256
+   no PHI detected in 180/180 held-out summaries</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.91</span>
+        <span class="k-detail">held-out 180 notes &middot; PHI redaction 100% (4 levels: regex, NER, span-suppress, output-block) &middot; grounded-claim 100% &middot; clinician-rated faithful 89%</span>
+      </div>
+      <p>Clinician rating: a sample of 60 held-out notes were re-read by an attending and the summary was scored "faithful" / "minor edits" / "wrong." 89% faithful, 11% minor edits, 0% wrong (none claimed a finding not in the note).</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">Hospital server</div><div class="v">2.4<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">510<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Mac mini</div><div class="v">2.8<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86</div><div class="v">3.6<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># EHR background job — summarize new notes for the chart-prep pane:</span>
+on_note_signed = (note) =&gt; {
+  const sum = kolm.run(<span class="k">'hipaa-summarizer.kolm'</span>, note.text);
+  ehr.attach(note.id, <span class="k">'ai-summary'</span>, sum);
+  audit.log({ artifact: <span class="k">'hipaa-summarizer.kolm'</span>, note_id: note.id, k_score: sum.receipt.k_score });
+};</pre>
+      <p>Audit log includes the artifact's signed receipt — every summary is traceable to the exact compiled model that produced it.</p>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/finance-disclosure-redact"><div class="h">Finance disclosure</div><div class="d">SEC filing → redacted public draft.</div></a>
+        <a href="/cookbook/legal-clause-extract"><div class="h">Legal clause extract</div><div class="d">Contract → labeled clause set.</div></a>
+        <a href="/cookbook/embedded-sensor-classifier"><div class="h">Sensor classifier</div><div class="d">Edge sensor stream → labeled events.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -992,6 +992,54 @@ check "sitemap has /cookbook/photo-grouper"         has "$PRS_SM" "/cookbook/pho
 check "sitemap has /cookbook/voice-memo-to-task"    has "$PRS_SM" "/cookbook/voice-memo-to-task"
 
 echo ""
+echo "=== 38. Workstream G — five vertical cookbook recipes ==="
+# Five recipes for regulated work. Each ships with verifier-enforced
+# constraints that map to the regulator's nightmare: PHI never leaves,
+# MNPI never leaks, hallucinated clauses never appear, false negatives
+# carry asymmetric cost.
+for r in hipaa-summarizer finance-disclosure-redact legal-clause-extract embedded-sensor-classifier web3-address-screener; do
+  RC=$(curl -s -o /dev/null -w "%{http_code}" "$URL/cookbook/$r")
+  check "/cookbook/$r is 200" eq "$RC" 200
+done
+
+HS_R=$(curl -s "$URL/cookbook/hipaa-summarizer")
+check "hipaa-summarizer no PHI in output"           has "$HS_R" "output_must_not_contain_phi"
+check "hipaa-summarizer clinical claim grounded"    has "$HS_R" "clinical_claim_must_be_grounded"
+
+FD_R=$(curl -s "$URL/cookbook/finance-disclosure-redact")
+check "finance-disclosure refuses on miss"          has "$FD_R" "refuse_on_redaction_miss"
+check "finance-disclosure forward-looking gate"     has "$FD_R" "forward_looking_classifier"
+
+LC_R=$(curl -s "$URL/cookbook/legal-clause-extract")
+check "legal-clause span byte-grounded"             has "$LC_R" "span_must_byte_match_input"
+check "legal-clause type closed-vocab"              has "$LC_R" "clause_type_must_be_in_taxonomy"
+
+ES_R=$(curl -s "$URL/cookbook/embedded-sensor-classifier")
+check "embedded-sensor asymmetric loss"             has "$ES_R" "false_negative_cost"
+check "embedded-sensor under 50MB"                  has "$ES_R" "max_artifact_bytes"
+
+WS_R=$(curl -s "$URL/cookbook/web3-address-screener")
+check "web3-screener evidence grounded"             has "$WS_R" "evidence_tx_must_appear_in_input"
+check "web3-screener SDN must resolve"              has "$WS_R" "sdn_match_must_resolve_to_sdn_list"
+
+# Cookbook index now lists five vertical recipes.
+COOK_IDX5=$(curl -s "$URL/cookbook")
+check "cookbook index links hipaa-summarizer"       has "$COOK_IDX5" "/cookbook/hipaa-summarizer"
+check "cookbook index links finance-disclosure"     has "$COOK_IDX5" "/cookbook/finance-disclosure-redact"
+check "cookbook index links legal-clause-extract"   has "$COOK_IDX5" "/cookbook/legal-clause-extract"
+check "cookbook index links embedded-sensor"        has "$COOK_IDX5" "/cookbook/embedded-sensor-classifier"
+check "cookbook index links web3-screener"          has "$COOK_IDX5" "/cookbook/web3-address-screener"
+check "cookbook index has vertical section"         has "$COOK_IDX5" "vertical recipes"
+
+# Sitemap carries all five vertical recipe URLs.
+VRT_SM=$(curl -s "$URL/sitemap.xml")
+check "sitemap has /cookbook/hipaa-summarizer"      has "$VRT_SM" "/cookbook/hipaa-summarizer"
+check "sitemap has /cookbook/finance-disclosure"    has "$VRT_SM" "/cookbook/finance-disclosure-redact"
+check "sitemap has /cookbook/legal-clause-extract"  has "$VRT_SM" "/cookbook/legal-clause-extract"
+check "sitemap has /cookbook/embedded-sensor"       has "$VRT_SM" "/cookbook/embedded-sensor-classifier"
+check "sitemap has /cookbook/web3-screener"         has "$VRT_SM" "/cookbook/web3-address-screener"
+
+echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"
 if [ $FAIL -gt 0 ]; then
