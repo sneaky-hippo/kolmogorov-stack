@@ -8,7 +8,9 @@ import { effectiveReceiptSecret, isProductionRuntime, runtimeReadiness } from '.
 import * as registry from './registry.js';
 import * as runtime from './runtime.js';
 import * as cache from './cache.js';
-import { authMiddleware, provisionTenant, provisionAnonTenant, claimAnonTenant, chargeUsage, rotateTenantKey, adminApiKey, findTenantByApiKey } from './auth.js';
+import { authMiddleware, provisionTenant, provisionAnonTenant, claimAnonTenant, chargeUsage, rotateTenantKey, adminApiKey, findTenantByApiKey, findTenantByEmail } from './auth.js';
+import { mountOAuth, oauthConfigured } from './oauth.js';
+import { sendWelcome, sendBillingActivated, sendBillingFailed, emailConfigured } from './email.js';
 import { compileJs, verify } from './verifier.js';
 import { LIBRARY_VERSION, libraryDescription } from './library.js';
 import { all, findOne, insert, update, stats as storeStats } from './store.js';
@@ -210,6 +212,11 @@ export function buildRouter() {
     res.json({ plans });
   });
 
+  // ---------- OAuth (Google + GitHub) ----------
+  // Each provider is a no-op until its CLIENT_ID/CLIENT_SECRET pair is
+  // configured. /v1/oauth/providers reports which are live.
+  mountOAuth(r);
+
   // ---------- Anonymous CLI auth (robots / agents) ----------
   // Bootstrap: returns an anon_token that the CLI stores locally. 30-day TTL.
   // No email, no signup. Designed for agents that need to start working in <1 second.
@@ -276,7 +283,11 @@ export function buildRouter() {
     let billingUrl = null;
     if (isPaid) {
       billingUrl = billingLinkFor(requestedPlan, { tenantId: t.id, email });
-      try { update('tenants', x => x.id === t.id, { pending_plan: requestedPlan }); } catch (_) {}
+      try { update('tenants', x => x.id === t.id, { pending_plan: requestedPlan, billing_status: 'pending' }); } catch (_) {}
+    }
+    // Best-effort welcome email — never blocks signup.
+    if (emailConfigured()) {
+      sendWelcome({ email, apiKey: t.api_key, plan: provisionedPlan, billingUrl }).catch(() => {});
     }
 
     res.status(201).json({
@@ -982,8 +993,28 @@ export function buildRouter() {
   // ---------- Account ----------
   r.get('/v1/account', (req, res) => {
     if (!req.tenant_record) return res.json({ admin: !!req.is_admin, tenant: req.tenant });
-    const { id, name, plan, quota, used, created_at, last_used_at } = req.tenant_record;
-    res.json({ id, name, plan, quota, used, created_at, last_used_at, remaining: Math.max(0, quota - used) });
+    const t = req.tenant_record;
+    res.json({
+      id: t.id,
+      name: t.name,
+      email: t.email || null,
+      plan: t.plan,
+      quota: t.quota,
+      used: t.used,
+      seats: t.seats || 1,
+      remaining: Math.max(0, t.quota - (t.used || 0)),
+      created_at: t.created_at,
+      last_used_at: t.last_used_at,
+      pending_plan: t.pending_plan || null,
+      billing_status: t.billing_status || (t.plan === 'free' ? 'free' : 'active'),
+      stripe_customer_id: t.stripe_customer_id || null,
+      stripe_subscription_id: t.stripe_subscription_id || null,
+      paid_at: t.paid_at || null,
+      cancelled_at: t.cancelled_at || null,
+      current_period_end: t.current_period_end || null,
+      auth_provider: t.auth_provider || 'apikey',
+      oauth_providers: { google: oauthConfigured('google'), github: oauthConfigured('github') },
+    });
   });
 
   r.post('/v1/account/rotate-key', (req, res) => {
@@ -1108,13 +1139,37 @@ export function buildRouter() {
       update('tenants', x => x.id === tenantId, {
         plan: resolvedPlan,
         quota: meta.quota,
+        seats: meta.seats,
         pending_plan: null,
         stripe_customer_id: s.customer || null,
         stripe_subscription_id: s.subscription || null,
         paid_at: new Date().toISOString(),
         cancelled_at: null,
+        billing_status: 'active',
       });
+      // Best-effort welcome / activation email — never blocks the webhook.
+      if (tenant.email && emailConfigured()) {
+        sendBillingActivated({ email: tenant.email, plan: resolvedPlan, quota: meta.quota }).catch(() => {});
+      }
       return res.json({ received: true, plan: resolvedPlan, tenant: tenantId, id: event.id });
+    }
+
+    if (event.type === 'customer.subscription.updated') {
+      const sub = event.data && event.data.object || {};
+      const tenant = all('tenants').find(t => t.stripe_subscription_id === sub.id);
+      if (!tenant) return res.json({ received: true, warning: 'tenant not found', id: event.id });
+      const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+      const stripeStatus = String(sub.status || 'active');
+      const billingStatus = stripeStatus === 'past_due' ? 'past_due'
+        : stripeStatus === 'unpaid' ? 'past_due'
+        : stripeStatus === 'canceled' ? 'cancelled'
+        : 'active';
+      update('tenants', x => x.id === tenant.id, {
+        billing_status: billingStatus,
+        current_period_end: periodEnd,
+        cancel_at_period_end: !!sub.cancel_at_period_end,
+      });
+      return res.json({ received: true, billing_status: billingStatus, tenant: tenant.id, id: event.id });
     }
 
     if (event.type === 'customer.subscription.deleted') {
@@ -1124,14 +1179,29 @@ export function buildRouter() {
       update('tenants', x => x.id === tenant.id, {
         plan: 'free',
         quota: PLAN_CATALOG.free.quota,
+        seats: PLAN_CATALOG.free.seats,
         pending_plan: null,
         cancelled_at: new Date().toISOString(),
+        billing_status: 'cancelled',
       });
       return res.json({ received: true, plan: 'free', tenant: tenant.id, id: event.id });
     }
 
     if (event.type === 'invoice.payment_failed') {
-      // Stripe handles retries via dunning; no immediate downgrade.
+      // Stripe handles retries via dunning. We mark the tenant past_due so the
+      // dashboard can surface a warning and email them a heads-up.
+      const inv = event.data && event.data.object || {};
+      const tenant = all('tenants').find(t =>
+        t.stripe_subscription_id === inv.subscription ||
+        t.stripe_customer_id === inv.customer
+      );
+      if (tenant) {
+        update('tenants', x => x.id === tenant.id, { billing_status: 'past_due' });
+        if (tenant.email && emailConfigured()) {
+          sendBillingFailed({ email: tenant.email, plan: tenant.plan }).catch(() => {});
+        }
+        return res.json({ received: true, action: 'past_due_marked', tenant: tenant.id, id: event.id });
+      }
       return res.json({ received: true, action: 'noted', id: event.id });
     }
 
@@ -1153,13 +1223,29 @@ export function buildRouter() {
 
   // Self-serve account delete. Soft-delete the tenant; receipts and artifacts
   // already shipped to users keep verifying since the cloud signing key is
-  // unchanged. The tenant can no longer authenticate.
-  r.post('/v1/account/delete', (req, res) => {
+  // unchanged. The tenant can no longer authenticate. If they had an active
+  // Stripe subscription we ask Stripe to cancel it so they aren't charged
+  // again — best-effort, never blocks deletion.
+  r.post('/v1/account/delete', async (req, res) => {
     if (!req.tenant_record) return res.status(403).json({ error: 'admin tokens cannot delete' });
-    update('tenants', x => x.id === req.tenant_record.id, {
+    const t = req.tenant_record;
+    if (t.stripe_subscription_id && process.env.STRIPE_SECRET_KEY) {
+      try {
+        await fetch(`https://api.stripe.com/v1/subscriptions/${t.stripe_subscription_id}`, {
+          method: 'DELETE',
+          headers: { authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+        });
+      } catch (err) {
+        console.error('[delete] stripe sub cancel failed', err && err.message);
+      }
+    }
+    update('tenants', x => x.id === t.id, {
       _deleted: true,
       deleted_at: new Date().toISOString(),
+      billing_status: 'cancelled',
+      pending_plan: null,
     });
+    res.clearCookie('kolm_session', { path: '/' });
     res.json({ ok: true, message: 'Account deleted. Receipts already issued remain verifiable.' });
   });
 

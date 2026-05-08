@@ -51,6 +51,14 @@
   </section>
 
   <section id="acct-loaded" hidden>
+    <div id="billing-banner" class="card" hidden style="margin-bottom:18px;border-color:var(--accent);background:var(--bg-elev);padding:14px 18px;display:flex;align-items:flex-start;gap:14px">
+      <strong id="billing-banner-title" style="color:var(--accent)">Billing</strong>
+      <div style="flex:1">
+        <p id="billing-banner-msg" style="margin:0;color:var(--ink-mute);font-size:14px"></p>
+        <p style="margin:6px 0 0 0"><a id="billing-banner-cta" href="#" class="btn primary" style="margin-top:6px">Complete payment</a></p>
+      </div>
+    </div>
+
     <div class="metric-grid">
       <div class="metric-card"><div class="label">Plan</div><div class="value" id="acct-plan">...</div><p id="acct-id"></p></div>
       <div class="metric-card"><div class="label">Used</div><div class="value" id="acct-used">...</div><p id="acct-pct"></p></div>
@@ -242,6 +250,7 @@
       $('acct-remaining').textContent = fmt(account.remaining == null ? Math.max(0, Number(account.quota || 0) - Number(account.used || 0)) : account.remaining);
       $('acct-pct').textContent = pct(account.used, account.quota) + '% used';
       $('acct-key').value = maskKey(key);
+      renderBillingBanner(account);
       initSettings(account);
     } catch (_) {
       KS.clearApiKey();
@@ -249,6 +258,59 @@
       $('acct-loaded').hidden = true;
       KS.toast('Key invalid or expired. Paste another key.', 3200);
     }
+  }
+
+  function renderBillingBanner(account) {
+    var banner = $('billing-banner');
+    var title = $('billing-banner-title');
+    var msg = $('billing-banner-msg');
+    var cta = $('billing-banner-cta');
+    var status = account.billing_status || (account.plan === 'free' ? 'free' : 'active');
+    cta.style.display = 'none';
+    if (account.pending_plan && status === 'pending') {
+      banner.hidden = false;
+      banner.style.borderColor = 'var(--accent)';
+      title.textContent = 'Payment required';
+      title.style.color = 'var(--accent)';
+      msg.textContent = 'Your ' + account.pending_plan + ' tier is on hold until Stripe confirms payment. Complete checkout to activate.';
+      // Re-trigger the change-plan flow to fetch the billing URL.
+      cta.style.display = 'inline-block';
+      cta.textContent = 'Complete payment';
+      cta.onclick = async function (event) {
+        event.preventDefault();
+        try {
+          var body = await KS.api('/v1/account/change-plan', { method: 'POST', body: JSON.stringify({ plan: account.pending_plan }) });
+          if (body.billing_url) window.location.assign(body.billing_url);
+        } catch (_) {}
+      };
+      return;
+    }
+    if (status === 'past_due') {
+      banner.hidden = false;
+      banner.style.borderColor = '#ff6b91';
+      title.textContent = 'Payment failed';
+      title.style.color = '#ff6b91';
+      msg.textContent = 'Stripe could not charge your card for the ' + account.plan + ' tier. We will retry over the next 7 days. Update your payment method or cancel any time.';
+      cta.style.display = 'inline-block';
+      cta.textContent = 'Update payment method';
+      cta.onclick = async function (event) {
+        event.preventDefault();
+        try {
+          var body = await KS.api('/v1/account/change-plan', { method: 'POST', body: JSON.stringify({ plan: account.plan }) });
+          if (body.billing_url) window.location.assign(body.billing_url);
+        } catch (_) {}
+      };
+      return;
+    }
+    if (status === 'cancelled') {
+      banner.hidden = false;
+      banner.style.borderColor = 'var(--line-strong)';
+      title.textContent = 'Subscription cancelled';
+      title.style.color = 'var(--ink-mute)';
+      msg.textContent = 'Your paid plan was cancelled. You are on the Developer (free) tier. Existing artifacts continue to verify.';
+      return;
+    }
+    banner.hidden = true;
   }
 
   function initSettings(account) {

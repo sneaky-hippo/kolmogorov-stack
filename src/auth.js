@@ -134,6 +134,75 @@ export function claimAnonTenant(anonToken, { email, name }) {
   return { ok: true, mode: 'upgraded', api_key: newKey, tenant: { ...anon, name: uniq, api_key: newKey } };
 }
 
+// Find an existing tenant by email or create a fresh one. Used by OAuth
+// callbacks: a Google/GitHub login should sign you in if you've signed up
+// before, or sign you up if you haven't. Returns { tenant, api_key, created }.
+//
+// Note: api_key is only returned on first creation (the OAuth path replaces
+// "remember an API key" with "remember to log in via Google/GitHub"). For
+// existing tenants we mint a fresh session token by rotating the key, so the
+// browser cookie is the new key — old keys still work for CLI/server callers.
+export function findOrCreateTenantByEmail({ email, name, provider, provider_id }) {
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    throw new Error('valid email required');
+  }
+  const existing = all('tenants').find(t => !t._deleted && t.email === email && t.kind !== 'anon');
+  if (existing) {
+    // Existing tenant signs in via OAuth: rotate the key so the session
+    // cookie has a usable credential (we only store the hash, never the raw
+    // key after signup). Old API keys are invalidated — that's the cost of
+    // mixing OAuth signin with API-key auth. CLI users keeping a stored
+    // ks_*** key should sign in with that key, not OAuth.
+    const newKey = mintApiKey('user');
+    update('tenants', x => x.id === existing.id, {
+      ...keyFields(newKey),
+      api_key: undefined,
+      key_rotated_at: new Date().toISOString(),
+      [`${provider}_id`]: provider_id || existing[`${provider}_id`] || null,
+      last_login_at: new Date().toISOString(),
+    });
+    return {
+      tenant: existing,
+      api_key: newKey,
+      created: false,
+    };
+  }
+  const slug = (name || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 32) || 'user';
+  const uniq = `${slug}-${Date.now().toString(36).slice(-4)}`;
+  const key = mintApiKey('user');
+  const t = {
+    id: 'tenant_' + crypto.randomBytes(6).toString('hex'),
+    name: uniq,
+    ...keyFields(key),
+    kind: 'user',
+    expires_at: null,
+    email,
+    plan: 'free',
+    quota: 10000,
+    seats: 1,
+    used: 0,
+    rate_per_sec: DEFAULT_RATE,
+    burst: DEFAULT_BURST,
+    [`${provider}_id`]: provider_id || null,
+    auth_provider: provider,
+    created_at: new Date().toISOString(),
+    last_login_at: new Date().toISOString(),
+  };
+  insert('tenants', t);
+  return {
+    tenant: t,
+    api_key: key,
+    created: true,
+  };
+}
+
+// Look up a tenant by email — used by webhook fallback when client_reference_id
+// is missing but customer email is present.
+export function findTenantByEmail(email) {
+  if (!email) return null;
+  return all('tenants').find(t => !t._deleted && t.email === email && t.kind !== 'anon') || null;
+}
+
 export function rotateTenantKey(tenant_id) {
   const newKey = mintApiKey('user');
   update('tenants', x => x.id === tenant_id, {
@@ -177,7 +246,9 @@ const PUBLIC_API = (p) =>
   p === '/v1/anon/bootstrap' ||
   p === '/v1/anon/claim' ||
   p === '/v1/registry/public' ||
-  p === '/v1/stripe/webhook';
+  p === '/v1/stripe/webhook' ||
+  p === '/v1/oauth/providers' ||
+  /^\/v1\/oauth\/(google|github)\/(start|callback)$/.test(p);
 
 export function adminApiKey() {
   return process.env.ADMIN_KEY || (isProductionRuntime() ? null : 'ks_admin_change_me');

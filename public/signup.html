@@ -50,6 +50,18 @@
 
     <div id="msg" class="auth-msg" role="status" aria-live="polite"></div>
 
+    <div id="oauth-row" class="oauth-row" hidden style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      <button id="oauth-google" class="btn ghost" type="button" hidden style="display:flex;align-items:center;justify-content:center;gap:10px">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.227c0-.673-.06-1.32-.173-1.946H12v3.68h5.385c-.232 1.244-.937 2.298-1.997 3.005v2.498h3.232c1.892-1.741 2.98-4.305 2.98-7.237z"/><path fill="#34A853" d="M12 22c2.7 0 4.965-.894 6.62-2.422l-3.232-2.498c-.894.6-2.04.954-3.388.954-2.604 0-4.81-1.755-5.598-4.116H3.07v2.582A9.997 9.997 0 0 0 12 22z"/><path fill="#FBBC04" d="M6.402 13.918a5.998 5.998 0 0 1 0-3.836V7.5H3.07a9.998 9.998 0 0 0 0 9l3.332-2.582z"/><path fill="#EA4335" d="M12 5.882c1.468 0 2.787.504 3.823 1.495l2.866-2.866C16.96 2.99 14.696 2 12 2A9.997 9.997 0 0 0 3.07 7.5l3.332 2.582C7.19 7.637 9.396 5.882 12 5.882z"/></svg>
+        Continue with Google
+      </button>
+      <button id="oauth-github" class="btn ghost" type="button" hidden style="display:flex;align-items:center;justify-content:center;gap:10px">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.46-1.11-1.46-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg>
+        Continue with GitHub
+      </button>
+      <div id="oauth-divider" style="text-align:center;color:var(--ink-faint);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin:4px 0">or with email</div>
+    </div>
+
     <div id="plan-banner" class="plan-banner" hidden>
       <div>
         <div><span class="plan-name" id="plan-name">Developer</span> &middot; <span class="plan-price" id="plan-price">$0</span></div>
@@ -160,6 +172,43 @@
   $('tab-up').addEventListener('click', function(){ mode('up'); });
   applyPlanBanner();
   if (location.hash === '#up' || location.search.indexOf('plan=') !== -1) mode('up');
+
+  // Surface OAuth provider availability and errors. Hide the row entirely if
+  // neither provider is configured so we don't show a dead UI.
+  (function setupOAuth(){
+    var planParam = getQueryPlan();
+    var redirect = (planParam && planParam !== 'free') ? '/account' : '/dashboard';
+    function gotoOAuth(provider){
+      // For paid plans, route OAuth users back through change-plan after sign-in.
+      var qp = '?redirect=' + encodeURIComponent(redirect);
+      if (planParam && planParam !== 'free') qp += '&plan=' + encodeURIComponent(planParam);
+      location.href = '/v1/oauth/' + provider + '/start' + qp;
+    }
+    fetch('/v1/oauth/providers').then(function(r){ return r.json(); }).then(function(p){
+      var anyConfigured = false;
+      if (p.google) {
+        $('oauth-google').hidden = false;
+        $('oauth-google').addEventListener('click', function(){ gotoOAuth('google'); });
+        anyConfigured = true;
+      }
+      if (p.github) {
+        $('oauth-github').hidden = false;
+        $('oauth-github').addEventListener('click', function(){ gotoOAuth('github'); });
+        anyConfigured = true;
+      }
+      $('oauth-row').hidden = !anyConfigured;
+    }).catch(function(){});
+
+    var err = (location.search.match(/[?&]oauth_error=([^&]+)/) || [])[1];
+    if (err) {
+      var pretty = decodeURIComponent(err).replace(/_/g, ' ');
+      show('err', 'Sign in failed: ' + pretty + '. Try again or use email.');
+    }
+    var ok = (location.search.match(/[?&]oauth=(signup|signin)/) || [])[1];
+    if (ok === 'signup') show('ok', 'Account created. Redirecting...');
+    if (ok === 'signin') show('ok', 'Signed in. Redirecting...');
+    if (ok) setTimeout(function(){ location.href = redirect; }, 600);
+  })();
 
   $('form-in').addEventListener('submit', function(event){
     event.preventDefault();
