@@ -125,7 +125,7 @@ const ROUTE_ALIASES = {
   '/signin': 'signup',
   '/atlas': 'registry',
 };
-for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/atlas', '/signup', '/signin', '/why', '/pricing', '/status', '/specialists', '/onboarding', '/account', '/optimize', '/audit', '/spec', '/receipts', '/how-it-works', '/verified', '/economics', '/device', '/compile', '/run', '/recall', '/cloud', '/manual', '/mobile', '/k-score', '/benchmarks', '/compare', '/serve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/legal', '/edge', '/cookbook', '/defense', '/manifesto', '/faq', '/quickstart', '/changelog', '/troubleshooting', '/launch', '/architecture', '/trust', '/integrations', '/glossary', '/press', '/vs-ollama', '/vs-rag', '/vs-fine-tune', '/why-now', '/threat-model']) {
+for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/atlas', '/signup', '/signin', '/why', '/pricing', '/status', '/specialists', '/onboarding', '/account', '/optimize', '/audit', '/spec', '/receipts', '/how-it-works', '/verified', '/economics', '/device', '/compile', '/run', '/recall', '/cloud', '/manual', '/mobile', '/k-score', '/benchmarks', '/compare', '/serve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/legal', '/edge', '/cookbook', '/defense', '/manifesto', '/faq', '/quickstart', '/changelog', '/troubleshooting', '/launch', '/architecture', '/trust', '/integrations', '/glossary', '/press', '/vs-ollama', '/vs-rag', '/vs-fine-tune', '/why-now', '/threat-model', '/motion', '/roi']) {
   app.get(route, (_req, res) => {
     const name = route === '/' ? 'index' : (ROUTE_ALIASES[route] || route.slice(1));
     const file = path.join(__dirname, 'public', name + '.html');

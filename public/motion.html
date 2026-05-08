@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Go-to-market motion - kolm</title>
+<meta name="description" content="The three-phase motion behind kolm: developer-led bottoms-up, vertical enterprise land-and-expand, and edge/embedded OEM. The compiler shape applies at every layer.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm motion - the three phases">
+<meta property="og:description" content="Developer bottoms-up, vertical enterprise land-and-expand, edge/embedded OEM.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/motion">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/motion">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-strong: #9db6ff;
+    --good: #7ef0d2;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 540; font-size: 16px; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 32px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  h1 { margin: 22px 0 12px; font-size: clamp(36px, 5vw, 48px); line-height: 1.05; font-weight: 500; letter-spacing: -0.02em; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 24px; font-size: 17px; line-height: 1.6; color: var(--ink-mute); max-width: 64ch; }
+  p.lede b { color: var(--ink); font-weight: 540; }
+
+  .frame { margin: 38px 0 0; padding: 22px 26px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--bg-elev); display: flex; gap: 18px; align-items: flex-start; }
+  .frame .marker { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--accent); padding-top: 4px; min-width: 78px; letter-spacing: 0.04em; }
+  .frame .body { color: var(--ink-mute); font-size: 15px; line-height: 1.65; }
+  .frame .body b { color: var(--ink); font-weight: 540; }
+
+  .phase { margin: 56px 0 0; padding-top: 38px; border-top: 1px solid var(--line); }
+  .phase .ix { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.06em; margin-bottom: 6px; }
+  .phase h2 { margin: 0 0 10px; font-size: clamp(24px, 3vw, 30px); font-weight: 520; letter-spacing: -0.01em; }
+  .phase h2 .tone { color: var(--accent); }
+  .phase .sub { margin: 0 0 28px; color: var(--ink-mute); font-size: 16px; line-height: 1.65; max-width: 64ch; }
+  .phase .sub b { color: var(--ink); font-weight: 540; }
+
+  .ph-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 0 0 22px; }
+  @media (max-width: 880px) { .ph-grid { grid-template-columns: repeat(2, 1fr); } }
+  .ph-cell { padding: 18px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev); }
+  .ph-cell .l { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.05em; margin-bottom: 8px; }
+  .ph-cell .v { color: var(--ink); font-size: 14px; line-height: 1.55; font-weight: 520; }
+
+  .moves { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 0 0 22px; }
+  @media (max-width: 880px) { .moves { grid-template-columns: 1fr; } }
+  .move { padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-elev); }
+  .move .step { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; color: var(--accent); letter-spacing: 0.05em; margin-bottom: 8px; }
+  .move .h { color: var(--ink); font-size: 15px; font-weight: 540; margin-bottom: 6px; line-height: 1.4; }
+  .move .p { color: var(--ink-mute); font-size: 13.5px; line-height: 1.6; }
+
+  .ladder { display: flex; gap: 10px; align-items: stretch; margin: 0 0 22px; flex-wrap: wrap; }
+  .ladder .rung { flex: 1; min-width: 180px; padding: 16px 18px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg-card); position: relative; }
+  .ladder .rung:not(:last-child)::after { content: "&rarr;"; position: absolute; right: -10px; top: 50%; transform: translateY(-50%); color: var(--accent); font-size: 16px; }
+  .ladder .rung .h { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; color: var(--accent); letter-spacing: 0.05em; margin-bottom: 6px; }
+  .ladder .rung .v { font-size: 14px; color: var(--ink); font-weight: 520; line-height: 1.45; }
+  .ladder .rung .p { font-size: 12.5px; color: var(--ink-mute); line-height: 1.55; margin-top: 6px; }
+
+  .links { display: flex; gap: 16px; flex-wrap: wrap; margin: 18px 0 0; }
+  .links a { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 7px 14px; }
+  .links a:hover { background: var(--accent); color: var(--bg); }
+  .links a.muted { color: var(--ink-mute); border-color: var(--line-strong); }
+  .links a.muted:hover { color: var(--ink); border-color: var(--ink-mute); background: transparent; }
+
+  .closer { margin: 80px 0 64px; padding: 32px 36px; border: 1px solid var(--accent); border-radius: 14px; background: linear-gradient(180deg, rgba(76,125,255,0.07), transparent); }
+  .closer h3 { margin: 0 0 10px; font-size: clamp(20px, 2.4vw, 24px); font-weight: 540; color: var(--ink); }
+  .closer p { margin: 0; color: var(--ink-mute); font-size: 15.5px; line-height: 1.65; max-width: 70ch; }
+  .closer p b { color: var(--ink); font-weight: 540; }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  footer.site a { color: var(--ink-mute); }
+  footer.site a:hover { color: var(--ink); }
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">get a key</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill">Go-to-market</span>
+    <h1>Three phases.<br><span class="tone">One compiler shape.</span></h1>
+    <p class="lede"><b>kolm is to AI tasks what a compiler is to code</b> &mdash; the missing layer between a prompt and production. That framing earns its keep across three different motions: a developer who wants free + fast, a regulated buyer who wants a pilot, and an OEM who wants per-device royalty math. Same product. Same artifact. Three doors.</p>
+
+    <div class="frame">
+      <div class="marker">why now</div>
+      <div class="body">Frontier models stopped being a moat. Per-token economics broke at production scale. Sovereignty stopped being optional in regulated work. The buyer-side response is the same one C compilers gave the 1970s: <b>convert intent into a portable artifact you own, run it where you need it, ship one signed file across the fleet.</b></div>
+    </div>
+  </div>
+</section>
+
+<section class="phase">
+  <div class="wrap">
+    <div class="ix">Phase 01 - Developer-led, bottoms-up</div>
+    <h2>Win the people<br><span class="tone">who pick the stack.</span></h2>
+    <p class="sub">Free CLI. Public registry. AI-native SaaS builders, indie devs, and the hackathon scene get a working compile in under five minutes &mdash; the first one is on us. Their day-job buyer reads about kolm because they brought it in.</p>
+
+    <div class="ph-grid">
+      <div class="ph-cell"><div class="l">target</div><div class="v">AI-native SaaS builders, indie devs, hackathon teams.</div></div>
+      <div class="ph-cell"><div class="l">motion</div><div class="v">Free tier. CLI virality. Registry community. Cursor + Claude Code rules.</div></div>
+      <div class="ph-cell"><div class="l">goal</div><div class="v">Usage data. Benchmark diversity. Registry depth.</div></div>
+      <div class="ph-cell"><div class="l">unit</div><div class="v">Compiles per developer per week.</div></div>
+    </div>
+
+    <div class="moves">
+      <div class="move">
+        <div class="step">Move 01</div>
+        <div class="h">Free Developer tier with 3 compiles per month.</div>
+        <div class="p">Public atlas pulls unlimited. Recipe-mode artifacts. The bar to a working <code style="font-family:var(--mono)">.kolm</code> is one <code style="font-family:var(--mono)">npm i</code> away.</div>
+      </div>
+      <div class="move">
+        <div class="step">Move 02</div>
+        <div class="h">Agent-IDE first-class.</div>
+        <div class="p">Cursor rules at <a href="/docs/cursor-rules.txt" style="color:var(--accent)">/docs/cursor-rules.txt</a> and a Claude Code skill at <a href="/docs/claude-skill.md" style="color:var(--accent)">/docs/claude-skill.md</a> teach the agent when to suggest <code style="font-family:var(--mono)">kolm compile</code> instead of writing another prompt-engineering layer.</div>
+      </div>
+      <div class="move">
+        <div class="step">Move 03</div>
+        <div class="h">A registry that compounds.</div>
+        <div class="p">Every compile lifts everyone else's compile. The deterministic-pattern set in the public atlas shrinks marginal compile time and artifact size with each new contribution.</div>
+      </div>
+    </div>
+
+    <div class="links">
+      <a href="/quickstart">developer quickstart</a>
+      <a href="/atlas" class="muted">public atlas</a>
+      <a href="/docs/claude-skill.md" class="muted">claude skill</a>
+      <a href="/docs/cursor-rules.txt" class="muted">cursor rules</a>
+    </div>
+  </div>
+</section>
+
+<section class="phase">
+  <div class="wrap">
+    <div class="ix">Phase 02 - Vertical enterprise land-and-expand</div>
+    <h2>Replace the line item<br><span class="tone">that grew &gt; $500K/yr.</span></h2>
+    <p class="sub">Fintech, healthtech, and legal teams write seven-figure inference checks for tasks that are 80%+ deterministic. The motion is: ROI calculator &rarr; pilot &rarr; production contract. Reference customers earn the next reference customer.</p>
+
+    <div class="ph-grid">
+      <div class="ph-cell"><div class="l">target</div><div class="v">Regulated workloads with $500K+/yr inference bills (fintech, healthtech, legal).</div></div>
+      <div class="ph-cell"><div class="l">motion</div><div class="v">ROI calculator &rarr; 30-day pilot &rarr; production contract.</div></div>
+      <div class="ph-cell"><div class="l">goal</div><div class="v">$50K - $500K ACV. Reference customers per vertical.</div></div>
+      <div class="ph-cell"><div class="l">unit</div><div class="v">Annual inference spend converted from token to artifact.</div></div>
+    </div>
+
+    <div class="ladder">
+      <div class="rung"><div class="h">01 - ROI</div><div class="v">/roi calculator.</div><div class="p">Plug in monthly call volume + token mix. Get the cloud-vs-kolm number with the receipts honest about teacher cost.</div></div>
+      <div class="rung"><div class="h">02 - Pilot</div><div class="v">30-day signed pilot.</div><div class="p">One workflow. One signed <code style="font-family:var(--mono)">.kolm</code>. K-score gate. Kept by the customer at end of pilot regardless of expand.</div></div>
+      <div class="rung"><div class="h">03 - Expand</div><div class="v">Production contract.</div><div class="p">Customer-hosted compile bridge. SAML / SCIM / audit log. BAA / DPA / DPIA review paths. SOC 2 mapped controls.</div></div>
+      <div class="rung"><div class="h">04 - Refer</div><div class="v">Vertical reference customer.</div><div class="p">Each closed deal earns the next one in the same regulated lane &mdash; the auditor who signed off becomes the reference for the next buyer.</div></div>
+    </div>
+
+    <div class="links">
+      <a href="/roi">ROI calculator</a>
+      <a href="/healthcare" class="muted">healthcare cookbook</a>
+      <a href="/finance" class="muted">finance cookbook</a>
+      <a href="/legal" class="muted">legal cookbook</a>
+      <a href="/trust" class="muted">trust center</a>
+    </div>
+  </div>
+</section>
+
+<section class="phase">
+  <div class="wrap">
+    <div class="ix">Phase 03 - Edge / embedded OEM</div>
+    <h2>The compiler<br><span class="tone">on every device.</span></h2>
+    <p class="sub">Industrial controllers. Medical devices. Automotive. Robotics. The shape of intelligence that runs there is small, signed, and offline-first. kolm meets that shape natively. OEM licensing and per-device royalty become the long-tail moat.</p>
+
+    <div class="ph-grid">
+      <div class="ph-cell"><div class="l">target</div><div class="v">Industrial, medical-device, automotive, robotics OEMs.</div></div>
+      <div class="ph-cell"><div class="l">motion</div><div class="v">OEM licensing. Royalty per device. Reference HW partner.</div></div>
+      <div class="ph-cell"><div class="l">goal</div><div class="v">Volume. Hardware-anchored moat.</div></div>
+      <div class="ph-cell"><div class="l">unit</div><div class="v">Devices shipped with a signed <code style="font-family:var(--mono)">.kolm</code> on board.</div></div>
+    </div>
+
+    <div class="moves">
+      <div class="move">
+        <div class="step">Move 01</div>
+        <div class="h">One file. Every architecture.</div>
+        <div class="p">A <code style="font-family:var(--mono)">.kolm</code> that compiles on a workstation runs on an ARM Cortex-A77, a Snapdragon 8 Gen 3, an Apple M-series, and an x86_64 server. Same artifact. Same signature. No retarget.</div>
+      </div>
+      <div class="move">
+        <div class="step">Move 02</div>
+        <div class="h">OEM licensing model.</div>
+        <div class="p">Per-device royalty. Customer-controlled signing key. Optional white-label of the runtime so the OEM keeps brand on the device.</div>
+      </div>
+      <div class="move">
+        <div class="step">Move 03</div>
+        <div class="h">Hardware-partner moat.</div>
+        <div class="p">Each reference HW partner widens the moat. The artifact format becomes the lingua franca between AI teams and embedded teams &mdash; the way a compiled binary became the lingua franca between language designers and chip designers.</div>
+      </div>
+    </div>
+
+    <div class="links">
+      <a href="/edge">edge cookbook</a>
+      <a href="/anatomy" class="muted">.kolm anatomy</a>
+      <a href="/threat-model" class="muted">threat model</a>
+      <a href="/security" class="muted">security</a>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="closer">
+      <h3>Why these three phases stack instead of compete.</h3>
+      <p>Phase 01 generates the registry depth and benchmark diversity Phase 02 references in pilot conversations. Phase 02 generates the production-grade evidence Phase 03 references in OEM contracts. Phase 03 generates the volume that makes the marginal cost of every Phase 01 compile lower &mdash; and the loop closes. <b>Same compiler. Same artifact. Same signature. Three doors that share a hallway.</b></p>
+    </div>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm - the AI compiler - <span style="color:var(--ink)">v0.1.0 - PREVIEW</span></span>
+    <span><a href="/manifesto">manifesto</a> &middot; <a href="/security">security</a> &middot; <a href="/threat-model">threat model</a> &middot; <a href="/glossary">glossary</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

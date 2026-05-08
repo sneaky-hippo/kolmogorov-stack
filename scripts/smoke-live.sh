@@ -649,6 +649,34 @@ check "homepage anti-incumbent"        has "$H2" 'Stop renting'
 check "homepage GitHub star button"    has "$H2" 'gh-star-count'
 check "homepage triple-pillar"         has "$H2" 'sovereignty\|verifiability\|portability'
 check "homepage registry counter"      has "$H2" 'registry/public/count'
+check "homepage compiler-positioning"  has "$H2" 'compiler is to code'
+check "homepage motion link"           has "$H2" '/motion'
+check "homepage roi link"              has "$H2" '/roi'
+
+echo ""
+echo "=== 28. v5.8 — three-phase motion + ROI calculator ==="
+for p in motion roi; do
+  C=$(curl -s -o /dev/null -w "%{http_code}" "$URL/$p")
+  check "GET /$p → 200" test "$C" = "200"
+done
+
+MOT=$(curl -s "$URL/motion")
+check "/motion three phases"           has "$MOT" 'Phase 01'
+check "/motion phase 02 enterprise"    has "$MOT" 'Phase 02'
+check "/motion phase 03 OEM"           has "$MOT" 'Phase 03'
+check "/motion compiler positioning"   has "$MOT" 'compiler is to code'
+check "/motion fintech mention"        has "$MOT" 'fintech\|healthtech\|legal'
+
+ROI=$(curl -s "$URL/roi")
+check "/roi calculator inputs"         has "$ROI" 'i-calls'
+check "/roi calculator results"        has "$ROI" 'r-cloud-tot'
+check "/roi presets"                   has "$ROI" 'data-preset'
+check "/roi teacher math"              has "$ROI" 'teacher'
+
+# Sitemap has motion + roi
+SM3=$(curl -s "$URL/sitemap.xml")
+check "sitemap has /motion"            has "$SM3" '/motion'
+check "sitemap has /roi"               has "$SM3" '/roi'
 
 echo ""
 echo "================================================"

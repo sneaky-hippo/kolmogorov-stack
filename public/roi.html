@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ROI calculator - kolm</title>
+<meta name="description" content="Plug in your monthly call volume, token mix, and frontier price. Get the cloud-vs-kolm number with teacher cost honest. The compiler-cache math, no marketing math.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm ROI calculator">
+<meta property="og:description" content="Cloud-vs-kolm math, teacher cost honest.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/roi">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/roi">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-strong: #9db6ff;
+    --good: #7ef0d2; --warn: #ffb86b;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 540; font-size: 16px; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 28px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  h1 { margin: 22px 0 10px; font-size: clamp(34px, 4.6vw, 44px); font-weight: 500; letter-spacing: -0.02em; line-height: 1.05; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 8px; font-size: 16.5px; line-height: 1.6; color: var(--ink-mute); max-width: 64ch; }
+  p.lede b { color: var(--ink); font-weight: 540; }
+
+  .calc { display: grid; grid-template-columns: 5fr 7fr; gap: 22px; margin: 36px 0 0; }
+  @media (max-width: 880px) { .calc { grid-template-columns: 1fr; } }
+
+  .inputs { padding: 28px 28px 22px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--bg-elev); }
+  .inputs h2 { margin: 0 0 4px; font-size: 17px; font-weight: 540; color: var(--ink); }
+  .inputs p.hint { margin: 0 0 22px; color: var(--ink-mute); font-size: 13px; line-height: 1.55; }
+
+  .field { margin: 0 0 18px; }
+  .field label { display: block; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.05em; margin-bottom: 8px; }
+  .field input, .field select { width: 100%; padding: 11px 14px; background: var(--bg-card); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; font-family: var(--mono); font-size: 14px; outline: none; transition: border 120ms; }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field .helper { display: block; margin-top: 6px; font-size: 11.5px; color: var(--ink-faint); font-family: var(--mono); }
+  .field .helper b { color: var(--ink-mute); font-weight: 540; }
+
+  .results { padding: 28px 28px 24px; border: 1px solid var(--accent); border-radius: 14px; background: linear-gradient(180deg, rgba(76,125,255,0.06), transparent); }
+  .results h2 { margin: 0 0 4px; font-size: 17px; font-weight: 540; color: var(--ink); }
+  .results p.hint { margin: 0 0 18px; color: var(--ink-mute); font-size: 13px; }
+
+  .res-row { display: grid; grid-template-columns: 1fr auto; align-items: baseline; padding: 12px 0; border-bottom: 1px dashed var(--line); }
+  .res-row .l { color: var(--ink-mute); font-size: 14px; }
+  .res-row .l b { color: var(--ink); font-weight: 540; }
+  .res-row .v { color: var(--ink); font-family: var(--mono); font-size: 16px; font-weight: 540; }
+  .res-row.tot { padding-top: 18px; border-top: 1px solid var(--line-strong); border-bottom: none; margin-top: 6px; }
+  .res-row.tot .l { color: var(--ink); font-size: 15px; font-weight: 540; }
+  .res-row.tot .v { font-size: 22px; color: var(--accent); }
+  .res-row.cloud .v { color: var(--warn); }
+  .res-row.kolm .v { color: var(--good); }
+
+  .delta { margin: 22px 0 0; padding: 18px 22px; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--line-strong); display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .delta .big { font-family: var(--mono); font-size: 28px; color: var(--good); font-weight: 540; letter-spacing: -0.02em; }
+  .delta .lab { color: var(--ink); font-size: 14px; line-height: 1.55; }
+  .delta .lab b { color: var(--good); font-weight: 540; }
+  .delta .small { color: var(--ink-mute); font-size: 12.5px; line-height: 1.55; flex: 1; min-width: 200px; }
+
+  .honest { margin: 38px 0 0; padding: 22px 26px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-elev); }
+  .honest h3 { margin: 0 0 8px; font-size: 14px; font-weight: 540; color: var(--ink); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
+  .honest p { margin: 0 0 6px; color: var(--ink-mute); font-size: 13.5px; line-height: 1.65; }
+  .honest p b { color: var(--ink); font-weight: 540; }
+
+  .scenarios { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 22px 0 0; }
+  @media (max-width: 880px) { .scenarios { grid-template-columns: 1fr; } }
+  .scen { padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev); cursor: pointer; transition: border 120ms, transform 120ms; }
+  .scen:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .scen .h { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--accent); letter-spacing: 0.04em; margin-bottom: 6px; }
+  .scen .v { color: var(--ink); font-size: 14px; font-weight: 540; line-height: 1.45; }
+  .scen .p { color: var(--ink-faint); font-size: 12px; line-height: 1.55; margin-top: 6px; font-family: var(--mono); }
+
+  section.next { padding: 56px 0 24px; border-top: 1px solid var(--line); margin-top: 56px; }
+  section.next h2 { margin: 0 0 8px; font-size: clamp(22px, 2.8vw, 28px); font-weight: 540; }
+  section.next h2 .tone { color: var(--accent); }
+  section.next p.lede { margin-bottom: 18px; }
+  .next-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0 0; }
+  .next-row a { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 8px 16px; }
+  .next-row a:hover { background: var(--accent); color: var(--bg); }
+  .next-row a.muted { color: var(--ink-mute); border-color: var(--line-strong); }
+  .next-row a.muted:hover { color: var(--ink); border-color: var(--ink-mute); background: transparent; }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 64px; }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  footer.site a { color: var(--ink-mute); }
+  footer.site a:hover { color: var(--ink); }
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">get a key</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill">ROI calculator</span>
+    <h1>The cloud-vs-kolm math,<br><span class="tone">teacher cost honest.</span></h1>
+    <p class="lede">Plug in your monthly call volume, token mix, and frontier price. <b>kolm is a one-time compile cost, not a per-call cost.</b> Year one absorbs the teacher bill once; year two and after, the same artifact runs at zero marginal token cost. The numbers below are unrounded and the formulas are the ones below the calculator.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+
+    <div class="scenarios">
+      <div class="scen" data-preset="support">
+        <div class="h">Preset 01</div>
+        <div class="v">Support summary - 100k MAU.</div>
+        <div class="p">12 calls/MAU - 800/250 tok</div>
+      </div>
+      <div class="scen" data-preset="extract">
+        <div class="h">Preset 02</div>
+        <div class="v">Document extraction - 1M docs/yr.</div>
+        <div class="p">3.2k/600 tok per doc</div>
+      </div>
+      <div class="scen" data-preset="agent">
+        <div class="h">Preset 03</div>
+        <div class="v">Agent inner loop - 50 devs.</div>
+        <div class="p">600 calls/dev/day - 2.5k/900 tok</div>
+      </div>
+    </div>
+
+    <div class="calc">
+      <div class="inputs">
+        <h2>Inputs.</h2>
+        <p class="hint">Monthly call volume, average tokens per call, and your current frontier price. Defaults are the customer-support preset.</p>
+
+        <div class="field">
+          <label>Monthly calls</label>
+          <input type="number" id="i-calls" value="1200000" min="0" step="10000">
+          <span class="helper"><b>1.2M</b> = 100K MAU - 12 calls/user/month.</span>
+        </div>
+
+        <div class="field">
+          <label>Tokens per call (input - output)</label>
+          <div class="row2">
+            <input type="number" id="i-in" value="800" min="0" step="50">
+            <input type="number" id="i-out" value="250" min="0" step="50">
+          </div>
+          <span class="helper">Most LLM features sit at <b>500-3000 in</b>, <b>200-900 out</b>.</span>
+        </div>
+
+        <div class="field">
+          <label>Frontier price ($ / 1M tokens, input - output)</label>
+          <div class="row2">
+            <input type="number" id="i-pin" value="3.00" min="0" step="0.01">
+            <input type="number" id="i-pout" value="15.00" min="0" step="0.01">
+          </div>
+          <span class="helper">Default = Sonnet-class pricing. Set 5.00 / 25.00 for Opus-class.</span>
+        </div>
+
+        <div class="field">
+          <label>kolm Pro plan</label>
+          <select id="i-plan">
+            <option value="49">Pro - $49/mo</option>
+            <option value="149">Teams - $149/mo</option>
+            <option value="2999">Enterprise - $2,999/mo</option>
+          </select>
+          <span class="helper">All tiers include unlimited local-runtime inference.</span>
+        </div>
+
+        <div class="field">
+          <label>Compile cycles per year</label>
+          <input type="number" id="i-cycles" value="12" min="1" max="365" step="1">
+          <span class="helper">Most teams recompile <b>monthly</b> (12) or <b>quarterly</b> (4).</span>
+        </div>
+
+        <div class="field">
+          <label>Teacher k-sample size at compile</label>
+          <input type="number" id="i-k" value="8" min="1" max="64" step="1">
+          <span class="helper">k samples per training row. 8 is the default; 16 for the strictest verifier.</span>
+        </div>
+
+        <div class="field">
+          <label>Training rows per compile</label>
+          <input type="number" id="i-rows" value="2000" min="100" max="100000" step="100">
+          <span class="helper">Most workflows top out <b>1.5K - 5K</b> verified-label rows.</span>
+        </div>
+      </div>
+
+      <div class="results">
+        <h2>Output.</h2>
+        <p class="hint">All numbers are dollars per year. Kept dollars compound &mdash; year-two onward the teacher cost goes to near-zero unless you choose to recompile.</p>
+
+        <div class="res-row cloud">
+          <div class="l"><b>Cloud frontier</b> - per-call inference</div>
+          <div class="v" id="r-cloud">-</div>
+        </div>
+        <div class="res-row cloud">
+          <div class="l">Cloud egress + variance buffer (8%)</div>
+          <div class="v" id="r-cloud-egress">-</div>
+        </div>
+        <div class="res-row tot cloud">
+          <div class="l">Year-1 cloud-only total</div>
+          <div class="v" id="r-cloud-tot">-</div>
+        </div>
+
+        <div style="height:18px"></div>
+
+        <div class="res-row kolm">
+          <div class="l">kolm plan (12 mo)</div>
+          <div class="v" id="r-plan">-</div>
+        </div>
+        <div class="res-row kolm">
+          <div class="l">Frontier teacher (k-sample at compile, year 1)</div>
+          <div class="v" id="r-teacher">-</div>
+        </div>
+        <div class="res-row kolm">
+          <div class="l">On-device inference</div>
+          <div class="v">$0</div>
+        </div>
+        <div class="res-row tot kolm">
+          <div class="l">Year-1 kolm total</div>
+          <div class="v" id="r-kolm-tot">-</div>
+        </div>
+
+        <div class="delta">
+          <div class="big" id="r-mult">-</div>
+          <div class="lab"><b>cheaper year one.</b> Year two onward the gap widens because the teacher bill drops to whatever recompile cycle you choose.</div>
+          <div class="small" id="r-savings">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="honest">
+      <h3>What's in the math, what isn't.</h3>
+      <p><b>In:</b> per-call frontier cost (input + output token price), ~8% egress + variance buffer for the cloud lane, kolm plan cost, frontier teacher cost during the compile phase ((k - rows - in_tokens) priced at the same rate).</p>
+      <p><b>Out:</b> engineer time, GPU rental during fine-tune (Pro tier handles this on the bridge), recall index population (one-time, scales with corpus size, not call volume), and the cost of <em>not</em> compiling (cloud variance during incidents, prompt regressions in production, vendor-side rate-limit incidents).</p>
+      <p><b>The honest assumption:</b> tasks suited for kolm are tasks 80%+ deterministic on labeled examples. If your task is mostly free-form open-ended generation, the math swings &mdash; talk to us at <a href="mailto:dev@kolm.ai" style="color:var(--accent)">dev@kolm.ai</a> before you trust this calculator.</p>
+    </div>
+
+  </div>
+</section>
+
+<section class="next">
+  <div class="wrap">
+    <h2>Next move<br><span class="tone">if the math says yes.</span></h2>
+    <p class="lede">A 30-day signed pilot. One workflow. One <code style="font-family:var(--mono)">.kolm</code>. K-score gate. The artifact stays with you whether or not we expand &mdash; that's the contract.</p>
+    <div class="next-row">
+      <a href="/signup?plan=enterprise">Start a pilot</a>
+      <a href="/motion" class="muted">three-phase motion</a>
+      <a href="/trust" class="muted">trust center</a>
+      <a href="/threat-model" class="muted">threat model</a>
+    </div>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm - the AI compiler - <span style="color:var(--ink)">v0.1.0 - PREVIEW</span></span>
+    <span><a href="/manifesto">manifesto</a> &middot; <a href="/pricing">pricing</a> &middot; <a href="/security">security</a> &middot; <a href="/glossary">glossary</a></span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const fmt0 = n => '$' + Math.round(n).toLocaleString('en-US');
+  const fmt = n => n >= 100 ? fmt0(n) : '$' + n.toFixed(2);
+
+  function recompute(){
+    const calls   = +$('i-calls').value || 0;
+    const tin     = +$('i-in').value || 0;
+    const tout    = +$('i-out').value || 0;
+    const pin     = +$('i-pin').value || 0;
+    const pout    = +$('i-pout').value || 0;
+    const plan    = +$('i-plan').value || 0;
+    const cycles  = +$('i-cycles').value || 1;
+    const k       = +$('i-k').value || 1;
+    const rows    = +$('i-rows').value || 1;
+
+    const callsYr = calls * 12;
+    const cloudIn  = (callsYr * tin)  / 1e6 * pin;
+    const cloudOut = (callsYr * tout) / 1e6 * pout;
+    const cloudCore = cloudIn + cloudOut;
+    const cloudEgress = cloudCore * 0.08;
+    const cloudTot = cloudCore + cloudEgress;
+
+    const planYr = plan * 12;
+    const teacherTokens = k * rows * (tin + tout);
+    const teacherIn  = (k * rows * tin)  / 1e6 * pin;
+    const teacherOut = (k * rows * tout) / 1e6 * pout;
+    const teacherPerCycle = teacherIn + teacherOut;
+    const teacherYr = teacherPerCycle * cycles;
+    const kolmTot = planYr + teacherYr;
+
+    const savings = cloudTot - kolmTot;
+    const mult = kolmTot > 0 ? cloudTot / kolmTot : 0;
+
+    $('r-cloud').textContent       = fmt(cloudCore);
+    $('r-cloud-egress').textContent = fmt(cloudEgress);
+    $('r-cloud-tot').textContent   = fmt(cloudTot);
+    $('r-plan').textContent        = fmt(planYr);
+    $('r-teacher').textContent     = fmt(teacherYr);
+    $('r-kolm-tot').textContent    = fmt(kolmTot);
+    $('r-mult').textContent        = mult >= 1 ? mult.toFixed(1) + 'x' : (1/mult).toFixed(2) + 'x';
+    $('r-savings').textContent     = (savings >= 0 ? 'Year-1 kept dollars: ' : 'Year-1 net cost: ') + fmt(Math.abs(savings)) + '. Recompile cycles: ' + cycles + '/yr. Teacher cost per cycle: ' + fmt(teacherPerCycle) + '.';
+
+    if (mult < 1) {
+      $('r-mult').style.color = 'var(--warn)';
+    } else {
+      $('r-mult').style.color = 'var(--good)';
+    }
+  }
+
+  ['i-calls','i-in','i-out','i-pin','i-pout','i-plan','i-cycles','i-k','i-rows'].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener('input', recompute);
+  });
+
+  const presets = {
+    support: { calls: 1200000, tin: 800,  tout: 250, pin: 3,    pout: 15,   plan: 49,   cycles: 12, k: 8,  rows: 2000  },
+    extract: { calls: 83333,   tin: 3200, tout: 600, pin: 5,    pout: 25,   plan: 149,  cycles: 4,  k: 16, rows: 5000  },
+    agent:   { calls: 600000,  tin: 2500, tout: 900, pin: 5,    pout: 25,   plan: 149,  cycles: 24, k: 8,  rows: 3000  },
+  };
+  document.querySelectorAll('.scen').forEach(b => {
+    b.addEventListener('click', () => {
+      const p = presets[b.dataset.preset]; if (!p) return;
+      $('i-calls').value = p.calls;
+      $('i-in').value = p.tin;
+      $('i-out').value = p.tout;
+      $('i-pin').value = p.pin;
+      $('i-pout').value = p.pout;
+      $('i-plan').value = p.plan;
+      $('i-cycles').value = p.cycles;
+      $('i-k').value = p.k;
+      $('i-rows').value = p.rows;
+      recompute();
+    });
+  });
+
+  recompute();
+})();
+</script>
+
+</body>
+</html>
