@@ -579,6 +579,22 @@ check "/vs-rag compare table"          has "$VSR" 'kolm'
 VSF=$(curl -s "$URL/vs-fine-tune")
 check "/vs-fine-tune compare table"    has "$VSF" 'kolm'
 
+# v7.0 Workstream G new comparators
+for p in vs-mem0 vs-hindsight vs-openai-fine-tune vs-together; do
+  C=$(curl -s -o /dev/null -w "%{http_code}" "$URL/$p")
+  check "GET /$p -> 200" test "$C" = "200"
+done
+VSM0=$(curl -s "$URL/vs-mem0")
+check "/vs-mem0 honest concession"     has "$VSM0" 'Honest concession'
+check "/vs-mem0 verdict"               has "$VSM0" 'Verdict'
+VSHS=$(curl -s "$URL/vs-hindsight")
+check "/vs-hindsight TEMPR mention"    has "$VSHS" 'TEMPR'
+check "/vs-hindsight LongMemEval"      has "$VSHS" 'LongMemEval'
+VSOFT=$(curl -s "$URL/vs-openai-fine-tune")
+check "/vs-openai-fine-tune file own"  has "$VSOFT" 'You own the file'
+VSTG=$(curl -s "$URL/vs-together")
+check "/vs-together \\$0 marginal"      has "$VSTG" '0 marginal'
+
 # why-now + threat-model copy
 WHY=$(curl -s "$URL/why-now")
 check "/why-now three forces"          has "$WHY" 'three'
@@ -601,6 +617,10 @@ check "sitemap has /trust"             has "$SM2" '/trust'
 check "sitemap has /integrations"      has "$SM2" '/integrations'
 check "sitemap has /press"             has "$SM2" '/press'
 check "sitemap has rss.xml"            has "$SM2" 'articles/rss.xml'
+check "sitemap has /vs-mem0"           has "$SM2" '/vs-mem0'
+check "sitemap has /vs-hindsight"      has "$SM2" '/vs-hindsight'
+check "sitemap has /vs-openai-fine-tune" has "$SM2" '/vs-openai-fine-tune'
+check "sitemap has /vs-together"       has "$SM2" '/vs-together'
 
 # Articles index advertises RSS
 AI=$(curl -s "$URL/articles")

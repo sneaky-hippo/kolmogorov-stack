@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>kolm vs Mem0 - memory backend vs portable artifact</title>
+<meta name="description" content="Mem0 is a memory backend for LLM agents - a remote service your agent calls every turn. kolm is a compiler that takes the same captured pairs and ships a signed file you run anywhere. Different layers of the stack.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm vs Mem0">
+<meta property="og:description" content="Mem0 is a memory layer; kolm is a compiler. Same captures, different deliverable.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/vs-mem0">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/vs-mem0">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-strong: #9db6ff; --good: #7ef0d2; --bad: #ff6b91;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 540; font-size: 16px; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 32px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  h1 { margin: 22px 0 16px; font-size: clamp(36px, 5vw, 52px); line-height: 1.05; font-weight: 500; max-width: 22ch; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 24px; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
+
+  .one-line { display: grid; grid-template-columns: 1fr 60px 1fr; gap: 14px; margin: 24px 0 0; align-items: stretch; }
+  @media (max-width: 720px) { .one-line { grid-template-columns: 1fr; } .one-line .arrow { display: none; } }
+  .one-line .col { padding: 22px 24px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev); }
+  .one-line .col h3 { margin: 0 0 8px; font-size: 15px; font-weight: 540; color: var(--ink); }
+  .one-line .col p { margin: 0; font-size: 14px; color: var(--ink-mute); line-height: 1.6; }
+  .one-line .arrow { display: flex; align-items: center; justify-content: center; color: var(--accent); font-family: var(--mono); font-size: 22px; }
+
+  .group { margin: 56px 0 0; padding-top: 32px; border-top: 1px solid var(--line); }
+  .group h2 { margin: 0 0 14px; font-size: clamp(22px, 2.4vw, 28px); font-weight: 540; }
+  .group p { margin: 0 0 12px; color: var(--ink-mute); font-size: 15px; line-height: 1.65; max-width: 64ch; }
+
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 14px 0 0; }
+  table.tbl th, table.tbl td { border-bottom: 1px solid var(--line); padding: 14px 14px; text-align: left; vertical-align: top; }
+  table.tbl th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; font-weight: 540; }
+  table.tbl td { color: var(--ink-mute); }
+  table.tbl td b { color: var(--ink); font-weight: 540; }
+  table.tbl td.row-h { color: var(--ink); font-weight: 540; font-family: var(--mono); font-size: 13px; text-transform: uppercase; letter-spacing: 0.02em; width: 26%; }
+  table.tbl td .ok { color: var(--good); font-family: var(--mono); font-size: 12px; text-transform: uppercase; }
+  table.tbl td .no { color: var(--bad); font-family: var(--mono); font-size: 12px; text-transform: uppercase; }
+  table.tbl td .partial { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; text-transform: uppercase; }
+  @media (max-width: 720px) {
+    table.tbl, table.tbl tbody, table.tbl tr, table.tbl td { display: block; width: 100%; }
+    table.tbl thead { display: none; }
+    table.tbl tr { padding: 14px 0; border-bottom: 1px solid var(--line); }
+    table.tbl td { border: 0; padding: 4px 0; }
+    table.tbl td.row-h { font-size: 12px; margin-bottom: 6px; }
+    table.tbl td::before { display: block; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; margin-bottom: 2px; }
+    table.tbl td[data-l]::before { content: attr(data-l); }
+  }
+
+  pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.55; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; overflow-x: auto; color: var(--ink); margin: 14px 0; white-space: pre; }
+  @media (max-width: 720px) { pre.code { white-space: pre-wrap; word-break: break-word; } }
+  pre.code .c { color: var(--ink-faint); }
+  pre.code .ok { color: var(--good); }
+  pre.code .k { color: var(--accent-strong); }
+
+  .verdict { padding: 28px 32px; border: 1px solid var(--line-strong); border-radius: 12px; background: linear-gradient(180deg, rgba(76,125,255,0.04), rgba(76,125,255,0.01)); margin: 24px 0 0; }
+  .verdict h3 { margin: 0 0 8px; font-size: 18px; font-weight: 540; color: var(--ink); }
+  .verdict p { margin: 0 0 8px; font-size: 14.5px; color: var(--ink-mute); line-height: 1.6; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict b { color: var(--ink); font-weight: 540; }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  footer.site a { color: var(--ink-mute); }
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill">vs Mem0</span>
+    <h1>A memory backend. <span class="tone">Or a portable artifact.</span></h1>
+    <p class="lede">Mem0 stores agent memories in a remote service - your agent calls it every turn to recall, write, and forget. kolm captures the same exchanges, runs them through a verifier, and ships a signed file you run on your own hardware. Different layers of the stack, not the same product.</p>
+
+    <div class="one-line">
+      <div class="col">
+        <h3>Mem0</h3>
+        <p>A <b>hosted memory layer</b>. Vectors + metadata in a managed store. Every turn the agent calls Mem0 to recall context, then calls the LLM with that context attached.</p>
+      </div>
+      <div class="arrow">vs</div>
+      <div class="col">
+        <h3>kolm</h3>
+        <p>A <b>compiler</b>. Captures the same agent-to-LLM exchanges, distills them into a smaller model, ships a single <code>.kolm</code> file. The deliverable is a model, not a service call.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>Different layers, often complementary</h2>
+      <p><b>Mem0 answers "what should this agent remember about this user across sessions?"</b> The job is online: the agent is running, a query came in, recall the relevant facts, ship them in the prompt. Latency budget is single-digit milliseconds, and the data is small but high-stakes (preferences, recent decisions, names).</p>
+      <p><b>kolm answers "given enough captured exchanges, can a smaller model do this without the frontier?"</b> The job is offline: enough pairs accumulated, train a LoRA, sign the artifact, ship it. The data is bulky and the model is the deliverable - the recall happens inside the weights.</p>
+      <p>You can run both. Mem0 is right for the "remember this user prefers metric units" turn-by-turn substrate; kolm is right for the "compile this customer-service bot to a 3 GB file" exit. Both consume the same captured stream.</p>
+    </div>
+
+    <div class="group">
+      <h2>Where Mem0 wins</h2>
+      <p>Honest concession. <b>Mem0 is the better online-memory product.</b> The vector store is mature, the SDK ergonomics are clean, the hosted plan is the fastest way to add long-term memory to an agent that's already shipped. If your bottleneck is "this agent forgets the user between sessions and that's the user complaint," Mem0 is the right answer.</p>
+      <p>kolm has nothing in that lane. Our <code>/v1/recall</code> exists but is task-cache shaped, not user-memory shaped. We don't try to be a memory backend; we treat memory as a means to a compileable corpus, not as the product.</p>
+    </div>
+
+    <div class="group">
+      <h2>Side-by-side</h2>
+      <table class="tbl">
+        <thead>
+          <tr><th></th><th>Mem0</th><th>kolm</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-h">What it is</td>
+            <td data-l="Mem0">Hosted memory backend for agents</td>
+            <td data-l="kolm">Capture-and-compile to portable artifact</td>
+          </tr>
+          <tr>
+            <td class="row-h">Time-of-use</td>
+            <td data-l="Mem0">Online (per turn, &lt;50ms recall)</td>
+            <td data-l="kolm">Offline (per task, compile then run)</td>
+          </tr>
+          <tr>
+            <td class="row-h">Storage</td>
+            <td data-l="Mem0">Hosted vectors + facts</td>
+            <td data-l="kolm">Captured pairs <em>and</em> the resulting model</td>
+          </tr>
+          <tr>
+            <td class="row-h">Output</td>
+            <td data-l="Mem0">Recalled context strings</td>
+            <td data-l="kolm">A signed <code>.kolm</code> file (≤3 GB)</td>
+          </tr>
+          <tr>
+            <td class="row-h">Trains a model</td>
+            <td data-l="Mem0"><span class="no">no</span> - retrieval only</td>
+            <td data-l="kolm"><span class="ok">yes</span> - distillation + LoRA from captures</td>
+          </tr>
+          <tr>
+            <td class="row-h">Runs offline</td>
+            <td data-l="Mem0"><span class="no">no</span> - hosted recall API</td>
+            <td data-l="kolm"><span class="ok">yes</span> - artifact is portable</td>
+          </tr>
+          <tr>
+            <td class="row-h">Receipts / signing</td>
+            <td data-l="Mem0"><span class="no">no</span> - facts, not artifacts</td>
+            <td data-l="kolm"><span class="ok">HMAC-SHA256 receipt chain</span> on every output</td>
+          </tr>
+          <tr>
+            <td class="row-h">Pricing model</td>
+            <td data-l="Mem0">Per recall + storage</td>
+            <td data-l="kolm">Flat per compile, then $0 marginal inference</td>
+          </tr>
+          <tr>
+            <td class="row-h">Privacy posture</td>
+            <td data-l="Mem0">Memories live on Mem0 servers</td>
+            <td data-l="kolm">Artifact lives on your hardware; verifiable signature</td>
+          </tr>
+          <tr>
+            <td class="row-h">Compose with the other</td>
+            <td data-l="Mem0"><span class="ok">yes</span> - dual-write captures</td>
+            <td data-l="kolm"><span class="ok">yes</span> - dual-write captures</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="group">
+      <h2>When to use Mem0</h2>
+      <p>Use Mem0 when the question is <em>about retrieval at turn-time</em> - "what does this agent need to recall to give a good answer right now?" Anything where the value is recalling a fact in time to put it in the next prompt.</p>
+      <pre class="code"><span class="c"># add a fact at session end:</span>
+client.add(<span class="k">"User prefers concise replies"</span>, user_id=<span class="k">"alice"</span>)
+
+<span class="c"># recall in the next session:</span>
+ctx = client.search(query, user_id=<span class="k">"alice"</span>, limit=<span class="k">5</span>)</pre>
+    </div>
+
+    <div class="group">
+      <h2>When to use kolm</h2>
+      <p>Use kolm when the question is <em>about the model itself</em> - "given enough of these exchanges, can a smaller, signed, portable model do the task?" The captured pairs become labelled training data; the verifier becomes the quality gate; the artifact becomes a deliverable that runs anywhere.</p>
+      <pre class="code"><span class="c"># point traffic at the kolm capture proxy:</span>
+ANTHROPIC_BASE_URL=<span class="k">https://kolm.ai/v1/capture/anthropic</span>
+
+<span class="c"># once enough pairs accumulate, compile:</span>
+kolm compile <span class="k">"summarize support tickets"</span> \
+  --namespace support \
+  --base qwen2.5-7b
+
+<span class="ok">ok</span> wrote <span class="k">support-summarize.kolm</span>  k_score=0.89  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>Can I use both?</h2>
+      <p>Yes. Most production agent stacks will run something like Mem0 for online user-memory recall and kolm for the offline compile path. Mem0 keeps the agent personable across sessions; kolm replaces the expensive frontier hop with a cheap signed model once the namespace has enough volume. They consume the same captured pairs and produce non-overlapping deliverables.</p>
+    </div>
+
+    <div class="verdict">
+      <h3>Verdict</h3>
+      <p><b>If your problem is "agent forgets the user across sessions,"</b> use Mem0. It's the right tool for online recall and we don't try to compete on that surface.</p>
+      <p><b>If your problem is "I'd like the model to handle this without calling the frontier,"</b> use kolm. The captures become a model you can ship.</p>
+      <p>Adjacent comparisons: <a href="/vs-hindsight" style="color:var(--accent);">vs Hindsight</a> &middot; <a href="/vs-langsmith" style="color:var(--accent);">vs LangSmith</a> &middot; <a href="/vs-rag" style="color:var(--accent);">vs RAG</a> &middot; <a href="/compare" style="color:var(--accent);">full comparison table</a></p>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm v0.1.0 - the AI compiler</span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a> &middot; <a href="/terms">Terms</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

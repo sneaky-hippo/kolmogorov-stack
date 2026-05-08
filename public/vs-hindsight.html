@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>kolm vs Hindsight - retrieval depth vs artifact horizon</title>
+<meta name="description" content="Hindsight is the strongest memory-retrieval system we know. They beat us on retrieval (4-strategy TEMPR). We beat on consolidation depth and the deliverable: a signed file that runs offline. Not a polite comparison.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm vs Hindsight">
+<meta property="og:description" content="Closest competitor on memory. Honest read on where each one wins.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/vs-hindsight">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/vs-hindsight">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-strong: #9db6ff; --good: #7ef0d2; --bad: #ff6b91;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 540; font-size: 16px; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 32px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  h1 { margin: 22px 0 16px; font-size: clamp(36px, 5vw, 52px); line-height: 1.05; font-weight: 500; max-width: 22ch; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 24px; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
+
+  .one-line { display: grid; grid-template-columns: 1fr 60px 1fr; gap: 14px; margin: 24px 0 0; align-items: stretch; }
+  @media (max-width: 720px) { .one-line { grid-template-columns: 1fr; } .one-line .arrow { display: none; } }
+  .one-line .col { padding: 22px 24px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev); }
+  .one-line .col h3 { margin: 0 0 8px; font-size: 15px; font-weight: 540; color: var(--ink); }
+  .one-line .col p { margin: 0; font-size: 14px; color: var(--ink-mute); line-height: 1.6; }
+  .one-line .arrow { display: flex; align-items: center; justify-content: center; color: var(--accent); font-family: var(--mono); font-size: 22px; }
+
+  .group { margin: 56px 0 0; padding-top: 32px; border-top: 1px solid var(--line); }
+  .group h2 { margin: 0 0 14px; font-size: clamp(22px, 2.4vw, 28px); font-weight: 540; }
+  .group p { margin: 0 0 12px; color: var(--ink-mute); font-size: 15px; line-height: 1.65; max-width: 64ch; }
+
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 14.5px; margin: 14px 0 0; }
+  table.tbl th, table.tbl td { border-bottom: 1px solid var(--line); padding: 14px 14px; text-align: left; vertical-align: top; }
+  table.tbl th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; font-weight: 540; }
+  table.tbl td { color: var(--ink-mute); }
+  table.tbl td b { color: var(--ink); font-weight: 540; }
+  table.tbl td.row-h { color: var(--ink); font-weight: 540; font-family: var(--mono); font-size: 13px; text-transform: uppercase; letter-spacing: 0.02em; width: 26%; }
+  table.tbl td .ok { color: var(--good); font-family: var(--mono); font-size: 12px; text-transform: uppercase; }
+  table.tbl td .no { color: var(--bad); font-family: var(--mono); font-size: 12px; text-transform: uppercase; }
+  table.tbl td .partial { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; text-transform: uppercase; }
+  @media (max-width: 720px) {
+    table.tbl, table.tbl tbody, table.tbl tr, table.tbl td { display: block; width: 100%; }
+    table.tbl thead { display: none; }
+    table.tbl tr { padding: 14px 0; border-bottom: 1px solid var(--line); }
+    table.tbl td { border: 0; padding: 4px 0; }
+    table.tbl td.row-h { font-size: 12px; margin-bottom: 6px; }
+    table.tbl td::before { display: block; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; margin-bottom: 2px; }
+    table.tbl td[data-l]::before { content: attr(data-l); }
+  }
+
+  pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.55; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; overflow-x: auto; color: var(--ink); margin: 14px 0; white-space: pre; }
+  @media (max-width: 720px) { pre.code { white-space: pre-wrap; word-break: break-word; } }
+  pre.code .c { color: var(--ink-faint); }
+  pre.code .ok { color: var(--good); }
+  pre.code .k { color: var(--accent-strong); }
+
+  .verdict { padding: 28px 32px; border: 1px solid var(--line-strong); border-radius: 12px; background: linear-gradient(180deg, rgba(76,125,255,0.04), rgba(76,125,255,0.01)); margin: 24px 0 0; }
+  .verdict h3 { margin: 0 0 8px; font-size: 18px; font-weight: 540; color: var(--ink); }
+  .verdict p { margin: 0 0 8px; font-size: 14.5px; color: var(--ink-mute); line-height: 1.6; }
+  .verdict p:last-child { margin-bottom: 0; }
+  .verdict b { color: var(--ink); font-weight: 540; }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  footer.site a { color: var(--ink-mute); }
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><img src="/logo-mark.svg" class="brand-mark" alt=""><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill">vs Hindsight</span>
+    <h1>Retrieval depth. <span class="tone">Or artifact horizon.</span></h1>
+    <p class="lede">Hindsight is the strongest memory-retrieval system we know - 4-strategy TEMPR, Nous Research partnership, leaderboard parity at 94.6% on LongMemEval. We are not going to win on retrieval breadth. What we win on is the consolidation step that follows it, and the deliverable: a signed file you run offline.</p>
+
+    <div class="one-line">
+      <div class="col">
+        <h3>Hindsight</h3>
+        <p>A <b>memory framework</b>. Captures, indexes, and retrieves with 4 fusion strategies (Temporal, Episodic, Memory-graph, Predicate Reasoning). The deliverable is recalled context.</p>
+      </div>
+      <div class="arrow">vs</div>
+      <div class="col">
+        <h3>kolm</h3>
+        <p>A <b>compiler</b>. Captures + verifies + distills, then ships a signed model. The deliverable is a <code>.kolm</code> file. Same source pipe, downstream of where Hindsight stops.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>The honest read</h2>
+      <p>Most "vs" pages exist to make the author look better. This one does not. Hindsight publishes openly, runs the same benchmarks we do, and is the closest peer in the memory-for-LLMs space. Two of their authors review benchmark methodology in public and we have learned from those threads.</p>
+      <p>We pair this with our own <a href="/articles/how-we-benchmark" style="color:var(--accent);">how-we-benchmark</a> page so you can compare numbers head-to-head.</p>
+    </div>
+
+    <div class="group">
+      <h2>Where Hindsight wins</h2>
+      <p>Honest concessions, in order of importance.</p>
+      <p><b>Retrieval depth.</b> Their TEMPR fusion runs 4 distinct retrieval strategies and merges results. Our retrieval is single-strategy (FTS5 + embedding rerank). On long-context, multi-hop questions where the answer requires walking a temporal chain, they will out-recall us most days.</p>
+      <p><b>Memory model maturity.</b> They have a more developed taxonomy of memory types (episodic vs semantic vs predicate) and the academic backing (LongMemEval co-leaderboard) to justify it. Our memory model is task-shaped, and we don't pretend it's a substitute for theirs on memory-only benchmarks.</p>
+      <p><b>Open community.</b> Hindsight ships an open framework with active contributors. We ship a hosted compiler with an open spec (RS-1) but the trainer is closed-source. If you want to read the algorithm and tune it, Hindsight is the one to fork.</p>
+    </div>
+
+    <div class="group">
+      <h2>Where kolm wins</h2>
+      <p><b>Consolidation, not just retrieval.</b> The captured pairs aren't just for recall - they're labelled training data. We run them through a verifier, filter to the high-confidence subset, and distill a smaller model. Nine consolidation strategies feed the trainer; retrieval is one of them, not the whole thing.</p>
+      <p><b>The deliverable is a model, not a recall API.</b> Hindsight gives you back better context to feed to a frontier model. We give you back a <code>.kolm</code> file - the model itself - signed, portable, runnable offline. Once compiled, you don't need the frontier for that task.</p>
+      <p><b>Receipts and signing.</b> Every output a <code>.kolm</code> produces ships with an HMAC-SHA256 receipt chain. Hindsight has no equivalent because there's no artifact to sign.</p>
+      <p><b>Cost shape.</b> Hindsight + frontier scales linearly with traffic; you pay for the LLM call every turn. kolm scales as a fixed compile cost + $0 marginal inference (the <code>.kolm</code> runs on your hardware). Past the compile threshold, the cost curves diverge.</p>
+    </div>
+
+    <div class="group">
+      <h2>Side-by-side</h2>
+      <table class="tbl">
+        <thead>
+          <tr><th></th><th>Hindsight</th><th>kolm</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-h">What it is</td>
+            <td data-l="Hindsight">Multi-strategy memory framework</td>
+            <td data-l="kolm">Capture-and-compile to portable artifact</td>
+          </tr>
+          <tr>
+            <td class="row-h">License</td>
+            <td data-l="Hindsight">Open-source framework</td>
+            <td data-l="kolm">Closed trainer, open spec (RS-1, MIT)</td>
+          </tr>
+          <tr>
+            <td class="row-h">Retrieval breadth</td>
+            <td data-l="Hindsight"><span class="ok">4 fusion strategies</span> (TEMPR)</td>
+            <td data-l="kolm"><span class="partial">single</span> (FTS5 + rerank)</td>
+          </tr>
+          <tr>
+            <td class="row-h">Consolidation depth</td>
+            <td data-l="Hindsight"><span class="partial">moderate</span> - graph rollup</td>
+            <td data-l="kolm"><span class="ok">9 strategies</span> + verifier-gated</td>
+          </tr>
+          <tr>
+            <td class="row-h">LongMemEval (n=500, GPT-4o judge)</td>
+            <td data-l="Hindsight">94.6% (leaderboard co-leader)</td>
+            <td data-l="kolm">94.6% (leaderboard co-leader)</td>
+          </tr>
+          <tr>
+            <td class="row-h">Output</td>
+            <td data-l="Hindsight">Recalled context for the LLM</td>
+            <td data-l="kolm">A signed <code>.kolm</code> file (≤3 GB)</td>
+          </tr>
+          <tr>
+            <td class="row-h">Trains a model</td>
+            <td data-l="Hindsight"><span class="no">no</span> - retrieval/consolidation only</td>
+            <td data-l="kolm"><span class="ok">yes</span> - distillation + LoRA</td>
+          </tr>
+          <tr>
+            <td class="row-h">Runs offline</td>
+            <td data-l="Hindsight"><span class="no">no</span> - depends on frontier LLM</td>
+            <td data-l="kolm"><span class="ok">yes</span> - artifact runs anywhere</td>
+          </tr>
+          <tr>
+            <td class="row-h">Receipts / signing</td>
+            <td data-l="Hindsight"><span class="no">no</span></td>
+            <td data-l="kolm"><span class="ok">HMAC-SHA256 receipt chain</span></td>
+          </tr>
+          <tr>
+            <td class="row-h">Cost shape</td>
+            <td data-l="Hindsight">Linear in traffic (LLM per turn)</td>
+            <td data-l="kolm">Flat per compile, $0 marginal</td>
+          </tr>
+          <tr>
+            <td class="row-h">Compose with the other</td>
+            <td data-l="Hindsight"><span class="ok">yes</span> - dual-write captures</td>
+            <td data-l="kolm"><span class="ok">yes</span> - dual-write captures</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="group">
+      <h2>When to use Hindsight</h2>
+      <p>Use Hindsight when the task requires <em>retrieving the right memory at turn-time</em> with high recall on multi-hop questions, and you want an open framework you can read and tune. The TEMPR fusion is the right tool when the question is "did the agent remember the relevant fact from three sessions ago?"</p>
+    </div>
+
+    <div class="group">
+      <h2>When to use kolm</h2>
+      <p>Use kolm when the task requires <em>a signed, portable model</em> that runs without the frontier. Once a namespace has enough captured pairs, kolm consolidates them into a <code>.kolm</code> file you can ship with your product, run on a phone, or deploy on a customer's air-gapped network.</p>
+      <pre class="code"><span class="c"># point traffic at the kolm capture proxy:</span>
+ANTHROPIC_BASE_URL=<span class="k">https://kolm.ai/v1/capture/anthropic</span>
+
+<span class="c"># once enough pairs accumulate, compile:</span>
+kolm compile <span class="k">"answer support tickets"</span> \
+  --namespace support \
+  --base qwen2.5-7b
+
+<span class="ok">ok</span> wrote <span class="k">support.kolm</span>  k_score=0.89  signature=hmac-sha256</pre>
+    </div>
+
+    <div class="group">
+      <h2>Can I use both?</h2>
+      <p>Yes, and the combination is well-formed. Hindsight on the inbound side for state-of-the-art recall feeding the frontier; kolm on the same captured pairs to accumulate a compileable corpus. Once a namespace hits the compile threshold, kolm replaces the frontier hop for that task. Hindsight keeps doing what it does best on the long-tail traffic.</p>
+    </div>
+
+    <div class="verdict">
+      <h3>Verdict</h3>
+      <p><b>If your problem is "agent doesn't remember the relevant fact at turn-time,"</b> use Hindsight. The 4-strategy TEMPR fusion is the right answer and we don't try to compete on retrieval depth.</p>
+      <p><b>If your problem is "I need the model itself, signed and offline,"</b> use kolm. The captured pairs become a <code>.kolm</code> you can deploy.</p>
+      <p>Adjacent comparisons: <a href="/vs-mem0" style="color:var(--accent);">vs Mem0</a> &middot; <a href="/vs-langsmith" style="color:var(--accent);">vs LangSmith</a> &middot; <a href="/vs-rag" style="color:var(--accent);">vs RAG</a> &middot; <a href="/compare" style="color:var(--accent);">full comparison table</a></p>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm v0.1.0 - the AI compiler</span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a> &middot; <a href="/terms">Terms</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
