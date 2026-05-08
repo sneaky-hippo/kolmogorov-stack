@@ -8,7 +8,7 @@
 //   lora.bin          - LoRA delta (sprint 3 — empty placeholder today)
 //   index.sqlite-vec  - multimodal recall index (sprint 1 — empty placeholder
 //                       today; populated in sprint 1 once /v1/embed is live)
-//   signature.sig     - HMAC chain anchored to the public registry
+//   signature.sig     - HMAC chain bound to the artifact receipt
 //
 // We do NOT embed real model weights in the v0 artifact. The cloud signs
 // a *pointer* to the base model + per-recipe drafts + recall namespace
@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import archiver from 'archiver';
+import { effectiveReceiptSecret, isProductionRuntime } from './env.js';
 
 const ARTIFACT_SPEC = 'kolm-1';
 // IMPORTANT: keep this in lock-step with router.js's RECEIPT_SECRET. The
@@ -27,15 +28,25 @@ const ARTIFACT_SPEC = 'kolm-1';
 // hmac mismatch" failures even though both sides are byte-identical canonical
 // JSON. The legacy KOLM_ARTIFACT_SECRET env name is still honoured for
 // back-compat, but the default must match router.js's default.
-const SIGN_SECRET = (() => {
-  const s = process.env.RECIPE_RECEIPT_SECRET || process.env.KOLM_ARTIFACT_SECRET;
-  if (s) return s;
-  if (process.env.NODE_ENV === 'production') {
-    console.error('[artifact] WARNING: RECIPE_RECEIPT_SECRET not set — /v1/compile will 503. Set it on Railway env.');
-    return null;
+let warnedMissingSignSecret = false;
+
+function signSecret() {
+  const secret = effectiveReceiptSecret({ includeLegacyArtifactSecret: true });
+  if (secret) return secret;
+  if (isProductionRuntime() && !warnedMissingSignSecret) {
+    console.error('[artifact] WARNING: RECIPE_RECEIPT_SECRET not set - /v1/compile will 503. Set it on Railway env.');
+    warnedMissingSignSecret = true;
   }
-  return 'ks_receipt_dev_secret_change_in_prod';
-})();
+  return null;
+}
+
+function requireSignSecret() {
+  const secret = signSecret();
+  if (secret) return secret;
+  const e = new Error('cannot build .kolm: RECIPE_RECEIPT_SECRET not set on server');
+  e.statusCode = 503;
+  throw e;
+}
 
 function sha256(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex');
@@ -87,6 +98,7 @@ export function computeKScore({ size_bytes, accuracy, coverage, p50_latency_us, 
 // HMAC chain so any third party can re-verify offline without trusting the
 // runtime that produced the artifact.
 export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id, eval_score, tier }) {
+  const secret = requireSignSecret();
   const recipes_json = JSON.stringify({
     spec: 'rs-1',
     n: recipes.length,
@@ -177,7 +189,7 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
 
   // Build the HMAC chain. Each step seals the previous step's output.
   const stepSeal = (step, input_hash, output_hash) => {
-    const hmac = crypto.createHmac('sha256', SIGN_SECRET)
+    const hmac = crypto.createHmac('sha256', secret)
       .update(canonicalJson({ step, input_hash, output_hash }))
       .digest('hex');
     return { step, input_hash, output_hash, hmac };
@@ -195,9 +207,9 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
   ];
 
   // Receipt body — bound by the HMAC over (artifact_hash, eval_set_hash,
-  // eval_score, judge_id, chain). The signed_by field is the public key id
-  // (HMAC mode in dev — ed25519 once per-tenant key registration ships in
-  // Sprint 2). Verifiers re-check both the chain and the body HMAC.
+  // eval_score, judge_id, chain). The signed_by field identifies the current
+  // HMAC key namespace; future asymmetric signatures should use a new
+  // signature_alg value. Verifiers re-check both the chain and the body HMAC.
   const issued_at = new Date().toISOString();
   const receipt_id = crypto.randomUUID();
   const receiptBody = {
@@ -210,15 +222,15 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
     tier: _tier,
     chain,
     anchors: [],
-    signature_alg: 'ed25519',
+    signature_alg: 'hmac-sha256',
     signed_at: issued_at,
     signed_by: 'kolm-dev-hmac-1',
   };
   const bodyCanon = canonicalJson(receiptBody);
-  const bodySig = crypto.createHmac('sha256', SIGN_SECRET).update(bodyCanon).digest('hex');
+  const bodySig = crypto.createHmac('sha256', secret).update(bodyCanon).digest('hex');
   // For interop with the JSON Schema we keep the field name `signature` and
-  // store the hex HMAC (until ed25519 keys land). Verifiers detect HMAC vs
-  // ed25519 via signature_alg + a hex/base64 sniff.
+  // store the hex HMAC. Ed25519 can be added later as a new explicit
+  // signature_alg value without mislabeling today's receipts.
   receiptBody.signature = bodySig;
   const receipt_json = JSON.stringify(receiptBody, null, 2);
 
@@ -233,7 +245,7 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
     eval_score: manifest.eval_score,
     judge_id: _judgeId,
   });
-  const hmac = crypto.createHmac('sha256', SIGN_SECRET).update(sig_payload).digest('hex');
+  const hmac = crypto.createHmac('sha256', secret).update(sig_payload).digest('hex');
   const signature = JSON.stringify({
     spec: ARTIFACT_SPEC,
     job_id,
@@ -296,11 +308,7 @@ export function packageArtifact({ job_id, payload, outPath }) {
 // cheap (≤10ms for 5KB artifacts) and keeps the K-score honest — the size
 // axis includes the K-score bytes themselves.
 export async function buildAndZip({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, outDir, judge_id, tier }) {
-  if (!SIGN_SECRET) {
-    const e = new Error('cannot build .kolm: RECIPE_RECEIPT_SECRET not set on server');
-    e.statusCode = 503;
-    throw e;
-  }
+  requireSignSecret();
   const dir = outDir || path.join(os.tmpdir(), 'kolm-artifacts');
   fs.mkdirSync(dir, { recursive: true });
 
@@ -360,20 +368,46 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
 }
 
 export function verifyManifestSignature(manifest_json, signature) {
-  if (!SIGN_SECRET) return { valid: false, reason: 'sign secret unavailable on server' };
+  const secret = signSecret();
+  if (!secret) return { valid: false, reason: 'sign secret unavailable on server' };
   try {
     const sig = typeof signature === 'string' ? JSON.parse(signature) : signature;
     if (!sig || sig.spec !== ARTIFACT_SPEC || !sig.hmac) return { valid: false, reason: 'bad signature shape' };
     const manifest_hash = sha256(Buffer.from(manifest_json));
     if (manifest_hash !== sig.manifest_hash) return { valid: false, reason: 'manifest_hash mismatch' };
-    const expected = crypto.createHmac('sha256', SIGN_SECRET).update(canonicalJson({
-      spec: ARTIFACT_SPEC, manifest_hash, job_id: sig.job_id,
-    })).digest('hex');
-    let diff = 0;
-    if (sig.hmac.length !== expected.length) return { valid: false, reason: 'hmac length' };
-    for (let i = 0; i < sig.hmac.length; i++) diff |= sig.hmac.charCodeAt(i) ^ expected.charCodeAt(i);
-    return diff === 0 ? { valid: true } : { valid: false, reason: 'hmac mismatch' };
+    const payloads = [];
+    if (
+      sig.artifact_hash &&
+      sig.eval_set_hash &&
+      typeof sig.eval_score === 'number' &&
+      sig.judge_id
+    ) {
+      payloads.push({
+        spec: ARTIFACT_SPEC,
+        manifest_hash,
+        job_id: sig.job_id,
+        artifact_hash: sig.artifact_hash,
+        eval_set_hash: sig.eval_set_hash,
+        eval_score: sig.eval_score,
+        judge_id: sig.judge_id,
+      });
+    }
+    payloads.push({ spec: ARTIFACT_SPEC, manifest_hash, job_id: sig.job_id });
+
+    for (const payload of payloads) {
+      const expected = crypto.createHmac('sha256', secret).update(canonicalJson(payload)).digest('hex');
+      if (constantTimeEqualHex(sig.hmac, expected)) return { valid: true };
+    }
+    return { valid: false, reason: 'hmac mismatch' };
   } catch (e) {
     return { valid: false, reason: String(e.message || e) };
   }
+}
+
+function constantTimeEqualHex(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }

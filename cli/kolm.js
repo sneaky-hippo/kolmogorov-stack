@@ -1,17 +1,18 @@
 #!/usr/bin/env node
-// kolm — the compiler cache for intelligence.
+// kolm - the private AI compiler.
 //
 // One CLI. Eight verbs. Compiles, runs, evals, scores, and serves
 // .kolm artifacts so frontier agents quietly call them via MCP.
 //
-//   kolm login                          → device-flow auth → ~/.kolm/config.json
-//   kolm compile "<task>" [--data dir]  → cloud compile → download .kolm
-//   kolm run <art.kolm> '<input-json>'  → local exec
-//   kolm eval <art.kolm>                → re-run embedded evals, recompute K-score
-//   kolm score <art.kolm>               → show K-score
-//   kolm inspect <art.kolm>             → manifest + recipes + signature
-//   kolm serve [--mcp] [--http]         → daemon: expose ~/.kolm/artifacts/* as MCP tools
-//   kolm publish <art.kolm>             → push to public gallery (Sprint 4 stub)
+//   kolm login                          auth -> ~/.kolm/config.json
+//   kolm compile "<task>" [--data dir]  cloud compile -> download .kolm
+//   kolm run <art.kolm> '<input-json>'  local artifact runner
+//   kolm eval <art.kolm>                re-run embedded evals, recompute K-score
+//   kolm benchmark <art.kolm>           emit reproducible artifact benchmark JSON
+//   kolm score <art.kolm>               show K-score
+//   kolm inspect <art.kolm>             manifest + recipes + signature
+//   kolm serve [--mcp] [--http]         expose ~/.kolm/artifacts/* as MCP tools
+//   kolm publish <art.kolm>             public gallery stub
 //
 // The whole point: humans run `kolm compile`; frontier models discover the
 // result via `kolm serve --mcp` and call it without being asked.
@@ -35,7 +36,7 @@ function ensureDir() {
 
 function loadConfig() {
   ensureDir();
-  if (!fs.existsSync(CONFIG_PATH)) return { base: process.env.KOLM_BASE || 'https://kolmogorov-stack-production.up.railway.app', api_key: process.env.KOLM_API_KEY || null };
+  if (!fs.existsSync(CONFIG_PATH)) return { base: process.env.KOLM_BASE || 'https://kolm.ai', api_key: process.env.KOLM_API_KEY || null };
   try { return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8')); } catch { return {}; }
 }
 function saveConfig(c) {
@@ -91,7 +92,7 @@ function prompt(q) {
 }
 
 function usage() {
-  console.log(`kolm v${VERSION} — compile frontier behavior into the smallest local artifact that passes the tests.
+  console.log(`kolm v${VERSION} - compile private AI behavior into the smallest signed artifact that passes the tests.
 
 USAGE
   kolm <command> [args...]
@@ -101,6 +102,7 @@ COMMANDS
   compile "<task>" [opts]          compile a task into a .kolm artifact
   run <art.kolm> '<input>'         execute a .kolm against an input
   eval <art.kolm>                  re-run embedded evals, print K-score
+  benchmark <art.kolm> [opts]      emit artifact benchmark JSON
   score <art.kolm>                 print just the K-score
   inspect <art.kolm>               manifest + recipes + signature
   serve [--mcp] [--http] [--port]  expose ~/.kolm/artifacts/* as MCP tools
@@ -114,8 +116,15 @@ COMPILE OPTIONS
   --examples <file.jsonl>      seed examples for the verifier
   --out <dir>                  where to drop the .kolm (default ~/.kolm/artifacts)
 
+BENCHMARK OPTIONS
+  --runs <n>                   runs per embedded eval case (default: 1)
+  --input '<json-or-string>'    fallback input when the artifact has no evals
+  --target <name>              target label for the report
+  --device <name>              device label for the report
+  --out <file>                 also write the JSON report to a file
+
 ENVIRONMENT
-  KOLM_BASE        cloud endpoint (default: https://kolmogorov-stack-production.up.railway.app)
+  KOLM_BASE        cloud endpoint (default: https://kolm.ai)
   KOLM_API_KEY     bearer token (overrides ~/.kolm/config.json)
 `);
 }
@@ -123,7 +132,7 @@ ENVIRONMENT
 // ---------- commands ----------
 async function cmdLogin() {
   const c = loadConfig();
-  console.log('kolm login — paste your API key from the cloud dashboard.');
+  console.log('kolm login - paste your API key from the cloud dashboard.');
   console.log(`Cloud: ${c.base}`);
   const key = (await prompt('API key (ks_...): ')).trim();
   if (!key.startsWith('ks_')) {
@@ -135,7 +144,7 @@ async function cmdLogin() {
   // sanity-check
   try {
     const a = await api(c, 'GET', '/v1/account');
-    console.log(`✔ logged in. tenant=${a.id || 'admin'} plan=${a.plan || '-'}`);
+    console.log(`logged in. tenant=${a.id || 'admin'} plan=${a.plan || '-'}`);
   } catch (e) {
     console.error('saved config but health check failed:', e.message);
   }
@@ -163,14 +172,14 @@ async function cmdCompile(args) {
   if (dataDir) {
     const ns = path.basename(path.resolve(dataDir));
     corpus_namespace = ns;
-    console.log(`→ ingesting ${dataDir} into namespace "${ns}"`);
+    console.log(`ingesting ${dataDir} into namespace "${ns}"`);
     try {
       const r = await api(c, 'POST', '/v1/embed', {
         namespace: ns,
         paths: [path.resolve(dataDir)],
       });
       const t = r.tokenized;
-      console.log(`  added ${t.added}, skipped ${t.skipped}, ${r.embedded ? 'embedded' : 'NOT embedded (qmd absent — ok, sidecars written)'}`);
+      console.log(`  added ${t.added}, skipped ${t.skipped}, ${r.embedded ? 'embedded' : 'NOT embedded (qmd absent; sidecars written)'}`);
     } catch (e) {
       console.error('  ingest failed (continuing without corpus):', e.message);
       corpus_namespace = null;
@@ -183,10 +192,10 @@ async function cmdCompile(args) {
     for (const ln of lines) {
       try { examples.push(JSON.parse(ln)); } catch { console.warn('  skipping malformed line:', ln); }
     }
-    console.log(`→ loaded ${examples.length} examples from ${examplesPath}`);
+    console.log(`loaded ${examples.length} examples from ${examplesPath}`);
   }
 
-  console.log(`→ POST /v1/compile`);
+  console.log(`POST /v1/compile`);
   const job = await api(c, 'POST', '/v1/compile', {
     task,
     examples,
@@ -218,7 +227,7 @@ async function cmdCompile(args) {
   if (!res.ok) { console.error('download failed:', res.status); process.exit(1); }
   const buf = Buffer.from(await res.arrayBuffer());
   fs.writeFileSync(outPath, buf);
-  console.log(`✔ ${outPath} (${fmtBytes(buf.length)})`);
+  console.log(`wrote ${outPath} (${fmtBytes(buf.length)})`);
   console.log('K-score:');
   console.log(fmtKScore(state.k_score));
   console.log(`\nrun:    kolm run ${path.basename(outPath)} '<input-json>'`);
@@ -227,6 +236,11 @@ async function cmdCompile(args) {
 
 async function withRunner(fn) {
   const m = await import('../src/artifact-runner.js');
+  return fn(m);
+}
+
+async function withBenchmark(fn) {
+  const m = await import('../src/benchmark.js');
   return fn(m);
 }
 
@@ -265,6 +279,33 @@ async function cmdEval(args) {
   });
 }
 
+async function cmdBenchmark(args) {
+  const ap = resolveArtifact(args[0]);
+  if (!ap) { console.error('error: artifact not found:', args[0]); process.exit(1); }
+
+  const value = (flag) => {
+    const i = args.indexOf(flag);
+    return i >= 0 ? args[i + 1] : undefined;
+  };
+  const inputRaw = value('--input');
+  let input;
+  if (inputRaw !== undefined) {
+    try { input = JSON.parse(inputRaw); }
+    catch { input = inputRaw; }
+  }
+
+  await withBenchmark(async ({ benchmarkArtifact }) => {
+    const report = await benchmarkArtifact(ap, {
+      runs: value('--runs'),
+      input,
+      target: value('--target'),
+      device: value('--device'),
+      outPath: value('--out'),
+    });
+    console.log(JSON.stringify(report, null, 2));
+  });
+}
+
 async function cmdScore(args) {
   const ap = resolveArtifact(args[0]);
   if (!ap) { console.error('error: artifact not found:', args[0]); process.exit(1); }
@@ -299,14 +340,14 @@ async function cmdServe(args) {
 }
 
 function cmdPublish(args) {
-  console.log('kolm publish — Sprint 4 (public gallery). For now, share the .kolm file directly.');
+  console.log('kolm publish: public gallery is not implemented yet. For now, share the .kolm file directly.');
   console.log('artifact:', args[0] || '(specify path)');
 }
 
 function cmdConfig(args) {
   const c = loadConfig();
   if (args.length === 0) {
-    console.log(JSON.stringify({ base: c.base, api_key: c.api_key ? c.api_key.slice(0, 6) + '…(set)' : null }, null, 2));
+    console.log(JSON.stringify({ base: c.base, api_key: c.api_key ? c.api_key.slice(0, 6) + '...(set)' : null }, null, 2));
     return;
   }
   const [k, v] = args;
@@ -320,7 +361,7 @@ function cmdConfig(args) {
   }
   c[k] = v;
   saveConfig(c);
-  console.log('✔ saved');
+  console.log('saved');
 }
 
 // ---------- dispatch ----------
@@ -332,6 +373,7 @@ async function main() {
       case 'compile':  await cmdCompile(rest); break;
       case 'run':      await cmdRun(rest); break;
       case 'eval':     await cmdEval(rest); break;
+      case 'benchmark': await cmdBenchmark(rest); break;
       case 'score':    await cmdScore(rest); break;
       case 'inspect':  await cmdInspect(rest); break;
       case 'serve':    await cmdServe(rest); break;

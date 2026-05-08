@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildRouter } from './src/router.js';
 import { provisionTenant } from './src/auth.js';
+import { isProductionRuntime } from './src/env.js';
 import { synthesize } from './src/synthesis.js';
 import { createConcept, publishVersion } from './src/registry.js';
 import { all } from './src/store.js';
@@ -16,6 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', isProductionRuntime() ? 1 : false);
 
 // Security headers (S3, S4) — mounted BEFORE express.static so static
 // assets get HSTS, CSP, nosniff, etc. CSP allows 'unsafe-inline' for now
@@ -101,7 +103,7 @@ const ROUTE_ALIASES = {
   '/signin': 'signup',
   '/atlas': 'registry',
 };
-for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/atlas', '/signup', '/signin', '/why', '/pricing', '/status', '/specialists', '/onboarding', '/account', '/optimize', '/audit', '/spec', '/receipts', '/how-it-works', '/verified', '/economics', '/device', '/compile', '/run', '/recall', '/cloud', '/manual', '/mobile', '/k-score', '/serve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/defense', '/manifesto', '/faq', '/quickstart', '/changelog']) {
+for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/atlas', '/signup', '/signin', '/why', '/pricing', '/status', '/specialists', '/onboarding', '/account', '/optimize', '/audit', '/spec', '/receipts', '/how-it-works', '/verified', '/economics', '/device', '/compile', '/run', '/recall', '/cloud', '/manual', '/mobile', '/k-score', '/benchmarks', '/compare', '/serve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/defense', '/manifesto', '/faq', '/quickstart', '/changelog']) {
   app.get(route, (_req, res) => {
     const name = route === '/' ? 'index' : (ROUTE_ALIASES[route] || route.slice(1));
     const file = path.join(__dirname, 'public', name + '.html');
@@ -122,7 +124,7 @@ app.get('/articles/:slug', (req, res, next) => {
 // 404 fallback for unknown HTML routes — branded page from /public/404.html if it exists.
 const _404Path = path.join(__dirname, 'public', '404.html');
 app.use((req, res, next) => {
-  if (req.method === 'GET' && req.accepts('html') && !req.path.startsWith('/v1') && !req.path.startsWith('/health') && req.path !== '/404') {
+  if (req.method === 'GET' && req.accepts('html') && !req.path.startsWith('/v1') && !req.path.startsWith('/health') && req.path !== '/ready' && req.path !== '/404') {
     if (fs.existsSync(_404Path)) return res.status(404).sendFile(_404Path);
     return res.status(404).type('html').send(`<!DOCTYPE html><html><head><title>404 · kolm</title><link rel="stylesheet" href="/styles.css"></head><body style="padding:48px;text-align:center;font-family:system-ui;color:#e8ecf3;background:#0a0b0e;min-height:100vh;"><h1 style="font-size:48px;margin:0;letter-spacing:-0.02em;">404</h1><p style="color:#8b94a8;margin-top:8px">That page doesn't exist.</p><p style="margin-top:24px;"><a href="/" style="color:#7dd3fc;">&larr; Home</a> &middot; <a href="/registry" style="color:#7dd3fc;">Registry</a> &middot; <a href="/docs" style="color:#7dd3fc;">Docs</a></p></body></html>`);
   }
@@ -174,19 +176,17 @@ if (process.argv[1] && process.argv[1].endsWith('server.js')) {
 
   // Idempotent seed: synthesizes any missing example/*.json concepts.
   const { added, skipped } = await bootSeedDemoConcepts(demo.name);
-  if (added > 0 || skipped > 0) console.log(`  · seed: +${added} added, ${skipped} skipped`);
+  if (added > 0 || skipped > 0) console.log(`  seed: +${added} added, ${skipped} skipped`);
 
   app.listen(PORT, () => {
-    console.log(`\n╔══════════════════════════════════════════════════╗`);
-    console.log(`║  KOLMOGOROV STACK · Synthesis · Registry · Edge  ║`);
-    console.log(`╚══════════════════════════════════════════════════╝`);
-    console.log(`  ➜ http://localhost:${PORT}`);
-    console.log(`  ➜ Dashboard:  http://localhost:${PORT}/dashboard`);
-    console.log(`  ➜ Playground: http://localhost:${PORT}/playground`);
-    console.log(`  ➜ Docs:       http://localhost:${PORT}/docs`);
-    console.log(`  ➜ Demo API key configured: ${!!demo.api_key}`);
-    console.log(`  ➜ Admin key configured:    ${!!process.env.ADMIN_KEY}`);
-    console.log(`  ➜ Synthesis backend: ${process.env.ANTHROPIC_API_KEY ? 'Claude (' + (process.env.ANTHROPIC_MODEL || 'claude-opus-4-7') + ') + Pattern' : 'Pattern (no API key set)'}`);
+    console.log('\nkolm server');
+    console.log(`  home:       http://localhost:${PORT}`);
+    console.log(`  dashboard:  http://localhost:${PORT}/dashboard`);
+    console.log(`  playground: http://localhost:${PORT}/playground`);
+    console.log(`  docs:       http://localhost:${PORT}/docs`);
+    console.log(`  demo key:   ${!!demo.api_key ? 'configured' : 'missing'}`);
+    console.log(`  admin key:  ${!!process.env.ADMIN_KEY ? 'configured' : 'not set'}`);
+    console.log(`  synthesis:  ${process.env.ANTHROPIC_API_KEY ? 'Claude (' + (process.env.ANTHROPIC_MODEL || 'claude-opus-4-7') + ') + Pattern' : 'Pattern (no API key set)'}`);
     console.log('');
   });
 }

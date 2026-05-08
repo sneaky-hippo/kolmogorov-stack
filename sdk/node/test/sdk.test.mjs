@@ -1,13 +1,13 @@
-// SDK test — runs against a live local server (default http://localhost:3939).
-// Set RECIPE_BASE_URL to point elsewhere.
+// SDK test - runs against a live local server (default http://localhost:3939).
+// Set KOLM_BASE_URL or RECIPE_BASE_URL to point elsewhere.
 //
 //   node test/sdk.test.mjs
 
 import assert from 'node:assert';
-import RecipeClient, { recipe, RecipeError } from '../index.mjs';
+import KolmClient, { recipe, RecipeError } from '../index.mjs';
 
-const baseUrl = process.env.RECIPE_BASE_URL || 'http://localhost:3939';
-const c = new RecipeClient({ baseUrl });
+const baseUrl = process.env.KOLM_BASE_URL || process.env.RECIPE_BASE_URL || 'http://localhost:3939';
+const c = new KolmClient({ baseUrl });
 
 let pass = 0, fail = 0;
 async function it(name, fn) {

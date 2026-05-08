@@ -1,0 +1,51 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+test('tenant API keys are hashed at rest and legacy raw keys migrate on use', async (t) => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kolm-auth-hash-'));
+  const savedDataDir = process.env.KOLM_DATA_DIR;
+  process.env.KOLM_DATA_DIR = dataDir;
+
+  t.after(() => {
+    if (savedDataDir === undefined) delete process.env.KOLM_DATA_DIR;
+    else process.env.KOLM_DATA_DIR = savedDataDir;
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  const auth = await import(`../src/auth.js?auth-hash=${Date.now()}`);
+  const store = await import(`../src/store.js`);
+
+  const tenant = auth.provisionTenant('hash-test', { email: 'hash@example.com' });
+  assert.match(tenant.api_key, /^ks_[0-9a-f]{32}$/);
+
+  let rows = JSON.parse(fs.readFileSync(path.join(dataDir, 'tenants.json'), 'utf8'));
+  assert.equal(rows[0].api_key, undefined);
+  assert.match(rows[0].api_key_hash, /^sha256:[0-9a-f]{64}$/);
+  assert.equal(auth.findTenantByApiKey(tenant.api_key).id, tenant.id);
+
+  const rotated = auth.rotateTenantKey(tenant.id);
+  assert.match(rotated, /^ks_[0-9a-f]{32}$/);
+  assert.equal(auth.findTenantByApiKey(rotated).id, tenant.id);
+  assert.equal(auth.findTenantByApiKey(tenant.api_key), null);
+
+  const legacyKey = 'ks_' + 'a'.repeat(32);
+  store.insert('tenants', {
+    id: 'tenant_legacy',
+    name: 'legacy',
+    api_key: legacyKey,
+    kind: 'user',
+    plan: 'free',
+    quota: 10,
+    used: 0,
+  });
+
+  assert.equal(auth.findTenantByApiKey(legacyKey).id, 'tenant_legacy');
+  rows = JSON.parse(fs.readFileSync(path.join(dataDir, 'tenants.json'), 'utf8'));
+  const legacy = rows.find(row => row.id === 'tenant_legacy');
+  assert.equal(legacy.api_key, undefined);
+  assert.match(legacy.api_key_hash, /^sha256:[0-9a-f]{64}$/);
+  assert.equal(auth.findTenantByApiKey(legacyKey).id, 'tenant_legacy');
+});

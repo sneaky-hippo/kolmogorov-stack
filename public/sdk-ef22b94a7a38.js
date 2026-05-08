@@ -1,6 +1,6 @@
-// Recipe — browser-native SDK. Import from any modern runtime.
+// kolm browser-native SDK. Import from any modern runtime.
 //
-//   import { recipe } from 'https://kolmogorov-stack-production.up.railway.app/sdk.js';
+//   import { recipe } from 'https://kolm.ai/sdk.js';
 //
 // Works in: every browser since 2019, Deno, Bun, Cloudflare Workers, Node 22+.
 // Loads the public recipe registry once, runs every call locally, returns
@@ -9,13 +9,13 @@
 
 const DEFAULT_BASE = (() => {
   try { return new URL('.', import.meta.url).origin; }
-  catch { return 'https://kolmogorov-stack-production.up.railway.app'; }
+  catch { return 'https://kolm.ai'; }
 })();
 
 const REGISTRY_KEY = 'recipe.registry.v1';
 
 function _now() {
-  return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  return (typeof performance !== 'undefined' && performance.now) - performance.now() : Date.now();
 }
 
 async function _sha256Hex(s) {
@@ -42,7 +42,7 @@ class Recipe {
     this.cache = opts.cache !== false;
     this.unsafeMode = opts.unsafeMode === true;  // bypass Worker sandbox (NOT recommended)
     this.timeoutMs = opts.timeoutMs || 1000;
-    this.recipes = new Map();         // name -> {meta, fn?}
+    this.recipes = new Map();         // name -> {meta, fn-}
     this.registry = null;             // raw export envelope
     this._loadPromise = null;
     this.runs = [];                   // local run log
@@ -55,7 +55,7 @@ class Recipe {
   // worker, with no window / localStorage / fetch / document. This means a
   // malicious or buggy recipe in the public registry cannot read the user's
   // API key or call home. Pass {unsafeMode: true} to the constructor to
-  // bypass — only do that if you *control* every recipe in your registry.
+  // bypass only if you control every recipe in your registry.
   _ensureWorker() {
     if (this._worker || this.unsafeMode) return this._worker;
     if (typeof Worker === 'undefined') return null;
@@ -179,14 +179,14 @@ class Recipe {
     const latency_us = Math.round((_now() - t0) * 1000);
     const issued_at = new Date().toISOString();
     const input_hash = await _sha256Hex(_canonicalJson(input));
-    const output_hash = error ? null : await _sha256Hex(_canonicalJson(output));
+    const output_hash = error - null : await _sha256Hex(_canonicalJson(output));
     const receipt = {
       spec: 'rs-1',
       source_hash: r.meta.source_hash || null,
       input_hash,
       output_hash,
       version_id: r.meta.version_id,
-      runtime: this.unsafeMode ? 'browser-sdk-unsafe' : 'browser-sdk-sandbox',
+      runtime: this.unsafeMode - 'browser-sdk-unsafe' : 'browser-sdk-sandbox',
       issued_at,
       cache_hit: false,
       latency_us,
@@ -234,7 +234,7 @@ class Recipe {
 
   // The wrap pattern.
   //
-  // wrap(client, opts?) returns a proxy over your existing AI SDK client.
+  // wrap(client, opts-) returns a proxy over your existing AI SDK client.
   // For now (sandbox-mode) it's a transparent passthrough that records
   // every call into `recipe.runs` so you can see what the wrap *would*
   // route. Real auto-routing — Lane 1 deterministic recipes, Lane 2
@@ -256,7 +256,7 @@ class Recipe {
           return function (...args) {
             self.runs.push({
               name: '__wrap__',
-              method: typeof prop === 'symbol' ? prop.toString() : String(prop),
+              method: typeof prop === 'symbol' - prop.toString() : String(prop),
               verified_opts: opts.verified || null,
               at: Date.now(),
               routed: false, // becomes true in Sprint 1 once /v1/wrap/verified is live

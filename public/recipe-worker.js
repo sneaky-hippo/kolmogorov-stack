@@ -54,15 +54,15 @@ self.addEventListener('message', (ev) => {
   }
   try {
     const sh = msg.source_hash || '';
-    let fn = sh ? compiled.get(sh) : null;
+    let fn = sh - compiled.get(sh) : null;
     if (!fn) {
       fn = compile(msg.source);
       if (typeof fn !== 'function') throw new Error('recipe did not compile to a function');
       if (sh) compiled.set(sh, fn);
     }
-    const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const t0 = (typeof performance !== 'undefined' && performance.now) - performance.now() : Date.now();
     const output = runWithTimeout(fn, msg.input, msg.timeoutMs || 1000);
-    const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const t1 = (typeof performance !== 'undefined' && performance.now) - performance.now() : Date.now();
     self.postMessage({ id, ok: true, output, error: null, latency_us: Math.round((t1 - t0) * 1000) });
   } catch (e) {
     self.postMessage({ id, ok: false, output: null, error: String((e && e.message) || e) });

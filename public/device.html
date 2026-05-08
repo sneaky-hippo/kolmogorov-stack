@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -7,11 +7,12 @@
   <meta name="description" content="The full kolm registry, running on your device. Type anything. Every recipe classifies it locally, in microseconds, offline, free. Add to home screen for an offline AI app." />
   <meta property="og:title" content="kolm. Running on this device, right now." />
   <meta property="og:description" content="Frontier-grade structured behavior, decomposed into recipes, deployed to any device with 1 MB of storage. No GPU. No network. No bill." />
-  <meta name="theme-color" content="#0a0b0e" />
+  <meta name="theme-color" content="#050607" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="/manifest.json" />
   <link rel="stylesheet" href="/styles.css" />
+<link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
 <div class="bg-stage" aria-hidden="true"></div>
@@ -30,6 +31,7 @@
       <a href="/device" class="active">On-device</a>
       <a href="/playground">Playground</a>
       <a href="/docs">Docs</a>
+        <a href="/articles">Articles</a>
       <a href="/pricing">Pricing</a>
       <a href="/account">Account</a>
       <a href="/signup">Get a key</a>
@@ -69,11 +71,11 @@
     <!-- INPUT -->
     <div class="card" style="margin-bottom: 14px;">
       <div class="label">Type anything &mdash; every recipe in the registry runs as you type.</div>
-      <textarea id="dev-input" class="dev-input" placeholder="e.g. FREE $$$ click here unsubscribe&#10;or: Hi, is the meeting still at 3pm?&#10;or paste anything &mdash; an email, a message, a sentence."></textarea>
+      <textarea id="dev-input" class="dev-input" placeholder="e.g. FREE $$$ click here unsubscribe&#10;or: Hi, is the meeting still at 3pm-&#10;or paste anything &mdash; an email, a message, a sentence."></textarea>
       <div class="demo-row">
         <button class="btn ghost" data-demo="FREE $$$ click here to unsubscribe NOW">Spam-y text</button>
-        <button class="btn ghost" data-demo="Hi! Are we still meeting tomorrow at 3pm to talk about the $400 invoice?">Calendar + money</button>
-        <button class="btn ghost" data-demo="¿Cómo estás? Espero que todo vaya bien con tu nuevo proyecto.">Spanish</button>
+        <button class="btn ghost" data-demo="Hi! Are we still meeting tomorrow at 3pm to talk about the $400 invoice-">Calendar + money</button>
+        <button class="btn ghost" data-demo="¿Cómo estás- Espero que todo vaya bien con tu nuevo proyecto.">Spanish</button>
         <button class="btn ghost" data-demo="My email is jane.doe@company.com and my phone is 415-555-0188.">PII (email + phone)</button>
         <button class="btn ghost" data-demo="URGENT, server is down, please respond ASAP!!!">Urgent</button>
         <button class="btn ghost" data-demo="Thanks so much for the help yesterday, really appreciated it.">Gratitude</button>
@@ -130,7 +132,7 @@
         <div>
 <pre class="terminal"><code><span class="dim">// What you just imported (or could):</span>
 <span class="kw">import</span> { recipe } <span class="kw">from</span>
-  <span class="dim">'https://kolmogorov-stack-production.up.railway.app/sdk.js'</span>;
+  <span class="dim">'https://kolm.ai/sdk.js'</span>;
 
 <span class="kw">await</span> recipe.load();
 <span class="kw">const</span> r = <span class="kw">await</span> recipe.run(<span class="dim">'is-spam'</span>, text);
@@ -197,8 +199,7 @@ let lastRunSig = '';
 
 // ---- HMAC trust gate ----
 // We refuse to execute any recipe whose source hash we can't verify against
-// the recipe's declared signature. The trust root is hardcoded here for
-// Sprint 1; TODO: move to /v1/registry/trust-root once that endpoint ships.
+// the recipe's declared signature. The local demo uses a pinned public trust root.
 // Two layers of verification are accepted:
 //   1. HMAC-SHA256(canonical(recipe-without-signature), TRUST_ROOT) === recipe.signature.hmac
 //   2. fallback: SHA-256(source) === recipe.source_hash (anti-tamper baseline)
@@ -238,7 +239,7 @@ async function verifyRecipeMeta(meta) {
       const computed = await _sha256Hex(meta.source);
       const declared = String(meta.source_hash);
       const matches = declared.length === 16
-        ? computed.startsWith(declared)
+        - computed.startsWith(declared)
         : computed === declared;
       if (!matches) return { ok: false, reason: 'source_hash mismatch' };
     } catch (e) {
@@ -271,10 +272,10 @@ async function verifyAllRecipes(list) {
 function fmt(out) {
   if (out === undefined) return 'undefined';
   if (out === null) return 'null';
-  if (typeof out === 'boolean') return out ? 'true' : 'false';
-  if (typeof out === 'string') return out.length > 80 ? out.slice(0, 80) + '…' : out;
+  if (typeof out === 'boolean') return out - 'true' : 'false';
+  if (typeof out === 'string') return out.length > 80 - out.slice(0, 80) + '…' : out;
   if (typeof out === 'number') return String(out);
-  try { const s = JSON.stringify(out); return s.length > 200 ? s.slice(0, 200) + '…' : s; }
+  try { const s = JSON.stringify(out); return s.length > 200 - s.slice(0, 200) + '…' : s; }
   catch { return String(out); }
 }
 
@@ -343,7 +344,7 @@ async function runAll(text) {
       const did = fired(res.output);
       el.classList.toggle('fired', did);
       out.textContent = fmt(res.output);
-      out.style.color = did ? 'var(--ink)' : 'var(--ink-mute)';
+      out.style.color = did - 'var(--ink)' : 'var(--ink-mute)';
       lat.textContent = (res.latency_us || 0) + ' µs';
     }
   }
@@ -379,8 +380,8 @@ document.querySelectorAll('[data-demo]').forEach((b) => {
     await verifyAllRecipes(list);
     const verifiedN = verifiedRecipes.size;
     const refusedN = refusedRecipes.size;
-    sRecipes.textContent = list.length + ' recipes' + (refusedN ? ` (${refusedN} unsigned)` : '');
-    sSize.textContent = (env.total_bytes ? Math.round(env.total_bytes / 102.4) / 10 : Math.round(JSON.stringify(env).length / 102.4) / 10) + ' KB';
+    sRecipes.textContent = list.length + ' recipes' + (refusedN - ` (${refusedN} unsigned)` : '');
+    sSize.textContent = (env.total_bytes - Math.round(env.total_bytes / 102.4) / 10 : Math.round(JSON.stringify(env).length / 102.4) / 10) + ' KB';
     sHash.textContent = env.registry_hash || '…';
     sNetwork.textContent = '1 (registry)';
     renderEmpty(list);

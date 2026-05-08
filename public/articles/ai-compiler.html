@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>How to Compile GPT-5 Into a 4GB Local Model · kolm</title>
+<title>How to Compile GPT-5 Into a 4GB Local Model - kolm</title>
 <meta name="description" content="An AI compiler is the missing build step between a frontier model API and a local artifact. This essay explains what it does, why it changes the unit economics of AI, and how to compile your first .kolm in five minutes.">
 <meta name="keywords" content="AI compiler, compile GPT-5 locally, local LLM, on-device AI, model distillation, frontier to edge, .kolm file, kolm compile, edge AI compiler">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
 <meta name="author" content="Kolmogorov">
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
@@ -15,13 +15,13 @@
 <meta property="og:description" content="The AI compiler turns a task spec, your data, and a frontier API key into a signed local artifact. A practical primer.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://kolm.ai/articles/ai-compiler">
-<meta property="og:image" content="https://kolm.ai/img/brand-og.png">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="How to compile a frontier model into a 4GB local artifact">
 <meta name="twitter:description" content="The AI compiler turns a task into a signed .kolm. A practical primer.">
-<meta name="twitter:image" content="https://kolm.ai/img/brand-og.png">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
 <link rel="canonical" href="https://kolm.ai/articles/ai-compiler">
-<link rel="preload" as="image" href="/img/compile-distill.webp" fetchpriority="high">
+<link rel="preload" as="image" href="/img/kolm-compile-distill.svg" fetchpriority="high">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script type="application/ld+json">
 {
@@ -34,7 +34,7 @@
   "datePublished": "2026-05-07",
   "dateModified": "2026-05-07",
   "mainEntityOfPage": { "@type": "WebPage", "@id": "https://kolm.ai/articles/ai-compiler" },
-  "image": "https://kolm.ai/img/brand-og.png",
+  "image": "https://kolm.ai/og-card.svg",
   "keywords": "AI compiler, GPT-5 local, on-device AI, model distillation, .kolm artifact",
   "articleSection": "Engineering",
   "wordCount": 2400
@@ -42,30 +42,30 @@
 </script>
 <style>
   :root {
-    --bg: #0a0a0a; --bg-elev: #0f0f12; --bg-card: #13141a;
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
     --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
-    --ink: #ededed; --ink-mute: #9a9da8; --ink-faint: #5a5c66;
-    --accent: #7c8cff; --accent-soft: rgba(124,140,255,0.10); --accent-strong: #93a1ff;
-    --good: #7ce3b6; --bad: #ff7a98;
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-soft: rgba(76,125,255,0.10); --accent-strong: #9db6ff;
+    --good: #7ef0d2; --bad: #ff6b91;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
   a { color: inherit; text-decoration: none; }
   .wrap { max-width: 760px; margin: 0 auto; padding: 0 32px; }
   .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
   @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
-  header.site { position: sticky; top: 0; z-index: 60; background: rgba(10,10,10,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
   header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
   header.site .left { display: flex; align-items: center; gap: 36px; }
   header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
-  header.site .brand .mark { width: 22px; height: 22px; }
+  header.site .brand img { width: 22px; height: 22px; }
   header.site .brand .lyr { transition: transform 280ms cubic-bezier(.2,.6,.2,1), opacity 280ms; }
   header.site .brand:hover .lyr-1 { transform: translate(-1.4px,-1.4px); }
   header.site .brand:hover .lyr-3 { transform: translate(1.4px,1.4px); }
-  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
+  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: 0; }
   header.site nav { display: flex; gap: 22px; }
   header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
   header.site nav a:hover { color: var(--ink); }
@@ -77,22 +77,22 @@
   @media (max-width: 720px) { header.site nav { display: none; } }
 
   section.hero { padding: 80px 0 36px; position: relative; overflow: hidden; }
-  section.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 900px 460px at 22% 12%, rgba(124,140,255,0.10), transparent 60%); }
+  section.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 900px 460px at 22% 12%, rgba(76,125,255,0.10), transparent 60%); }
   section.hero .wrap { position: relative; }
-  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
   .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-  h1 { margin: 22px 0 18px; font-size: clamp(34px, 5.4vw, 54px); line-height: 1.05; font-weight: 500; letter-spacing: -0.028em; max-width: 22ch; }
+  h1 { margin: 22px 0 18px; font-size: clamp(34px, 5.4vw, 54px); line-height: 1.05; font-weight: 500; letter-spacing: 0; max-width: 22ch; }
   h1 .tone { color: var(--accent); }
   p.lede { margin: 0 0 0; font-size: clamp(17px, 1.4vw, 20px); line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
   p.lede b { color: var(--ink); font-weight: 540; }
 
-  .meta { display: flex; gap: 18px; margin-top: 22px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
+  .meta { display: flex; gap: 18px; margin-top: 22px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
   .meta b { color: var(--ink-mute); font-weight: 500; }
 
   article { padding: 36px 0 96px; }
-  article h2 { margin: 56px 0 14px; font-size: clamp(24px, 2.6vw, 30px); line-height: 1.2; font-weight: 540; letter-spacing: -0.018em; color: var(--ink); }
+  article h2 { margin: 56px 0 14px; font-size: clamp(24px, 2.6vw, 30px); line-height: 1.2; font-weight: 540; letter-spacing: 0; color: var(--ink); }
   article h2 .tone { color: var(--accent); }
-  article h3 { margin: 36px 0 10px; font-size: 18px; font-weight: 540; letter-spacing: -0.012em; color: var(--ink); }
+  article h3 { margin: 36px 0 10px; font-size: 18px; font-weight: 540; letter-spacing: 0; color: var(--ink); }
   article p { margin: 0 0 16px; font-size: 16.5px; line-height: 1.7; color: var(--ink-mute); }
   article p b { color: var(--ink); font-weight: 540; }
   article p code, article li code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
@@ -100,7 +100,7 @@
   article blockquote p { color: var(--ink); margin: 0; font-weight: 480; }
   article ul { padding-left: 0; list-style: none; margin: 16px 0 24px; }
   article ul li { padding: 8px 0 8px 22px; position: relative; font-size: 16px; line-height: 1.6; color: var(--ink-mute); }
-  article ul li::before { content: "·"; color: var(--accent); position: absolute; left: 6px; font-weight: 700; }
+  article ul li::before { content: "-"; color: var(--accent); position: absolute; left: 6px; font-weight: 560; }
   article ul li b { color: var(--ink); font-weight: 540; }
 
   article pre { margin: 18px 0 24px; padding: 18px 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.75; color: var(--ink); box-shadow: 0 18px 40px -22px rgba(0,0,0,0.55); }
@@ -109,7 +109,7 @@
   article pre .kw { color: #b0bbff; }
 
   .figure { margin: 28px 0; padding: 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 40px -22px rgba(0,0,0,0.55); }
-  .figure .cap { margin-top: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
+  .figure .cap { margin-top: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
   .figure .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 720px) { .figure .grid { grid-template-columns: 1fr; } }
   .figure .row { padding: 10px 14px; border: 1px solid var(--line); border-radius: 6px; background: rgba(0,0,0,0.18); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12.5px; color: var(--ink-mute); }
@@ -119,20 +119,20 @@
   .signpost { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 36px 0 0; }
   @media (max-width: 720px) { .signpost { grid-template-columns: 1fr; } }
   .signpost a { display: flex; flex-direction: column; gap: 8px; padding: 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; transition: transform 220ms cubic-bezier(.2,.6,.2,1), border-color 220ms, box-shadow 220ms; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 18px 40px -22px rgba(0,0,0,0.55); }
-  .signpost a:hover { transform: translateY(-2px); border-color: var(--line-strong); box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 24px 50px -22px rgba(0,0,0,0.65), 0 8px 22px -8px rgba(124,140,255,0.10); }
-  .signpost a .lab { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
-  .signpost a .v { color: var(--ink); font-weight: 540; font-size: 16px; letter-spacing: -0.012em; }
+  .signpost a:hover { transform: translateY(-2px); border-color: var(--line-strong); box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 24px 50px -22px rgba(0,0,0,0.65), 0 8px 22px -8px rgba(76,125,255,0.10); }
+  .signpost a .lab { font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
+  .signpost a .v { color: var(--ink); font-weight: 540; font-size: 16px; letter-spacing: 0; }
   .signpost a .v .arrow { color: var(--accent); margin-left: 6px; }
   .signpost a p { margin: 4px 0 0; font-size: 13.5px; color: var(--ink-mute); line-height: 1.5; }
 
   .toc { margin: 28px 0 36px; padding: 18px 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; }
-  .toc h5 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 10px; font-weight: 500; }
+  .toc h5 { font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 10px; font-weight: 500; }
   .toc ol { margin: 0; padding-left: 20px; }
   .toc li { padding: 4px 0; font-size: 14px; color: var(--ink-mute); }
   .toc li a { color: var(--ink-mute); }
   .toc li a:hover { color: var(--accent); }
 
-  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-faint); }
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--ink-faint); }
   footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
   footer.site a { color: var(--ink-faint); transition: color 120ms; }
   footer.site a:hover { color: var(--ink-mute); }
@@ -142,19 +142,20 @@
   @media (prefers-reduced-motion: reduce) { body::after { display: none; } }
   /* plate */
 
-  .plate{position:relative;margin:32px 0 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#050507;isolation:isolate}
+  .plate{position:relative;margin:32px 0 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#050607;isolation:isolate}
   .plate .img{position:relative;aspect-ratio:16/9;background-position:center;background-size:cover;background-repeat:no-repeat}
   .plate .img::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 50%,rgba(8,8,10,0.78) 100%),linear-gradient(90deg,rgba(8,8,10,0.55) 0%,transparent 30%,transparent 70%,rgba(8,8,10,0.55) 100%)}
-  .plate .img::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,140,255,0.5),transparent);pointer-events:none;z-index:2}
-  .plate .stamp{position:absolute;top:18px;left:20px;z-index:3;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:0.20em;text-transform:uppercase;color:var(--ink-mute);border:1px solid rgba(124,140,255,0.22);background:rgba(10,10,10,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:5px 11px;border-radius:4px}
-  .plate .stamp .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(124,140,255,0.85)}
+  .plate .img::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(76,125,255,0.5),transparent);pointer-events:none;z-index:2}
+  .plate .stamp{position:absolute;top:18px;left:20px;z-index:3;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing: 0;text-transform:uppercase;color:var(--ink-mute);border:1px solid rgba(76,125,255,0.22);background:rgba(8,9,8,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:5px 11px;border-radius:4px}
+  .plate .stamp .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(76,125,255,0.85)}
   .plate .cap{position:absolute;left:24px;right:24px;bottom:20px;z-index:3;display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
-  .plate .cap .title{font-family:var(--sans);font-size:clamp(17px,1.8vw,22px);font-weight:540;letter-spacing:-0.018em;line-height:1.18;color:var(--ink);max-width:62%;text-shadow:0 1px 2px rgba(0,0,0,0.55)}
-  .plate .cap .title .tone{background:linear-gradient(170deg,#d4daff 0%,#93a1ff 50%,#7c8cff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .plate .cap .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute);letter-spacing:0.06em;text-align:right;line-height:1.7}
+  .plate .cap .title{font-family:var(--sans);font-size:clamp(17px,1.8vw,22px);font-weight:540;letter-spacing: 0;line-height:1.18;color:var(--ink);max-width:62%;text-shadow:0 1px 2px rgba(0,0,0,0.55)}
+  .plate .cap .title .tone{background:linear-gradient(170deg,#faf2e1 0%,#9db6ff 50%,#4c7dff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .plate .cap .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute);letter-spacing: 0;text-align:right;line-height:1.7}
   .plate .cap .meta b{color:var(--ink);font-weight:520}
   @media(max-width:720px){.plate .cap{left:14px;right:14px;bottom:12px;flex-direction:column;align-items:flex-start;gap:8px}.plate .cap .title{font-size:14px;max-width:100%}.plate .cap .meta{text-align:left;font-size:10px}.plate .stamp{top:12px;left:12px;font-size:9px;padding:4px 9px}}
 </style>
+<link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
 
@@ -162,10 +163,7 @@
   <div class="wrap-wide row">
     <div class="left">
       <a href="/" class="brand" aria-label="kolm">
-        <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
+        <img src="/logo-mark.svg" alt="" class="brand-mark">
         <span>kolm</span>
       </a>
       <nav>
@@ -173,7 +171,11 @@
         <a href="/serve">Serve</a>
         <a href="/anatomy">.kolm</a>
         <a href="/k-score">K-score</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+
         <a href="/docs">Docs</a>
+        <a href="/articles">Articles</a>
         <a href="/pricing">Pricing</a>
       </nav>
     </div>
@@ -186,16 +188,16 @@
 
 <section class="hero">
   <div class="wrap">
-    <span class="pill"><span class="dot"></span>Engineering · 2026-05-07 · 11 min read</span>
+    <span class="pill"><span class="dot"></span>Engineering - 2026-05-07 - 11 min read</span>
     <h1>How to compile GPT-5 into a 4GB local model <span class="tone">that runs offline.</span></h1>
     <p class="lede">An <b>AI compiler</b> is the missing build step between a frontier model API and a local artifact. It turns the most expensive recurring line in your AWS bill into a one-time job. Here is what it does, why it changes the unit economics of AI, and how to compile your first <code>.kolm</code> in five minutes.</p>
-    <div class="meta"><span><b>By</b>&nbsp;Kolmogorov</span><span><b>Tag</b>&nbsp;AI compiler · on-device · distillation</span></div>
+    <div class="meta"><span><b>By</b>&nbsp;Kolmogorov</span><span><b>Tag</b>&nbsp;AI compiler - on-device - distillation</span></div>
     <figure class="plate" role="img" aria-label="kolm artifact essay illustration">
-      <div class="img" style="background-image:url(/img/compile-distill.webp)"></div>
-      <span class="stamp"><span class="dot"></span>essay · the compiler</span>
+      <div class="img" style="background-image:url(/img/kolm-compile-distill.svg)"></div>
+      <span class="stamp"><span class="dot"></span>essay - the compiler</span>
       <div class="cap">
         <div class="title">Frontier in. <span class="tone">.kolm out.</span></div>
-        <div class="meta">distill · decompose · package<br><b>one signed file</b></div>
+        <div class="meta">distill - decompose - package<br><b>one signed file</b></div>
       </div>
     </figure>
   </div>
@@ -219,113 +221,109 @@
 
     <h2 id="why">Why the cloud-AI line is the wrong line.</h2>
     <p>If you ship anything that calls a frontier model in production, you have lived this. <b>The bill is linear in usage.</b> Every prompt is a network round trip and a row in someone else's log. The model deprecates on a 14-day notice. The data leaves the building on every call. The latency floor is 200-800 ms per inference even on the best-case path. <b>None of these are bugs in your stack.</b> They are properties of the architecture: model lives in a third-party data center, data has to come to it.</p>
-    <p>For about half of the AI work being done today, that architecture is fine. For the other half — anything touching health records, financial transactions, internal codebases, the user's own photos and messages, anything regulated, anything privacy-sensitive — it is a slow-motion compliance crisis. The privacy policy says one thing. The audit log on the frontier vendor side says another. The user trusted you, not the vendor.</p>
-    <p>The fix is the inversion: <b>compile in the cloud, run on the device.</b> You pay the frontier model API at compile time, in a controlled environment, on data flows you have already approved. You get back a single signed file. The file goes to the device. The device runs the file. Frontier-class intelligence happens locally, on the user's own data, with zero runtime egress.</p>
+    <p>The fix is the inversion: <b>compile in a controlled environment, run inside the approved boundary.</b> You pay the frontier model API at compile time, on data flows you have approved. You get back a signed artifact and receipts that can be checked later. The current public product proves the recipe-mode artifact path; native model packaging and fully offline device runtimes require the bridge work and benchmarks named below.</p>
+
 
     <blockquote>
       <p>The AI compiler is the build step that makes this practical. It is not a wrapper, not a vendor SDK, not an ML platform. It is a deterministic process that turns a higher-level description into a lower-level executable.</p>
     </blockquote>
 
     <h2 id="what">What an AI compiler actually does.</h2>
-    <p>The word "compiler" is precise. <code>gcc</code> compiles C source into a binary that runs anywhere a CPU is. <code>kolm</code> compiles an AI task — a description, examples, evaluations, your data, and a frontier API key — into a binary that runs anywhere a small open-weight model can be loaded: phone, laptop, server, browser, edge box.</p>
-    <p>The input is what you would otherwise put in a prompt template, plus a corpus and a budget. The output is a <code>.kolm</code> file: a signed zip containing a base model, a LoRA adapter, a recipe pack of deterministic-token drafts, a multimodal sqlite-vec index of the corpus, a synthesized verifier, the held-out test set, a manifest, and an HMAC signature anchored to the public Kolmogorov registry. All seven components are content-hashed; tampering with any one of them invalidates the signature.</p>
-    <p>The frontier model is the teacher. Its k-sample output, deterministically verified, is what shapes the LoRA. Its observed deterministic patterns are what fill the recipe pack. The base is whichever open-weight model best matches the task — Qwen 2.5, Llama 3, Phi-3, or Hermes-3, in the 3B-7B range. Quantized to INT4, it lands in the 1.5-4 GB band. Fast enough to run interactively on every phone shipped since 2021.</p>
+    <p>The word "compiler" names the product direction. <code>gcc</code> turns source into a binary with a clear runtime contract. <code>kolm</code> turns an AI task description, examples, evals, and policy into a signed <code>.kolm</code> artifact that the current CLI can inspect, verify, evaluate, run in recipe mode, and serve over MCP.</p>
+    <p>The current artifact contract is a signed zip with a manifest, recipe pack, eval metadata, verifier evidence, receipt body, and reserved fields for future model, adapter, and recall-index components. Current signatures are HMAC-SHA256 over the emitted components. External registry or ledger anchoring is a roadmap extension, not a shipped default.</p>
+    <p>The terminal architecture is larger: k-sample teacher calls, LoRA distillation, sqlite-vec corpus packaging, and named-device runtimes. Those are the right bridges to build, but they need implementation and benchmark evidence before the site should present them as production facts.</p>
 
     <h2 id="stages">Four stages of <code>kolm compile</code>.</h2>
-    <p>Inside the compiler, four engines run in sequence. The user only ever sees the orchestrator.</p>
+    <p>Inside the compiler, four engines define the roadmap. The public preview ships the signed recipe/eval/receipt path first, then earns the model and native-runtime claims with implementation evidence.</p>
 
     <h3>1. Recall.</h3>
-    <p>Your corpus — text, images, audio, video, PDFs — is embedded with magika-detected modality routing (bge-m3 for text, clip-vit-large for images, whisper + clap for audio, scene-detect + clip + ASR for video, unstructured + bge-m3 for PDFs). The result is a sqlite-vec index that ships inside the artifact. At compile time, every k-sample call is grounded in the top-k recalled chunks. At runtime, the same index is queried locally — never over a wire.</p>
+    <p>The target recall bridge builds a local index from an approved corpus and binds its content hash into the artifact manifest. In the current public product, treat recall packaging as roadmap unless a deployment has shipped and benchmarked that bridge.</p>
 
     <h3>2. Distill.</h3>
-    <p>For every example in your training set, the compiler asks the frontier model k times (default k=8). The k samples are scored by a deterministic verifier synthesized from your seed examples and your held-out tests. The winner becomes the labeled output. The labels feed a LoRA fine-tune of the base model. This is what makes the artifact <em>yours</em>: it learns from a frontier-grade teacher whose outputs were verified before they trained anything.</p>
+    <p>The distillation target is k-sample teacher labeling followed by LoRA training against an open-weight base. The public product should describe this as the next model bridge until the generated adapter is non-placeholder, reproducible, and measured on named hardware.</p>
 
     <h3>3. Decompose.</h3>
-    <p>The compiler watches every accepted output during Distill and extracts the deterministic-token subsequences — the parts of the answer that are entirely determined by the prefix, like JSON keys, function signatures, opening braces, common phrasings. These become the <em>recipe pack</em>: a registry-indexed table of (prefix-shape, token) pairs that the runtime consults during decoding. Hits are free; misses fall back to the base model. Speculative decoding without a draft model.</p>
+    <p>The current system can produce deterministic recipe-mode behavior and bind the emitted components into a signed artifact. That is the credible seed of the compiler-cache narrative: common task structure should become reusable over time.</p>
 
     <h3>4. Run.</h3>
-    <p>The four components are sealed into a <code>.kolm</code> file with a manifest and a signature. <code>kolm run artifact.kolm</code> loads the base, applies the LoRA, mounts the recall index, consults the recipe pack at every token. The runtime is llama.cpp + sqlite-vec — both open-source, both portable. The artifact behaves frontier-class on the task it was compiled for, locally, offline, with zero egress.</p>
+    <p><code>kolm run artifact.kolm</code> can execute the current recipe-mode artifact and <code>kolm serve --mcp</code> can expose it to agent clients. Loading native model weights, applying LoRA, and mounting sqlite-vec indexes are the runtime bridge, not a public launch claim today.</p>
 
     <div class="figure">
       <div class="grid">
-        <div class="row"><span>compile time</span><span class="v">3-12 min</span></div>
-        <div class="row"><span>artifact size</span><span class="v">38 MB &mdash; 4 GB</span></div>
-        <div class="row"><span>runtime memory</span><span class="v">2.5 &mdash; 5 GB</span></div>
-        <div class="row"><span>p50 latency</span><span class="v">60 &mdash; 120 ms</span></div>
-        <div class="row"><span>marginal cost</span><span class="v acc">$0.00 / call</span></div>
-        <div class="row"><span>data egress</span><span class="v acc">0 bytes</span></div>
+        <div class="row"><span>current compile</span><span class="v">recipe-mode preview</span></div>
+        <div class="row"><span>artifact status</span><span class="v">signed zip + manifest</span></div>
+        <div class="row"><span>runtime surface</span><span class="v">Node CLI + MCP</span></div>
+        <div class="row"><span>native latency</span><span class="v">benchmark required</span></div>
+        <div class="row"><span>marginal runtime cost</span><span class="v acc">local path target</span></div>
+        <div class="row"><span>data egress</span><span class="v acc">deployment-gated</span></div>
       </div>
-      <div class="cap">Typical numbers for a 3B-base support-triage compile, measured on a 5090 + iPhone 13 Pro</div>
+      <div class="cap">Public preview status. The production benchmark matrix belongs on /benchmarks before native-device claims are made.</div>
     </div>
 
-    <h2 id="size">Why the artifact is 4GB and not 70GB.</h2>
-    <p>Let's name the lie: nobody runs a quantized 70B model on a phone. Compressing a 70B base to fit in 6 GB destroys it the way compressing a 4K video to 200 MB destroys it. What you can do is take a 3B-7B base that already runs comfortably in 2-5 GB, and <b>distill the 70B's behavior on your specific tasks into the smaller model.</b> The student does not become as smart as the teacher in general. The student becomes <em>indistinguishable</em> from the teacher on the tasks the user actually asks about, because that's all it was trained on.</p>
-    <p>That is what makes the compile step interesting. A 3B-class model compiled against a frontier teacher on a narrow domain — say, "answer support tickets in our voice" or "review React PRs the way I would" — wins or ties cold frontier output 80%+ of the time on that specific domain, in our internal benchmarks. The recipe pack closes the latency gap (deterministic patterns get drafted at hundreds of tokens per second). The recall index closes the freshness gap (queries always run against the user's actual current data).</p>
-    <p>The compile is what compiles. The user does not run a compressed 70B; the user runs a compiled artifact that was built with a 70B as its teacher and behaves like one on the task the user actually has.</p>
+    <h2 id="size">Why the artifact should be small and specific.</h2>
+    <p>Teams do not want to ship a giant general-purpose model when the product needs a narrow, testable workflow. The point of compilation is to bind the task, evals, policy, and future model/index components into a smaller artifact with a measurable release gate.</p>
+    <p>That remains the right bet. A narrow artifact can beat a generic prompt when it has a strong verifier, representative evals, and a runtime contract. But the public proof has to be benchmarked, not asserted. Until the LoRA and recall bridge are live, the honest product story is signed recipe-mode artifacts plus a clear path to model packaging.</p>
+    <p>The compile step is the leverage point. It should eventually turn frontier teacher behavior into a local artifact, but each component has to earn its claim with reproducible builds and named-device measurements.</p>
 
     <h2 id="five">Compile your first artifact in five minutes.</h2>
-    <p>The CLI is one command per platform.</p>
-    <pre><span class="com"># macOS, Linux, Windows (WSL)</span>
-curl -fsSL <span class="arg">kolm.ai/install.sh</span> | sh
-
-<span class="com"># or</span>
-npm i -g <span class="arg">@kolmogorov/kolm</span>
-brew install <span class="arg">kolmogorov/tap/kolm</span>
-pip install <span class="arg">kolm</span></pre>
+    <p>The current CLI is installed from the GitHub repo while package-manager releases are being prepared.</p>
+    <pre><span class="com"># macOS, Linux, Windows</span>
+npm i -g <span class="arg">github:sneaky-hippo/kolmogorov-stack</span>
+kolm config base <span class="arg">https://kolm.ai</span>
+kolm login</pre>
 
     <p>Then point it at a folder of examples.</p>
     <pre>kolm login
 kolm compile <span class="arg">"summarize support tickets in our voice"</span> \
   --examples <span class="arg">./tickets/</span> \
-  --base <span class="arg">qwen2.5-3b</span> \
   --out <span class="arg">support.kolm</span>
 
-<span class="com"># 4 minutes later:</span>
+<span class="com"># after compile:</span>
 kolm run <span class="arg">support.kolm</span> <span class="arg">"customer cant login since update"</span></pre>
 
-    <p>The CLI handles the cloud compile, the artifact download, and the local runtime. Your frontier API key (Anthropic, OpenAI, Hermes) is the teacher. Everything after the compile is local.</p>
+    <p>The CLI handles the cloud compile, artifact download, local verification, recipe-mode runs, and MCP serving. Frontier-provider integration is the teacher side. Full local model execution is the runtime bridge that still has to ship.</p>
 
     <h2 id="k">The K-score, and why a number on the cover matters.</h2>
-    <p>Every <code>.kolm</code> ships with a single number from 0 to 1 on its manifest: the K-score. It is the harmonic mean of accuracy, size, latency, cost, and coverage, normalized against the frontier baseline measured at compile time. Below the gate (default 0.70), the artifact does not ship.</p>
-    <p>This is the analogue to test pass/fail in regular software. <b>"My model is good enough"</b> has been a feeling for the entire history of applied ML. Compilation makes it a number. If the K-score is above the gate, you ship; if it isn't, you tighten the test set and recompile. The gate is configurable per task. The number is on the artifact, the receipts chain proves it wasn't tampered with, and the registry holds the public benchmark for any artifact that opts in.</p>
+    <p>Every production artifact should carry a release score tied to its evals, size, latency, cost, and coverage. The current product can show the shape of that gate; public claims about model performance need published benchmark data.</p>
+    <p>This is the analogue to test pass/fail in regular software. <b>"My model is good enough"</b> has been a feeling for the entire history of applied ML. Compilation makes it a number that can be reviewed, reproduced, and rejected when it falls below the gate.</p>
 
     <blockquote>
-      <p>The K-score is what makes <code>.kolm</code> defensible at audit. The compliance officer doesn't have to trust a vendor; they read a number and verify the chain.</p>
+      <p>The K-score is useful only when the evals, artifact, and receipts are available for review. The number is not a substitute for evidence; it is the index into the evidence.</p>
     </blockquote>
 
     <h2 id="faq">FAQ.</h2>
-    <h3>Does the artifact need a network connection?</h3>
-    <p>No. After <code>kolm compile</code> finishes, the artifact runs fully offline. The recall index lives inside it. The recipe pack lives inside it. The base model and LoRA live inside it. The signature is verifiable offline against a public key. No outbound traffic at runtime.</p>
+    <h3>Does the artifact need a network connection-</h3>
+    <p>Recipe-mode artifacts can be inspected, verified, evaluated, and run through the current CLI without depending on a mobile SDK. Detached model execution with bundled base weights, LoRA, and recall index is the target runtime architecture and should be validated per deployment.</p>
 
-    <h3>Can I use any frontier model as the teacher?</h3>
-    <p>Yes. The compiler is teacher-agnostic. Plug in your Anthropic, OpenAI, or Hermes API key. The student (the base model in the artifact) is also configurable; the default picks the smallest open-weight model that passes the K-score gate.</p>
+    <h3>Can I use any frontier model as the teacher-</h3>
+    <p>The interface is teacher-agnostic by design, but hosted preview support depends on which provider integrations are configured. Treat each teacher and base-model pairing as a benchmarked target, not a generic promise.</p>
 
-    <h3>What happens when the model drifts?</h3>
-    <p>Every input the runtime sees that falls outside the recipe pack's coverage is logged (locally — never egressed). The next time you run <code>kolm compile</code>, the verifier resolves those drift inputs once via the frontier teacher, the new patterns merge into the registry, and the next compile absorbs them. The cache strictly grows. <b>Every compile makes the next one cheaper.</b></p>
+    <h3>What happens when the model drifts-</h3>
+    <p>Drift handling should be treated as a workflow: collect local failures, add them to the eval set, rerun compile, and compare receipts. Automatic registry growth and model retraining are roadmap behavior until those paths are implemented end to end.</p>
 
-    <h3>Is this on-prem only?</h3>
-    <p>The compile step is a hosted cloud service by default — you bring the API key, we run the orchestrator. Enterprise tiers run the compile inside your VPC, including the recall embedders. The artifact you produce is identical either way.</p>
+    <h3>Is this on-prem only-</h3>
+    <p>The public path is hosted compile plus local CLI verification. A customer-hosted compile bridge is the Enterprise design path for regulated teams, reviewed and deployed by contract rather than assumed by default.</p>
 
     <div class="signpost">
       <a href="/compile">
         <span class="lab">act</span>
-        <span class="v">Run <code style="font-family:var(--mono);font-size:0.92em">kolm compile</code> <span class="arrow">→</span></span>
-        <p>Five minutes. A signed artifact. No GPU required.</p>
+        <span class="v">Run <code style="font-family:var(--mono);font-size:0.92em">kolm compile</code> <span class="arrow">&rarr;</span></span>
+        <p>Generate and verify the current signed artifact format.</p>
       </a>
       <a href="/anatomy">
         <span class="lab">read</span>
-        <span class="v">What's inside a <code style="font-family:var(--mono);font-size:0.92em">.kolm</code> <span class="arrow">→</span></span>
-        <p>A field-by-field walkthrough of the seven components.</p>
+        <span class="v">What is inside a <code style="font-family:var(--mono);font-size:0.92em">.kolm</code> <span class="arrow">&rarr;</span></span>
+        <p>A field-by-field walkthrough of current and reserved components.</p>
       </a>
       <a href="/k-score">
         <span class="lab">measure</span>
-        <span class="v">The K-score, defined <span class="arrow">→</span></span>
-        <p>The single number on the cover, derived from five.</p>
+        <span class="v">The K-score, defined <span class="arrow">&rarr;</span></span>
+        <p>The release gate should point to evidence, not vibes.</p>
       </a>
       <a href="/articles/k-sample-verified-inference">
         <span class="lab">read</span>
-        <span class="v">K-sample verified inference <span class="arrow">→</span></span>
-        <p>The mechanism behind Distill, in plain English.</p>
+        <span class="v">K-sample verified inference <span class="arrow">&rarr;</span></span>
+        <p>The mechanism behind teacher scoring and receipt evidence.</p>
       </a>
     </div>
 
@@ -334,8 +332,8 @@ kolm run <span class="arg">support.kolm</span> <span class="arg">"customer cant 
 
 <footer class="site">
   <div class="wrap-wide row">
-    <span>&copy; 2026 Kolmogorov · the AI compiler · MIT spec</span>
-    <span><a href="/manifesto">Manifesto</a> · <a href="/security">Security</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span>
+    <span>&copy; 2026 Kolmogorov - the AI compiler - MIT spec</span>
+    <span><a href="/manifesto">Manifesto</a> - <a href="/security">Security</a> - <a href="/privacy">Privacy</a> - <a href="/terms">Terms</a></span>
   </div>
 </footer>
 

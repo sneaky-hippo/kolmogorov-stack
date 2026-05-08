@@ -4,10 +4,11 @@ import express from 'express';
 import crypto from 'node:crypto';
 import rateLimit from 'express-rate-limit';
 import { synthesize, synthesizeStream } from './synthesis.js';
+import { effectiveReceiptSecret, isProductionRuntime, runtimeReadiness } from './env.js';
 import * as registry from './registry.js';
 import * as runtime from './runtime.js';
 import * as cache from './cache.js';
-import { authMiddleware, provisionTenant, provisionAnonTenant, claimAnonTenant, chargeUsage, rotateTenantKey } from './auth.js';
+import { authMiddleware, provisionTenant, provisionAnonTenant, claimAnonTenant, chargeUsage, rotateTenantKey, adminApiKey, findTenantByApiKey } from './auth.js';
 import { compileJs, verify } from './verifier.js';
 import { LIBRARY_VERSION, libraryDescription } from './library.js';
 import { all, findOne, insert, update, stats as storeStats } from './store.js';
@@ -57,20 +58,20 @@ const PRICING = {
 };
 
 // Cryptographic receipts — every /v1/run call returns a signed proof that
-// (recipe_source, input) → output. Anyone can re-verify with /v1/receipts/verify.
-// This is the attestation layer that distinguishes Recipe from any LLM call.
+// (source, input) → output. Anyone can re-verify with /v1/receipts/verify.
+// This is the attestation layer that distinguishes signed artifacts from a raw LLM call.
 const RECEIPT_VERSION = 'rs-1';
 // Production logs a stern warning if the secret isn't set (and refuses to
 // issue or verify receipts), but still boots so static pages stay reachable.
 // Dev uses a known fallback for local hacking / smoke tests.
 const RECEIPT_SECRET = (() => {
-  const s = process.env.RECIPE_RECEIPT_SECRET;
+  const s = effectiveReceiptSecret();
   if (s) return s;
-  if (process.env.NODE_ENV === 'production') {
+  if (isProductionRuntime()) {
     console.error('[router] WARNING: RECIPE_RECEIPT_SECRET not set — receipt endpoints will 503. Set it on Railway env.');
     return null;
   }
-  return 'ks_receipt_dev_secret_change_in_prod';
+  return null;
 })();
 
 function sha256(s) {
@@ -153,6 +154,23 @@ export function buildRouter() {
     stats: storeStats(),
   }));
 
+  // Deploy readiness: public, low-detail, and suitable for platform health
+  // gates. /health stays green for static uptime; /ready fails when critical
+  // production-only configuration is missing.
+  r.get('/ready', (_req, res) => {
+    const ready = runtimeReadiness();
+    res.status(ready.status === 'ready' ? 200 : 503).json({
+      status: ready.status,
+      production_like: ready.production_like,
+      checks: ready.checks.map(({ name, ok, required, public: label }) => ({
+        name,
+        ok,
+        required,
+        label,
+      })),
+    });
+  });
+
   r.get('/v1/pricing', (_req, res) => res.json({ currency: 'USD', units: PRICING }));
 
   // ---------- Anonymous CLI auth (robots / agents) ----------
@@ -167,7 +185,7 @@ export function buildRouter() {
       kind: 'anon',
       expires_at: t.expires_at,
       quota: t.quota,
-      message: 'anonymous workspace ready. expires in 30 days. run `recipe claim --email you@co.com` to keep your work permanently.',
+      message: 'anonymous workspace ready. expires in 30 days. run `kolm claim --email you@co.com` to keep your work permanently.',
       hint: { user_agent: user_agent || null, hostname: hostname || null },
     });
   });
@@ -225,10 +243,11 @@ export function buildRouter() {
       }
       return res.status(400).json({ error: 'api_key required' });
     }
-    const t = findOne('tenants', x => x.api_key === api_key && !x._deleted);
-    const adminKey = process.env.ADMIN_KEY || (process.env.NODE_ENV === 'production' ? null : 'ks_admin_change_me');
-    if (!t && api_key !== adminKey) return res.status(401).json({ error: 'invalid api key' });
-    const isProd = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
+    const t = findTenantByApiKey(api_key);
+    const adminKey = adminApiKey();
+    const isAdmin = !!adminKey && api_key === adminKey;
+    if (!t && !isAdmin) return res.status(401).json({ error: 'invalid api key' });
+    const isProd = isProductionRuntime();
     res.cookie('kolm_session', api_key, {
       httpOnly: true,
       secure: isProd,
@@ -258,10 +277,11 @@ export function buildRouter() {
     if (!api_key || typeof api_key !== 'string') {
       return res.status(400).json({ error: 'api_key required' });
     }
-    const t = findOne('tenants', x => x.api_key === api_key && !x._deleted);
-    const adminKey = process.env.ADMIN_KEY || (process.env.NODE_ENV === 'production' ? null : 'ks_admin_change_me');
-    if (!t && api_key !== adminKey) return res.status(401).json({ error: 'invalid api key' });
-    const isProd = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
+    const t = findTenantByApiKey(api_key);
+    const adminKey = adminApiKey();
+    const isAdmin = !!adminKey && api_key === adminKey;
+    if (!t && !isAdmin) return res.status(401).json({ error: 'invalid api key' });
+    const isProd = isProductionRuntime();
     res.cookie('kolm_session', api_key, {
       httpOnly: true,
       secure: isProd,
@@ -414,13 +434,13 @@ export function buildRouter() {
   r.get('/v1/spec', (_req, res) => {
     res.json({
       spec: RECEIPT_VERSION,
-      name: 'Recipe Spec',
+      name: 'RS-1 Behavior Spec',
       version: '1.0.0-draft',
-      title: 'Recipe Spec — RS-1: A portable, attestable contract for AI behavior',
+      title: 'RS-1: A portable, attestable contract for AI behavior',
       description: 'An open standard for declaring AI behaviors as deterministic, signed, executable specifications. ' +
-        'A recipe is examples in, behavior out — and every execution carries a cryptographic receipt that proves which code ran on which input.',
+        'A behavior spec is examples in, behavior out — and every execution carries a cryptographic receipt that proves which code ran on which input.',
       license: 'MIT',
-      reference_implementation: 'https://kolmogorov-stack-production.up.railway.app',
+      reference_implementation: 'https://kolm.ai',
       sections: {
         recipe: {
           id: 'string (cpt_…)',
@@ -518,7 +538,7 @@ export function buildRouter() {
   // top-k chunks for the most-recent user message and prepend them as a
   // system context block. This is the "ground every Distill call in the
   // user's corpus" promise from the plan.
-  r.post('/v1/wrap/verified', verifiedLimiter, async (req, res) => {
+  r.post('/v1/wrap/verified', verifiedLimiter, authMiddleware, async (req, res) => {
     try {
       const { messages, system, model, max_tokens, temperature, verified, corpus_namespace } = req.body || {};
       if (!Array.isArray(messages) || messages.length === 0) {
@@ -618,12 +638,12 @@ export function buildRouter() {
     }
   });
 
-  // Public verified-inference endpoint — Generator-Verifier asymmetry made shippable.
+  // Verified-inference endpoint — Generator-Verifier asymmetry made shippable.
   // Sample k candidates from a frontier model, run each through a deterministic
   // Recipe verifier (test cases), pick the first that passes. Returns a receipt.
   // P(correct) >= 1 - (1 - p*v)^k. For p=0.91 v=1 k=8: 99.9999%.
-  // Uses the server's ANTHROPIC_API_KEY — no tenant binding needed for the demo.
-  r.post('/v1/verified-inference', verifiedLimiter, async (req, res) => {
+  // Uses the server's ANTHROPIC_API_KEY, so a tenant API key is required.
+  r.post('/v1/verified-inference', verifiedLimiter, authMiddleware, async (req, res) => {
     try {
       const { prompt, signature, test_cases, k = 8, model, temperature, system } = req.body || {};
       if (!Array.isArray(test_cases) || test_cases.length === 0) {
@@ -659,11 +679,13 @@ export function buildRouter() {
       stats: storeStats(),
       feature_flags: {
         has_anthropic_key: !!process.env.ANTHROPIC_API_KEY,
+        receipt_secret_configured: !!process.env.RECIPE_RECEIPT_SECRET,
         invite_only: process.env.INVITE_ONLY === 'true',
         recall_root_set: !!process.env.KOLM_RECALL_ROOT,
         artifact_dir_set: !!process.env.KOLM_ARTIFACT_DIR,
         sync_compile_only: !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME),
       },
+      readiness: runtimeReadiness(),
       tenant: { admin: true },
     });
   });

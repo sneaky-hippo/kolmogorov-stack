@@ -1,5 +1,5 @@
-// @kolmogorov/recipe — TypeScript declarations.
-// Recipe is the Skills layer of REM Labs. Show how once. Run forever.
+// @kolmogorov/kolm-sdk - TypeScript declarations.
+// Client for kolm account, registry, receipt, and recipe APIs.
 
 export type Visibility = "private" | "public";
 
@@ -168,6 +168,8 @@ export class RecipeClient {
   health(): Promise<{ status: string; version: string; uptime_s: number }>;
 }
 
+export class KolmClient extends RecipeClient {}
+
 export const recipe: {
   isSpam(text: string): Promise<boolean>;
   classifyIntent(text: string): Promise<string>;
@@ -179,4 +181,4 @@ export const recipe: {
   classifyIssue(text: string): Promise<"bug" | "feature" | "billing" | "account">;
 };
 
-export default RecipeClient;
+export default KolmClient;

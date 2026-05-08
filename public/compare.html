@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>kolm vs Core ML, LiteRT, ONNX Runtime, and ExecuTorch</title>
+<meta name="description" content="A practical comparison of kolm against Core ML, LiteRT, ONNX Runtime Mobile, and ExecuTorch. kolm is the signed compiler and compliance layer above device runtimes.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="kolm vs on-device AI runtimes">
+<meta property="og:description" content="kolm is not another runtime. It is the signed compiler, artifact, receipt, and compliance layer above Core ML, LiteRT, ONNX Runtime, and ExecuTorch.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/compare">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/compare">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><img src="/logo-mark.svg" alt="" class="brand-mark">kolm</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/compile">compile</a>
+      <a href="/run">run</a>
+      <a href="/recall">recall</a>
+      <a href="/serve">serve</a>
+      <a href="/anatomy">anatomy</a>
+      <a href="/k-score">k-score</a>
+      <a href="/benchmarks">benchmarks</a>
+      <a href="/compare" class="active">compare</a>
+      <a href="/pricing">pricing</a>
+      <a href="/docs">docs</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/signin">sign in</a>
+      <a href="/signup" class="cta">get a key</a>
+    </div>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-copy">
+      <div class="eyebrow"><span class="pulse"></span>competitive positioning</div>
+      <h1>kolm is the compiler layer above device runtimes.</h1>
+      <p class="lede">Core ML, LiteRT, ONNX Runtime, and ExecuTorch are excellent runtimes. kolm should not compete by pretending they do not exist. kolm wins by compiling regulated workflows into signed artifacts with receipts, K-score gates, and a compliance trail those runtimes do not own.</p>
+      <div class="actions">
+        <a href="/benchmarks" class="btn primary">read benchmarks</a>
+        <a href="/security" class="btn ghost">review security</a>
+      </div>
+    </div>
+    <div class="hero-proof" aria-label="runtime stack diagram">
+      <div class="proof-shell">
+        <div class="proof-toolbar">
+          <div class="proof-title"><img src="/logo-mark.svg" alt=""><span>where kolm fits</span></div>
+          <div class="proof-status"><span></span> runtime-neutral</div>
+        </div>
+        <div class="proof-workspace">
+          <div class="proof-card artifact-plate">
+            <div class="artifact-title"><span>compiler layer</span><strong>.kolm</strong></div>
+            <div class="artifact-object">
+              <div class="artifact-icon">.k</div>
+              <div class="artifact-copy">
+                <strong>signed workflow artifact</strong>
+                <small>manifest + evals + receipts + runtime target hints</small>
+              </div>
+            </div>
+            <div class="proof-tags">
+              <span>Core ML target</span>
+              <span>LiteRT target</span>
+              <span>ORT / ExecuTorch target</span>
+            </div>
+          </div>
+          <div class="proof-card flow-card">
+            <div class="flow-step"><span class="node active"></span><div><strong>compile</strong><small>task, examples, data boundary</small></div></div>
+            <div class="flow-line"></div>
+            <div class="flow-step"><span class="node"></span><div><strong>sign</strong><small>manifest, evals, receipt chain</small></div></div>
+            <div class="flow-line"></div>
+            <div class="flow-step"><span class="node"></span><div><strong>dispatch</strong><small>best device runtime per target</small></div></div>
+          </div>
+          <div class="proof-card">
+            <div class="label">wedge</div>
+            <p>Privacy and compliance are not runtime features by themselves. They need artifact provenance, eval evidence, and operational receipts.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">01</span>runtime landscape</div>
+    <h2>Do not fight the runtimes. Compile for them.</h2>
+    <p class="sec-lede">The serious competitors are free, mature, and backed by Apple, Google, Microsoft, Meta, and the PyTorch ecosystem. The credible kolm strategy is to sit above them as the workflow compiler, quality gate, and trust layer.</p>
+
+    <div class="card" style="overflow-x:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>System</th>
+            <th>Primary layer</th>
+            <th>Strongest use case</th>
+            <th>kolm position</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Apple Core ML</strong></td>
+            <td>Apple on-device model runtime</td>
+            <td>iOS/macOS apps that need deep Apple silicon integration.</td>
+            <td>kolm can target Core ML for Apple deployments while adding signed workflow evidence above the model file.</td>
+          </tr>
+          <tr>
+            <td><strong>Google LiteRT</strong></td>
+            <td>Cross-platform on-device runtime</td>
+            <td>Android, iOS, desktop, web, IoT, and micro deployment with accelerator support.</td>
+            <td>kolm can emit LiteRT-targeted artifacts for teams that need a regulated compile process and receipts.</td>
+          </tr>
+          <tr>
+            <td><strong>ONNX Runtime</strong></td>
+            <td>Cross-framework model accelerator</td>
+            <td>Teams standardizing on ONNX across frameworks and hardware execution providers.</td>
+            <td>kolm can package ONNX Runtime as an execution target instead of inventing another generic accelerator.</td>
+          </tr>
+          <tr>
+            <td><strong>ExecuTorch</strong></td>
+            <td>PyTorch edge deployment stack</td>
+            <td>PyTorch teams exporting models to mobile, embedded, and edge hardware.</td>
+            <td>kolm can make PyTorch deployment auditable by bundling evals, manifests, and receipts around exported targets.</td>
+          </tr>
+          <tr>
+            <td><strong>kolm</strong></td>
+            <td>Compiler, artifact, registry, verifier, and receipt layer</td>
+            <td>Regulated product teams that must prove what was compiled, what passed, what ran, and where data went.</td>
+            <td>kolm should orchestrate runtimes, not replace them.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">02</span>what must be true</div>
+    <h2>The bar for winning is evidence.</h2>
+    <p class="sec-lede">A developer will not switch because a landing page says "private AI." They switch when kolm gives them a workflow they cannot get from free runtime tooling alone.</p>
+
+    <div class="pillars">
+      <div class="pillar">
+        <div class="verb">01</div>
+        <h3>Artifact provenance.</h3>
+        <p>Every `.kolm` needs a manifest, data-boundary declaration, eval set, K-score, hash chain, and reproducible build metadata.</p>
+      </div>
+      <div class="pillar">
+        <div class="verb">02</div>
+        <h3>Runtime neutrality.</h3>
+        <p>Core ML, LiteRT, ONNX Runtime, and ExecuTorch should be deploy targets. The compiler owns policy and evidence.</p>
+      </div>
+      <div class="pillar">
+        <div class="verb">03</div>
+        <h3>Regulated workflow fit.</h3>
+        <p>HIPAA, fintech, and enterprise mobile teams need auditable local inference, not another model conversion CLI.</p>
+      </div>
+      <div class="pillar">
+        <div class="verb">04</div>
+        <h3>Benchmarks.</h3>
+        <p>Latency, size, accuracy, battery, and privacy evidence must be published per hardware target, not implied.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">03</span>when not to use kolm</div>
+    <h2>Use the runtime directly when trust evidence is not the bottleneck.</h2>
+    <p class="sec-lede">If you already have a model, a single platform, no regulated data, and no need for receipts, use the native runtime directly. kolm is for teams whose blocker is shipping a private AI workflow through engineering, security, legal, and procurement.</p>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>Use Core ML directly</h3>
+        <p>When the target is Apple-only and your team already owns model conversion, testing, packaging, and release review.</p>
+      </div>
+      <div class="card">
+        <h3>Use LiteRT directly</h3>
+        <p>When you need flexible cross-platform inference but do not need signed compile receipts or compliance artifacts.</p>
+      </div>
+      <div class="card">
+        <h3>Use ExecuTorch directly</h3>
+        <p>When your ML team lives in PyTorch and wants the shortest export path to edge devices.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">04</span>primary sources</div>
+    <h2>Official runtime references.</h2>
+    <p class="sec-lede">This comparison is based on each runtime's official positioning, not secondhand summaries.</p>
+
+    <div class="grid-4">
+      <div class="card"><h3>Apple Core ML</h3><p><a href="https://developer.apple.com/documentation/CoreML">developer.apple.com/documentation/CoreML</a></p></div>
+      <div class="card"><h3>Google LiteRT</h3><p><a href="https://ai.google.dev/edge/litert/">ai.google.dev/edge/litert</a></p></div>
+      <div class="card"><h3>ONNX Runtime</h3><p><a href="https://onnxruntime.ai/docs">onnxruntime.ai/docs</a></p></div>
+      <div class="card"><h3>ExecuTorch</h3><p><a href="https://docs.pytorch.org/executorch/stable/intro-overview.html">docs.pytorch.org/executorch</a></p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="bottom-cta">
+      <h2>Ship private AI as an artifact, not a promise.</h2>
+      <p class="lead">Start with the compiler. Prove the artifact. Then dispatch to the best runtime for each device.</p>
+      <div class="actions">
+        <a href="/signup" class="btn primary">get a key</a>
+        <a href="/docs" class="btn ghost">read docs</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="meta">
+      <img src="/logo-mark.svg" alt="" style="width:18px;height:18px;margin-right:8px;vertical-align:-4px;">kolm v0.1.0 - MIT license - <a href="https://github.com/sneaky-hippo/kolmogorov-stack">github</a> - <a href="/status">status</a>
+    </div>
+    <div class="links">
+      <div>
+        <div class="col-h">product</div>
+        <a href="/compile">compile</a>
+        <a href="/run">run</a>
+        <a href="/recall">recall</a>
+        <a href="/serve">serve</a>
+      </div>
+      <div>
+        <div class="col-h">docs</div>
+        <a href="/quickstart">quickstart</a>
+        <a href="/docs">spec</a>
+        <a href="/benchmarks">benchmarks</a>
+        <a href="/compare">compare</a>
+      </div>
+      <div>
+        <div class="col-h">trust</div>
+        <a href="/security">security</a>
+        <a href="/privacy">privacy</a>
+        <a href="/terms">terms</a>
+        <a href="/faq">faq</a>
+      </div>
+      <div>
+        <div class="col-h">account</div>
+        <a href="/signup">sign up</a>
+        <a href="/signin">sign in</a>
+        <a href="/pricing">pricing</a>
+        <a href="/articles">articles</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

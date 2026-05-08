@@ -3,46 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Articles · kolm</title>
+<title>Articles - kolm</title>
 <meta name="description" content="Engineering essays from Kolmogorov: AI compilers, verified inference, on-device HIPAA, the .kolm artifact format, and recipe-driven speculative decoding.">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
 <meta name="robots" content="index,follow">
 <meta property="og:site_name" content="kolm">
-<meta property="og:title" content="Articles · kolm">
+<meta property="og:title" content="Articles - kolm">
 <meta property="og:description" content="Engineering essays from Kolmogorov.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kolm.ai/articles">
-<meta property="og:image" content="https://kolm.ai/img/brand-og.png">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
 <link rel="canonical" href="https://kolm.ai/articles">
-<link rel="preload" as="image" href="/img/horizon-artifact.webp" fetchpriority="high">
+<link rel="preload" as="image" href="/img/kolm-artifact-horizon.svg" fetchpriority="high">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>
   :root {
-    --bg: #0a0a0a; --bg-elev: #0f0f12; --bg-card: #13141a;
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
     --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
-    --ink: #ededed; --ink-mute: #9a9da8; --ink-faint: #5a5c66;
-    --accent: #7c8cff; --accent-soft: rgba(124,140,255,0.10); --accent-strong: #93a1ff;
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-soft: rgba(76,125,255,0.10); --accent-strong: #9db6ff;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
   a { color: inherit; text-decoration: none; }
   .wrap { max-width: 880px; margin: 0 auto; padding: 0 32px; }
   .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
   @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
 
-  header.site { position: sticky; top: 0; z-index: 60; background: rgba(10,10,10,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
   header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
   header.site .left { display: flex; align-items: center; gap: 36px; }
   header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
-  header.site .brand .mark { width: 22px; height: 22px; }
+  header.site .brand img { width: 22px; height: 22px; }
   header.site .brand .lyr { transition: transform 280ms cubic-bezier(.2,.6,.2,1), opacity 280ms; }
   header.site .brand:hover .lyr-1 { transform: translate(-1.4px,-1.4px); }
   header.site .brand:hover .lyr-3 { transform: translate(1.4px,1.4px); }
-  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
+  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: 0; }
   header.site nav { display: flex; gap: 22px; }
   header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
   header.site nav a:hover { color: var(--ink); }
@@ -54,21 +54,21 @@
   @media (max-width: 720px) { header.site nav { display: none; } }
 
   section.hero { padding: 88px 0 24px; position: relative; overflow: hidden; }
-  section.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 900px 460px at 22% 12%, rgba(124,140,255,0.10), transparent 60%); }
+  section.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 900px 460px at 22% 12%, rgba(76,125,255,0.10), transparent 60%); }
   section.hero .wrap { position: relative; }
-  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
   .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-  h1 { margin: 22px 0 12px; font-size: clamp(36px, 5.4vw, 60px); line-height: 1.05; font-weight: 500; letter-spacing: -0.028em; max-width: 22ch; }
+  h1 { margin: 22px 0 12px; font-size: clamp(36px, 5.4vw, 60px); line-height: 1.05; font-weight: 500; letter-spacing: 0; max-width: 22ch; }
   h1 .tone { color: var(--accent); }
   p.lede { margin: 0; font-size: clamp(17px, 1.4vw, 19px); line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
 
   section.list { padding: 36px 0 96px; }
   .article-card { display: grid; grid-template-columns: 110px 1fr auto; align-items: center; gap: 28px; padding: 28px 0; border-bottom: 1px solid var(--line); transition: background 200ms; }
   .article-card:first-of-type { border-top: 1px solid var(--line); }
-  .article-card:hover { background: rgba(124,140,255,0.022); }
-  .article-card .num { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; color: var(--ink-faint); text-transform: uppercase; }
+  .article-card:hover { background: rgba(76,125,255,0.022); }
+  .article-card .num { font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--ink-faint); text-transform: uppercase; }
   .article-card .num .ix { display: inline-block; color: var(--accent); margin-right: 8px; }
-  .article-card .body h3 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.018em; font-weight: 540; color: var(--ink); }
+  .article-card .body h3 { margin: 0 0 6px; font-size: 22px; letter-spacing: 0; font-weight: 540; color: var(--ink); }
   .article-card .body p { margin: 0; color: var(--ink-mute); font-size: 14.5px; line-height: 1.55; max-width: 64ch; }
   .article-card .arrow { color: var(--accent); font-size: 22px; padding-right: 4px; transition: transform 200ms; }
   .article-card:hover .arrow { transform: translateX(4px); }
@@ -77,7 +77,7 @@
     .article-card .arrow { display: none; }
   }
 
-  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-faint); }
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--ink-faint); }
   footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
   footer.site a { color: var(--ink-faint); transition: color 120ms; }
   footer.site a:hover { color: var(--ink-mute); }
@@ -86,19 +86,20 @@
   @media (prefers-reduced-motion: reduce) { body::after { display: none; } }
 
   /* plate */
-  .plate{position:relative;margin:36px 0 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#050507;isolation:isolate}
+  .plate{position:relative;margin:36px 0 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#050607;isolation:isolate}
   .plate .img{position:relative;aspect-ratio:16/9;background-position:center;background-size:cover;background-repeat:no-repeat}
   .plate .img::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 50%,rgba(8,8,10,0.78) 100%),linear-gradient(90deg,rgba(8,8,10,0.55) 0%,transparent 30%,transparent 70%,rgba(8,8,10,0.55) 100%)}
-  .plate .img::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,140,255,0.5),transparent);pointer-events:none;z-index:2}
-  .plate .stamp{position:absolute;top:18px;left:20px;z-index:3;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:0.20em;text-transform:uppercase;color:var(--ink-mute);border:1px solid rgba(124,140,255,0.22);background:rgba(10,10,10,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:5px 11px;border-radius:4px}
-  .plate .stamp .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(124,140,255,0.85)}
+  .plate .img::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(76,125,255,0.5),transparent);pointer-events:none;z-index:2}
+  .plate .stamp{position:absolute;top:18px;left:20px;z-index:3;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing: 0;text-transform:uppercase;color:var(--ink-mute);border:1px solid rgba(76,125,255,0.22);background:rgba(8,9,8,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:5px 11px;border-radius:4px}
+  .plate .stamp .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(76,125,255,0.85)}
   .plate .cap{position:absolute;left:24px;right:24px;bottom:20px;z-index:3;display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
-  .plate .cap .title{font-family:var(--sans);font-size:clamp(17px,1.8vw,22px);font-weight:540;letter-spacing:-0.018em;line-height:1.18;color:var(--ink);max-width:62%;text-shadow:0 1px 2px rgba(0,0,0,0.55)}
-  .plate .cap .title .tone{background:linear-gradient(170deg,#d4daff 0%,#93a1ff 50%,#7c8cff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .plate .cap .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute);letter-spacing:0.06em;text-align:right;line-height:1.7}
+  .plate .cap .title{font-family:var(--sans);font-size:clamp(17px,1.8vw,22px);font-weight:540;letter-spacing: 0;line-height:1.18;color:var(--ink);max-width:62%;text-shadow:0 1px 2px rgba(0,0,0,0.55)}
+  .plate .cap .title .tone{background:linear-gradient(170deg,#faf2e1 0%,#9db6ff 50%,#4c7dff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .plate .cap .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute);letter-spacing: 0;text-align:right;line-height:1.7}
   .plate .cap .meta b{color:var(--ink);font-weight:520}
   @media(max-width:720px){.plate .cap{left:14px;right:14px;bottom:12px;flex-direction:column;align-items:flex-start;gap:8px}.plate .cap .title{font-size:14px;max-width:100%}.plate .cap .meta{text-align:left;font-size:10px}.plate .stamp{top:12px;left:12px;font-size:9px;padding:4px 9px}}
 </style>
+<link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
 
@@ -106,10 +107,7 @@
   <div class="wrap-wide row">
     <div class="left">
       <a href="/" class="brand" aria-label="kolm">
-        <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
+        <img src="/logo-mark.svg" alt="" class="brand-mark">
         <span>kolm</span>
       </a>
       <nav>
@@ -117,7 +115,11 @@
         <a href="/serve">Serve</a>
         <a href="/anatomy">.kolm</a>
         <a href="/k-score">K-score</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+
         <a href="/docs">Docs</a>
+        <a href="/articles">Articles</a>
         <a href="/pricing">Pricing</a>
       </nav>
     </div>
@@ -134,12 +136,12 @@
     <h1>Articles, <span class="tone">written for builders.</span></h1>
     <p class="lede">Five-to-twelve minute reads on what the AI compiler does, why it does it, and how the pieces fit together. Updated as the product ships.</p>
 
-    <figure class="plate" role="img" aria-label="Kolmogorov essays — engineering writing about the AI compiler.">
-      <div class="img" style="background-image:url(/img/horizon-artifact.webp)"></div>
-      <span class="stamp"><span class="dot"></span>essays · kolm</span>
+    <figure class="plate" role="img" aria-label="Kolmogorov essays --engineering writing about the AI compiler.">
+      <div class="img" style="background-image:url(/img/kolm-artifact-horizon.svg)"></div>
+      <span class="stamp"><span class="dot"></span>essays - kolm</span>
       <div class="cap">
         <div class="title">Notes on <span class="tone">the AI compiler.</span></div>
-        <div class="meta">five reads · live<br><b>updated</b> as we ship</div>
+        <div class="meta">five reads - live<br><b>updated</b> as we ship</div>
       </div>
     </figure>
   </div>
@@ -169,8 +171,8 @@
     <a class="article-card" href="/articles/hipaa-on-device">
       <div class="num"><span class="ix">03</span>12&nbsp;min</div>
       <div class="body">
-        <h3>HIPAA-safe AI on a laptop: PHI never leaves the device.</h3>
-        <p>Every BAA you sign with a frontier model vendor is a ticking compliance bomb. Compile in a clean room, run on the device, and the disclosure event goes away. A practical playbook.</p>
+        <h3>HIPAA-aligned AI on a laptop: keep PHI local by design.</h3>
+        <p>Every PHI-bearing frontier call expands the compliance surface. Compile from de-identified examples, run inside the approved boundary, and verify the evidence. A practical architecture playbook.</p>
       </div>
       <span class="arrow">&rarr;</span>
     </a>
@@ -198,8 +200,8 @@
 
 <footer class="site">
   <div class="wrap-wide row">
-    <span>&copy; 2026 Kolmogorov · the AI compiler · MIT spec</span>
-    <span><a href="/manifesto">Manifesto</a> · <a href="/security">Security</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span>
+    <span>&copy; 2026 Kolmogorov - the AI compiler - MIT spec</span>
+    <span><a href="/manifesto">Manifesto</a> - <a href="/security">Security</a> - <a href="/privacy">Privacy</a> - <a href="/terms">Terms</a></span>
   </div>
 </footer>
 

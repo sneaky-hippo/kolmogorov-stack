@@ -1,7 +1,7 @@
-// @kolmogorov/recipe — ES module entry point.
-// Show 4-8 examples once. Get a deterministic JS function that runs forever for free.
+// @kolmogorov/kolm-sdk - ES module entry point.
+// Client for kolm account, registry, receipt, and recipe APIs.
 
-const DEFAULT_BASE = "https://kolmogorov-stack-production.up.railway.app";
+const DEFAULT_BASE = "https://kolm.ai";
 const SDK_VERSION = "0.1.0";
 
 export class RecipeError extends Error {
@@ -15,19 +15,19 @@ export class RecipeError extends Error {
 
 export class RecipeClient {
   constructor(opts = {}) {
-    this.baseUrl = (opts.baseUrl || (typeof process !== "undefined" && process.env && process.env.RECIPE_BASE_URL) || DEFAULT_BASE).replace(/\/$/, "");
+    this.baseUrl = (opts.baseUrl || (typeof process !== "undefined" && process.env && (process.env.KOLM_BASE_URL || process.env.RECIPE_BASE_URL)) || DEFAULT_BASE).replace(/\/$/, "");
     this.apiKey = opts.apiKey
-      || (typeof process !== "undefined" && process.env && (process.env.RECIPE_API_KEY || process.env.KOLMOGOROV_API_KEY));
+      || (typeof process !== "undefined" && process.env && (process.env.KOLM_API_KEY || process.env.RECIPE_API_KEY || process.env.KOLMOGOROV_API_KEY));
     this.fetcher = opts.fetch || globalThis.fetch;
     this.timeoutMs = opts.timeoutMs ?? 30000;
-    if (!this.fetcher) throw new Error("fetch is not available — pass opts.fetch or run on Node 18+ / a modern browser.");
+    if (!this.fetcher) throw new Error("fetch is not available; pass opts.fetch or run on Node 18+ / a modern browser.");
   }
 
   async _req(method, path, body, init = {}) {
     const url = this.baseUrl + path;
     const headers = {
       "Content-Type": "application/json",
-      "User-Agent": `@kolmogorov/recipe/${SDK_VERSION}`,
+      "User-Agent": `@kolmogorov/kolm-sdk/${SDK_VERSION}`,
       ...(init.headers || {}),
     };
     if (this.apiKey) headers["Authorization"] = `Bearer ${this.apiKey}`;
@@ -113,11 +113,11 @@ export class RecipeClient {
   health()                                    { return this._req("GET", "/health"); }
 
   // ---------- anonymous CLI auth (autonomous bootstrap for agents/robots) ----------
-  // No email, no signup — agents call this on first run, store the kao_ token locally,
+  // No email, no signup: agents call this on first run, store the kao_ token locally,
   // and have 30 days of full functionality before they have to claim or expire.
   bootstrapAnonymous(meta = {}) {
     return this._req("POST", "/v1/anon/bootstrap", {
-      user_agent: meta.user_agent || `@kolmogorov/recipe/${SDK_VERSION}`,
+      user_agent: meta.user_agent || `@kolmogorov/kolm-sdk/${SDK_VERSION}`,
       hostname: meta.hostname || null,
     });
   }
@@ -127,6 +127,8 @@ export class RecipeClient {
     return this._req("POST", "/v1/anon/claim", { anon_token, email, name });
   }
 }
+
+export class KolmClient extends RecipeClient {}
 
 // ---------- Convenience: drop-in replacements for repeat LLM-as-judge calls ----------
 let _defaultClient = null;
@@ -155,4 +157,4 @@ export const recipe = {
   classifyIssue:    (text) => _runByName("classify-issue-type", text),
 };
 
-export default RecipeClient;
+export default KolmClient;

@@ -1,151 +1,304 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Recall · kolm</title>
-  <meta name="description" content="The multimodal recall substrate. Ingest text, code, images, audio, video, PDFs. Every compile is grounded in your data; every artifact ships its index." />
-  <link rel="stylesheet" href="/styles.css" />
-  <style>
-    .codebox { background:#0b0e15; border:1px solid #1f2536; border-radius:10px;
-      padding:14px 16px; font:12px ui-monospace,monospace; color:#dde1ee;
-      overflow-x:auto; margin:8px 0; }
-    .codebox .c { color:#aa9cff; }
-    .codebox .o { color:#5be8b6; }
-    .codebox .k { color:#aa9cff; }
-    .modgrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin:14px 0; }
-    .mod { background:#0b0e15; border:1px solid #1f2536; border-radius:10px; padding:12px 14px; }
-    .mod .ex { font:560 11px ui-monospace,monospace; color:#d4c8ff; }
-    .mod h4 { margin:6px 0 2px; font-size:13px; color:#dde1ee; }
-    .mod p  { margin:0; color:#8893ad; font-size:12px; line-height:1.5; }
-    .pipeline { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:14px 0; }
-    .pipe-step { background:#0b0e15; border:1px solid #1f2536; border-radius:8px; padding:8px 12px; font:12px ui-monospace,monospace; color:#dde1ee; }
-    .pipe-arrow { color:#555e75; font:14px ui-monospace,monospace; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Recall - kolm</title>
+<meta name="description" content="Recall for kolm artifacts: approved context and retrieval metadata for private AI workflows, with standalone query tooling on the roadmap.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Recall - kolm">
+<meta property="og:description" content="Approved context and retrieval metadata for private AI workflows, with standalone query tooling on the roadmap.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/recall">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/recall">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#4c7dff;--accent-soft:rgba(76,125,255,0.10);--good:#7ef0d2;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;letter-spacing: 0;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:rgba(76,125,255,0.30)}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand img{height:18px;width:18px}
+  header.site .brand span{font-weight:540;font-size:16px;letter-spacing: 0;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover,header.site nav a.active{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .ghost:hover{color:var(--ink)}
+  header.site .right .cta{display:inline-flex;align-items:center;gap:6px;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540;letter-spacing: 0;position:relative}
+  section.hero{padding:96px 0 64px}
+  section.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 900px 480px at 22% 12%,rgba(76,125,255,0.10),transparent 60%);pointer-events:none}
+  section.hero .wrap{position:relative}
+  section + section{border-top:1px solid var(--line)}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing: 0;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .eyebrow .num{color:var(--accent)}
+
+  h1{margin:0 0 22px;font-size:clamp(36px,5vw,60px);line-height:1.05;font-weight:500;letter-spacing: 0;color:var(--ink);max-width:18ch}
+  h1 .tone{color:var(--accent)}
+  h2{margin:0 0 16px;font-size:clamp(24px,3vw,34px);line-height:1.15;font-weight:540;letter-spacing: 0;max-width:24ch}
+  h2 .tone{color:var(--accent)}
+  h3{margin:0 0 8px;font-size:16px;font-weight:540;letter-spacing: 0;font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:60ch}
+  p.lede b{color:var(--ink);font-weight:540}
+  p.lede code,p code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  p{color:var(--ink-mute);max-width:62ch}
+
+  pre{background:#0b0f10;border:1px solid var(--line);border-radius:8px;padding:18px 20px;overflow:auto;color:#e2e8f0;font-family:var(--mono);font-size:13px;line-height:1.7;margin:24px 0}
+  pre .com{color:var(--ink-faint)}
+  pre .key{color:var(--accent)}
+  pre .ok{color:var(--good)}
+  pre .arg{color:var(--ink)}
+  pre .num{color:#ff6f3c}
+
+  .modgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:36px 0 0}
+  @media(max-width:880px){.modgrid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:480px){.modgrid{grid-template-columns:1fr}}
+  .modgrid .mod{padding:24px 22px;background:var(--bg-elev)}
+  .modgrid .mod .ext{font-family:var(--mono);font-size:11px;letter-spacing: 0;color:var(--accent);margin-bottom:10px;display:inline-block}
+  .modgrid .mod h3{font-size:14.5px;margin:0 0 6px;color:var(--ink)}
+  .modgrid .mod p{font-size:13px;color:var(--ink-mute);margin:0;line-height:1.55;max-width:none}
+
+  .pipeline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:28px 0;padding:22px;background:#0b0f10;border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+  .pipeline .step{padding:8px 14px;background:var(--bg-card);border:1px solid var(--line-strong);border-radius:6px;font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:nowrap}
+  .pipeline .step.hot{border-color:rgba(76,125,255,0.32);color:var(--accent);background:var(--accent-soft)}
+  .pipeline .arrow{font-family:var(--mono);font-size:14px;color:var(--ink-faint);user-select:none}
+
+  .backends{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:32px}
+  @media(max-width:880px){.backends{grid-template-columns:1fr}}
+  .backends .be{padding:26px 22px;background:var(--bg-elev)}
+  .backends .be .n{font-family:var(--mono);font-size:11px;letter-spacing: 0;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+  .backends .be h3{font-size:15px;margin:0 0 8px;color:var(--ink)}
+  .backends .be p{font-size:13px;color:var(--ink-mute);margin:0 0 12px;line-height:1.55;max-width:none}
+  .backends .be code{display:block;background:#0b0f10;border:1px solid var(--line);border-radius:4px;padding:8px 10px;font-family:var(--mono);font-size:11.5px;color:var(--accent);overflow-x:auto;white-space:pre}
+
+  .sizes{margin-top:28px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .sizes .row{display:grid;grid-template-columns:1fr 1fr 2fr;gap:0;padding:12px 18px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:13px;background:#0b0f10}
+  .sizes .row:last-child{border-bottom:0}
+  .sizes .row.head{background:var(--bg-card);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing: 0;gap:12px;align-items:center;flex-wrap:wrap;margin-top:36px}
+  .btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);border-radius:6px;padding:11px 18px;font-size:14px;font-weight:540;letter-spacing: 0;transition:background 120ms}
+  .btn-primary:hover{background:#fff}
+  .btn-link{display:inline-flex;align-items:center;gap:6px;color:var(--ink);padding:11px 14px;font-size:14px;font-weight:500}
+  .btn-link:hover{color:var(--accent)}
+
+  footer{border-top:1px solid var(--line);padding:48px 0 36px;color:var(--ink-faint);font-size:12.5px}
+  footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:24px}
+  @media(max-width:720px){footer .cols{grid-template-columns:1fr 1fr;gap:24px}}
+  footer h4{font-size:11px;color:var(--ink-mute);letter-spacing: 0;text-transform:uppercase;margin:0 0 10px;font-weight:540}
+  footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+  footer ul a{color:var(--ink-faint);transition:color 120ms}
+  footer ul a:hover{color:var(--ink)}
+  footer .legal{padding-top:18px;border-top:1px solid var(--line);color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
-<div class="bg-stage" aria-hidden="true"></div>
-<div class="app">
-  <aside class="sidebar">
-    <h1><span class="glyph"></span> kolm<span class="sub">by Kolmogorov</span></h1>
-    <div class="tag">v0.1 · compiler cache for intelligence</div>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/compile">Compile</a>
-      <a href="/run">Run</a>
-      <a href="/recall" class="active">Recall</a>
-      <a href="/cloud">Cloud</a>
-      <a href="/manual">Manual</a>
-      <a href="/account">Account</a>
-    </nav>
-    <div class="footnote">
-      <strong>Compile · Run · Recall.</strong><br/>
-      Compile frontier behavior once, run it locally forever.
+
+<header class="site">
+  <div class="wrap"><div class="row">
+    <div class="left">
+      <a class="brand" href="/" aria-label="kolm home">
+        <img src="/logo-mark.svg" alt="" class="brand-mark">
+        <span>kolm</span>
+      </a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/run">Run</a>
+        <a href="/recall" class="active">Recall</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+
+        <a href="/docs">Docs</a>
+        <a href="/articles">Articles</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
     </div>
-  </aside>
+    <div class="right">
+      <a href="/signin" class="ghost">Sign in</a>
+      <a href="/signup" class="cta">Get kolm <span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </div></div>
+</header>
 
-  <main class="main">
-    <section class="hero">
-      <div class="eyebrow"><span class="dot live"></span> kolm recall · the data moat</div>
-      <h1>Every modality. <span class="grad">One index.</span> Every compile, grounded.</h1>
-      <p class="sub">
-        Recall is the multimodal vector substrate beneath the compiler. Drop a folder, get back a
-        per-tenant hybrid index, BM25 + vector + RRF + reranker, that every Distill call grounds itself in.
-        The same index ships <em>inside</em> the artifact as <code>index.sqlite-vec</code>, so the compiled model
-        knows your specifics offline, forever.
-      </p>
-    </section>
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">04</span> - The data moat</div>
+    <h1>Approved context. <span class="tone">Compiled into the artifact.</span></h1>
+    <p class="lede">Recall is the product direction for grounding: approved context should travel with the artifact so runtime behavior can be reviewed where the data already lives. The current CLI supports corpus ingestion as part of <code>kolm compile --data</code>; standalone recall commands are not shipped yet.</p>
+    <pre><span class="com"># compile a task with approved local context</span>
+$ kolm compile <span class="arg">"answer questions about our infra"</span> \
+  --data ./my-data \
+  --examples ./infra.examples.jsonl \
+  --out ./artifacts
 
-    <section class="block">
-      <h2>Ingest anything.</h2>
-      <div class="codebox">
-<span class="c"># ingest a folder, auto-detects modality per file</span>
-$ kolm recall ingest ./my-data --namespace work
-✔ tokenized 312 files (147 text, 88 image, 41 audio, 26 pdf, 10 video)
-✔ embedded 4,802 chunks
-✔ indexed in namespace <span class="o">"work"</span>
+<span class="com"># inspect what the artifact declares</span>
+$ kolm inspect ./artifacts/infra.kolm</pre>
+    <div class="cta-row">
+      <a href="/signup" class="btn-primary">Get kolm <span aria-hidden="true">&rarr;</span></a>
+      <a href="/anatomy" class="btn-link">See where it ships in the .kolm <span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </div>
+</section>
 
-<span class="c"># query the index directly</span>
-$ kolm recall query <span class="o">"the migration we ran last quarter"</span> --namespace work
-[{
-  <span class="c">"source":</span>   <span class="o">"./my-data/notes/2026-01-migration.md"</span>,
-  <span class="c">"chunk_id":</span> <span class="o">"c_4f2a"</span>,
-  <span class="c">"score":</span>    <span class="k">0.847</span>,
-  <span class="c">"text":</span>     <span class="o">"On Jan 14 we cut over to the new auth schema..."</span>
-}, ...]
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">01</span> - Ingest anything</div>
+    <h2>Multimodal sidecars.</h2>
+    <p class="lede">Every non-text file gets a Markdown sidecar, a structured tokenization that turns pixels, frames, and waveforms into something both humans and models can read. The sidecar is what gets embedded; the original is what gets returned.</p>
 
-<span class="c"># compile a Specialist that grounds every call in this corpus</span>
-$ kolm compile <span class="o">"answer questions about our infra"</span> --data ./my-data</div>
-    </section>
-
-    <section class="block">
-      <h2>Multimodal sidecars.</h2>
-      <p class="lede">
-        Every non-text file gets a Markdown sidecar, a structured tokenization that turns pixels, frames,
-        and waveforms into something both humans and models can read. The sidecar is what gets embedded;
-        the original is what gets returned. Inspired by Tobi Lutke's
-        <code>qmd</code> pattern, extended to image / audio / video / PDF.
-      </p>
-      <div class="modgrid">
-        <div class="mod"><div class="ex">.txt .md .ts .py</div><h4>text + code</h4><p>chunked by structure, embedded with bge-m3.</p></div>
-        <div class="mod"><div class="ex">.png .jpg .heic</div><h4>image</h4><p>CLIP embed + caption sidecar via vision model.</p></div>
-        <div class="mod"><div class="ex">.mp3 .wav .m4a</div><h4>audio</h4><p>Whisper transcript + CLAP embed of timbre.</p></div>
-        <div class="mod"><div class="ex">.mp4 .mov</div><h4>video</h4><p>scene-detected → per-shot caption + ASR + CLIP.</p></div>
-        <div class="mod"><div class="ex">.pdf</div><h4>pdf</h4><p>unstructured layout parse + per-page sidecar.</p></div>
-        <div class="mod"><div class="ex">auto</div><h4>everything else</h4><p>magika sniffs, falls back to bytes-as-text.</p></div>
+    <div class="modgrid">
+      <div class="mod">
+        <span class="ext">.txt .md .ts .py</span>
+        <h3>Text and code</h3>
+        <p>Chunked by structure, embedded with bge-m3. Symbols, comments, headings preserved.</p>
       </div>
-    </section>
-
-    <section class="block">
-      <h2>Hybrid retrieval, reranked.</h2>
-      <div class="pipeline">
-        <div class="pipe-step">query</div>
-        <span class="pipe-arrow">→</span>
-        <div class="pipe-step">BM25 (top 50)</div>
-        <span class="pipe-arrow">+</span>
-        <div class="pipe-step">vector (top 50)</div>
-        <span class="pipe-arrow">→</span>
-        <div class="pipe-step">RRF fusion</div>
-        <span class="pipe-arrow">→</span>
-        <div class="pipe-step">cross-encoder rerank</div>
-        <span class="pipe-arrow">→</span>
-        <div class="pipe-step">top-k</div>
+      <div class="mod">
+        <span class="ext">.png .jpg .heic</span>
+        <h3>Images</h3>
+        <p>CLIP embed plus caption sidecar via vision model. Both vector and lexical recall.</p>
       </div>
-      <p class="lede">
-        Lexical recall catches names and IDs. Vector recall catches paraphrase. RRF fuses without tuning a weight.
-        A small cross-encoder reorders the top of the list. The whole pipeline is what grounds every Distill k-sample
-        and every <code>/v1/wrap/verified</code> call when a <code>corpus_namespace</code> is set.
-      </p>
-    </section>
+      <div class="mod">
+        <span class="ext">.mp3 .wav .m4a</span>
+        <h3>Audio</h3>
+        <p>Whisper transcript with CLAP timbre embed. Speakers and music both addressable.</p>
+      </div>
+      <div class="mod">
+        <span class="ext">.mp4 .mov</span>
+        <h3>Video</h3>
+        <p>Scene-detected, then per-shot caption + ASR + CLIP. Jump straight to the right second.</p>
+      </div>
+      <div class="mod">
+        <span class="ext">.pdf</span>
+        <h3>PDF</h3>
+        <p>Layout parse via unstructured. Per-page sidecar; tables, figures, footnotes addressable.</p>
+      </div>
+      <div class="mod">
+        <span class="ext">auto</span>
+        <h3>Everything else</h3>
+        <p>magika sniffs the bytes. Falls back to bytes-as-text for any file the kernel can read.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <section class="block">
-      <h2>Three back-ends, one interface.</h2>
-      <div class="codebox">
-<span class="c"># managed (default, Pinecone)</span>
-KOLMOGOROV_INDEX_BACKEND=pinecone
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">02</span> - Hybrid retrieval</div>
+    <h2>BM25 plus vector. <span class="tone">RRF, then rerank.</span></h2>
+    <p class="lede">Lexical recall catches names and IDs. Vector recall catches paraphrase. RRF fuses them without tuning a weight. A small cross-encoder reorders the top of the list. The whole pipeline is what grounds every Distill k-sample and every <code>kolm.wrap</code> call when a corpus namespace is set.</p>
 
-<span class="c"># self-host (Trieve docker)</span>
-KOLMOGOROV_INDEX_BACKEND=trieve
-KOLM_TRIEVE_URL=http://localhost:8090
+    <div class="pipeline">
+      <span class="step">query</span>
+      <span class="arrow">&rarr;</span>
+      <span class="step">BM25 top-50</span>
+      <span class="arrow">+</span>
+      <span class="step">vector top-50</span>
+      <span class="arrow">&rarr;</span>
+      <span class="step">RRF fusion</span>
+      <span class="arrow">&rarr;</span>
+      <span class="step">cross-encoder rerank</span>
+      <span class="arrow">&rarr;</span>
+      <span class="step hot">top-k</span>
+    </div>
 
-<span class="c"># on-device (sqlite-vec, what ships INSIDE every .kolm)</span>
-KOLMOGOROV_INDEX_BACKEND=sqlite-vec</div>
-      <p class="lede">
-        Same SDK, same CLI, same wire format. Pick the back-end at the boundary; the rest of the stack doesn't notice.
-        On-device is the default inside artifacts: every <code>.kolm</code> ships <code>index.sqlite-vec</code> so
-        recall keeps working when the network is gone.
-      </p>
-      <div class="codebox" style="margin-top:14px">
-<span class="c"># index size on disk, measured</span>
-<span class="o">10,000 docs</span>      <span class="k">~38 MB</span>   <span class="c"># bge-m3 dim 1024, INT8 quantized</span>
-<span class="o">100,000 docs</span>     <span class="k">~360 MB</span>  <span class="c"># still ships inside a .kolm</span>
-<span class="o">1,000,000 docs</span>   <span class="k">~3.4 GB</span>  <span class="c"># tier up: managed back-end</span></div>
-    </section>
+    <p>Every retrieved chunk carries its source path, byte range, modality, and score. The compiler quotes the source verbatim and the receipt anchors each citation to a content hash. Hallucinated citations are detectable end-to-end.</p>
+  </div>
+</section>
 
-    <footer>
-      <a href="/run">← Run</a> · <a href="/cloud">Cloud →</a>
-    </footer>
-  </main>
-</div>
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">03</span> - Three back-ends, one interface</div>
+    <h2>Same SDK. <span class="tone">Same wire format.</span></h2>
+    <p class="lede">Pick the back-end at the boundary; the rest of the stack does not notice. On-device is the default inside artifacts: every <code>.kolm</code> ships <code>index.sqlite-vec</code> so recall keeps working when the network is gone.</p>
+
+    <div class="backends">
+      <div class="be">
+        <div class="n">Managed</div>
+        <h3>Pinecone</h3>
+        <p>Default for Cloud-compiled artifacts. Per-tenant namespaces, regional residency, no infra.</p>
+        <code>KOLMOGOROV_INDEX_BACKEND=pinecone</code>
+      </div>
+      <div class="be">
+        <div class="n">Self-host</div>
+        <h3>Trieve</h3>
+        <p>Single Docker image. BYO embedding service or use the bundled bge-m3. VPC-friendly.</p>
+        <code>KOLMOGOROV_INDEX_BACKEND=trieve
+KOLM_TRIEVE_URL=http://localhost:8090</code>
+      </div>
+      <div class="be">
+        <div class="n">On-device</div>
+        <h3>sqlite-vec</h3>
+        <p>What ships <em>inside</em> every <code>.kolm</code> at runtime. Single file. No network.</p>
+        <code>KOLMOGOROV_INDEX_BACKEND=sqlite-vec</code>
+      </div>
+    </div>
+
+    <div class="sizes">
+      <div class="row head"><span>Documents</span><span>On disk</span><span>Notes</span></div>
+      <div class="row"><span class="docs">10,000</span><span class="size">~38 MB</span><span class="note">bge-m3 dim 1024, INT8 quantized</span></div>
+      <div class="row"><span class="docs">100,000</span><span class="size">~360 MB</span><span class="note">still ships inside a .kolm</span></div>
+      <div class="row"><span class="docs">1,000,000</span><span class="size">~3.4 GB</span><span class="note">tier up to a managed back-end</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">04</span> - Receipts on every chunk</div>
+    <h2>Citations you can verify.</h2>
+    <p>Current artifacts can carry context metadata, hashes, and receipt fields. A populated sqlite-vec recall index and standalone recall query CLI are product-hardening work; do not treat them as default runtime behavior until benchmarks and package support exist.</p>
+    <pre>{
+  <span class="key">"chunk_id"</span>:    <span class="arg">"c_4f2a"</span>,
+  <span class="key">"source"</span>:      <span class="arg">"./notes/2026-01-migration.md"</span>,
+  <span class="key">"byte_range"</span>:  [<span class="num">128</span>, <span class="num">412</span>],
+  <span class="key">"content_hash"</span>:<span class="arg">"sha256:9f1a-在3"</span>,
+  <span class="key">"score"</span>:       <span class="num">0.847</span>,
+  <span class="key">"modality"</span>:    <span class="arg">"text"</span>,
+  <span class="key">"text"</span>:        <span class="arg">"On Jan 14 we cut over to the new auth schema..."</span>
+}</pre>
+    <div class="cta-row">
+      <a href="/signup" class="btn-primary">Get kolm <span aria-hidden="true">&rarr;</span></a>
+      <a href="/compile" class="btn-link">Compile a recall-grounded Specialist <span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <a class="brand" href="/" style="display:inline-flex;align-items:center;gap:9px;color:var(--ink);margin-bottom:10px">
+          <img src="/logo-mark.svg" alt="" class="brand-mark">
+          <span style="font-weight:540;font-size:15px;letter-spacing: 0;font-size:12.5px;margin:0;max-width:36ch">The AI compiler.</p>
+      </div>
+      <div><h4>Product</h4><ul><li><a href="/compile">Compile</a></li><li><a href="/run">Run</a></li><li><a href="/recall">Recall</a></li><li><a href="/serve">Serve</a></li><li><a href="/anatomy">.kolm</a></li><li><a href="/k-score">K-score</a></li>
+          <li><a href="/benchmarks">Benchmarks</a></li>
+          <li><a href="/compare">Compare</a></li></ul></div>
+      <div><h4>Develop</h4><ul><li><a href="/docs">Docs</a>
+        <a href="/articles">Articles</a></li><li><a href="/atlas">Atlas</a></li><li><a href="/pricing">Pricing</a></li></ul></div>
+      <div><h4>Trust</h4><ul><li><a href="/security">Security</a></li><li><a href="/docs/rs-1.md">RS-1 spec</a></li><li><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></li></ul></div>
+    </div>
+    <div class="legal">
+      <span>&copy; 2026 Kolmogorov - the AI compiler</span>
+      <span>Recipe (RS-1, MIT) - Receipts (RS-1-receipts, MIT)</span>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>

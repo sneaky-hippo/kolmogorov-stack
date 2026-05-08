@@ -1,7 +1,7 @@
-// CommonJS entry — same surface as index.mjs.
+// CommonJS entry - same surface as index.mjs.
 'use strict';
 
-const DEFAULT_BASE = "https://kolmogorov-stack-production.up.railway.app";
+const DEFAULT_BASE = "https://kolm.ai";
 const SDK_VERSION = "0.1.0";
 
 class RecipeError extends Error {
@@ -15,19 +15,19 @@ class RecipeError extends Error {
 
 class RecipeClient {
   constructor(opts = {}) {
-    this.baseUrl = (opts.baseUrl || (typeof process !== "undefined" && process.env && process.env.RECIPE_BASE_URL) || DEFAULT_BASE).replace(/\/$/, "");
+    this.baseUrl = (opts.baseUrl || (typeof process !== "undefined" && process.env && (process.env.KOLM_BASE_URL || process.env.RECIPE_BASE_URL)) || DEFAULT_BASE).replace(/\/$/, "");
     this.apiKey = opts.apiKey
-      || (typeof process !== "undefined" && process.env && (process.env.RECIPE_API_KEY || process.env.KOLMOGOROV_API_KEY));
+      || (typeof process !== "undefined" && process.env && (process.env.KOLM_API_KEY || process.env.RECIPE_API_KEY || process.env.KOLMOGOROV_API_KEY));
     this.fetcher = opts.fetch || globalThis.fetch;
     this.timeoutMs = opts.timeoutMs == null ? 30000 : opts.timeoutMs;
-    if (!this.fetcher) throw new Error("fetch is not available — pass opts.fetch or run on Node 18+ / a modern browser.");
+    if (!this.fetcher) throw new Error("fetch is not available; pass opts.fetch or run on Node 18+ / a modern browser.");
   }
 
   async _req(method, path, body, init = {}) {
     const url = this.baseUrl + path;
     const headers = Object.assign({
       "Content-Type": "application/json",
-      "User-Agent": `@kolmogorov/recipe/${SDK_VERSION}`,
+      "User-Agent": `@kolmogorov/kolm-sdk/${SDK_VERSION}`,
     }, init.headers || {});
     if (this.apiKey) headers["Authorization"] = `Bearer ${this.apiKey}`;
     const ctrl = new AbortController();
@@ -99,7 +99,7 @@ class RecipeClient {
   rotateKey()                  { return this._req("POST", "/v1/account/rotate-key"); }
   signup(email, name)          { return this._req("POST", "/v1/signup", { email, name }); }
   health()                     { return this._req("GET", "/health"); }
-  bootstrapAnonymous(meta)     { return this._req("POST", "/v1/anon/bootstrap", { user_agent: (meta && meta.user_agent) || `@kolmogorov/recipe/${SDK_VERSION}`, hostname: (meta && meta.hostname) || null }); }
+  bootstrapAnonymous(meta)     { return this._req("POST", "/v1/anon/bootstrap", { user_agent: (meta && meta.user_agent) || `@kolmogorov/kolm-sdk/${SDK_VERSION}`, hostname: (meta && meta.hostname) || null }); }
   claimAnonymous(anon_token, email, name) { return this._req("POST", "/v1/anon/claim", { anon_token, email, name }); }
 }
 
@@ -127,8 +127,11 @@ const recipe = {
   classifyIssue:    (t) => _runByName("classify-issue-type", t),
 };
 
-module.exports = RecipeClient;
-module.exports.default = RecipeClient;
+class KolmClient extends RecipeClient {}
+
+module.exports = KolmClient;
+module.exports.default = KolmClient;
+module.exports.KolmClient = KolmClient;
 module.exports.RecipeClient = RecipeClient;
 module.exports.RecipeError = RecipeError;
 module.exports.recipe = recipe;

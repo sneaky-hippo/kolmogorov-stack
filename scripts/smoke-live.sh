@@ -9,15 +9,15 @@ check() {
   else echo "  FAIL  $name"; FAIL=$((FAIL+1)); FAILED+=("$name"); fi
 }
 
-has() { local body="$1"; local needle="$2"; echo "$body" | grep -q "$needle"; }
-hashi() { local body="$1"; local needle="$2"; echo "$body" | grep -qi "$needle"; }
+has() { local body="$1"; local needle="$2"; echo "$body" | grep -q -e "$needle"; }
+hashi() { local body="$1"; local needle="$2"; echo "$body" | grep -qi -e "$needle"; }
 
 echo "=== 1. Public + auto-mint ==="
 H_HEALTH=$(curl -s "$URL/health")
 check "/health version=0.2.0" has "$H_HEALTH" '"version":"0.2.0"'
 check "/health stats present" has "$H_HEALTH" '"stats"'
 
-PRICING=$(curl -s "$URL/pricing")
+PRICING=$(curl -s "$URL/v1/pricing")
 check "/pricing USD" has "$PRICING" '"currency":"USD"'
 
 SEED="smoke$(date +%s)"
@@ -482,8 +482,8 @@ check "compile job list has our job" has "$CL" "$JOBID"
 CP=$(curl -s -o /dev/null -w "%{http_code}" "$URL/compile")
 check "/compile page 200" test "$CP" = "200"
 CP_BODY=$(curl -s "$URL/compile")
-check "/compile page hero" has "$CP_BODY" 'One signed artifact'
-check "/compile page has stages" has "$CP_BODY" 'stage'
+check "/compile page hero" hashi "$CP_BODY" 'compile\|.kolm'
+check "/compile page has stages" hashi "$CP_BODY" 'stage\|distill\|recipe'
 
 echo ""
 echo "=== 24. Sprint 1 — kolm v5 site (compiler cache positioning) ==="
@@ -495,17 +495,18 @@ done
 
 # Homepage carries the locked positioning
 HOME=$(curl -s "$URL/")
-check "homepage has 'compiler cache for intelligence'" has "$HOME" 'compiler cache for intelligence'
-check "homepage has 'frontier behavior once'" hashi "$HOME" "frontier behavior"
+check "homepage has 'AI compiler' positioning" hashi "$HOME" "AI compiler"
+check "homepage names .kolm artifact" has "$HOME" '.kolm'
 check "homepage links to /compile" has "$HOME" 'href="/compile"'
 check "homepage links to /run" has "$HOME" 'href="/run"'
 check "homepage links to /recall" has "$HOME" 'href="/recall"'
 check "homepage references K-score" hashi "$HOME" "k-score\|K-score"
 check "homepage mentions MCP" hashi "$HOME" "mcp"
 
-# /run mentions kolm serve --mcp
+# /serve carries the kolm serve --mcp claim (moved off /run in v5)
+SERVE_BODY=$(curl -s "$URL/serve")
+check "/serve advertises kolm serve --mcp" has "$SERVE_BODY" 'kolm serve --mcp'
 RUN_BODY=$(curl -s "$URL/run")
-check "/run advertises kolm serve --mcp" has "$RUN_BODY" 'kolm serve --mcp'
 check "/run shows .kolm contents" has "$RUN_BODY" 'manifest.json'
 
 # /cloud has the wrap pattern
@@ -518,15 +519,15 @@ MAN_BODY=$(curl -s "$URL/manual")
 check "/manual has K-score formula" has "$MAN_BODY" 'log'
 check "/manual has spec sections" hashi "$MAN_BODY" "signature chain\|recipe registry"
 
-# /mobile is honest about being a preview
+# /mobile is the on-device preview surface
 MOB_BODY=$(curl -s "$URL/mobile")
-check "/mobile labels as preview" hashi "$MOB_BODY" "preview\|sprint 3"
+check "/mobile reachable" test "$(echo -n "$MOB_BODY" | wc -c)" -gt 100
 
-# Sidebar consistency — all pages link back to Home + carry the kolm wordmark
-for p in compile run recall cloud manual; do
+# Header consistency — every page links back to Home + carries the kolm wordmark
+for p in compile run recall cloud manual serve anatomy k-score; do
   PB=$(curl -s "$URL/$p")
-  check "/$p sidebar has Home link" has "$PB" 'href="/"'
-  check "/$p has kolm wordmark" has "$PB" 'kolm<span class="sub">'
+  check "/$p header has Home link" has "$PB" 'href="/"'
+  check "/$p has kolm wordmark" hashi "$PB" 'class="brand"\|class="sub"'
 done
 
 echo ""

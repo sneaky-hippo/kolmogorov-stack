@@ -29,6 +29,7 @@ export function loadArtifact(artifactPath) {
   const recipes_json = entries['recipes.json'].toString('utf8');
   const signature = entries['signature.sig'].toString('utf8');
   const evals_json = entries['evals.json']?.toString('utf8') || null;
+  const receipt_json = entries['receipt.json']?.toString('utf8') || null;
   const model_pointer = entries['model.gguf']?.toString('utf8') || null;
 
   const verification = verifyManifestSignature(manifest_json, signature);
@@ -39,12 +40,14 @@ export function loadArtifact(artifactPath) {
   const manifest = JSON.parse(manifest_json);
   const recipes = JSON.parse(recipes_json);
   const evals = evals_json ? JSON.parse(evals_json) : null;
+  const receipt = receipt_json ? JSON.parse(receipt_json) : null;
   const model = model_pointer ? (() => { try { return JSON.parse(model_pointer); } catch { return null; } })() : null;
 
   return {
     manifest,
     recipes,
     evals,
+    receipt,
     model,
     signature_valid: true,
     artifact_path: artifactPath,

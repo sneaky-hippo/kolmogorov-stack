@@ -5,10 +5,24 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
+import net from 'node:net';
 
-const PORT = 8801; // isolated test port
-const BASE = `http://127.0.0.1:${PORT}`;
+let PORT;
+let BASE;
 let proc, demoKey, adminKey = 'ks_admin_change_me';
+const testDataDir = path.join(os.tmpdir(), `kolm-e2e-${process.pid}-${Date.now()}`);
+
+async function freePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.once('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const port = srv.address().port;
+      srv.close(() => resolve(port));
+    });
+  });
+}
 
 async function fetchJson(p, opts = {}) {
   const res = await fetch(BASE + p, opts);
@@ -24,10 +38,10 @@ async function authedFetch(p, opts = {}, key = adminKey) {
   });
 }
 
-async function waitForHealth(retries = 50) {
+async function waitForHealth(base = BASE, retries = 50) {
   for (let i = 0; i < retries; i++) {
     try {
-      const r = await fetch(BASE + '/health');
+      const r = await fetch(base + '/health');
       if (r.ok) return await r.json();
     } catch {}
     await new Promise(r => setTimeout(r, 100));
@@ -36,32 +50,48 @@ async function waitForHealth(retries = 50) {
 }
 
 test('e2e: synthesize → register → run → search → compose', async (t) => {
-  // wipe data dir for isolation
-  const dataDir = path.resolve('data');
-  for (const f of fs.readdirSync(dataDir)) {
-    const p = path.join(dataDir, f);
-    if (fs.statSync(p).isFile()) fs.unlinkSync(p);
-  }
+  PORT = await freePort();
+  BASE = `http://127.0.0.1:${PORT}`;
+  demoKey = null;
+
+  // Keep the real ./data directory untouched; the server reads KOLM_DATA_DIR.
+  fs.rmSync(testDataDir, { recursive: true, force: true });
+  fs.mkdirSync(testDataDir, { recursive: true });
+  t.after(() => fs.rmSync(testDataDir, { recursive: true, force: true }));
 
   // boot server
   proc = spawn(process.execPath, ['server.js'], {
-    env: { ...process.env, PORT: String(PORT), DEFAULT_TENANT: 'test', ANTHROPIC_API_KEY: '' },
+    env: { ...process.env, PORT: String(PORT), DEFAULT_TENANT: 'test', ANTHROPIC_API_KEY: '', KOLM_DATA_DIR: testDataDir },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  let captured = '';
-  proc.stdout.on('data', d => { captured += d.toString(); const m = captured.match(/Demo API key:\s+(\S+)/); if (m) demoKey = m[1]; });
+  proc.stdout.on('data', () => {});
   proc.stderr.on('data', d => process.stderr.write(d));
   t.after(() => { try { proc.kill(); } catch {} });
 
   await waitForHealth();
-  // wait briefly to capture key
-  for (let i = 0; i < 20 && !demoKey; i++) await new Promise(r => setTimeout(r, 50));
-  assert.ok(demoKey, 'should have parsed demo key');
+  const signup = await fetchJson('/v1/signup', {
+    method: 'POST',
+    body: JSON.stringify({ email: `e2e-${process.pid}-${Date.now()}@example.com`, name: 'e2e' }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+  assert.equal(signup.status, 201, JSON.stringify(signup.body));
+  demoKey = signup.body.api_key;
+  assert.match(demoKey, /^ks_[0-9a-f]{32}$/);
+
+  const tenants = JSON.parse(fs.readFileSync(path.join(testDataDir, 'tenants.json'), 'utf8'));
+  const e2eTenant = tenants.find(tn => tn.email === signup.body.tenant?.email || tn.id === signup.body.tenant?.id);
+  assert.ok(e2eTenant, 'signup tenant should be persisted');
+  assert.equal(e2eTenant.api_key, undefined, 'raw tenant api key should not be persisted');
+  assert.match(e2eTenant.api_key_hash, /^sha256:[0-9a-f]{64}$/);
 
   // health
   const h = await fetchJson('/health');
   assert.equal(h.status, 200);
   assert.equal(h.body.status, 'ok');
+  const ready = await fetchJson('/ready');
+  assert.equal(ready.status, 200);
+  assert.equal(ready.body.status, 'ready');
+  assert.ok(Array.isArray(ready.body.checks));
 
   // synthesize a boolean classifier
   const synth = await authedFetch('/v1/synthesize', {
@@ -127,6 +157,27 @@ test('e2e: synthesize → register → run → search → compose', async (t) =>
   assert.equal(verify.status, 200);
   assert.ok(verify.body.quality_score >= 0.8);
 
+  // spend-capable provider-backed endpoints require auth before validation/provider work
+  const publicVerified = await fetchJson('/v1/verified-inference', {
+    method: 'POST',
+    body: JSON.stringify({ prompt: 'hello', test_cases: [{ input: 'x', expected: 'y' }] }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+  assert.equal(publicVerified.status, 401);
+
+  const publicWrap = await fetchJson('/v1/wrap/verified', {
+    method: 'POST',
+    body: JSON.stringify({ messages: [{ role: 'user', content: 'hello' }], verified: { k: 1, test_cases: [{ input: 'x', expected: 'y' }] } }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+  assert.equal(publicWrap.status, 401);
+
+  const authedVerifiedNoProvider = await authedFetch('/v1/verified-inference', {
+    method: 'POST',
+    body: JSON.stringify({ prompt: 'hello', test_cases: [{ input: 'x', expected: 'y' }] }),
+  }, demoKey);
+  assert.equal(authedVerifiedNoProvider.status, 503);
+
   // public listing (no auth)
   const pub = await fetchJson('/v1/public/concepts');
   assert.equal(pub.status, 200);
@@ -134,4 +185,55 @@ test('e2e: synthesize → register → run → search → compose', async (t) =>
   // 401 without key
   const noauth = await fetchJson('/v1/concepts');
   assert.equal(noauth.status, 401);
+});
+
+test('hosted runtime rejects the development admin fallback key', async (t) => {
+  const port = await freePort();
+  const base = `http://127.0.0.1:${port}`;
+  const dataDir = path.join(os.tmpdir(), `kolm-hosted-auth-${process.pid}-${Date.now()}`);
+
+  fs.rmSync(dataDir, { recursive: true, force: true });
+  fs.mkdirSync(dataDir, { recursive: true });
+  t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
+
+  const env = {
+    ...process.env,
+    PORT: String(port),
+    DEFAULT_TENANT: 'hosted',
+    ANTHROPIC_API_KEY: '',
+    KOLM_DATA_DIR: dataDir,
+    RAILWAY_ENVIRONMENT: 'production',
+  };
+  delete env.ADMIN_KEY;
+  delete env.NODE_ENV;
+  delete env.RECIPE_RECEIPT_SECRET;
+  delete env.KOLM_ARTIFACT_SECRET;
+
+  const child = spawn(process.execPath, ['server.js'], {
+    env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  child.stdout.on('data', () => {});
+  child.stderr.on('data', d => process.stderr.write(d));
+  t.after(() => { try { child.kill(); } catch {} });
+
+  await waitForHealth(base);
+  const readiness = await fetch(base + '/ready');
+  assert.equal(readiness.status, 503);
+  assert.equal((await readiness.json()).status, 'not_ready');
+
+  const res = await fetch(base + '/v1/signin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ api_key: 'ks_admin_change_me' }),
+  });
+
+  assert.equal(res.status, 401);
+
+  const verifyReceipt = await fetch(base + '/v1/receipts/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ receipt: { spec: 'rs-1' } }),
+  });
+  assert.equal(verifyReceipt.status, 503);
 });

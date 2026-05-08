@@ -1,200 +1,308 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cloud · kolm</title>
-  <meta name="description" content="Kolmogorov Cloud hosts the compile pipeline, the verified-inference wrap, and the public registry. Bring your own API key. Pay for what compiles." />
-  <link rel="stylesheet" href="/styles.css" />
-  <style>
-    .codebox { background:#0b0e15; border:1px solid #1f2536; border-radius:10px;
-      padding:14px 16px; font:12px ui-monospace,monospace; color:#dde1ee;
-      overflow-x:auto; margin:8px 0; }
-    .codebox .c { color:#aa9cff; }
-    .codebox .o { color:#5be8b6; }
-    .codebox .k { color:#aa9cff; }
-    .tiers { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin:14px 0; }
-    .tier { background:#0b0e15; border:1px solid #1f2536; border-radius:10px; padding:18px; display:flex; flex-direction:column; }
-    .tier.featured { border-color:#aa9cff; }
-    .tier h3 { margin:0; font-size:15px; color:#dde1ee; }
-    .tier .price { font:560 22px ui-monospace,monospace; color:#f4f3fb; margin:8px 0 0; }
-    .tier .price small { color:#7d7898; font-weight:400; font-size:12px; }
-    .tier ul { margin:14px 0 0; padding-left:18px; color:#8893ad; font-size:13px; line-height:1.7; }
-    .tier .cta { margin-top:auto; padding-top:14px; }
-    .tier .cta a { display:inline-block; padding:7px 12px; border:1px solid #2a3144; border-radius:6px; color:#dde1ee; text-decoration:none; font-size:12px; }
-    .tier.featured .cta a { background:#aa9cff; border-color:#aa9cff; color:#050610; }
-    .engines { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin:14px 0; }
-    .eng { background:#0b0e15; border:1px solid #1f2536; border-radius:10px; padding:12px 14px; }
-    .eng .ex { font:560 11px ui-monospace,monospace; color:#d4c8ff; letter-spacing:0.04em; }
-    .eng h4 { margin:6px 0 2px; font-size:13px; color:#dde1ee; }
-    .eng p  { margin:0; color:#8893ad; font-size:12px; line-height:1.5; }
-    .lat { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin:10px 0 0; }
-    .lat .row { background:#0e1320; border:1px solid #1f2536; border-radius:8px; padding:10px 12px; }
-    .lat .row .k { display:block; font:11px ui-monospace,monospace; color:#7d7898; letter-spacing:0.04em; text-transform:uppercase; }
-    .lat .row .v { display:block; font: 600 14px ui-monospace,monospace; color:#f4f3fb; margin-top:3px; }
-    .lat .row .n { display:block; font:11px ui-monospace,monospace; color:#d4c8ff; margin-top:2px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cloud - kolm</title>
+<meta name="description" content="kolm Cloud is the hosted compile pipeline plus the verified-inference wrap. Bring your own frontier API key, pay only for what compiles, get a signed .kolm artifact back.">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Cloud - kolm">
+<meta property="og:description" content="Hosted compile + verified-inference wrap. Bring your own key.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/cloud">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/cloud">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#4c7dff;--accent-soft:rgba(76,125,255,0.10);--good:#7ef0d2;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;letter-spacing: 0;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:rgba(76,125,255,0.30)}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand img{height:18px;width:18px}
+  header.site .brand span{font-weight:540;font-size:16px;letter-spacing: 0;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover,header.site nav a.active{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .ghost:hover{color:var(--ink)}
+  header.site .right .cta{display:inline-flex;align-items:center;gap:6px;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540;letter-spacing: 0;position:relative}
+  section.hero{padding:96px 0 64px}
+  section.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 900px 480px at 22% 12%,rgba(76,125,255,0.10),transparent 60%);pointer-events:none}
+  section.hero .wrap{position:relative}
+  section + section{border-top:1px solid var(--line)}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing: 0;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .eyebrow .num{color:var(--accent)}
+
+  h1{margin:0 0 22px;font-size:clamp(36px,5vw,60px);line-height:1.05;font-weight:500;letter-spacing: 0;color:var(--ink);max-width:18ch}
+  h1 .tone{color:var(--accent)}
+  h2{margin:0 0 16px;font-size:clamp(24px,3vw,34px);line-height:1.15;font-weight:540;letter-spacing: 0;max-width:24ch}
+  h2 .tone{color:var(--accent)}
+  h3{margin:0 0 8px;font-size:16px;font-weight:540;letter-spacing: 0;font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:60ch}
+  p.lede b{color:var(--ink);font-weight:540}
+  p.lede code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  p{color:var(--ink-mute);max-width:62ch}
+  p code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+
+  pre{background:#0b0f10;border:1px solid var(--line);border-radius:8px;padding:18px 20px;overflow:auto;color:#e2e8f0;font-family:var(--mono);font-size:13px;line-height:1.7;margin:24px 0}
+  pre .com{color:var(--ink-faint)}
+  pre .key{color:var(--accent)}
+  pre .ok{color:var(--good)}
+  pre .str{color:#c0e3ff}
+
+  .engines{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:36px}
+  @media(max-width:880px){.engines{grid-template-columns:repeat(2,1fr)}}
+  .engines .eng{padding:24px 22px;background:var(--bg-elev)}
+  .engines .eng .ex{font-family:var(--mono);font-size:11px;letter-spacing: 0;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+  .engines .eng h3{font-size:14px;margin:0 0 6px}
+  .engines .eng p{font-size:13px;color:var(--ink-mute);margin:0}
+
+  .lat{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:24px}
+  @media(max-width:880px){.lat{grid-template-columns:repeat(2,1fr)}}
+  .lat .row{padding:18px 18px;background:var(--bg-elev)}
+  .lat .row .k{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing: 0;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px}
+  .lat .row .v{display:block;font-family:var(--mono);font-size:18px;font-weight:540;color:var(--ink)}
+  .lat .row .n{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:4px}
+
+  .tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:36px}
+  @media(max-width:880px){.tiers{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:520px){.tiers{grid-template-columns:1fr}}
+  .tiers .tier{display:flex;flex-direction:column;padding:28px 24px;background:var(--bg-elev)}
+  .tiers .tier.featured{background:var(--bg-card);position:relative}
+  .tiers .tier.featured::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:var(--accent)}
+  .tiers .tier h3{font-size:14px;color:var(--ink-mute);text-transform:uppercase;letter-spacing: 0;margin:0 0 14px;font-family:var(--mono);font-weight:540}
+  .tiers .tier .price{font-family:var(--mono);font-size:28px;font-weight:540;color:var(--ink);letter-spacing: 0;font-size:13px;font-weight:500}
+  .tiers .tier ul{margin:18px 0 0;padding:0;list-style:none;color:var(--ink-mute);font-size:13.5px;line-height:1.7;flex:1}
+  .tiers .tier ul li{padding:6px 0;border-bottom:1px dashed var(--line)}
+  .tiers .tier ul li:last-child{border-bottom:none}
+  .tiers .tier .cta{margin-top:20px}
+  .tiers .tier .cta a{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border:1px solid var(--line-strong);border-radius:6px;color:var(--ink);font-size:13px;font-weight:540}
+  .tiers .tier.featured .cta a{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .tiers .tier.featured .cta a:hover{background:#fff;border-color:#fff}
+
+  .cta-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:36px}
+  .btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);border-radius:6px;padding:11px 18px;font-size:14px;font-weight:540;letter-spacing: 0;transition:background 120ms}
+  .btn-primary:hover{background:#fff}
+  .btn-link{display:inline-flex;align-items:center;gap:6px;color:var(--ink);padding:11px 14px;font-size:14px;font-weight:500}
+  .btn-link:hover{color:var(--accent)}
+
+  footer{border-top:1px solid var(--line);padding:48px 0 36px;color:var(--ink-faint);font-size:12.5px}
+  footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:24px}
+  @media(max-width:720px){footer .cols{grid-template-columns:1fr 1fr;gap:24px}}
+  footer h4{font-size:11px;color:var(--ink-mute);letter-spacing: 0;text-transform:uppercase;margin:0 0 10px;font-weight:540}
+  footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+  footer ul a{color:var(--ink-faint);transition:color 120ms}
+  footer ul a:hover{color:var(--ink)}
+  footer .legal{padding-top:18px;border-top:1px solid var(--line);color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
-<div class="bg-stage" aria-hidden="true"></div>
-<div class="app">
-  <aside class="sidebar">
-    <h1><span class="glyph"></span> kolm<span class="sub">by Kolmogorov</span></h1>
-    <div class="tag">v0.1 · compiler cache for intelligence</div>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/compile">Compile</a>
-      <a href="/run">Run</a>
-      <a href="/recall">Recall</a>
-      <a href="/cloud" class="active">Cloud</a>
-      <a href="/manual">Manual</a>
-      <a href="/account">Account</a>
-    </nav>
-    <div class="footnote">
-      <strong>Compile · Run · Recall.</strong><br/>
-      Compile frontier behavior once, run it locally forever.
+
+<header class="site">
+  <div class="wrap"><div class="row">
+    <div class="left">
+      <a class="brand" href="/" aria-label="kolm home">
+        <img src="/logo-mark.svg" alt="" class="brand-mark">
+        <span>kolm</span>
+      </a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+
+        <a href="/cloud" class="active">Cloud</a>
+        <a href="/docs">Docs</a>
+        <a href="/articles">Articles</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
     </div>
-  </aside>
+    <div class="right">
+      <a href="/signin" class="ghost">Sign in</a>
+      <a href="/signup" class="cta">Get kolm <span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </div></div>
+</header>
 
-  <main class="main">
-    <section class="hero">
-      <div class="eyebrow"><span class="dot live"></span> kolmogorov cloud · the hosted compile + verified wrap</div>
-      <h1>Bring your own key. <span class="grad">Pay for what compiles.</span></h1>
-      <p class="sub">
-        The cloud runs the four engines so your laptop doesn't have to. Same compile pipeline, same artifact
-        format, same K-score, plus a verified-inference wrap that turns any Anthropic / OpenAI / Mistral key
-        into a self-checking call, k-sample, deterministically verify, accept the winner, return a receipt.
-      </p>
-    </section>
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">04</span> - Hosted compile</div>
+    <h1>Bring your own key. <span class="tone">Pay for what compiles.</span></h1>
+    <p class="lede">kolm Cloud runs the four engines so your laptop doesn't have to. Same compile pipeline, same artifact format, same K-score. Plus a verified-inference <code>kolm.wrap</code> that turns any Anthropic, OpenAI, or Mistral key into a self-checking call: <b>k-sample, deterministically verify, accept the winner, return a receipt.</b> You always pay your own frontier bill on top. We are the compiler, not the model host.</p>
+    <div class="cta-row">
+      <a href="/signup" class="btn-primary">Get kolm <span aria-hidden="true">&rarr;</span></a>
+      <a href="/docs" class="btn-link">See the API <span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </div>
+</section>
 
-    <section class="block">
-      <h2>Four engines, one pipeline.</h2>
-      <p class="lede">
-        Cloud runs the four engines so your laptop doesn't have to. Each is a stateless service behind one HTTP boundary;
-        the orchestrator schedules them per compile job. Everything is observable in <a href="/account">/account</a>.
-      </p>
-      <div class="engines">
-        <div class="eng"><div class="ex">RECALL</div><h4>multimodal index</h4><p>BM25 + vector + RRF + cross-encoder rerank. BGE-M3 1024d INT8. Per-tenant namespace.</p></div>
-        <div class="eng"><div class="ex">DISTILL</div><h4>verified inference</h4><p>k-sample frontier model, deterministically verify, accept the winner, return a signed receipt.</p></div>
-        <div class="eng"><div class="ex">DECOMPOSE</div><h4>recipe drafts</h4><p>Extract the structured-token subset of a model's behavior into a deterministic, registry-indexed draft pack.</p></div>
-        <div class="eng"><div class="ex">RUN</div><h4>artifact assembly</h4><p>Bundle base GGUF + LoRA + recipes + sqlite-vec index + manifest, sign with HMAC chain, ship a single .kolm.</p></div>
-      </div>
-      <h3 style="margin-top:18px; font-size:14px; color:#bbb; letter-spacing:0.04em; text-transform:uppercase;">Measured latency, west-region</h3>
-      <div class="lat">
-        <div class="row"><span class="k">recall query</span><span class="v">~18 ms</span><span class="n">p50, 100k chunks warm</span></div>
-        <div class="row"><span class="k">verified wrap (k=3)</span><span class="v">~2.4 s</span><span class="n">p50 cold, ~1.1 s warm</span></div>
-        <div class="row"><span class="k">compile job (5k rows)</span><span class="v">~3.4 min</span><span class="n">p50 end-to-end</span></div>
-        <div class="row"><span class="k">artifact download</span><span class="v">~280 ms</span><span class="n">p50, 17 MB .kolm</span></div>
-        <div class="row"><span class="k">compile throughput</span><span class="v">~7.4 / min</span><span class="n">concurrency 8, sustained</span></div>
-      </div>
-    </section>
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">01</span> - Engines</div>
+    <h2>Four engines. <span class="tone">One pipeline.</span></h2>
+    <p class="lede">Each engine is a stateless service behind one HTTP boundary. The orchestrator schedules them per compile job. Everything is observable in <a href="/account" style="color:var(--accent)">/account</a>.</p>
+    <div class="engines">
+      <div class="eng"><div class="ex">RECALL</div><h3>Multimodal index</h3><p>BM25 + vector + RRF + cross-encoder rerank. BGE-M3 1024d INT8. Per-tenant namespace.</p></div>
+      <div class="eng"><div class="ex">DISTILL</div><h3>Verified inference</h3><p>k-sample frontier model, deterministically verify, accept the winner, return a signed receipt.</p></div>
+      <div class="eng"><div class="ex">DECOMPOSE</div><h3>Recipe drafts</h3><p>Extract the structured-token subset of a model's behavior into a deterministic, registry-indexed draft pack.</p></div>
+      <div class="eng"><div class="ex">RUN</div><h3>Artifact assembly</h3><p>Bundle base GGUF + LoRA + recipes + sqlite-vec + manifest, sign with HMAC chain, ship a single .kolm.</p></div>
+    </div>
+    <div class="lat">
+      <div class="row"><span class="k">recall query</span><span class="v">~18 ms</span><span class="n">p50, 100k chunks warm</span></div>
+      <div class="row"><span class="k">verified wrap k=3</span><span class="v">~2.4 s</span><span class="n">p50 cold, 1.1 s warm</span></div>
+      <div class="row"><span class="k">compile 5k rows</span><span class="v">~3.4 min</span><span class="n">p50 end-to-end</span></div>
+      <div class="row"><span class="k">artifact download</span><span class="v">~280 ms</span><span class="n">p50, 17 MB .kolm</span></div>
+      <div class="row"><span class="k">throughput</span><span class="v">~7.4 / min</span><span class="n">concurrency 8 sustained</span></div>
+    </div>
+  </div>
+</section>
 
-    <section class="block">
-      <h2>Verified inference, drop-in.</h2>
-      <div class="codebox">
-<span class="c"># the SDK is a transparent Proxy, wrap any Anthropic-shaped client</span>
-import Anthropic from <span class="o">'@anthropic-ai/sdk'</span>;
-import { kolm } from <span class="o">'https://kolm.ai/sdk.js'</span>;
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">02</span> - Verified wrap</div>
+    <h2>Verified inference, <span class="tone">drop-in.</span></h2>
+    <p class="lede">The SDK is a transparent Proxy. Wrap any Anthropic-shaped client, get the same response shape plus <code>_kolm</code> metadata: sample count, verifier verdict, signed receipt.</p>
+    <pre><span class="com"># Wrap any Anthropic-shaped client</span>
+import Anthropic from <span class="str">'@anthropic-ai/sdk'</span>;
+import { kolm } from <span class="str">'https://kolm.ai/sdk.js'</span>;
 
-const raw      = new Anthropic({ apiKey: <span class="o">'sk-ant-...'</span> });
-const verified = kolm.wrap(raw, { verified: <span class="k">true</span>, k: <span class="k">3</span>, corpus_namespace: <span class="o">'work'</span> });
+const raw      = new Anthropic({ apiKey: <span class="str">'sk-ant-...'</span> });
+const verified = kolm.wrap(raw, { verified: <span class="key">true</span>, k: <span class="key">3</span>, corpus_namespace: <span class="str">'work'</span> });
 
-<span class="c">// same shape as the official SDK; routed through /v1/wrap/verified</span>
+<span class="com">// same shape as the official SDK; routed through /v1/wrap/verified</span>
 const r = await verified.messages.create({
-  model: <span class="o">'claude-opus-4-7'</span>,
-  max_tokens: <span class="k">1024</span>,
-  messages: [{ role: <span class="o">'user'</span>, content: <span class="o">'classify intent: ...'</span> }],
+  model: <span class="str">'claude-opus-4-7'</span>,
+  max_tokens: <span class="key">1024</span>,
+  messages: [{ role: <span class="str">'user'</span>, content: <span class="str">'classify intent: ...'</span> }],
 });
 
-console.log(r.content);             <span class="c">// the winner</span>
-console.log(r._kolm.k_samples);     <span class="c">// 3</span>
-console.log(r._kolm.verifier_pass); <span class="c">// true</span>
-console.log(r._kolm.receipt);       <span class="c">// signed proof</span></div>
-    </section>
+console.log(r.content);             <span class="com">// the winner</span>
+console.log(r._kolm.k_samples);     <span class="com">// 3</span>
+console.log(r._kolm.verifier_pass); <span class="com">// true</span>
+console.log(r._kolm.receipt);       <span class="com">// <span class="ok">signed proof</span></span></pre>
+  </div>
+</section>
 
-    <section class="block">
-      <h2>Or just compile in the browser.</h2>
-      <p class="lede">
-        Drag a folder onto the Cloud dashboard, write a task in the textbox, click Compile.
-        The pipeline runs on our hardware and emits a downloadable <code>.kolm</code> with full K-score breakdown.
-        Your data is namespaced per tenant, your API key is yours, your model bill stays on your account.
-      </p>
-      <div class="codebox">
-<span class="c"># or via curl, if you live there</span>
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">03</span> - Compile in the browser</div>
+    <h2>Or just compile <span class="tone">in the browser.</span></h2>
+    <p class="lede">Drag a folder onto the dashboard, write a task, click Compile. The pipeline runs on our hardware and emits a downloadable <code>.kolm</code> with a full K-score breakdown. Your data is namespaced per tenant. Your API key stays yours.</p>
+    <pre><span class="com"># or via curl, if you live there</span>
 $ curl -X POST https://kolm.ai/v1/compile \
-    -H <span class="o">"Authorization: Bearer $KOLM_KEY"</span> \
-    -H <span class="o">"Content-Type: application/json"</span> \
+    -H <span class="str">"Authorization: Bearer $KOLM_KEY"</span> \
+    -H <span class="str">"Content-Type: application/json"</span> \
     -d '{
-      <span class="c">"task"</span>: <span class="o">"classify support tickets"</span>,
-      <span class="c">"examples"</span>: [...],
-      <span class="c">"corpus_namespace"</span>: <span class="o">"work"</span>
+      <span class="key">"task"</span>:             <span class="str">"classify support tickets"</span>,
+      <span class="key">"examples"</span>:         [...],
+      <span class="key">"corpus_namespace"</span>: <span class="str">"work"</span>
     }'
-{ <span class="c">"job_id":</span> <span class="o">"job_abc"</span>, <span class="c">"status":</span> <span class="o">"queued"</span> }
+{ <span class="key">"job_id"</span>: <span class="str">"job_abc"</span>, <span class="key">"status"</span>: <span class="str">"queued"</span> }
 
-$ curl https://kolm.ai/v1/compile/job_abc/.kolm -o triage.kolm</div>
-    </section>
+$ curl https://kolm.ai/v1/compile/job_abc/.kolm -o triage.kolm
+<span class="com"># 17 MB. Signed. Runs offline.</span></pre>
+  </div>
+</section>
 
-    <section class="block">
-      <h2>Pricing.</h2>
-      <div class="tiers">
-        <div class="tier">
-          <h3>Free</h3>
-          <div class="price">$0 <small>/ mo</small></div>
-          <ul>
-            <li>1 Specialist / mo</li>
-            <li>10k corpus rows</li>
-            <li>4B-class open base only</li>
-            <li>100k vectors managed</li>
-            <li>unlimited <code>kolm run</code></li>
-          </ul>
-          <div class="cta"><a href="/account">Start →</a></div>
-        </div>
-        <div class="tier">
-          <h3>Mobile</h3>
-          <div class="price">$9 <small>/ mo</small></div>
-          <ul>
-            <li>1 personal Specialist / mo</li>
-            <li>100k corpus rows</li>
-            <li>1M vectors managed</li>
-            <li>kolm.app phone runtime</li>
-            <li>unlimited on-device</li>
-          </ul>
-          <div class="cta"><a href="/account">Start →</a></div>
-        </div>
-        <div class="tier featured">
-          <h3>Pro</h3>
-          <div class="price">$49 <small>/ mo</small></div>
-          <ul>
-            <li>unlimited Specialists</li>
-            <li>1M rows each</li>
-            <li>all open bases incl. Hermes-3</li>
-            <li>10M vectors managed</li>
-            <li>full CLI + Cloud + MCP</li>
-          </ul>
-          <div class="cta"><a href="/account">Start →</a></div>
-        </div>
-        <div class="tier">
-          <h3>Enterprise</h3>
-          <div class="price">custom</div>
-          <ul>
-            <li>private base models</li>
-            <li>on-prem training bridge</li>
-            <li>private Trieve cluster</li>
-            <li>dedicated GPU embedders</li>
-            <li>on-chain receipt anchoring</li>
-          </ul>
-          <div class="cta"><a href="mailto:dev@kolm.ai">Contact &rsaquo;</a></div>
-        </div>
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">04</span> - Pricing</div>
+    <h2>One product. <span class="tone">Three tiers.</span></h2>
+    <p class="lede">You always pay your own frontier API bill on top. We charge for the compiler, the index, and the wrap. Cancel anytime. Receipts are forever.</p>
+    <div class="tiers">
+      <div class="tier">
+        <h3>Free</h3>
+        <div class="price">$0 <small>/ mo</small></div>
+        <ul>
+          <li>1 Specialist / mo</li>
+          <li>10k corpus rows</li>
+          <li>4B-class open base</li>
+          <li>100k vectors managed</li>
+          <li>unlimited <code>kolm run</code></li>
+        </ul>
+        <div class="cta"><a href="/signup">Start <span aria-hidden="true">&rarr;</span></a></div>
       </div>
-      <p class="sub" style="font-size:12px; color:#666; margin-top:8px;">
-        You always pay your own frontier API bill on top, we're the compiler, not the model host.
-      </p>
-    </section>
+      <div class="tier">
+        <h3>Mobile</h3>
+        <div class="price">$9 <small>/ mo</small></div>
+        <ul>
+          <li>1 personal Specialist / mo</li>
+          <li>100k corpus rows</li>
+          <li>1M vectors managed</li>
+          <li>kolm.app phone runtime</li>
+          <li>unlimited on-device</li>
+        </ul>
+        <div class="cta"><a href="/signup">Start <span aria-hidden="true">&rarr;</span></a></div>
+      </div>
+      <div class="tier featured">
+        <h3>Pro</h3>
+        <div class="price">$49 <small>/ mo</small></div>
+        <ul>
+          <li>higher artifact quota</li>
+          <li>1M rows each</li>
+          <li>open bases incl. Hermes-3</li>
+          <li>10M vectors managed</li>
+          <li>full CLI + Cloud + MCP</li>
+        </ul>
+        <div class="cta"><a href="/signup">Start <span aria-hidden="true">&rarr;</span></a></div>
+      </div>
+      <div class="tier">
+        <h3>Enterprise</h3>
+        <div class="price">custom</div>
+        <ul>
+          <li>private base models</li>
+          <li>customer-hosted compile bridge design review</li>
+          <li>private Trieve cluster</li>
+          <li>dedicated GPU embedders</li>
+          <li>external anchoring roadmap</li>
+        </ul>
+        <div class="cta"><a href="mailto:dev@kolm.ai">Contact <span aria-hidden="true">&rarr;</span></a></div>
+      </div>
+    </div>
+    <div class="cta-row">
+      <a href="/signup" class="btn-primary">Get kolm <span aria-hidden="true">&rarr;</span></a>
+      <a href="/pricing" class="btn-link">Compare every feature <span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </div>
+</section>
 
-    <footer>
-      <a href="/recall">← Recall</a> · <a href="/manual">Manual →</a>
-    </footer>
-  </main>
-</div>
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <a class="brand" href="/" style="display:inline-flex;align-items:center;gap:9px;color:var(--ink);margin-bottom:10px">
+          <img src="/logo-mark.svg" alt="" class="brand-mark">
+          <span style="font-weight:540;font-size:15px;letter-spacing: 0;font-size:12.5px;margin:0;max-width:36ch">The private AI compiler.</p>
+      </div>
+      <div><h4>Product</h4><ul><li><a href="/compile">Compile</a></li><li><a href="/serve">Serve --mcp</a></li><li><a href="/anatomy">.kolm format</a></li><li><a href="/k-score">K-score</a></li>
+          <li><a href="/benchmarks">Benchmarks</a></li>
+          <li><a href="/compare">Compare</a></li></ul></div>
+      <div><h4>Develop</h4><ul><li><a href="/docs">Docs</a>
+        <a href="/articles">Articles</a></li><li><a href="/atlas">Atlas</a></li><li><a href="/cloud">Cloud</a></li><li><a href="/pricing">Pricing</a></li></ul></div>
+      <div><h4>Trust</h4><ul><li><a href="/security">Security</a></li><li><a href="/docs/rs-1.md">RS-1 spec</a></li><li><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></li></ul></div>
+    </div>
+    <div class="legal">
+      <span>&copy; 2026 Kolmogorov - the AI compiler</span>
+      <span>Recipe (RS-1, MIT) - Receipts (RS-1-receipts, MIT)</span>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>

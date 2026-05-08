@@ -1,76 +1,151 @@
 // Shared frontend helpers.
 window.KS = (() => {
-  const apiKey = () => localStorage.getItem('ks_api_key') || '';
-  const setApiKey = (k) => { localStorage.setItem('ks_api_key', k); };
+  const KEY_NAMES = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
+
+  function apiKey() {
+    try {
+      for (const name of KEY_NAMES) {
+        const value = localStorage.getItem(name);
+        if (value) return value;
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  function setApiKey(key) {
+    if (!key) return;
+    try {
+      KEY_NAMES.forEach(name => localStorage.setItem(name, key));
+    } catch (_) {}
+  }
+
+  function clearApiKey() {
+    try {
+      KEY_NAMES.forEach(name => localStorage.removeItem(name));
+    } catch (_) {}
+  }
 
   async function api(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
-    const k = apiKey();
-    if (k) headers['Authorization'] = `Bearer ${k}`;
-    const res = await fetch(path, { ...opts, headers });
+    const key = apiKey();
+    if (key) {
+      headers.Authorization = `Bearer ${key}`;
+      headers['X-API-Key'] = key;
+    }
+    const res = await fetch(path, {
+      ...opts,
+      headers,
+      credentials: opts.credentials || 'include',
+    });
     const text = await res.text();
     let body;
-    try { body = JSON.parse(text); } catch { body = { _raw: text }; }
-    if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { body, status: res.status });
+    try {
+      body = JSON.parse(text);
+    } catch (_) {
+      body = { _raw: text };
+    }
+    if (!res.ok) {
+      throw Object.assign(new Error(body.error || res.statusText), { body, status: res.status });
+    }
     return body;
   }
 
-  function toast(msg) {
-    const t = document.getElementById('toast');
-    if (!t) return;
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(window.__toastT);
-    window.__toastT = setTimeout(() => t.classList.remove('show'), 1400);
+  function toast(message, ms = 1800) {
+    const node = document.getElementById('toast');
+    if (!node) return;
+    node.textContent = message;
+    node.classList.add('show');
+    clearTimeout(window.__ksToastT);
+    window.__ksToastT = setTimeout(() => node.classList.remove('show'), ms);
   }
 
-  // Auto-mint a free demo key on first visit so the playground/dashboard
-  // work immediately. No prompt(), no signup form unless the user wants one.
   async function autoMint() {
     if (apiKey()) return apiKey();
-    const seed = localStorage.getItem('ks_browser_id') || (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
-    localStorage.setItem('ks_browser_id', seed);
-    const r = await fetch('/v1/signup', {
+    let seed = '';
+    try {
+      seed = localStorage.getItem('ks_browser_id') || '';
+      if (!seed) {
+        seed = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+        localStorage.setItem('ks_browser_id', seed);
+      }
+    } catch (_) {
+      seed = Math.random().toString(36).slice(2);
+    }
+    const res = await fetch('/v1/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: `anon-${seed.slice(0,8)}@playground.kolm.ai`, name: `playground-${seed.slice(0,6)}` }),
-    }).then(r => r.ok ? r.json() : Promise.reject(r));
-    setApiKey(r.api_key);
-    return r.api_key;
+      credentials: 'include',
+      body: JSON.stringify({
+        email: `anon-${seed.slice(0, 8)}@playground.kolm.ai`,
+        name: `playground-${seed.slice(0, 6)}`,
+      }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.api_key) {
+      throw new Error(body.error || 'signup failed');
+    }
+    setApiKey(body.api_key);
+    return body.api_key;
   }
 
-  // Drop-in replacement: returns a promise (callers should await), but
-  // synchronously returns the key if already present.
   async function ensureKey() {
     return apiKey() || await autoMint();
   }
 
-  function fmtJSON(v) { return JSON.stringify(v, null, 2); }
-  function el(tag, attrs = {}, kids = []) {
-    const e = document.createElement(tag);
-    for (const [k, v] of Object.entries(attrs)) {
-      if (k === 'class') e.className = v;
-      else if (k === 'html') e.innerHTML = v;
-      else if (k.startsWith('on')) e[k] = v;
-      else e.setAttribute(k, v);
-    }
-    for (const kid of kids) e.append(kid?.nodeType ? kid : document.createTextNode(String(kid)));
-    return e;
+  function fmtJSON(value) {
+    return JSON.stringify(value, null, 2);
   }
 
-  // Render a discreet banner showing the key is auto-minted. User can rotate or paste their own.
+  function escapeHTML(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[c]));
+  }
+
+  function el(tag, attrs = {}, kids = []) {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (key === 'class') node.className = value;
+      else if (key === 'html') node.innerHTML = value;
+      else if (key.startsWith('on') && typeof value === 'function') node[key] = value;
+      else if (value !== false && value != null) node.setAttribute(key, value);
+    }
+    for (const kid of kids) {
+      node.append(kid && kid.nodeType ? kid : document.createTextNode(String(kid)));
+    }
+    return node;
+  }
+
   async function showKeyBanner(rootSelector = 'main.main') {
     const root = document.querySelector(rootSelector);
     if (!root || document.getElementById('ks-key-banner')) return;
-    const k = await ensureKey();
+    const key = await ensureKey();
     const banner = document.createElement('div');
     banner.id = 'ks-key-banner';
     banner.className = 'card';
     banner.style.cssText = 'margin-bottom:18px;padding:10px 14px;display:flex;align-items:center;gap:12px;font-size:12.5px;';
-    const _esc = (window.KSesc && window.KSesc.esc) || (s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
-    banner.innerHTML = `<span class="pill good">DEMO KEY</span><span class="mono faint" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_esc(k)}">${_esc(k)}</span><a href="/signup" style="color:var(--accent);text-decoration:none;">Get your own →</a>`;
+    banner.innerHTML = `
+      <span class="pill good">DEMO KEY</span>
+      <span class="mono faint" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHTML(key)}">${escapeHTML(key)}</span>
+      <a href="/signup" style="color:var(--accent);text-decoration:none;">Get your own</a>
+    `;
     root.insertBefore(banner, root.firstChild);
   }
 
-  return { api, toast, ensureKey, apiKey, setApiKey, autoMint, showKeyBanner, fmtJSON, el };
+  return {
+    api,
+    toast,
+    ensureKey,
+    apiKey,
+    setApiKey,
+    clearApiKey,
+    autoMint,
+    showKeyBanner,
+    fmtJSON,
+    el,
+  };
 })();

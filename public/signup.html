@@ -3,411 +3,183 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Sign in · kolm</title>
-<meta name="description" content="Sign in to kolm with your API key, or create a free account in 10 seconds. No password.">
-<meta name="theme-color" content="#0a0a0a">
+<title>Sign in - kolm</title>
+<meta name="description" content="Sign in to kolm with an API key or create a free account.">
+<meta name="theme-color" content="#0b0d10">
 <meta name="color-scheme" content="dark">
 <link rel="canonical" href="https://kolm.ai/signin">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-
-<style>
-  :root {
-    --bg: #0a0a0a;
-    --bg-elev: #0f0f12;
-    --bg-card: #13141a;
-    --line: rgba(255,255,255,0.06);
-    --line-strong: rgba(255,255,255,0.12);
-    --ink: #ededed;
-    --ink-mute: #9a9da8;
-    --ink-faint: #5a5c66;
-    --accent: #7c8cff;
-    --accent-soft: rgba(124,140,255,0.10);
-    --accent-strong: #93a1ff;
-    --good: #7ce3b6;
-    --bad: #ff7a98;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    background: var(--bg); color: var(--ink); font-family: var(--sans);
-    font-size: 16px; line-height: 1.55; letter-spacing: -0.011em;
-    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility; font-synthesis: none;
-    min-height: 100vh; display: flex; flex-direction: column;
-  }
-  a { color: inherit; text-decoration: none; }
-  ::selection { background: rgba(124,140,255,0.30); color: var(--ink); }
-
-  header.site {
-    position: sticky; top: 0; z-index: 60;
-    background: rgba(10,10,10,0.78);
-    backdrop-filter: saturate(160%) blur(14px);
-    -webkit-backdrop-filter: saturate(160%) blur(14px);
-    border-bottom: 1px solid var(--line);
-  }
-  header.site .row {
-    max-width: 1180px; margin: 0 auto; padding: 0 32px;
-    display: flex; align-items: center; justify-content: space-between;
-    height: 60px;
-  }
-  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
-  header.site .brand svg { height: 18px; width: 18px; color: var(--ink); }
-  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
-  header.site .right a { color: var(--ink-mute); font-size: 13.5px; }
-  header.site .right a:hover { color: var(--ink); }
-  @media (max-width: 720px) { header.site .row { padding: 0 20px; } }
-
-  main {
-    flex: 1; display: flex; align-items: center; justify-content: center;
-    padding: 56px 24px;
-    background:
-      radial-gradient(ellipse 800px 480px at 50% 0%, rgba(124,140,255,0.06), transparent 60%);
-  }
-  .card {
-    width: 100%; max-width: 420px;
-    background: var(--bg-elev);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 36px 32px 28px;
-  }
-  .card .header { margin-bottom: 26px; }
-  .card h1 {
-    font-family: var(--sans); font-weight: 540; letter-spacing: -0.028em;
-    font-size: 26px; line-height: 1.15; margin: 0 0 6px;
-  }
-  .card .lede { color: var(--ink-mute); font-size: 14px; margin: 0; }
-
-  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 3px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 6px; margin-bottom: 24px; }
-  .tabs button {
-    appearance: none; background: transparent; border: 0; cursor: pointer;
-    color: var(--ink-mute); font-family: var(--sans); font-size: 13px; font-weight: 500;
-    padding: 7px 8px; border-radius: 4px; transition: background 120ms, color 120ms;
-    letter-spacing: -0.01em;
-  }
-  .tabs button.active { background: rgba(124,140,255,0.10); color: var(--ink); }
-  .tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-  label {
-    display: block; font-family: var(--mono); font-size: 10px;
-    color: var(--ink-faint); letter-spacing: 0.16em;
-    text-transform: uppercase; margin: 0 0 7px; font-weight: 500;
-  }
-  input[type=email], input[type=text] {
-    width: 100%; display: block; padding: 11px 13px;
-    background: var(--bg); border: 1px solid var(--line-strong); border-radius: 6px;
-    color: var(--ink); font-family: var(--mono); font-size: 13.5px;
-    outline: 0; transition: border-color 120ms, box-shadow 120ms;
-    margin: 0 0 16px;
-  }
-  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,140,255,0.15); }
-  input::placeholder { color: var(--ink-faint); }
-
-  .btn {
-    appearance: none; cursor: pointer; font-family: var(--sans);
-    width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 11px 14px; border-radius: 6px; font-size: 14px; font-weight: 540;
-    letter-spacing: -0.01em; line-height: 1; border: 1px solid transparent;
-    transition: background 120ms, border-color 120ms, color 120ms;
-  }
-  .btn-primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-  .btn-primary:hover { background: #fff; }
-  .btn-primary[disabled] { opacity: 0.5; cursor: wait; }
-  .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line-strong); }
-  .btn-ghost:hover { border-color: var(--ink); background: rgba(255,255,255,0.03); }
-  .btn-oauth { background: transparent; color: var(--ink); border-color: var(--line-strong); margin-bottom: 8px; }
-  .btn-oauth:hover { border-color: var(--ink); background: rgba(255,255,255,0.03); }
-  .btn-oauth svg { width: 14px; height: 14px; }
-
-  .divider {
-    display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center;
-    margin: 18px 0 18px;
-    color: var(--ink-faint); font-family: var(--mono); font-size: 10.5px;
-    letter-spacing: 0.18em; text-transform: uppercase;
-  }
-  .divider::before, .divider::after { content: ""; height: 1px; background: var(--line); }
-
-  .msg {
-    padding: 11px 13px; border-radius: 6px; font-size: 13px; margin: 0 0 14px;
-    display: none; line-height: 1.5;
-  }
-  .msg.ok { background: rgba(124,227,182,0.06); border: 1px solid rgba(124,227,182,0.25); color: var(--good); display: block; }
-  .msg.err { background: rgba(255,122,152,0.06); border: 1px solid rgba(255,122,152,0.25); color: var(--bad); display: block; }
-  .msg.info { background: rgba(124,140,255,0.06); border: 1px solid rgba(124,140,255,0.25); color: var(--accent-strong); display: block; }
-
-  .meta {
-    margin-top: 14px; font-size: 12.5px; color: var(--ink-mute);
-    text-align: center;
-  }
-  .meta a { color: var(--accent-strong); }
-  .meta a:hover { color: var(--ink); }
-
-  .key-display {
-    display: none; margin-top: 18px; padding: 14px;
-    background: var(--bg); border: 1px solid var(--accent-soft); border-radius: 6px;
-  }
-  .key-display.active { display: block; }
-  .key-display .lbl {
-    font-family: var(--mono); font-size: 10px; color: var(--ink-faint);
-    letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 8px;
-  }
-  .key-display .key {
-    font-family: var(--mono); font-size: 12px; color: var(--ink);
-    word-break: break-all; padding: 9px 11px; background: rgba(124,140,255,0.06);
-    border: 1px solid var(--line); border-radius: 4px;
-    user-select: all;
-  }
-  .key-display .warn {
-    margin-top: 10px; color: var(--ink-mute); font-size: 12px; line-height: 1.55;
-  }
-  .key-display .warn strong { color: var(--ink); font-weight: 500; }
-  .key-display .copy {
-    margin-top: 10px; font-family: var(--mono); font-size: 11px; color: var(--accent-strong);
-    cursor: pointer; background: transparent; border: 0; padding: 0;
-  }
-  .key-display .copy:hover { color: var(--ink); }
-
-  footer {
-    border-top: 1px solid var(--line); padding: 24px 32px;
-    color: var(--ink-faint); font-size: 12px;
-    text-align: center;
-  }
-  footer a { color: var(--ink-mute); }
-  footer a:hover { color: var(--ink); }
-
-  .hint {
-    margin-top: 16px; padding: 12px 14px;
-    border: 1px dashed var(--line-strong); border-radius: 6px;
-    color: var(--ink-mute); font-size: 12.5px; line-height: 1.55;
-  }
-  .hint strong { color: var(--ink); font-weight: 500; }
-  .hint code { font-family: var(--mono); font-size: 11.5px; color: var(--accent-strong); background: rgba(124,140,255,0.06); padding: 1px 5px; border-radius: 3px; }
-</style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-
-<header class="site">
-  <div class="row">
-    <a class="brand" href="/" aria-label="kolm home">
-      <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
-      <span>kolm</span>
-    </a>
-    <div class="right">
-      <a href="/">&larr; Home</a>
-    </div>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><img src="/logo-mark.svg" alt="" class="brand-mark">kolm</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/compile">compile</a>
+      <a href="/run">run</a>
+      <a href="/benchmarks">benchmarks</a>
+      <a href="/compare">compare</a>
+      <a href="/pricing">pricing</a>
+      <a href="/docs">docs</a>
+    </nav>
+    <div class="site-actions"><a href="/">home</a></div>
   </div>
 </header>
 
-<main>
-  <div class="card">
-    <div class="header">
-      <h1 id="hd-title">Sign in to kolm.</h1>
-      <p class="lede" id="hd-sub">Paste your API key. No password — kolm doesn't have one.</p>
+<main class="auth-main">
+  <section class="auth-card" aria-labelledby="auth-title">
+    <div class="eyebrow"><span class="pulse"></span>account</div>
+    <h1 id="auth-title">Sign in to kolm.</h1>
+    <p class="lede" id="auth-sub">Paste your API key. kolm does not use passwords yet.</p>
+
+    <div class="auth-tabs" role="tablist" aria-label="Account mode">
+      <button id="tab-in" class="active" type="button" role="tab" aria-selected="true">Sign in</button>
+      <button id="tab-up" type="button" role="tab" aria-selected="false">Create account</button>
     </div>
 
-    <div class="tabs" role="tablist">
-      <button id="tab-in" class="active" role="tab" aria-selected="true" type="button">Sign in</button>
-      <button id="tab-up" role="tab" aria-selected="false" type="button">Create account</button>
-    </div>
-
-    <div id="msg" class="msg" role="alert"></div>
-
-    <button class="btn btn-oauth" id="oauth-google" type="button">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.35 11.1H12v3.2h5.35a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4 0-.5 0-.9-.1-1.3z"/><path fill="currentColor" opacity=".75" d="M12 22c2.7 0 5-1 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.7-5.6-4.1H3v2.6A10 10 0 0 0 12 22z"/><path fill="currentColor" opacity=".5" d="M6.4 13.9a6 6 0 0 1 0-3.8V7.5H3a10 10 0 0 0 0 9z"/><path fill="currentColor" opacity=".75" d="M12 6c1.5 0 2.8.5 3.8 1.5L18.7 4.6A10 10 0 0 0 3 7.5L6.4 10a6 6 0 0 1 5.6-4z"/></svg>
-      Continue with Google
-    </button>
-    <button class="btn btn-oauth" id="oauth-github" type="button">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .5C5.7.5.5 5.7.5 12a11.5 11.5 0 0 0 7.9 11c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.7.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6a11.5 11.5 0 0 0 7.9-11C23.5 5.7 18.3.5 12 .5z"/></svg>
-      Continue with GitHub
-    </button>
-
-    <div class="divider"><span>or</span></div>
+    <div id="msg" class="auth-msg" role="status" aria-live="polite"></div>
 
     <form id="form-in" autocomplete="on" novalidate>
-      <label for="api_key">API key</label>
-      <input id="api_key" name="api_key" type="text" autocomplete="off" required placeholder="ks_…" spellcheck="false">
-
-      <button id="submit-in" class="btn btn-primary" type="submit">Sign in &rsaquo;</button>
-
-      <div class="meta">
-        Lost it? <a href="/atlas">Browse public registry</a> · <a href="mailto:dev@kolm.ai">Email recovery</a>
-      </div>
+      <label class="field">
+        <span class="lbl">API key</span>
+        <input id="api_key" name="api_key" type="text" autocomplete="off" required placeholder="ks_..." spellcheck="false">
+      </label>
+      <button id="submit-in" class="btn primary" type="submit">Sign in</button>
+      <p class="auth-note">Only API-key sign-in is shown until OAuth is wired end to end.</p>
     </form>
 
-    <form id="form-up" autocomplete="on" novalidate style="display:none">
-      <label for="email">Email</label>
-      <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
-
-      <label for="name">Name <span style="color:var(--ink-faint);text-transform:none;letter-spacing:0">(optional)</span></label>
-      <input id="name" name="name" type="text" autocomplete="name" placeholder="Rodney">
-
-      <button id="submit-up" class="btn btn-primary" type="submit">Create account &rsaquo;</button>
-
-      <div class="meta">
-        By signing up you accept the <a href="/security">terms</a>. No credit card.
-      </div>
+    <form id="form-up" autocomplete="on" novalidate hidden>
+      <label class="field">
+        <span class="lbl">Email</span>
+        <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
+      </label>
+      <label class="field">
+        <span class="lbl">Name optional</span>
+        <input id="name" name="name" type="text" autocomplete="name" placeholder="Your name">
+      </label>
+      <button id="submit-up" class="btn primary" type="submit">Create account</button>
+      <p class="auth-note">The API returns a one-time key. Save it before leaving this page.</p>
     </form>
 
-    <div id="key-display" class="key-display" role="region" aria-label="Your API key">
+    <div id="key-display" class="key-display" hidden>
       <div class="lbl">Your API key</div>
       <div class="key" id="key-value"></div>
-      <button class="copy" id="copy-key" type="button">Copy to clipboard</button>
-      <div class="warn"><strong>Save this key.</strong> kolm shows it once. You can rotate it anytime from your dashboard.</div>
+      <div class="actions">
+        <button class="btn ghost" id="copy-key" type="button">Copy key</button>
+        <a class="btn accent" href="/dashboard">Go to dashboard</a>
+      </div>
+      <p><strong>Save this key.</strong> It is shown once. You can rotate it from your dashboard.</p>
     </div>
-
-    <div class="hint" id="hint">
-      <strong>kolm is BYO key.</strong> Your account is what kolm bills against;
-      your <code>ANTHROPIC_API_KEY</code> stays on your machine and pays the model bill directly.
-    </div>
-  </div>
+  </section>
 </main>
 
-<footer>
-  &copy; 2026 Kolmogorov · <a href="/security">Security</a> · <a href="/docs">Docs</a> · <a href="/pricing">Pricing</a>
+<footer class="site-footer auth-footer">
+  <div class="wrap">
+    <div class="meta">kolm account / <a href="/security">security</a> / <a href="/docs">docs</a></div>
+  </div>
 </footer>
 
 <script>
 (function(){
-  var tabIn = document.getElementById('tab-in');
-  var tabUp = document.getElementById('tab-up');
-  var title = document.getElementById('hd-title');
-  var sub = document.getElementById('hd-sub');
-  var formIn = document.getElementById('form-in');
-  var formUp = document.getElementById('form-up');
-  var msg = document.getElementById('msg');
-  var keyBox = document.getElementById('key-display');
-  var keyVal = document.getElementById('key-value');
-  var copyBtn = document.getElementById('copy-key');
-  var hint = document.getElementById('hint');
-  var btnG = document.getElementById('oauth-google');
-  var btnH = document.getElementById('oauth-github');
-  var subIn = document.getElementById('submit-in');
-  var subUp = document.getElementById('submit-up');
-
-  function setMode(m){
-    var inMode = m === 'in';
-    tabIn.classList.toggle('active', inMode);
-    tabUp.classList.toggle('active', !inMode);
-    tabIn.setAttribute('aria-selected', inMode);
-    tabUp.setAttribute('aria-selected', !inMode);
-    formIn.style.display = inMode ? '' : 'none';
-    formUp.style.display = inMode ? 'none' : '';
-    title.textContent = inMode ? 'Sign in to kolm.' : 'Create your kolm account.';
-    sub.textContent = inMode
-      ? 'Paste your API key. No password — kolm doesn’t have one.'
-      : 'Free tier. No credit card. We email you a key, you save it.';
-    keyBox.classList.remove('active');
-    msg.className = 'msg';
+  var KEY_NAMES = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
+  function $(id){ return document.getElementById(id); }
+  function saveKey(key){
+    try { KEY_NAMES.forEach(function(name){ localStorage.setItem(name, key); }); } catch (_) {}
   }
-  tabIn.onclick = function(){ setMode('in'); };
-  tabUp.onclick = function(){ setMode('up'); };
-  if (location.hash === '#up' || location.search.indexOf('plan=') !== -1) setMode('up');
+  function show(kind, text){
+    var el = $('msg');
+    el.className = 'auth-msg ' + kind;
+    el.textContent = text;
+  }
+  function mode(next){
+    var signin = next === 'in';
+    $('tab-in').classList.toggle('active', signin);
+    $('tab-up').classList.toggle('active', !signin);
+    $('tab-in').setAttribute('aria-selected', signin ? 'true' : 'false');
+    $('tab-up').setAttribute('aria-selected', signin ? 'false' : 'true');
+    $('form-in').hidden = !signin;
+    $('form-up').hidden = signin;
+    $('key-display').hidden = true;
+    $('auth-title').textContent = signin ? 'Sign in to kolm.' : 'Create your kolm account.';
+    $('auth-sub').textContent = signin
+      ? 'Paste your API key. kolm does not use passwords yet.'
+      : 'Create an account and save the one-time API key.';
+    $('msg').className = 'auth-msg';
+    $('msg').textContent = '';
+  }
+  $('tab-in').addEventListener('click', function(){ mode('in'); });
+  $('tab-up').addEventListener('click', function(){ mode('up'); });
+  if (location.hash === '#up' || location.search.indexOf('plan=') !== -1) mode('up');
 
-  function show(kind, text){ msg.className = 'msg ' + kind; msg.textContent = text; }
-
-  formIn.addEventListener('submit', function(e){
-    e.preventDefault();
-    var apiKey = document.getElementById('api_key').value.trim();
-    if (!apiKey) return show('err', 'Paste your API key.');
-    subIn.setAttribute('disabled', 'disabled');
-    show('info', 'Signing you in…');
+  $('form-in').addEventListener('submit', function(event){
+    event.preventDefault();
+    var key = $('api_key').value.trim();
+    if (!/^ks_[0-9a-f]{32}$/.test(key)) return show('err', 'Enter a valid ks_ API key.');
+    $('submit-in').disabled = true;
+    show('info', 'Signing in...');
     fetch('/v1/signin', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ api_key: apiKey })
-    }).then(function(r){
-      return r.json().catch(function(){ return {}; }).then(function(j){ return { ok: r.ok, body: j, status: r.status }; });
+      body: JSON.stringify({ api_key: key })
     }).then(function(res){
-      subIn.removeAttribute('disabled');
-      if (res.ok) {
-        try { localStorage.setItem('kolm_api_key', apiKey); } catch(_) {}
-        show('ok', 'Signed in. Redirecting…');
-        setTimeout(function(){ location.href = '/dashboard'; }, 600);
-      } else {
-        var hintTxt = (res.body && res.body.error) || (res.status === 401 ? 'That key isn’t recognized.' : 'Sign-in failed.');
-        show('err', hintTxt);
-      }
+      return res.json().catch(function(){ return {}; }).then(function(body){ return { ok: res.ok, status: res.status, body: body }; });
+    }).then(function(result){
+      $('submit-in').disabled = false;
+      if (!result.ok) return show('err', result.body.error || 'Sign-in failed.');
+      saveKey(key);
+      show('ok', 'Signed in. Redirecting...');
+      setTimeout(function(){ location.href = '/dashboard'; }, 400);
     }).catch(function(){
-      subIn.removeAttribute('disabled');
+      $('submit-in').disabled = false;
       show('err', 'Network error. Try again.');
     });
   });
 
-  formUp.addEventListener('submit', function(e){
-    e.preventDefault();
-    var email = document.getElementById('email').value.trim();
-    var name = document.getElementById('name').value.trim();
+  $('form-up').addEventListener('submit', function(event){
+    event.preventDefault();
+    var email = $('email').value.trim();
+    var name = $('name').value.trim();
     if (!/.+@.+\..+/.test(email)) return show('err', 'Enter a valid email.');
-    subUp.setAttribute('disabled', 'disabled');
-    show('info', 'Creating your account…');
+    $('submit-up').disabled = true;
+    show('info', 'Creating account...');
     fetch('/v1/signup', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ email: email, name: name || undefined })
-    }).then(function(r){
-      return r.json().catch(function(){ return {}; }).then(function(j){ return { ok: r.ok, body: j, status: r.status }; });
     }).then(function(res){
-      subUp.removeAttribute('disabled');
-      if (res.ok && res.body && res.body.api_key) {
-        var apiKey = res.body.api_key;
-        try { localStorage.setItem('kolm_api_key', apiKey); } catch(_) {}
-        keyVal.textContent = apiKey;
-        keyBox.classList.add('active');
-        hint.style.display = 'none';
-        show('ok', 'Account created. Save your key, then continue.');
-        // Auto-set session cookie too
-        fetch('/v1/signin', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ api_key: apiKey })
-        }).catch(function(){});
-        // Replace submit row with a "Go to dashboard" button.
-        subUp.textContent = 'Go to dashboard ›';
-        subUp.onclick = function(e){ e.preventDefault(); location.href = '/dashboard'; };
-      } else {
-        var hintTxt = (res.body && res.body.error) || (res.status === 429 ? 'Too many signups from this IP — wait, then try again.' : 'Sign-up failed.');
-        show('err', hintTxt);
-      }
+      return res.json().catch(function(){ return {}; }).then(function(body){ return { ok: res.ok, status: res.status, body: body }; });
+    }).then(function(result){
+      $('submit-up').disabled = false;
+      if (!result.ok || !result.body.api_key) return show('err', result.body.error || 'Account creation failed.');
+      var key = result.body.api_key;
+      saveKey(key);
+      $('key-value').textContent = key;
+      $('key-display').hidden = false;
+      show('ok', 'Account created. Save your key.');
+      fetch('/v1/signin', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ api_key: key })
+      }).catch(function(){});
     }).catch(function(){
-      subUp.removeAttribute('disabled');
+      $('submit-up').disabled = false;
       show('err', 'Network error. Try again.');
     });
   });
 
-  copyBtn.addEventListener('click', function(){
-    var k = keyVal.textContent;
-    if (!k) return;
-    try {
-      navigator.clipboard.writeText(k).then(function(){
-        copyBtn.textContent = 'Copied';
-        setTimeout(function(){ copyBtn.textContent = 'Copy to clipboard'; }, 1200);
-      });
-    } catch(_) {}
+  $('copy-key').addEventListener('click', function(){
+    var key = $('key-value').textContent;
+    if (!key) return;
+    navigator.clipboard.writeText(key).then(function(){
+      $('copy-key').textContent = 'Copied';
+      setTimeout(function(){ $('copy-key').textContent = 'Copy key'; }, 1200);
+    }).catch(function(){ show('err', 'Copy failed. Select the key manually.'); });
   });
-
-  // OAuth scaffolding — backend isn't wired yet; surface honestly.
-  function oauthAttempt(provider) {
-    show('info', 'Checking ' + provider + '…');
-    fetch('/v1/oauth/' + provider + '/start', { credentials: 'include' })
-      .then(function(r){
-        if (r.ok) { return r.json().then(function(j){ if (j && j.url) location.href = j.url; }); }
-        if (r.status === 404 || r.status === 501) {
-          show('info', provider.charAt(0).toUpperCase() + provider.slice(1) + ' sign-in is rolling out next week. Use API key for now.');
-        } else { show('err', 'Couldn’t reach ' + provider + '. Use API key for now.'); }
-      })
-      .catch(function(){ show('info', provider.charAt(0).toUpperCase() + provider.slice(1) + ' sign-in is rolling out next week. Use API key for now.'); });
-  }
-  btnG.addEventListener('click', function(){ oauthAttempt('google'); });
-  btnH.addEventListener('click', function(){ oauthAttempt('github'); });
 })();
 </script>
-
 </body>
 </html>

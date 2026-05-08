@@ -3,288 +3,158 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Quickstart · kolm</title>
-<meta name="description" content="Hello World for on-device AI in five minutes. Install, compile, run, serve. From zero to a signed local artifact answering your questions.">
-<meta name="theme-color" content="#0a0a0a">
-<meta name="color-scheme" content="dark">
-<meta property="og:title" content="kolm · quickstart in 5 minutes">
-<meta property="og:description" content="Install, compile, run. Hello World for on-device AI.">
-<meta property="og:type" content="article">
-<meta property="og:url" content="https://kolm.ai/quickstart">
-<meta property="og:image" content="https://kolm.ai/img/brand-og.png">
+<title>kolm quickstart - compile your first private AI artifact</title>
+<meta name="description" content="Install the kolm CLI, authenticate, compile a task with examples, run the signed .kolm artifact locally, and verify its receipt.">
+<meta name="theme-color" content="#050607">
 <link rel="canonical" href="https://kolm.ai/quickstart">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<style>
-  :root {
-    --bg: #0a0a0a; --bg-elev: #0f0f12; --bg-card: #13141a;
-    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
-    --ink: #ededed; --ink-mute: #9a9da8; --ink-faint: #5a5c66;
-    --accent: #7c8cff; --accent-soft: rgba(124,140,255,0.10); --accent-strong: #93a1ff;
-    --good: #7ce3b6; --bad: #ff7a98;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-  a { color: inherit; text-decoration: none; }
-  .wrap { max-width: 920px; margin: 0 auto; padding: 0 32px; }
-  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
-  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
-
-  header.site { position: sticky; top: 0; z-index: 60; background: rgba(10,10,10,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
-  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
-  header.site .left { display: flex; align-items: center; gap: 36px; }
-  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
-  header.site .brand svg { height: 18px; width: 18px; }
-  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
-  header.site nav { display: flex; gap: 22px; }
-  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
-  header.site nav a:hover { color: var(--ink); }
-  header.site .right { display: flex; align-items: center; gap: 14px; }
-  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
-  header.site .right .ghost:hover { color: var(--ink); }
-  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
-  header.site .right .cta:hover { background: #fff; }
-  @media (max-width: 720px) { header.site nav { display: none; } }
-
-  section.hero { padding: 88px 0 32px; }
-  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
-  h1 { margin: 24px 0 16px; font-size: clamp(36px, 5vw, 56px); line-height: 1.05; font-weight: 500; letter-spacing: -0.028em; }
-  h1 .tone { color: var(--accent); }
-  p.lede { margin: 0 0 0; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
-  p.lede b { color: var(--ink); font-weight: 540; }
-  p.lede code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
-
-  article { padding: 56px 0 80px; }
-  .step { margin: 0 0 40px; padding: 0 0 36px; border-bottom: 1px solid var(--line); }
-  .step:last-of-type { border-bottom: none; }
-  .step .n { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; }
-  .step h2 { margin: 0 0 12px; font-size: 24px; font-weight: 540; letter-spacing: -0.018em; color: var(--ink); }
-  .step h2 .tone { color: var(--accent); }
-  .step p { margin: 0 0 16px; font-size: 15px; line-height: 1.65; color: var(--ink-mute); }
-  .step p b { color: var(--ink); font-weight: 540; }
-  .step p code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
-  .step a { color: var(--accent); }
-  .step a:hover { color: var(--accent-strong); }
-
-  pre.shell { background: #050507; border: 1px solid var(--line); border-radius: 8px; padding: 18px 22px; margin: 16px 0; overflow-x: auto; font-family: var(--mono); font-size: 13.5px; line-height: 1.7; color: var(--ink); }
-  pre.shell .com { color: var(--ink-faint); }
-  pre.shell .pr { color: var(--accent); }
-  pre.shell .ok { color: var(--good); }
-  pre.shell .ar { color: var(--ink); }
-
-  .out { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; margin: 12px 0 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.6; color: var(--ink-mute); white-space: pre-wrap; word-break: break-word; }
-  .out .ok { color: var(--good); }
-  .out .acc { color: var(--accent); }
-
-  .gotcha { margin: 16px 0 0; padding: 14px 18px; background: rgba(124,140,255,0.04); border-left: 2px solid var(--accent); border-radius: 0 6px 6px 0; }
-  .gotcha .lab { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); margin: 0 0 4px; }
-  .gotcha p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-mute); }
-  .gotcha p b { color: var(--ink); font-weight: 540; }
-
-  .next { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 32px 0 0; }
-  @media (max-width: 720px) { .next { grid-template-columns: 1fr; } }
-  .next a { display: flex; flex-direction: column; gap: 4px; padding: 18px 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; }
-  .next a:hover { border-color: var(--line-strong); background: var(--bg-card); }
-  .next a .lab { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
-  .next a .v { color: var(--ink); font-weight: 540; font-size: 16px; letter-spacing: -0.012em; }
-  .next a .v .arrow { color: var(--accent); margin-left: 6px; }
-  .next a p { margin: 4px 0 0; font-size: 13px; color: var(--ink-mute); line-height: 1.5; }
-
-  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-faint); }
-  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-</style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 
-<header class="site">
-  <div class="wrap-wide row">
-    <div class="left">
-      <a href="/" class="brand" aria-label="kolm">
-        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
-        <span>kolm</span>
-      </a>
-      <nav>
-        <a href="/compile">Compile</a>
-        <a href="/serve">Serve</a>
-        <a href="/anatomy">.kolm</a>
-        <a href="/k-score">K-score</a>
-        <a href="/docs">Docs</a>
-        <a href="/pricing">Pricing</a>
-      </nav>
-    </div>
-    <div class="right">
-      <a href="/signin" class="ghost">Sign in</a>
-      <a href="/signup" class="cta">Get kolm</a>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><img src="/logo-mark.svg" alt="" class="brand-mark">kolm</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/compile">compile</a>
+      <a href="/run">run</a>
+      <a href="/recall">recall</a>
+      <a href="/serve">serve</a>
+      <a href="/benchmarks">benchmarks</a>
+      <a href="/compare">compare</a>
+      <a href="/pricing">pricing</a>
+      <a href="/docs">docs</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/signin">sign in</a>
+      <a href="/signup" class="cta">get a key</a>
     </div>
   </div>
 </header>
 
-<section class="hero">
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="pulse"></span>quickstart</div>
+        <h1>Compile your first signed artifact.</h1>
+        <p class="lede">This path matches the v0 CLI that ships in the repo: install from GitHub, point the CLI at <code>https://kolm.ai</code>, log in with a <code>ks_...</code> key, compile a task, run it locally, and inspect the receipt.</p>
+        <div class="actions">
+          <a href="/signup" class="btn primary">get a key</a>
+          <a href="/docs" class="btn ghost">full docs</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="steps">
+        <div class="step">
+          <div class="num">01</div>
+          <h4>Install the CLI.</h4>
+          <p>Use the GitHub npm install path until public package-manager releases are published.</p>
+          <pre class="demo">npm i -g github:sneaky-hippo/kolmogorov-stack
+kolm version</pre>
+        </div>
+        <div class="step">
+          <div class="num">02</div>
+          <h4>Configure cloud auth.</h4>
+          <p>The CLI stores your kolm API key in <code>~/.kolm/config.json</code>. Environment variables still override local config.</p>
+          <pre class="demo">kolm config base https://kolm.ai
+kolm login
+# paste your ks_... API key</pre>
+        </div>
+        <div class="step">
+          <div class="num">03</div>
+          <h4>Create examples.</h4>
+          <p>Use newline-delimited JSON. Keep examples small, explicit, and representative of the task you want to ship.</p>
+          <pre class="demo">{"input":"customer cannot log in after update","output":"bug"}
+{"input":"please add invoice export","output":"feature"}
+{"input":"where do I reset MFA-","output":"support"}</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">04</span>compile</div>
+      <h2>Turn the task into a <span class="tone">.kolm</span>.</h2>
+      <p class="sec-lede">The v0 compiler posts the task and examples to the configured cloud, downloads the completed artifact, and stores it in <code>~/.kolm/artifacts</code> unless you pass <code>--out</code>.</p>
+
+<pre class="terminal"><span class="prompt">$</span> kolm compile "classify support tickets" \
+  --examples ./support.examples.jsonl \
+  --data ./support-policy \
+  --base-model qwen2.5-coder-7b-instruct-q4_0 \
+  --out ./artifacts
+
+<span class="dim">POST /v1/compile</span>
+<span class="ok">ok</span> wrote ./artifacts/support-tickets.kolm
+<span class="ok">ok</span> K-score printed by the CLI</pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">05</span>run and verify</div>
+      <h2>Run locally. Keep the receipt.</h2>
+      <p class="sec-lede">A signed artifact can be run by the CLI and inspected later. The receipt proves which artifact, input, output, and verifier result were used.</p>
+
+<pre class="terminal"><span class="prompt">$</span> kolm run ./artifacts/support-tickets.kolm '{"input":"checkout fails on Android"}'
+{
+  "output": "bug",
+  "latency_us": 82000,
+  "k_score": { "composite": 0.92 },
+  "receipt": { "verifier": "pass" }
+}
+
+<span class="prompt">$</span> kolm inspect ./artifacts/support-tickets.kolm
+<span class="prompt">$</span> kolm eval ./artifacts/support-tickets.kolm
+<span class="prompt">$</span> kolm score ./artifacts/support-tickets.kolm</pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">06</span>serve</div>
+      <h2>Expose artifacts to agent tools.</h2>
+      <p class="sec-lede">Use <code>kolm serve --mcp</code> when your local agent stack should discover the artifact as a callable tool.</p>
+
+<pre class="terminal"><span class="prompt">$</span> kolm serve --mcp --http --port 11455
+<span class="ok">ok</span> serving ~/.kolm/artifacts as local tools</pre>
+
+      <div class="bottom-cta">
+        <h2>Next: understand the artifact.</h2>
+        <p class="lead">Read the anatomy page to see the manifest, recipe, recall, verifier, receipt, and signature layers.</p>
+        <div class="actions">
+          <a href="/anatomy" class="btn primary">artifact anatomy</a>
+          <a href="/k-score" class="btn ghost">K-score methodology</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
   <div class="wrap">
-    <span class="pill">Quickstart · ~5 minutes</span>
-    <h1>Hello, world. <span class="tone">On-device.</span></h1>
-    <p class="lede">From zero to a signed local artifact answering your questions, in five minutes. Bring a frontier model API key (Anthropic, OpenAI, Google) and a terminal. <b>No GPU required.</b> The compile runs in the cloud; the artifact runs on your laptop.</p>
-  </div>
-</section>
-
-<article>
-  <div class="wrap">
-
-    <div class="step">
-      <p class="n">01 · install</p>
-      <h2>Install the <span class="tone">kolm CLI.</span></h2>
-      <p>One line. macOS, Linux, Windows (WSL). The installer drops <code>kolm</code> on your <code>$PATH</code> and registers an embedded llama.cpp + sqlite-vec runtime.</p>
-      <pre class="shell"><span class="com"># macOS, Linux, Windows (WSL)</span>
-<span class="pr">$</span> curl -fsSL <span class="ar">kolm.ai/install.sh</span> | sh
-
-<span class="com"># or via npm / brew / pip</span>
-<span class="pr">$</span> npm i -g <span class="ar">@kolmogorov/kolm</span>
-<span class="pr">$</span> brew install <span class="ar">kolmogorov/tap/kolm</span>
-<span class="pr">$</span> pip install <span class="ar">kolm</span></pre>
-      <div class="gotcha">
-        <p class="lab">Gotcha</p>
-        <p>The installer needs <b>~480 MB</b> of disk for the embedded runtime + a 4B base model. The base downloads on first compile, not at install. <code>kolm doctor</code> verifies the install.</p>
+    <div class="meta"><img src="/logo-mark.svg" alt="" style="width:18px;height:18px;margin-right:8px;vertical-align:-4px;">kolm quickstart / <a href="/docs">docs</a> / <a href="https://github.com/sneaky-hippo/kolmogorov-stack">github</a></div>
+    <div class="links">
+      <div>
+        <div class="col-h">product</div>
+        <a href="/compile">compile</a>
+        <a href="/run">run</a>
+        <a href="/recall">recall</a>
+        <a href="/serve">serve</a>
+      </div>
+      <div>
+        <div class="col-h">proof</div>
+        <a href="/benchmarks">benchmarks</a>
+        <a href="/compare">compare</a>
+        <a href="/k-score">k-score</a>
+        <a href="/security">security</a>
       </div>
     </div>
-
-    <div class="step">
-      <p class="n">02 · authenticate</p>
-      <h2>Log in. <span class="tone">Bring your frontier key.</span></h2>
-      <p>kolm uses the frontier model API key you already pay for as the compile-time teacher. <code>kolm login</code> stores your kolm tenant credentials. <code>kolm key add</code> registers your teacher API key locally; the key never leaves your machine.</p>
-      <pre class="shell"><span class="pr">$</span> kolm login
-<span class="ok">✓</span> opened browser to https://kolm.ai/cli-login
-<span class="ok">✓</span> tenant: my-team · linked
-
-<span class="pr">$</span> kolm key add anthropic <span class="ar">$ANTHROPIC_API_KEY</span>
-<span class="ok">✓</span> stored locally · ~/.kolm/keys</pre>
-      <div class="gotcha">
-        <p class="lab">Privacy</p>
-        <p>The teacher API key stays on your machine. The compile pipeline runs the teacher prompts on your behalf via your key, in your tenant, against your billing. <b>kolm does not see or store your teacher tokens.</b></p>
-      </div>
-    </div>
-
-    <div class="step">
-      <p class="n">03 · write a task spec</p>
-      <h2>Describe what you want, in <span class="tone">plain language.</span></h2>
-      <p>A task spec is a small JSON or YAML file with three parts: a description, a few seed examples, and a held-out evaluation set. The compiler synthesizes a verifier from the examples; you don't write it by hand.</p>
-      <pre class="shell"><span class="pr">$</span> cat &gt; hello.kolm.task &lt;&lt; <span class="ar">EOF</span>
-<span class="ar">{
-  "name": "hello-world-summarizer",
-  "description": "Summarize an arbitrary block of text into one sentence under 20 words.",
-  "examples": [
-    { "input": "The quarterly meeting ran over by 40 minutes due to a heated debate about the new compensation framework.",
-      "output": "Quarterly meeting overran by 40 minutes over a compensation-framework debate." },
-    { "input": "Customer support flagged 14 tickets this week related to slow checkout on mobile, mostly Android.",
-      "output": "Support saw 14 mobile-checkout slowdown tickets this week, mostly on Android." }
-  ],
-  "evals": [
-    { "input": "Engineering shipped the new caching layer; latency dropped 28% across the read path.",
-      "expect_substring": "caching" }
-  ],
-  "target": "server-cpu",
-  "k_score_gate": 0.70
-}</span>
-EOF</pre>
-      <div class="gotcha">
-        <p class="lab">Tip</p>
-        <p>Three to ten examples is enough for the verifier synthesizer to find the structure. More than fifty rarely helps; fewer than three usually fails. <b>Quality over quantity.</b></p>
-      </div>
-    </div>
-
-    <div class="step">
-      <p class="n">04 · compile</p>
-      <h2>Run <code style="font-family:var(--mono);font-size:0.86em">kolm compile</code>. <span class="tone">Watch the K-score.</span></h2>
-      <p>Compile runs the verifier synthesis, the k-sample teacher inference, the LoRA distillation, the recipe extraction, and the eval. Streams progress to the terminal. Roughly 8 minutes on the example above.</p>
-      <pre class="shell"><span class="pr">$</span> kolm compile hello.kolm.task --teacher anthropic --base qwen2.5-3b
-<span class="ok">✓</span> verifier synthesized · 12 acceptance rules
-<span class="ok">✓</span> k-sample teacher · n=128 · 100% verified
-<span class="ok">✓</span> lora distilled · 84 MB · loss 0.41
-<span class="ok">✓</span> recipes extracted · 247 deterministic patterns · coverage 92%
-<span class="ok">✓</span> eval · 50/50 passed
-<span class="ok">✓</span> K-score: <span class="ar">0.94</span> (size 1.0, accuracy 0.97, latency 0.96, cost 1.0, coverage 0.83)
-<span class="ok">✓</span> signed · hello-world-summarizer.kolm · 38 MB</pre>
-      <div class="gotcha">
-        <p class="lab">If K-score &lt; gate</p>
-        <p>The compile log tells you which sub-score failed. Run <code>kolm compile --explain</code> for the full eval trace. Most failures are example contradictions or task-spec ambiguity, not model capacity.</p>
-      </div>
-    </div>
-
-    <div class="step">
-      <p class="n">05 · run</p>
-      <h2>Use it locally. <span class="tone">Offline, no key, no quota.</span></h2>
-      <p>The artifact is a single signed file. <code>kolm run</code> loads the base + LoRA + recipes + recall index from the file and answers prompts. No network calls. No frontier bill.</p>
-      <pre class="shell"><span class="pr">$</span> kolm run hello-world-summarizer.kolm \
-    <span class="ar">"Marketing pushed the launch back to Q3 because the legal review on the new privacy policy is taking longer than planned."</span>
-
-<span class="ok">→</span> Launch slipped to Q3 due to a longer-than-planned legal review of the new privacy policy.
-<span class="com">  · 78 ms · K-score 0.94 · receipt verified</span></pre>
-      <div class="out"><span class="acc">artifact</span>     hello-world-summarizer.kolm
-<span class="acc">version</span>      0.1.0
-<span class="acc">base</span>         qwen2.5-3b@INT4
-<span class="acc">teacher</span>      claude-opus-4-7 (compile-time only)
-<span class="acc">size</span>         38 MB
-<span class="acc">K-score</span>      0.94
-<span class="acc">signature</span>    <span class="ok">✓ HMAC verified · chain anchored to public registry</span></div>
-    </div>
-
-    <div class="step">
-      <p class="n">06 · serve</p>
-      <h2>Make it discoverable to <span class="tone">your agent stack.</span></h2>
-      <p>Optional. <code>kolm serve --mcp</code> joins the local MCP bus, and Claude, Codex, Cursor, and Zed pick the artifact up by name. Matching agent calls hit the local artifact instead of the frontier.</p>
-      <pre class="shell"><span class="pr">$</span> kolm serve --mcp hello-world-summarizer.kolm
-<span class="ok">✓</span> MCP server up · stdio + http://127.0.0.1:11455
-<span class="ok">✓</span> registered as <span class="ar">"hello-world-summarizer"</span>
-<span class="ok">✓</span> discovered by: claude-code · cursor · zed</pre>
-    </div>
-
-    <div class="step">
-      <p class="n">07 · ship</p>
-      <h2>The artifact is yours. <span class="tone">Run it anywhere.</span></h2>
-      <p>The same <code>.kolm</code> file runs on a laptop, a phone, an MCP server, an edge box, or a browser via WASM. No re-compile per platform. Embed it in your iOS app via the kolm SDK, push it to your fleet via MDM, or hand it to a customer on a USB drive.</p>
-      <pre class="shell"><span class="com"># mobile bundle (iOS or Android)</span>
-<span class="pr">$</span> kolm bundle hello-world-summarizer.kolm <span class="ar">--target ios</span>
-<span class="ok">✓</span> ios framework · KolmRuntime.xcframework
-
-<span class="com"># web bundle (WASM)</span>
-<span class="pr">$</span> kolm bundle hello-world-summarizer.kolm <span class="ar">--target wasm</span>
-<span class="ok">✓</span> wasm bundle · 4.2 MB runtime + 38 MB artifact</pre>
-    </div>
-
-    <div class="next" style="margin-top: 56px;">
-      <a href="/anatomy">
-        <span class="lab">read</span>
-        <span class="v">What's inside a <code style="font-family:var(--mono);font-size:0.92em">.kolm</code> <span class="arrow">→</span></span>
-        <p>Seven layers, one signature chain, fully auditable.</p>
-      </a>
-      <a href="/k-score">
-        <span class="lab">measure</span>
-        <span class="v">How K-score is computed <span class="arrow">→</span></span>
-        <p>The five sub-scores and the harmonic mean that gates ship.</p>
-      </a>
-      <a href="/serve">
-        <span class="lab">integrate</span>
-        <span class="v">Serve over MCP <span class="arrow">→</span></span>
-        <p>How agent stacks discover and route to your artifact.</p>
-      </a>
-      <a href="/faq">
-        <span class="lab">questions</span>
-        <span class="v">FAQ <span class="arrow">→</span></span>
-        <p>Privacy, compliance, debugging, edge cases.</p>
-      </a>
-    </div>
-
-  </div>
-</article>
-
-<footer class="site">
-  <div class="wrap-wide row">
-    <span>kolmogorov · 2026 · quickstart</span>
-    <span><a href="mailto:dev@kolm.ai" style="color:var(--ink-faint);">dev@kolm.ai</a></span>
   </div>
 </footer>
 

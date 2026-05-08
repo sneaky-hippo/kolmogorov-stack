@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>The .kolm File Format: One Artifact, Seven Components, Signed · kolm</title>
+<title>The .kolm File Format: One Artifact, Seven Components, Signed - kolm</title>
 <meta name="description" content="A field-by-field walkthrough of the .kolm file format: base model, LoRA adapter, recipe pack, recall index, verifier, held-out tests, manifest, signature. The container behind portable AI artifacts.">
-<meta name="keywords" content=".kolm file format, AI artifact format, signed model artifact, model + LoRA + recipes, portable AI binary, kolm spec, AI build artifact">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="keywords" content=".kolm file format, AI artifact format, signed model artifact, model fields + recipes, portable AI binary, kolm spec, AI build artifact">
+<meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
 <meta name="author" content="Kolmogorov">
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
@@ -15,13 +15,13 @@
 <meta property="og:description" content="A signed zip with seven components, one manifest, an HMAC chain. The portable AI artifact, by the byte.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://kolm.ai/articles/kolm-file-format">
-<meta property="og:image" content="https://kolm.ai/img/brand-og.png">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="The .kolm file format, explained component by component">
 <meta name="twitter:description" content="One signed zip, seven components, an HMAC chain.">
-<meta name="twitter:image" content="https://kolm.ai/img/brand-og.png">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
 <link rel="canonical" href="https://kolm.ai/articles/kolm-file-format">
-<link rel="preload" as="image" href="/img/hero-artifact.webp" fetchpriority="high">
+<link rel="preload" as="image" href="/img/kolm-artifact-system.svg" fetchpriority="high">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script type="application/ld+json">
 {
@@ -34,38 +34,38 @@
   "datePublished": "2026-05-07",
   "dateModified": "2026-05-07",
   "mainEntityOfPage": { "@type": "WebPage", "@id": "https://kolm.ai/articles/kolm-file-format" },
-  "image": "https://kolm.ai/img/brand-og.png",
-  "keywords": ".kolm format, AI artifact, model + LoRA + recipes",
+  "image": "https://kolm.ai/og-card.svg",
+  "keywords": ".kolm format, AI artifact, model fields + recipes",
   "articleSection": "Engineering",
   "wordCount": 2300
 }
 </script>
 <style>
   :root {
-    --bg: #0a0a0a; --bg-elev: #0f0f12; --bg-card: #13141a;
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
     --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
-    --ink: #ededed; --ink-mute: #9a9da8; --ink-faint: #5a5c66;
-    --accent: #7c8cff; --accent-soft: rgba(124,140,255,0.10); --accent-strong: #93a1ff;
-    --good: #7ce3b6; --bad: #ff7a98;
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-soft: rgba(76,125,255,0.10); --accent-strong: #9db6ff;
+    --good: #7ef0d2; --bad: #ff6b91;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
   a { color: inherit; text-decoration: none; }
   .wrap { max-width: 760px; margin: 0 auto; padding: 0 32px; }
   .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
   @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
-  header.site { position: sticky; top: 0; z-index: 60; background: rgba(10,10,10,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
   header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
   header.site .left { display: flex; align-items: center; gap: 36px; }
   header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
-  header.site .brand .mark { width: 22px; height: 22px; }
+  header.site .brand img { width: 22px; height: 22px; }
   header.site .brand .lyr { transition: transform 280ms cubic-bezier(.2,.6,.2,1), opacity 280ms; }
   header.site .brand:hover .lyr-1 { transform: translate(-1.4px,-1.4px); }
   header.site .brand:hover .lyr-3 { transform: translate(1.4px,1.4px); }
-  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
+  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: 0; }
   header.site nav { display: flex; gap: 22px; }
   header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
   header.site nav a:hover { color: var(--ink); }
@@ -77,21 +77,21 @@
   @media (max-width: 720px) { header.site nav { display: none; } }
 
   section.hero { padding: 80px 0 36px; position: relative; overflow: hidden; }
-  section.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 900px 460px at 22% 12%, rgba(124,140,255,0.10), transparent 60%); }
+  section.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 900px 460px at 22% 12%, rgba(76,125,255,0.10), transparent 60%); }
   section.hero .wrap { position: relative; }
-  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
   .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-  h1 { margin: 22px 0 18px; font-size: clamp(34px, 5.4vw, 54px); line-height: 1.05; font-weight: 500; letter-spacing: -0.028em; max-width: 22ch; }
+  h1 { margin: 22px 0 18px; font-size: clamp(34px, 5.4vw, 54px); line-height: 1.05; font-weight: 500; letter-spacing: 0; max-width: 22ch; }
   h1 .tone { color: var(--accent); }
   p.lede { margin: 0 0 0; font-size: clamp(17px, 1.4vw, 20px); line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
   p.lede b { color: var(--ink); font-weight: 540; }
-  .meta { display: flex; gap: 18px; margin-top: 22px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
+  .meta { display: flex; gap: 18px; margin-top: 22px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
   .meta b { color: var(--ink-mute); font-weight: 500; }
 
   article { padding: 36px 0 96px; }
-  article h2 { margin: 56px 0 14px; font-size: clamp(24px, 2.6vw, 30px); line-height: 1.2; font-weight: 540; letter-spacing: -0.018em; color: var(--ink); }
+  article h2 { margin: 56px 0 14px; font-size: clamp(24px, 2.6vw, 30px); line-height: 1.2; font-weight: 540; letter-spacing: 0; color: var(--ink); }
   article h2 .tone { color: var(--accent); }
-  article h3 { margin: 36px 0 10px; font-size: 18px; font-weight: 540; letter-spacing: -0.012em; color: var(--ink); }
+  article h3 { margin: 36px 0 10px; font-size: 18px; font-weight: 540; letter-spacing: 0; color: var(--ink); }
   article p { margin: 0 0 16px; font-size: 16.5px; line-height: 1.7; color: var(--ink-mute); }
   article p b { color: var(--ink); font-weight: 540; }
   article p code, article li code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
@@ -99,7 +99,7 @@
   article blockquote p { color: var(--ink); margin: 0; font-weight: 480; }
   article ul { padding-left: 0; list-style: none; margin: 16px 0 24px; }
   article ul li { padding: 8px 0 8px 22px; position: relative; font-size: 16px; line-height: 1.6; color: var(--ink-mute); }
-  article ul li::before { content: "·"; color: var(--accent); position: absolute; left: 6px; font-weight: 700; }
+  article ul li::before { content: "-"; color: var(--accent); position: absolute; left: 6px; font-weight: 560; }
   article ul li b { color: var(--ink); font-weight: 540; }
   article pre { margin: 18px 0 24px; padding: 18px 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.75; color: var(--ink); box-shadow: 0 18px 40px -22px rgba(0,0,0,0.55); }
   article pre .com { color: var(--ink-faint); }
@@ -107,33 +107,33 @@
   article pre .kw { color: #b0bbff; }
 
   .figure { margin: 28px 0; padding: 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 40px -22px rgba(0,0,0,0.55); }
-  .figure .cap { margin-top: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
+  .figure .cap { margin-top: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
 
   .components { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 24px 0; }
   .components .card { padding: 18px 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 40px -22px rgba(0,0,0,0.55); position: relative; transition: transform 220ms cubic-bezier(.2,.6,.2,1), border-color 220ms; }
   .components .card:hover { transform: translateY(-2px); border-color: var(--line-strong); }
   .components .card .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .components .card .top .nm { font-family: var(--mono); font-size: 13px; color: var(--ink); font-weight: 540; }
-  .components .card .top .sz { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.08em; }
+  .components .card .top .sz { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0; }
   .components .card p { margin: 0; font-size: 14.5px; color: var(--ink-mute); line-height: 1.55; }
 
   .signpost { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 36px 0 0; }
   @media (max-width: 720px) { .signpost { grid-template-columns: 1fr; } }
   .signpost a { display: flex; flex-direction: column; gap: 8px; padding: 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; transition: transform 220ms cubic-bezier(.2,.6,.2,1), border-color 220ms, box-shadow 220ms; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 18px 40px -22px rgba(0,0,0,0.55); }
-  .signpost a:hover { transform: translateY(-2px); border-color: var(--line-strong); box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 24px 50px -22px rgba(0,0,0,0.65), 0 8px 22px -8px rgba(124,140,255,0.10); }
-  .signpost a .lab { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
-  .signpost a .v { color: var(--ink); font-weight: 540; font-size: 16px; letter-spacing: -0.012em; }
+  .signpost a:hover { transform: translateY(-2px); border-color: var(--line-strong); box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 24px 50px -22px rgba(0,0,0,0.65), 0 8px 22px -8px rgba(76,125,255,0.10); }
+  .signpost a .lab { font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
+  .signpost a .v { color: var(--ink); font-weight: 540; font-size: 16px; letter-spacing: 0; }
   .signpost a .v .arrow { color: var(--accent); margin-left: 6px; }
   .signpost a p { margin: 4px 0 0; font-size: 13.5px; color: var(--ink-mute); line-height: 1.5; }
 
   .toc { margin: 28px 0 36px; padding: 18px 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; }
-  .toc h5 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 10px; font-weight: 500; }
+  .toc h5 { font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 10px; font-weight: 500; }
   .toc ol { margin: 0; padding-left: 20px; }
   .toc li { padding: 4px 0; font-size: 14px; color: var(--ink-mute); }
   .toc li a { color: var(--ink-mute); }
   .toc li a:hover { color: var(--accent); }
 
-  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-faint); }
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--ink-faint); }
   footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
   footer.site a { color: var(--ink-faint); transition: color 120ms; }
   footer.site a:hover { color: var(--ink-mute); }
@@ -142,19 +142,20 @@
   @media (prefers-reduced-motion: reduce) { body::after { display: none; } }
   /* plate */
 
-  .plate{position:relative;margin:32px 0 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#050507;isolation:isolate}
+  .plate{position:relative;margin:32px 0 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#050607;isolation:isolate}
   .plate .img{position:relative;aspect-ratio:16/9;background-position:center;background-size:cover;background-repeat:no-repeat}
   .plate .img::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 50%,rgba(8,8,10,0.78) 100%),linear-gradient(90deg,rgba(8,8,10,0.55) 0%,transparent 30%,transparent 70%,rgba(8,8,10,0.55) 100%)}
-  .plate .img::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,140,255,0.5),transparent);pointer-events:none;z-index:2}
-  .plate .stamp{position:absolute;top:18px;left:20px;z-index:3;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:0.20em;text-transform:uppercase;color:var(--ink-mute);border:1px solid rgba(124,140,255,0.22);background:rgba(10,10,10,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:5px 11px;border-radius:4px}
-  .plate .stamp .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(124,140,255,0.85)}
+  .plate .img::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(76,125,255,0.5),transparent);pointer-events:none;z-index:2}
+  .plate .stamp{position:absolute;top:18px;left:20px;z-index:3;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing: 0;text-transform:uppercase;color:var(--ink-mute);border:1px solid rgba(76,125,255,0.22);background:rgba(8,9,8,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:5px 11px;border-radius:4px}
+  .plate .stamp .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(76,125,255,0.85)}
   .plate .cap{position:absolute;left:24px;right:24px;bottom:20px;z-index:3;display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
-  .plate .cap .title{font-family:var(--sans);font-size:clamp(17px,1.8vw,22px);font-weight:540;letter-spacing:-0.018em;line-height:1.18;color:var(--ink);max-width:62%;text-shadow:0 1px 2px rgba(0,0,0,0.55)}
-  .plate .cap .title .tone{background:linear-gradient(170deg,#d4daff 0%,#93a1ff 50%,#7c8cff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .plate .cap .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute);letter-spacing:0.06em;text-align:right;line-height:1.7}
+  .plate .cap .title{font-family:var(--sans);font-size:clamp(17px,1.8vw,22px);font-weight:540;letter-spacing: 0;line-height:1.18;color:var(--ink);max-width:62%;text-shadow:0 1px 2px rgba(0,0,0,0.55)}
+  .plate .cap .title .tone{background:linear-gradient(170deg,#faf2e1 0%,#9db6ff 50%,#4c7dff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .plate .cap .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute);letter-spacing: 0;text-align:right;line-height:1.7}
   .plate .cap .meta b{color:var(--ink);font-weight:520}
   @media(max-width:720px){.plate .cap{left:14px;right:14px;bottom:12px;flex-direction:column;align-items:flex-start;gap:8px}.plate .cap .title{font-size:14px;max-width:100%}.plate .cap .meta{text-align:left;font-size:10px}.plate .stamp{top:12px;left:12px;font-size:9px;padding:4px 9px}}
 </style>
+<link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
 
@@ -162,10 +163,7 @@
   <div class="wrap-wide row">
     <div class="left">
       <a href="/" class="brand" aria-label="kolm">
-        <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
+        <img src="/logo-mark.svg" alt="" class="brand-mark">
         <span>kolm</span>
       </a>
       <nav>
@@ -173,7 +171,11 @@
         <a href="/serve">Serve</a>
         <a href="/anatomy">.kolm</a>
         <a href="/k-score">K-score</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+
         <a href="/docs">Docs</a>
+        <a href="/articles">Articles</a>
         <a href="/pricing">Pricing</a>
       </nav>
     </div>
@@ -186,16 +188,16 @@
 
 <section class="hero">
   <div class="wrap">
-    <span class="pill"><span class="dot"></span>Spec · 2026-05-07 · 10 min read</span>
-    <h1>The <code style="font-family:var(--mono);font-size:0.92em">.kolm</code> file format, <span class="tone">component by component.</span></h1>
-    <p class="lede">A <code>.kolm</code> is a signed zip with seven internal components and one manifest. <b>The whole thing is one file because everything inside is co-versioned.</b> A LoRA without its base, a recipe pack without its embedder, a verifier without its tests — these are how AI artifacts go bad in production. This document is the spec.</p>
-    <div class="meta"><span><b>By</b>&nbsp;Kolmogorov</span><span><b>Tag</b>&nbsp;.kolm spec · format · v0.1</span></div>
+    <span class="pill"><span class="dot"></span>Spec / 2026-05-07 / 8 min read</span>
+    <h1>The <code style="font-family:var(--mono);font-size:0.92em">.kolm</code> file format, <span class="tone">as it exists today.</span></h1>
+    <p class="lede">A <code>.kolm</code> is a signed zip that co-versions the task manifest, recipe pack, eval metadata, receipt, and reserved model/index fields. <b>The current public artifact is recipe-mode first.</b> Model weights, LoRA adapters, and populated sqlite-vec indexes are bridge components, not production claims until they are non-placeholder, reproducible, and benchmarked.</p>
+    <div class="meta"><span><b>By</b>&nbsp;Kolmogorov</span><span><b>Tag</b>&nbsp;.kolm spec / format / v0.1</span></div>
     <figure class="plate" role="img" aria-label="kolm artifact essay illustration">
-      <div class="img" style="background-image:url(/img/hero-artifact.webp)"></div>
-      <span class="stamp"><span class="dot"></span>essay · file format</span>
+      <div class="img" style="background-image:url(/img/kolm-artifact-system.svg)"></div>
+      <span class="stamp"><span class="dot"></span>essay / file format</span>
       <div class="cap">
         <div class="title">Inside the <span class="tone">.kolm</span> artifact.</div>
-        <div class="meta">model · adapter · recipes<br>index · evals · <b>signature</b></div>
+        <div class="meta">manifest / recipes / evals<br>placeholders / <b>receipt</b></div>
       </div>
     </figure>
   </div>
@@ -207,167 +209,110 @@
     <div class="toc">
       <h5>Contents</h5>
       <ol>
-        <li><a href="#why">Why one file with everything inside</a></li>
-        <li><a href="#layout">The on-disk layout</a></li>
-        <li><a href="#manifest">The manifest, field by field</a></li>
-        <li><a href="#components">The seven payload components</a></li>
-        <li><a href="#signature">The HMAC signature chain</a></li>
-        <li><a href="#extending">Extending the format (vendor extensions)</a></li>
+        <li><a href="#why">Why one signed file</a></li>
+        <li><a href="#layout">The current on-disk layout</a></li>
+        <li><a href="#manifest">The manifest</a></li>
+        <li><a href="#components">Payload components</a></li>
+        <li><a href="#signature">Receipt chain</a></li>
         <li><a href="#faq">FAQ</a></li>
       </ol>
     </div>
 
-    <h2 id="why">Why one file with everything inside.</h2>
-    <p>An AI artifact in 2026 is rarely a single weight matrix. It is a <b>composition of artifacts</b>: a base model, a LoRA fine-tune, a retrieval index, a draft pack for speculative decoding, a verifier for output-quality gating, and a held-out test set the verifier can be re-run against. Six things, all of which need to agree on each other's content.</p>
-    <p>The way this fails in practice: a team ships a LoRA fine-tune separately from its base, and three weeks later the base gets a 0.0.2 patch from upstream, and now the LoRA is loading on top of slightly different weights than it was trained against, and accuracy drops by 12 points and nobody knows why.</p>
-    <p>The fix is the same fix software has been using for fifty years: <b>ship one binary that contains everything you need to run, and content-hash the whole thing.</b> If any byte changes, the signature changes, and the runtime refuses to load it without an explicit override. The <code>.kolm</code> format is that binary for AI.</p>
+    <h2 id="why">Why one signed file.</h2>
+    <p>An AI workflow has more than one behavior-affecting part: task spec, generated recipes, evals, verifier evidence, manifest hashes, and eventually model weights, adapters, and recall indexes. Keeping those pieces in one signed container makes drift visible.</p>
+    <p>The current implementation signs the emitted manifest, recipes, evals, model pointer, placeholder adapter/index files, and receipt. Future runtime bridges can replace placeholders with real files without changing the high-level container contract.</p>
 
     <blockquote>
-      <p>One file, one signature, one K-score on the cover. Everything that affects behavior at runtime is bundled and fingerprinted. <code>.kolm</code> is to AI artifacts what <code>.deb</code> is to system packages: a versioned, signed, reproducible unit.</p>
+      <p>One file, one manifest, one receipt. Everything emitted by the current builder is fingerprinted; reserved components become production claims only when the bridge writes real bytes and the verifier checks them.</p>
     </blockquote>
 
-    <h2 id="layout">The on-disk layout.</h2>
-    <p>A <code>.kolm</code> is a deflate-compressed ZIP archive. The choice of ZIP is deliberate: every operating system already has the libraries to read it, every language already has the libraries to read it, and the format supports per-file compression and integrity checks at the container level.</p>
+    <h2 id="layout">The current on-disk layout.</h2>
+    <p>A <code>.kolm</code> is a deflate-compressed ZIP archive. The current builder emits pointer and placeholder files where the future model bridge will emit large binary assets.</p>
 
     <pre><span class="com"># unzip -l support-triage.kolm</span>
 Length        Date    Time    Name
 --------  ----------  -----   ----
    1,247  2026-05-07  09:14   manifest.json
-1,847,392  2026-05-07  09:14   model.gguf            <span class="com"># INT4 base, 1.5-4 GB</span>
-   91,608  2026-05-07  09:14   lora.bin              <span class="com"># LoRA delta</span>
-   12,458  2026-05-07  09:14   recipes.json          <span class="com"># draft pack</span>
-6,144,768  2026-05-07  09:14   index.sqlite-vec      <span class="com"># multimodal recall</span>
-   18,232  2026-05-07  09:14   verifier.js           <span class="com"># scoring fn</span>
-   45,672  2026-05-07  09:14   tests.jsonl           <span class="com"># held-out evals</span>
-       64  2026-05-07  09:14   signature.sig         <span class="com"># HMAC-SHA256 chain root</span></pre>
+     388  2026-05-07  09:14   model.gguf            <span class="com"># base-model pointer record</span>
+       0  2026-05-07  09:14   lora.bin              <span class="com"># placeholder until LoRA bridge ships</span>
+  12,458  2026-05-07  09:14   recipes.json          <span class="com"># recipe pack</span>
+       0  2026-05-07  09:14   index.sqlite-vec      <span class="com"># placeholder until recall bridge ships</span>
+  45,672  2026-05-07  09:14   evals.json            <span class="com"># compile evals</span>
+   1,024  2026-05-07  09:14   receipt.json          <span class="com"># HMAC receipt body</span>
+      64  2026-05-07  09:14   signature.sig         <span class="com"># legacy HMAC signature</span></pre>
 
-    <p>Files are ordered consistently: <code>manifest.json</code> first (so a partial read can validate before the model is loaded), <code>signature.sig</code> last (so it covers everything emitted before it). The whole archive is content-hashed; the signature anchors that hash to a key the runtime can verify.</p>
+    <p>The current builder hashes each emitted component and binds those hashes into a receipt that can be re-checked from the artifact bytes.</p>
 
-    <h2 id="manifest">The manifest, field by field.</h2>
-    <p><code>manifest.json</code> is the artifact's index. Every field is required unless marked optional.</p>
+    <h2 id="manifest">The manifest.</h2>
+    <p>The manifest is the artifact index. Its most important truth today is that <code>runtime</code> is still <code>cloud</code>, while local model execution is the bridge path.</p>
 
     <pre>{
-  <span class="kw">"format_version"</span>: <span class="arg">"0.1"</span>,
-  <span class="kw">"artifact_id"</span>: <span class="arg">"klm_8a4f9c2b"</span>,
+  <span class="kw">"spec"</span>: <span class="arg">"kolm-1"</span>,
   <span class="kw">"task"</span>: <span class="arg">"summarize support tickets in our voice"</span>,
-  <span class="kw">"created_at"</span>: <span class="arg">"2026-05-07T09:14:32Z"</span>,
-  <span class="kw">"compiler"</span>: { <span class="kw">"name"</span>: <span class="arg">"kolm"</span>, <span class="kw">"version"</span>: <span class="arg">"0.1.0"</span> },
-
-  <span class="kw">"base"</span>: {
-    <span class="kw">"family"</span>: <span class="arg">"qwen2.5"</span>,
-    <span class="kw">"size_b"</span>: 3,
-    <span class="kw">"quant"</span>: <span class="arg">"q4_k_m"</span>,
-    <span class="kw">"hash"</span>: <span class="arg">"sha256:a8f4..."</span>
-  },
-  <span class="kw">"lora"</span>: { <span class="kw">"rank"</span>: 16, <span class="kw">"hash"</span>: <span class="arg">"sha256:2c91..."</span> },
-  <span class="kw">"teacher"</span>: { <span class="kw">"family"</span>: <span class="arg">"claude-opus-4-7"</span>, <span class="kw">"k"</span>: 8 },
-
-  <span class="kw">"recipes"</span>: { <span class="kw">"count"</span>: 1284, <span class="kw">"coverage"</span>: 0.71 },
-  <span class="kw">"recall"</span>: { <span class="kw">"vectors"</span>: 8240, <span class="kw">"modalities"</span>: [<span class="arg">"text"</span>, <span class="arg">"image"</span>] },
-  <span class="kw">"verifier"</span>: { <span class="kw">"hash"</span>: <span class="arg">"sha256:f12e..."</span>, <span class="kw">"deterministic"</span>: <span class="arg">true</span> },
-  <span class="kw">"tests"</span>: { <span class="kw">"count"</span>: 200, <span class="kw">"hash"</span>: <span class="arg">"sha256:9b03..."</span> },
-
-  <span class="kw">"k_score"</span>: 0.94,
-  <span class="kw">"benchmarks"</span>: {
-    <span class="kw">"accuracy"</span>: 0.91, <span class="kw">"size_mb"</span>: 38, <span class="kw">"p50_ms"</span>: 80,
-    <span class="kw">"cost_usd_per_1k"</span>: 0.00, <span class="kw">"coverage"</span>: 0.71
-  },
-  <span class="kw">"runtime"</span>: { <span class="kw">"engine"</span>: <span class="arg">"llama.cpp"</span>, <span class="kw">"min_version"</span>: <span class="arg">"b3000"</span> },
-  <span class="kw">"egress_policy"</span>: <span class="arg">"none"</span>
+  <span class="kw">"runtime"</span>: <span class="arg">"cloud"</span>,
+  <span class="kw">"tier"</span>: <span class="arg">"recipe"</span>,
+  <span class="kw">"recipes"</span>: { <span class="kw">"n"</span>: 42, <span class="kw">"registry_hash"</span>: <span class="arg">"sha256:..."</span> },
+  <span class="kw">"lora"</span>: null,
+  <span class="kw">"recall"</span>: null,
+  <span class="kw">"evals"</span>: { <span class="kw">"n"</span>: 12, <span class="kw">"hash"</span>: <span class="arg">"sha256:..."</span> },
+  <span class="kw">"hashes"</span>: {
+    <span class="kw">"model_pointer"</span>: <span class="arg">"sha256:..."</span>,
+    <span class="kw">"recipes_json"</span>: <span class="arg">"sha256:..."</span>,
+    <span class="kw">"lora_bin"</span>: <span class="arg">"sha256:e3b0..."</span>,
+    <span class="kw">"index_bin"</span>: <span class="arg">"sha256:e3b0..."</span>,
+    <span class="kw">"evals_json"</span>: <span class="arg">"sha256:..."</span>
+  }
 }</pre>
 
-    <p>Three fields deserve special attention.</p>
-    <p><b><code>egress_policy</code></b> declares what the runtime is permitted to send out. <code>"none"</code> means a fully offline artifact; the runtime enforces that no fetch hits the network. <code>"allowed-domains"</code> with an explicit list permits scoped outbound calls (rare; only enabled for tool-using compiles).</p>
-    <p><b><code>k_score</code></b> is the single number on the cover, derived from the five benchmark properties. Below the configured gate (default 0.70), the artifact does not ship.</p>
-    <p><b><code>format_version</code></b> is mandatory and the runtime checks for backward compatibility. <code>v0.1</code> artifacts are forward-compatible to <code>v0.x</code> runtimes; major version bumps will require runtime upgrades.</p>
-
-    <h2 id="components">The seven payload components.</h2>
-
+    <h2 id="components">Payload components.</h2>
     <div class="components">
-      <div class="card">
-        <div class="top"><span class="nm">model.gguf</span><span class="sz">1.5 — 4 GB</span></div>
-        <p>The base model in GGUF format (the standard interchange format consumed by llama.cpp and its many ports). INT4-quantized via <code>q4_k_m</code> for the best speed/accuracy ratio at this size class. The base is whichever open-weight model the compiler picked for the task: typically a 3B or 7B Qwen, Llama, Phi, or Hermes.</p>
-      </div>
-      <div class="card">
-        <div class="top"><span class="nm">lora.bin</span><span class="sz">10 — 100 MB</span></div>
-        <p>The LoRA adapter, trained against the base on the verified labels. The runtime applies it as a delta at load time. The adapter is rank-16 by default; higher rank for harder tasks. The hash in the manifest must match exactly, or the runtime refuses to apply.</p>
-      </div>
-      <div class="card">
-        <div class="top"><span class="nm">recipes.json</span><span class="sz">5 — 20 MB</span></div>
-        <p>The draft pack of <code>(prefix-shape, token)</code> pairs extracted at compile time. Each entry is a deterministic shortcut: when the runtime sees a matching prefix, it drafts the predicted token instead of running the base. Verified against the base for correctness; the base is always the source of truth.</p>
-      </div>
-      <div class="card">
-        <div class="top"><span class="nm">index.sqlite-vec</span><span class="sz">100 MB — 8 GB</span></div>
-        <p>The multimodal recall index. A sqlite-vec database with embeddings for every chunk of the user's corpus. Indexed by content hash, queryable by cosine, queryable by metadata. The runtime loads it read-only by default; <code>kolm recall ingest</code> appends new content from local sources.</p>
-      </div>
-      <div class="card">
-        <div class="top"><span class="nm">verifier.js</span><span class="sz">5 — 50 KB</span></div>
-        <p>A pure JavaScript scoring function that returns 0..1 for any candidate output. Synthesized at compile time from the seed examples; can be hand-edited and re-pinned by the engineer. Determinism is enforced (the compiler runs it 100× on a fixed input and rejects non-deterministic outputs).</p>
-      </div>
-      <div class="card">
-        <div class="top"><span class="nm">tests.jsonl</span><span class="sz">10 — 200 KB</span></div>
-        <p>The held-out evaluation set, in JSONL. Each line is a record of <code>{input, ideal, hash}</code>. Used at compile time to derive the K-score, and at runtime by <code>kolm verify</code> to re-derive that score independently. The hash makes silent test-set rewriting impossible.</p>
-      </div>
-      <div class="card">
-        <div class="top"><span class="nm">signature.sig</span><span class="sz">64 bytes</span></div>
-        <p>An HMAC-SHA256 over the canonical concatenation of every other component's content hash, computed in declaration order. The signing key is tenant-scoped; the verifying key is published on the public registry. Tamper with any byte and the signature fails.</p>
-      </div>
+      <div class="card"><div class="top"><span class="nm">model.gguf</span><span class="sz">pointer today</span></div><p>A JSON pointer record naming the base model and runtime stage. Real GGUF weights become a claim only when the bridge writes and verifies real model bytes.</p></div>
+      <div class="card"><div class="top"><span class="nm">lora.bin</span><span class="sz">placeholder today</span></div><p>The reserved adapter slot. Today it is empty unless a deployment bridge supplies a real adapter.</p></div>
+      <div class="card"><div class="top"><span class="nm">recipes.json</span><span class="sz">current</span></div><p>The recipe pack emitted by the current compiler path.</p></div>
+      <div class="card"><div class="top"><span class="nm">index.sqlite-vec</span><span class="sz">placeholder today</span></div><p>The reserved recall-index slot. A populated sqlite-vec file requires a shipped recall bridge.</p></div>
+      <div class="card"><div class="top"><span class="nm">evals.json</span><span class="sz">current</span></div><p>The eval evidence used to recompute the release score and verify the artifact.</p></div>
+      <div class="card"><div class="top"><span class="nm">receipt.json</span><span class="sz">HMAC-SHA256</span></div><p>The HMAC receipt over artifact hash, eval-set hash, score, judge id, and chain steps.</p></div>
     </div>
 
-    <h2 id="signature">The HMAC signature chain.</h2>
-    <p>Each <code>.kolm</code> belongs to a tenant's <em>signing chain</em>. The first artifact a tenant produces sets the genesis hash. Every subsequent artifact's signature includes <code>parent_hash</code> referencing the previous artifact's signature. The chain is published on the public registry as it grows.</p>
-    <p>This chain is what makes <code>.kolm</code> defensible at audit. <b>Rewriting an old artifact requires forging every artifact emitted after it.</b> The forgery is detectable to anyone who has cached an intermediate chain root. Public anchoring (Arweave, Bitcoin OP_RETURN) extends the detectability to the whole world.</p>
+    <h2 id="signature">Receipt chain.</h2>
+    <p>Each artifact carries a receipt chain over the fields emitted by the current builder: task, training stats, recipes, evals, and package hash. The <code>anchors</code> array is empty today and reserved for future external publication.</p>
+    <p>This chain is useful as retained evidence: if an artifact byte changes, recomputing the hashes breaks the receipt. Public or third-party anchoring is a future extension.</p>
 
-    <pre><span class="com"># Verify an artifact against the public registry</span>
-$ kolm verify support-triage.kolm
-✓ format v0.1
-✓ component hashes match manifest
-✓ signature verifies against tenant key acme-prod
-✓ chain anchors to genesis 2026-04-12T00:00:00Z
-✓ K-score 0.94 ≥ gate 0.70
-artifact OK</pre>
-
-    <h2 id="extending">Extending the format (vendor extensions).</h2>
-    <p>The format reserves <code>extensions/</code> as a namespace for vendor-specific payloads. Anything in this directory is content-hashed but not interpreted by the standard runtime. Use cases we have seen:</p>
-    <ul>
-      <li><b><code>extensions/anchors/arweave.txt</code></b> — Arweave transaction ID for the chain root, pinned at compile time.</li>
-      <li><b><code>extensions/policies/redaction.json</code></b> — domain-specific output filters that wrap the base inference (e.g., "never emit a phone number that doesn't match an entry in the recall index").</li>
-      <li><b><code>extensions/lockfiles/runtime.lock</code></b> — exact runtime versions the artifact was tested against, for reproducible deployment.</li>
-    </ul>
-    <p>If a runtime encounters an extension it doesn't understand, it MUST log a warning and continue. Extensions cannot affect the K-score or signature semantics; if you need that, propose it for the spec instead.</p>
+    <pre><span class="com"># Inspect an artifact from the bytes you hold</span>
+$ kolm inspect support-triage.kolm
+[ok] format v0.1
+[ok] signature_alg hmac-sha256
+[ok] anchors field empty; external anchoring not configured</pre>
 
     <h2 id="faq">FAQ.</h2>
-    <h3>Why ZIP and not a custom container?</h3>
-    <p>Every OS reads ZIP. Every language reads ZIP. The compression and CRC are battle-tested. Reinventing the container would buy us a fraction of a percent on size and lose us decades of tooling.</p>
+    <h3>Is the format open-</h3>
+    <p>The format is intended to be open, but the public spec/repository should be treated as pending until the canonical repo is published. The current CLI is the reference reader for the artifacts this service emits.</p>
 
-    <h3>Is the format open?</h3>
-    <p>Yes. The spec is MIT-licensed at <a href="https://github.com/kolmogorov/kolm-spec" style="color:var(--accent)">github.com/kolmogorov/kolm-spec</a>. Anyone can produce <code>.kolm</code> files; anyone can write a runtime to load them. The Kolmogorov-hosted registry is one possible signing authority; you can run your own.</p>
+    <h3>What about model weights-</h3>
+    <p>Current public artifacts do not embed redistributable model weights. When the model bridge ships, each base model will carry its own license, and the manifest must identify the base family, hash, and redistribution terms.</p>
 
-    <h3>What about the model weights — am I allowed to redistribute them?</h3>
-    <p>Each base model carries its own license; the manifest's <code>base.family</code> field tells you which. Most open-weight bases (Qwen, Llama 3, Hermes 3, Phi-3) permit redistribution as part of derivative works under their respective terms. Your <code>.kolm</code> derivative inherits those terms.</p>
-
-    <h3>Can I run a <code>.kolm</code> without the kolm CLI?</h3>
-    <p>Yes. The format is open; any runtime that knows about GGUF + LoRA + sqlite-vec can load the components. We ship a reference runtime (<code>kolm run</code>); third-party runtimes are welcome and a good thing.</p>
+    <h3>Can I run a <code>.kolm</code> without the kolm CLI-</h3>
+    <p>The current supported path is the kolm CLI. Third-party runtimes are a good future outcome, but they need the published spec, fixture artifacts, and conformance tests before they are a real integration surface.</p>
 
     <div class="signpost">
       <a href="/articles/ai-compiler">
         <span class="lab">read</span>
-        <span class="v">How an AI compiler works <span class="arrow">→</span></span>
+        <span class="v">How an AI compiler works <span class="arrow">&rarr;</span></span>
         <p>The four-stage pipeline that produces every <code>.kolm</code>.</p>
       </a>
       <a href="/articles/k-sample-verified-inference">
         <span class="lab">read</span>
-        <span class="v">Verified inference <span class="arrow">→</span></span>
+        <span class="v">Verified inference <span class="arrow">&rarr;</span></span>
         <p>The mechanism that produces every label in the artifact.</p>
       </a>
       <a href="/articles/speculative-decoding-recipes">
         <span class="lab">read</span>
-        <span class="v">Recipe-driven decoding <span class="arrow">→</span></span>
+        <span class="v">Recipe-driven decoding <span class="arrow">&rarr;</span></span>
         <p>How <code>recipes.json</code> closes the latency gap.</p>
       </a>
       <a href="/anatomy">
         <span class="lab">act</span>
-        <span class="v">Inspect a live <code>.kolm</code> <span class="arrow">→</span></span>
+        <span class="v">Inspect a live <code>.kolm</code> <span class="arrow">&rarr;</span></span>
         <p>Explore the format interactively.</p>
       </a>
     </div>
@@ -377,8 +322,8 @@ artifact OK</pre>
 
 <footer class="site">
   <div class="wrap-wide row">
-    <span>&copy; 2026 Kolmogorov · the AI compiler · MIT spec</span>
-    <span><a href="/manifesto">Manifesto</a> · <a href="/security">Security</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span>
+    <span>&copy; 2026 Kolmogorov - the AI compiler - MIT spec</span>
+    <span><a href="/manifesto">Manifesto</a> - <a href="/security">Security</a> - <a href="/privacy">Privacy</a> - <a href="/terms">Terms</a></span>
   </div>
 </footer>
 

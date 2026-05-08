@@ -5,61 +5,54 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>kolm serve --mcp · kolm</title>
 <meta name="description" content="One command turns any .kolm artifact into a discoverable MCP server. Claude, Cursor, and any MCP-aware agent finds it automatically.">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
 <link rel="canonical" href="https://kolm.ai/serve">
-<link rel="preload" as="image" href="/img/mcp-fanout.webp" fetchpriority="high">
+<link rel="preload" as="image" href="/img/kolm-mcp-fanout.svg" fetchpriority="high">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 
 <style>
-  :root{--bg:#0a0a0a;--bg-elev:#0f0f12;--bg-card:#13141a;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#ededed;--ink-mute:#9a9da8;--ink-faint:#5a5c66;--accent:#7c8cff;--accent-soft:rgba(124,140,255,0.10);--good:#7ce3b6;--bad:#ff7a98;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#4c7dff;--accent-soft:rgba(76,125,255,0.10);--good:#7ef0d2;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
-  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;letter-spacing:-0.011em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;letter-spacing: 0;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none}
   a{color:inherit;text-decoration:none}
-  ::selection{background:rgba(124,140,255,0.30)}
+  ::selection{background:rgba(76,125,255,0.30)}
 
   .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
   @media(max-width:720px){.wrap{padding:0 20px}}
 
-  header.site{position:sticky;top:0;z-index:60;background:rgba(10,10,10,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
   header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
   header.site .left{display:flex;align-items:center;gap:36px}
   header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
-  header.site .brand svg{height:18px;width:18px}
-  header.site .brand span{font-weight:540;font-size:16px;letter-spacing:-0.04em}
-  header.site nav{display:flex;gap:22px}
+  header.site .brand img{height:18px;width:18px}
+  header.site .brand span{font-weight:540;font-size:16px;letter-spacing: 0;gap:22px}
   header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
   header.site nav a:hover,header.site nav a.active{color:var(--ink)}
   header.site .right{display:flex;align-items:center;gap:14px}
   header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
   header.site .right .ghost:hover{color:var(--ink)}
-  header.site .right .cta{display:inline-flex;align-items:center;gap:6px;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540;letter-spacing:-0.01em}
-  header.site .right .cta:hover{background:#fff}
-  @media(max-width:720px){header.site nav{display:none}}
-
-  section{padding:80px 0;position:relative}
+  header.site .right .cta{display:inline-flex;align-items:center;gap:6px;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:540;letter-spacing: 0;position:relative}
   section.hero{padding:96px 0 64px}
-  section.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 900px 480px at 22% 12%,rgba(124,140,255,0.10),transparent 60%);pointer-events:none}
+  section.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 900px 480px at 22% 12%,rgba(76,125,255,0.10),transparent 60%);pointer-events:none}
   section.hero .wrap{position:relative}
   section + section{border-top:1px solid var(--line)}
 
-  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing: 0;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
   .eyebrow .num{color:var(--accent)}
 
-  h1{margin:0 0 22px;font-size:clamp(36px,5vw,60px);line-height:1.05;font-weight:500;letter-spacing:-0.028em;color:var(--ink);max-width:18ch}
+  h1{margin:0 0 22px;font-size:clamp(36px,5vw,60px);line-height:1.05;font-weight:500;letter-spacing: 0;color:var(--ink);max-width:18ch}
   h1 .tone{color:var(--accent)}
-  h2{margin:0 0 16px;font-size:clamp(24px,3vw,34px);line-height:1.15;font-weight:540;letter-spacing:-0.022em;max-width:24ch}
+  h2{margin:0 0 16px;font-size:clamp(24px,3vw,34px);line-height:1.15;font-weight:540;letter-spacing: 0;max-width:24ch}
   h2 .tone{color:var(--accent)}
-  h3{margin:0 0 8px;font-size:16px;font-weight:540;letter-spacing:-0.014em}
-
-  p.lede{margin:0 0 36px;font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:60ch}
+  h3{margin:0 0 8px;font-size:16px;font-weight:540;letter-spacing: 0;font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:60ch}
   p.lede b{color:var(--ink);font-weight:540}
   p.lede code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
   p{color:var(--ink-mute);max-width:62ch}
   p code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
 
-  pre{background:#0b0e15;border:1px solid var(--line);border-radius:8px;padding:18px 20px;overflow:auto;color:#e2e8f0;font-family:var(--mono);font-size:13px;line-height:1.7;margin:24px 0}
+  pre{background:#0b0f10;border:1px solid var(--line);border-radius:8px;padding:18px 20px;overflow:auto;color:#e2e8f0;font-family:var(--mono);font-size:13px;line-height:1.7;margin:24px 0}
   pre .com{color:var(--ink-faint)}
   pre .key{color:var(--accent)}
   pre .ok{color:var(--good)}
@@ -69,10 +62,7 @@
   .compare .col{padding:28px;background:var(--bg-elev)}
   .compare .col.before{}
   .compare .col.after{background:var(--bg-card)}
-  .compare .col h3{margin:0 0 16px;font-size:14px;font-weight:540;letter-spacing:-0.014em}
-  .compare .col.before h3{color:var(--ink-mute)}
-  .compare .col.after h3{color:var(--accent)}
-  .compare .col .stat{display:grid;grid-template-columns:1fr auto;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+  .compare .col h3{margin:0 0 16px;font-size:14px;font-weight:540;letter-spacing: 0;grid-template-columns:1fr auto;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
   .compare .col .stat:last-child{border-bottom:none}
   .compare .col .stat .lbl{color:var(--ink-mute)}
   .compare .col .stat .val{font-family:var(--mono);color:var(--ink);font-weight:540}
@@ -81,19 +71,18 @@
   .clients{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:36px}
   @media(max-width:720px){.clients{grid-template-columns:1fr}}
   .clients .client{padding:24px 22px;background:var(--bg-elev)}
-  .clients .client h4{font-size:13px;font-weight:540;color:var(--ink);margin:0 0 6px;letter-spacing:-0.011em}
-  .clients .client p{font-size:12.5px;color:var(--ink-mute);margin:0;max-width:none}
+  .clients .client h4{font-size:13px;font-weight:540;color:var(--ink);margin:0 0 6px;letter-spacing: 0;color:var(--ink-mute);margin:0;max-width:none}
   .clients .client code{font-family:var(--mono);font-size:11.5px;color:var(--accent);background:var(--accent-soft);padding:1px 5px;border-radius:3px;display:inline-block;margin-top:8px}
 
   .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:36px}
   @media(max-width:880px){.steps{grid-template-columns:repeat(2,1fr)}}
   .steps .step{padding:28px 22px;background:var(--bg-elev)}
-  .steps .step .n{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+  .steps .step .n{font-family:var(--mono);font-size:11px;letter-spacing: 0;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
   .steps .step h3{font-size:14px;margin:0 0 6px}
   .steps .step p{font-size:13px;color:var(--ink-mute);margin:0}
 
   .cta-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:36px}
-  .btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);border-radius:6px;padding:11px 18px;font-size:14px;font-weight:540;letter-spacing:-0.005em;transition:background 120ms}
+  .btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);border-radius:6px;padding:11px 18px;font-size:14px;font-weight:540;letter-spacing: 0;transition:background 120ms}
   .btn-primary:hover{background:#fff}
   .btn-link{display:inline-flex;align-items:center;gap:6px;color:var(--ink);padding:11px 14px;font-size:14px;font-weight:500}
   .btn-link:hover{color:var(--accent)}
@@ -101,25 +90,26 @@
   footer{border-top:1px solid var(--line);padding:48px 0 36px;color:var(--ink-faint);font-size:12.5px}
   footer .cols{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;margin-bottom:24px}
   @media(max-width:720px){footer .cols{grid-template-columns:1fr 1fr;gap:24px}}
-  footer h4{font-size:11px;color:var(--ink-mute);letter-spacing:0.14em;text-transform:uppercase;margin:0 0 10px;font-weight:540}
+  footer h4{font-size:11px;color:var(--ink-mute);letter-spacing: 0;text-transform:uppercase;margin:0 0 10px;font-weight:540}
   footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
   footer ul a{color:var(--ink-faint);transition:color 120ms}
   footer ul a:hover{color:var(--ink)}
   footer .legal{padding-top:18px;border-top:1px solid var(--line);color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 
-  .plate{position:relative;margin:48px 0 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#050507;isolation:isolate}
+  .plate{position:relative;margin:48px 0 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#050607;isolation:isolate}
   .plate .img{position:relative;aspect-ratio:16/9;background-position:center;background-size:cover;background-repeat:no-repeat}
   .plate .img::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 50%,rgba(8,8,10,0.78) 100%),linear-gradient(90deg,rgba(8,8,10,0.55) 0%,transparent 30%,transparent 70%,rgba(8,8,10,0.55) 100%)}
-  .plate .img::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,140,255,0.5),transparent);pointer-events:none;z-index:2}
-  .plate .stamp{position:absolute;top:22px;left:24px;z-index:3;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.20em;text-transform:uppercase;color:var(--ink-mute);border:1px solid rgba(124,140,255,0.22);background:rgba(10,10,10,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:6px 12px;border-radius:4px}
-  .plate .stamp .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(124,140,255,0.85)}
+  .plate .img::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(76,125,255,0.5),transparent);pointer-events:none;z-index:2}
+  .plate .stamp{position:absolute;top:22px;left:24px;z-index:3;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing: 0;text-transform:uppercase;color:var(--ink-mute);border:1px solid rgba(76,125,255,0.22);background:rgba(8,9,8,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:6px 12px;border-radius:4px}
+  .plate .stamp .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(76,125,255,0.85)}
   .plate .cap{position:absolute;left:30px;right:30px;bottom:26px;z-index:3;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
-  .plate .cap .title{font-family:var(--sans);font-size:clamp(20px,2.2vw,28px);font-weight:540;letter-spacing:-0.018em;line-height:1.18;color:var(--ink);max-width:60%;text-shadow:0 1px 2px rgba(0,0,0,0.55)}
-  .plate .cap .title .tone{background:linear-gradient(170deg,#d4daff 0%,#93a1ff 50%,#7c8cff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .plate .cap .meta{font-family:var(--mono);font-size:11px;color:var(--ink-mute);letter-spacing:0.06em;text-align:right;line-height:1.7}
+  .plate .cap .title{font-family:var(--sans);font-size:clamp(20px,2.2vw,28px);font-weight:540;letter-spacing: 0;line-height:1.18;color:var(--ink);max-width:60%;text-shadow:0 1px 2px rgba(0,0,0,0.55)}
+  .plate .cap .title .tone{background:linear-gradient(170deg,#faf2e1 0%,#9db6ff 50%,#4c7dff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .plate .cap .meta{font-family:var(--mono);font-size:11px;color:var(--ink-mute);letter-spacing: 0;text-align:right;line-height:1.7}
   .plate .cap .meta b{color:var(--ink);font-weight:520}
   @media(max-width:720px){.plate .cap{left:16px;right:16px;bottom:14px;flex-direction:column;align-items:flex-start;gap:10px}.plate .cap .title{font-size:17px;max-width:100%}.plate .cap .meta{text-align:left;font-size:10.5px}.plate .stamp{top:14px;left:14px;font-size:9.5px;padding:5px 10px}}
 </style>
+<link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
 
@@ -127,10 +117,7 @@
   <div class="wrap"><div class="row">
     <div class="left">
       <a class="brand" href="/" aria-label="kolm home">
-        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
+        <img src="/logo-mark.svg" alt="" class="brand-mark">
         <span>kolm</span>
       </a>
       <nav>
@@ -138,7 +125,11 @@
         <a href="/serve" class="active">Serve</a>
         <a href="/anatomy">.kolm</a>
         <a href="/k-score">K-score</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+
         <a href="/docs">Docs</a>
+        <a href="/articles">Articles</a>
         <a href="/pricing">Pricing</a>
       </nav>
     </div>
@@ -163,11 +154,11 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
   <span class="ok">●</span> mcp endpoint   : http://127.0.0.1:7327
   <span class="ok">●</span> protocol       : mcp/0.1 + sse
   <span class="ok">●</span> tools exposed  : <span class="key">triage</span>, <span class="key">explain_label</span>
-  <span class="ok">●</span> k-score gate   : 0.70  <span class="com">(this artifact: 0.94)</span>
-  <span class="ok">●</span> receipts       : on (hmac, anchored to public registry)</pre>
+  <span class="ok">●</span> receipts       : on (hmac, anchors empty)</pre>
+  <span class="ok">●</span> receipts       : on (hmac, anchors empty)</pre>
 
     <figure class="plate" role="img" aria-label="A single .kolm artifact fans out to every MCP-aware client over a local socket.">
-      <div class="img" style="background-image:url(/img/mcp-fanout.webp)"></div>
+      <div class="img" style="background-image:url(/img/kolm-mcp-fanout.svg)"></div>
       <span class="stamp"><span class="dot"></span>kolm serve --mcp · fan-out</span>
       <div class="cap">
         <div class="title">One artifact. <span class="tone">Every agent.</span></div>
@@ -180,7 +171,7 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
 <section>
   <div class="wrap">
     <div class="eyebrow"><span class="num">01</span> · The pitch</div>
-    <h2>Frontier round-trip vs <span class="tone">.kolm round-trip.</span></h2>
+    <p class="lede">Same task surface, but locally served through the current CLI/MCP path. Native model latency and offline claims require the runtime bridge and benchmarks.</p>
     <p class="lede">Same task. Same prompt. The agent doesn’t know the difference.
       But the user’s phone, wallet, and threat model do.</p>
 
@@ -195,12 +186,12 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
         <div class="stat"><span class="lbl">Discovery</span><span class="val">manual MCP config</span></div>
       </div>
       <div class="col after">
-        <h3>kolm serve --mcp</h3>
-        <div class="stat"><span class="lbl">Latency p50</span><span class="val">80 ms</span></div>
-        <div class="stat"><span class="lbl">Cost / 1k calls</span><span class="val">$0.00</span></div>
-        <div class="stat"><span class="lbl">Privacy</span><span class="val">stays local</span></div>
+        <div class="stat"><span class="lbl">Latency p50</span><span class="val">measure per artifact</span></div>
+        <div class="stat"><span class="lbl">Cost / 1k calls</span><span class="val">recipe-mode local</span></div>
+        <div class="stat"><span class="lbl">Privacy</span><span class="val">local CLI boundary</span></div>
+        <div class="stat"><span class="lbl">Offline</span><span class="val">artifact-dependent</span></div>
         <div class="stat"><span class="lbl">Offline</span><span class="val">yes</span></div>
-        <div class="stat"><span class="lbl">Receipt</span><span class="val">hmac-chained</span></div>
+        <div class="stat"><span class="lbl">Discovery</span><span class="val">manual MCP config</span></div>
         <div class="stat"><span class="lbl">Discovery</span><span class="val">auto via mDNS + .well-known</span></div>
       </div>
     </div>
@@ -210,29 +201,29 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
 <section>
   <div class="wrap">
     <div class="eyebrow"><span class="num">02</span> · How it works</div>
-    <h2>Four moves.</h2>
+    <p class="lede">Run the CLI process, point your MCP-aware agent at it, and keep the artifact boundary inspectable.</p>
     <p class="lede">No daemons. No control plane. Run the binary, agents see it.
       Stop the binary, they don’t.</p>
 
     <div class="steps">
       <div class="step">
         <div class="n">01</div>
-        <h3>Bind</h3>
+        <p>kolm serves the artifact through the configured local process. Check <code>kolm serve --help</code> for the current transport and port options.</p>
         <p>kolm binds <code>127.0.0.1:7327</code> by default and writes a <code>.well-known/mcp.json</code> next to the artifact so any client on this machine can read its capabilities.</p>
       </div>
       <div class="step">
         <div class="n">02</div>
-        <h3>Announce</h3>
+        <p>Automatic LAN discovery is a roadmap convenience. Today, treat explicit local MCP configuration as the supported path.</p>
         <p>mDNS announces the service as <code>_kolm._tcp.local</code> for LAN-aware clients. No router config needed; loopback works fine for solo dev.</p>
       </div>
       <div class="step">
         <div class="n">03</div>
-        <h3>Authenticate</h3>
+        <p>Authenticate the local process according to the installed CLI/API configuration. Every supported tool call should return receipt evidence.</p>
         <p>The artifact’s manifest signs a short-lived bearer token; clients exchange it on first connect. Every tool call returns a hmac-chained receipt.</p>
       </div>
       <div class="step">
         <div class="n">04</div>
-        <h3>Speak MCP</h3>
+        <p>Tool schemas come from the artifact and server configuration, so the agent sees the surface the current runtime actually exposes.</p>
         <p>Standard MCP over SSE. Tool schemas come straight from the artifact’s manifest — the agent sees exactly the surface kolm sealed in.</p>
       </div>
     </div>
@@ -241,8 +232,8 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
 
 <section>
   <div class="wrap">
-    <div class="eyebrow"><span class="num">03</span> · Clients</div>
-    <h2>Already plugged in.</h2>
+    <h2>Works where MCP is configured.</h2>
+    <p class="lede">If your agent speaks MCP, wire it to the local kolm server explicitly.</p>
     <p class="lede">If your agent speaks MCP, kolm shows up. Three popular ones:</p>
 
     <div class="clients">
@@ -252,12 +243,12 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
         <code>"command": "kolm", "args": ["serve","--mcp","./support-triage.kolm"]</code>
       </div>
       <div class="client">
-        <h4>Cursor</h4>
+        <p>Add a local MCP server entry. Any automatic routing should be verified in the target client version.</p>
         <p>MCP server settings → add Local. Cursor’s agent picks up tool schemas and types them into the prompt automatically.</p>
         <code>cursor add-mcp support-triage</code>
       </div>
       <div class="client">
-        <h4>Continue / VS Code</h4>
+        <p>Register a local MCP target and point it at the artifact path. Receipt display depends on the client integration.</p>
         <p>Same shape: register a local MCP target, point at the artifact path. Continue auto-routes tool calls and surfaces receipts inline.</p>
         <code>~/.continue/config.yaml</code>
       </div>
@@ -267,12 +258,12 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
 
 <section>
   <div class="wrap">
-    <div class="eyebrow"><span class="num">04</span> · Receipts</div>
-    <h2>Every answer comes signed.</h2>
-    <p>kolm prepends an <code>X-Receipt</code> header to every MCP response.
-      The receipt is a hmac chain over <code>(source_hash, input_hash, output_hash, version_id, runtime_version, issued_at)</code>,
-      anchored to the public Kolmogorov registry. <code>kolm verify</code>
-      reproduces the chain offline. <code>kolm verify --against registry</code>
+    <h2>Every supported answer can carry a receipt.</h2>
+    <p>kolm receipts bind the source hash, input hash, output hash, runtime version, and issue time with HMAC-SHA256 where the current runtime emits them.
+      Anchors are empty today; external registry or ledger checks are roadmap integrations.
+      Verify from the artifact bytes and retained receipt evidence first.</p>
+
+
       checks the upstream anchor — useful when an artifact is shared across machines.</p>
     <pre>$ kolm serve --mcp support-triage.kolm | jq '.receipts[0]'
 {
@@ -297,16 +288,14 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
     <div class="cols">
       <div>
         <a class="brand" href="/" style="display:inline-flex;align-items:center;gap:9px;color:var(--ink);margin-bottom:10px">
-          <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
-          <span style="font-weight:540;font-size:15px;letter-spacing:-0.04em">kolm</span>
-        </a>
-        <p style="color:var(--ink-faint);font-size:12.5px;margin:0;max-width:36ch">The compiler cache for intelligence.</p>
+          <img src="/logo-mark.svg" alt="" class="brand-mark">
+          <span style="font-weight:540;font-size:15px;letter-spacing: 0;font-size:12.5px;margin:0;max-width:36ch">The private AI compiler.</p>
       </div>
-      <div><h4>Product</h4><ul><li><a href="/compile">Compile</a></li><li><a href="/serve">Serve --mcp</a></li><li><a href="/anatomy">.kolm format</a></li><li><a href="/k-score">K-score</a></li></ul></div>
-      <div><h4>Develop</h4><ul><li><a href="/docs">Docs</a></li><li><a href="/atlas">Atlas</a></li><li><a href="/pricing">Pricing</a></li></ul></div>
+      <div><h4>Product</h4><ul><li><a href="/compile">Compile</a></li><li><a href="/serve">Serve --mcp</a></li><li><a href="/anatomy">.kolm format</a></li><li><a href="/k-score">K-score</a></li>
+          <li><a href="/benchmarks">Benchmarks</a></li>
+          <li><a href="/compare">Compare</a></li></ul></div>
+      <div><h4>Develop</h4><ul><li><a href="/docs">Docs</a>
+        <a href="/articles">Articles</a></li><li><a href="/atlas">Atlas</a></li><li><a href="/pricing">Pricing</a></li></ul></div>
       <div><h4>Trust</h4><ul><li><a href="/security">Security</a></li><li><a href="/docs/rs-1.md">RS-1 spec</a></li><li><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></li></ul></div>
     </div>
     <div class="legal">

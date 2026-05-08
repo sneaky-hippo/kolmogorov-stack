@@ -1,13 +1,15 @@
 """
-FAL gpt-image-2 — kolm v6 brand imagery (100x aesthetic leap).
+FAL gpt-image-2 brand imagery generator for kolm.
 
-Six hero-class renders. Periwinkle (#7C8CFF) only against deep midnight (#0a0a0a).
-Editorial restraint, monolithic presence, no stock-photo vibes.
+Set FAL_KEY or FAL_API_KEY in your environment before running this script.
+Never hard-code provider keys in this repository.
 """
 import os, sys, time, json, base64, threading, pathlib, traceback
 import requests
 
-KEY = "ac46f098-6d6f-4279-a951-bdcf31929824:bd3bc2eb75edfd747d8b678d33c0b49c"
+KEY = os.environ.get("FAL_KEY") or os.environ.get("FAL_API_KEY")
+if not KEY:
+    raise SystemExit("Set FAL_KEY or FAL_API_KEY before running scripts/fal_generate_v6.py")
 OUT = pathlib.Path(__file__).resolve().parents[1] / "public" / "img"
 OUT.mkdir(parents=True, exist_ok=True)
 GEN = OUT / "_generations"

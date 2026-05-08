@@ -1,128 +1,119 @@
-# @kolmogorov/recipe
+# @kolmogorov/kolm-sdk
 
-> **Recipe.** Show how once. Run forever.
-> The Skills layer of [REM Labs](https://remlabs.ai).
+Node SDK for kolm account, registry, receipt, and recipe APIs.
 
-Anywhere your product asks an AI the same tiny question over and over, you're paying ~$0.001 per call to a 70 B-parameter model to answer something a 400-byte JS function would answer for free, in 35 µs, with the same answer every time.
-
-This SDK is a thin client for the Recipe HTTP API.
+The public package is intentionally small. It gives product code a typed client for the same surface the CLI uses: synthesize deterministic recipes, run registry entries, submit public concepts, inspect account state, and manage artifact-adjacent workflows.
 
 ## Install
 
+The npm package is not published yet. Use a local checkout while the package is prepared:
+
 ```bash
-npm i @kolmogorov/recipe
+git clone https://github.com/sneaky-hippo/kolmogorov-stack
+npm i file:./kolmogorov-stack/sdk/node
 ```
 
-## 30-second usage
+For local development:
+
+```bash
+git clone https://github.com/sneaky-hippo/kolmogorov-stack
+cd kolmogorov-stack/sdk/node
+npm install
+npm test
+```
+
+## Usage
 
 ```js
-import RecipeClient from '@kolmogorov/recipe';
+import KolmClient, { recipe } from '@kolmogorov/kolm-sdk';
 
-const c = new RecipeClient({ apiKey: process.env.RECIPE_API_KEY });
+const kolm = new KolmClient({
+  apiKey: process.env.KOLM_API_KEY,
+  baseUrl: process.env.KOLM_BASE_URL || 'https://kolm.ai',
+});
 
-// 1) Show 4-8 examples once
-const r = await c.synthesize({
-  name: 'is-spam',
+const health = await kolm.health();
+console.log(health.status);
+
+const created = await kolm.synthesize({
+  name: 'is-support-ticket',
   positives: [
-    { input: 'WIN A FREE iPhone NOW',     expected: true },
-    { input: 'CLICK HERE FOR $1000',      expected: true },
-    { input: 'meeting at 3pm tomorrow',   expected: false },
-    { input: 'lunch?',                    expected: false },
+    { input: 'checkout fails on Android', expected: true },
+    { input: 'cannot reset MFA', expected: true },
+    { input: 'lunch at noon?', expected: false },
+    { input: 'ship notes look good', expected: false },
   ],
   output_spec: { type: 'boolean' },
 });
 
-// 2) Run it forever
-const out = await c.run({ recipe_id: r.concept_id, input: 'BUY CRYPTO NOW' });
-console.log(out.output);   // → true
-console.log(out.latency_us); // → typically < 50 µs
+if (created.accepted) {
+  const out = await kolm.run({
+    recipe_id: created.concept_id,
+    input: 'billing export crashes',
+  });
+  console.log(out.output, out.latency_us);
+}
+
+const spam = await recipe.isSpam('WIN FREE BITCOIN');
+console.log(spam);
 ```
 
-## Drop-in replacements for repeat LLM-as-judge calls
-
-```js
-import { recipe } from '@kolmogorov/recipe';
-
-await recipe.isSpam("WIN free Bitcoin");        // → true
-await recipe.classifyIntent("how do I cancel"); // → "support"
-await recipe.sentiment("this product changed my life");
-await recipe.detectLanguage("c'est la vie");
-await recipe.classifyIssue("the deploy crashed since friday");
-```
-
-These read from the public registry of curated Recipes. No key required.
-
-## CLI
+## Environment
 
 ```bash
-npm i -g @kolmogorov/recipe
-export RECIPE_API_KEY=ks_...
-
-recipe run is-spam "WIN free Bitcoin"
-recipe synthesize examples.json
-recipe list --tag classifier
-recipe stats cpt_xxx
-recipe waitlist you@example.com "extract addresses from emails"
+KOLM_API_KEY=ks_...
+KOLM_BASE_URL=https://kolm.ai
 ```
 
-## API surface
+The SDK still accepts `RECIPE_API_KEY`, `RECIPE_BASE_URL`, and `KOLMOGOROV_API_KEY` for backward compatibility.
+
+## API Surface
 
 ```ts
-class RecipeClient {
-  // core
-  synthesize(req): Promise<SynthesizeResponse>
-  run(opts): Promise<RunResponse>
-  verify(source, examples): Promise<{ pass_rate, trace }>
+class KolmClient {
+  synthesize(req)
+  synthesizeBatch(items)
+  verify(source, examples)
+  run(opts)
 
-  // registry
   list(opts?)
-  get(id)
-  stats(id)
+  get(recipe_id)
+  stats(recipe_id)
   search(query, k?)
   compose(opts)
 
-  // forward-looking (Day 30-180+)
-  labelCorpus(recipe_id, opts)        // examples → labeled corpus
-  trainSpecialist(req)                 // labeled corpus → fine-tuned LoRA
+  labelCorpus(recipe_id, opts)
+  job(id)
   waitlistSpecialist(email, task)
+  trainSpecialist(req)
   listSpecialists()
+  getSpecialist(id)
   runSpecialist(id, input)
 
-  // public
   featured()
   publicConcepts()
   publicRun(opts)
 
-  // account
   account()
   rotateKey()
   signup(email, name?)
   health()
+
+  bootstrapAnonymous(meta?)
+  claimAnonymous(anon_token, email, name?)
 }
 ```
 
-## Get a key
+## CLI Note
 
-Free 10,000 recipe-calls/month, no credit card:
+The production CLI is the repo-root `kolm` binary. This SDK package also includes a legacy recipe-registry helper exposed as `kolm-recipes` for registry experiments. New product flows should prefer:
 
 ```bash
-curl -X POST https://kolmogorov-stack-production.up.railway.app/v1/signup \
-  -H "Content-Type: application/json" \
-  -d '{"email":"you@example.com"}'
+npm i -g github:sneaky-hippo/kolmogorov-stack
+kolm config base https://kolm.ai
+kolm login
 ```
-
-Or visit [/signup](https://kolmogorov-stack-production.up.railway.app/signup).
-
-## Three pillars
-
-| Pillar | What it remembers | Today |
-|---|---|---|
-| **Memory** | What happened (facts, sessions, context) | shipped — `remlabs.ai` |
-| **Skills** | How to do things (deterministic functions) | this package |
-| **Specialists** | A model that's *been* the task (fine-tuned LoRA) | Day 60-120 |
-
-> Memory remembers. Skills repeat. Specialists become.
 
 ## License
 
-MIT © [REM Labs](https://remlabs.ai)
+MIT

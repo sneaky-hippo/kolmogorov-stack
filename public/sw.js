@@ -41,7 +41,7 @@ self.addEventListener('fetch', (e) => {
   }
 
   // Cache-first for static assets and the device shell.
-  if (PRECACHE.includes(url.pathname) || url.pathname.match(/\.(css|js|svg|png|woff2?)$/)) {
+  if (PRECACHE.includes(url.pathname) || url.pathname.match(/\.(css|js|svg|png|woff2-)$/)) {
     e.respondWith(
       caches.match(e.request).then(
         (hit) => hit || fetch(e.request).then((res) => {

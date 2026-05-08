@@ -5,34 +5,34 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Manual · kolm</title>
 <meta name="description" content="The full kolm manual. Architecture, K-score formula, .kolm anatomy, signature chain, recipe registry, MCP integration, on-device runtime.">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
 <link rel="canonical" href="https://kolm.ai/manual">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>
   :root {
-    --bg: #0a0a0a; --bg-elev: #0f0f12; --bg-card: #13141a;
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
     --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
-    --ink: #ededed; --ink-mute: #9a9da8; --ink-faint: #5a5c66;
-    --accent: #7c8cff; --accent-soft: rgba(124,140,255,0.10); --accent-strong: #93a1ff;
-    --good: #7ce3b6;
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-soft: rgba(76,125,255,0.10); --accent-strong: #9db6ff;
+    --good: #7ef0d2;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   html { scroll-behavior: smooth; scroll-padding-top: 80px; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.65; letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.65; letter-spacing: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
   a { color: inherit; text-decoration: none; }
   .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
   @media (max-width: 720px) { .wrap { padding: 0 20px; } }
 
-  header.site { position: sticky; top: 0; z-index: 60; background: rgba(10,10,10,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
   header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
   header.site .left { display: flex; align-items: center; gap: 36px; }
   header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
-  header.site .brand svg { height: 18px; width: 18px; color: var(--ink); }
-  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
+  header.site .brand img { height: 18px; width: 18px; color: var(--ink); }
+  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: 0; }
   header.site nav { display: flex; gap: 22px; }
   header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
   header.site nav a:hover, header.site nav a.active { color: var(--ink); }
@@ -44,9 +44,9 @@
   @media (max-width: 720px) { header.site nav { display: none; } }
 
   section.hero { padding: 72px 0 28px; }
-  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
   .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
-  h1 { margin: 18px 0 14px; font-size: clamp(34px, 4.6vw, 56px); line-height: 1.05; font-weight: 500; letter-spacing: -0.028em; color: var(--ink); }
+  h1 { margin: 18px 0 14px; font-size: clamp(34px, 4.6vw, 56px); line-height: 1.05; font-weight: 500; letter-spacing: 0; color: var(--ink); }
   h1 .tone { color: var(--accent); }
   p.lede { margin: 0; font-size: clamp(15px, 1.2vw, 17px); line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
 
@@ -58,7 +58,7 @@
     border-left: 1px solid var(--line); padding: 4px 0 4px 22px;
     max-height: calc(100vh - 110px); overflow-y: auto;
   }
-  aside.toc h5 { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px; font-weight: 500; }
+  aside.toc h5 { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px; font-weight: 500; }
   aside.toc ul { list-style: none; margin: 0; padding: 0; }
   aside.toc li { margin-bottom: 8px; }
   aside.toc li a { font-size: 13px; color: var(--ink-mute); transition: color 120ms; display: block; padding: 2px 0; }
@@ -68,10 +68,10 @@
   aside.toc li.sub a:hover { color: var(--ink-mute); }
   @media (max-width: 980px) { aside.toc { display: none; } }
 
-  .doc h2 { margin: 56px 0 6px; font-size: 28px; font-weight: 540; letter-spacing: -0.022em; color: var(--ink); scroll-margin-top: 80px; }
+  .doc h2 { margin: 56px 0 6px; font-size: 28px; font-weight: 540; letter-spacing: 0; color: var(--ink); scroll-margin-top: 80px; }
   .doc h2:first-of-type { margin-top: 0; }
-  .doc h2 .num { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 0.12em; margin-right: 14px; font-weight: 500; }
-  .doc h3 { margin: 28px 0 10px; font-size: 18px; font-weight: 540; letter-spacing: -0.012em; color: var(--ink); scroll-margin-top: 80px; }
+  .doc h2 .num { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 0; margin-right: 14px; font-weight: 500; }
+  .doc h3 { margin: 28px 0 10px; font-size: 18px; font-weight: 540; letter-spacing: 0; color: var(--ink); scroll-margin-top: 80px; }
   .doc p { margin: 0 0 14px; color: var(--ink-mute); font-size: 15px; }
   .doc p strong, .doc li strong { color: var(--ink); font-weight: 540; }
   .doc ul { margin: 0 0 14px; padding-left: 20px; color: var(--ink-mute); font-size: 15px; }
@@ -105,7 +105,7 @@
   /* layer table */
   .layers { display: grid; grid-template-columns: 130px 100px 1fr; gap: 0; margin: 18px 0 22px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
   .layers .hd, .layers .cell { padding: 12px 16px; border-top: 1px solid var(--line); font-size: 13.5px; }
-  .layers .hd { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); border-top: none; background: var(--bg-elev); }
+  .layers .hd { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); border-top: none; background: var(--bg-elev); }
   .layers .cell { color: var(--ink-mute); }
   .layers .cell.k { color: var(--ink); font-family: var(--mono); font-size: 13px; }
   .layers .cell.s { font-family: var(--mono); font-size: 13px; color: var(--accent); }
@@ -114,16 +114,17 @@
   footer.site .grid { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 36px; margin-bottom: 36px; }
   @media (max-width: 720px) { footer.site .grid { grid-template-columns: 1fr 1fr; } }
   footer.site .brandcol .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); margin-bottom: 14px; }
-  footer.site .brandcol .brand svg { height: 16px; width: 16px; }
-  footer.site .brandcol .brand span { font-weight: 540; font-size: 15px; letter-spacing: -0.04em; }
+  footer.site .brandcol .brand img { height: 16px; width: 16px; }
+  footer.site .brandcol .brand span { font-weight: 540; font-size: 15px; letter-spacing: 0; }
   footer.site .brandcol p { font-size: 13px; line-height: 1.55; color: var(--ink-mute); margin: 0; max-width: 32ch; }
-  footer.site h5 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px; font-weight: 500; }
+  footer.site h5 { font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px; font-weight: 500; }
   footer.site ul { list-style: none; margin: 0; padding: 0; }
   footer.site li { margin-bottom: 8px; }
   footer.site li a { color: var(--ink-mute); font-size: 13.5px; }
   footer.site li a:hover { color: var(--ink); }
-  footer.site .legal { padding-top: 22px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-faint); flex-wrap: wrap; gap: 12px; }
+  footer.site .legal { padding-top: 22px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--ink-faint); flex-wrap: wrap; gap: 12px; }
 </style>
+<link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
 
@@ -131,10 +132,7 @@
   <div class="wrap row">
     <div class="left">
       <a href="/" class="brand" aria-label="kolm">
-        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
+        <img src="/logo-mark.svg" alt="" class="brand-mark">
         <span>kolm</span>
       </a>
       <nav>
@@ -142,7 +140,11 @@
         <a href="/serve">Serve</a>
         <a href="/anatomy">.kolm</a>
         <a href="/k-score">K-score</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+
         <a href="/docs">Docs</a>
+        <a href="/articles">Articles</a>
         <a href="/pricing">Pricing</a>
       </nav>
     </div>
@@ -188,17 +190,17 @@
 
     <div class="doc">
 
-      <h2 id="architecture"><span class="num">01</span>Architecture</h2>
+      <p class="lede-sec">kolm has one current production surface: the Node CLI/API path that compiles, signs, verifies, runs recipe-mode artifacts, and serves them over MCP. Cloud/mobile/native model surfaces are target bridges, not shipped runtime claims.</p>
       <p class="lede-sec">kolm is one product with one entry point: <code>kolm compile</code>. Beneath the entry point, four engines do the work. Above the entry point, three surfaces (CLI, Cloud, Mobile) run the same artifact. Same file. Same K-score. Same receipt chain.</p>
 
-      <h3 id="engines">Four engines</h3>
-      <p><strong>Distill.</strong> Verified inference at scale. K-samples the frontier model you bring, runs a deterministic verifier synthesized from your examples, produces high-quality labels. The quality moat.</p>
-      <p><strong>Decompose.</strong> Recipe Speculative Decoding. Extracts the deterministic-token subset of observed model behavior into a registry-indexed draft pack. The compute moat.</p>
-      <p><strong>Recall.</strong> Multimodal sqlite-vec index. Embeds and indexes text, image, audio, video, PDF; ships inside the artifact; grounds every Distill call. The data moat.</p>
-      <p><strong>Run.</strong> Local execution. Loads model + LoRA + recipe pack + sqlite-vec index, composes them at every token. The delivery moat.</p>
+      <p><strong>Distill.</strong> Target bridge: k-sample frontier labels and LoRA training. Current public product should treat LoRA output as roadmap until adapters are real and benchmarked.</p>
+      <p><strong>Decompose.</strong> Current surface: deterministic recipe-mode behavior bound into the signed artifact. This is the compiler-cache wedge.</p>
+      <p><strong>Recall.</strong> Target bridge: sqlite-vec corpus indexes bundled in the artifact. Current public artifacts reserve the slot unless a deployment bridge populates it.</p>
+      <p><strong>Run.</strong> Current surface: Node CLI recipe-mode run plus MCP serving. Loading model weights, applying LoRA, and mounting sqlite-vec are runtime bridge work.</p>
 
-      <h3 id="orchestrator">Orchestrator</h3>
-      <p>The <code>kolm compile</code> orchestrator runs the four engines in sequence, with caching against a tenant-scoped cache and the public registry. A typical compile:</p>
+
+      <p>The <code>kolm compile</code> orchestrator should be read as a staged roadmap. A current preview compile looks closer to this:</p>
+
 <pre><span class="com"># input</span>
 task     <span class="arg">"reply to support tickets in our voice"</span>
 examples <span class="arg">./tickets.jsonl</span>     <span class="com"># 1,284 rows</span>
@@ -206,18 +208,18 @@ base     <span class="arg">qwen2.5-3b</span>
 gate     <span class="arg">0.70</span>
 
 <span class="com"># pipeline</span>
-<span class="ok">›</span> synthesize verifier  <span class="com"># from examples</span>
-<span class="ok">›</span> distill              <span class="com"># k=8 samples × 1284 rows × frontier teacher</span>
-<span class="ok">›</span> decompose            <span class="com"># mine 442 deterministic drafts</span>
-<span class="ok">›</span> train lora           <span class="com"># 3 epochs · 82 MB delta</span>
+<span class="ok">›</span> build recipe artifact <span class="com"># current public path</span>
+<span class="ok">›</span> bind evals           <span class="com"># manifest + eval hash</span>
+<span class="ok">›</span> reserve lora slot    <span class="com"># placeholder until bridge ships</span>
+<span class="ok">›</span> evaluate             <span class="com"># release evidence</span>
 <span class="ok">›</span> evaluate             <span class="com"># held-out 412 rows · K-score 0.94</span>
-<span class="ok">›</span> package              <span class="com"># zip + signature</span>
-<span class="ok">›</span> anchor               <span class="com"># HMAC chain → public registry</span>
+<span class="ok">›</span> receipt              <span class="com"># HMAC chain, anchor extension empty</span>
+<span class="ok">›</span> receipt              <span class="com"># HMAC chain, anchors empty</span>
 
-<span class="com"># output</span>
+support-triage.kolm   signed zip   recipe tier   verify before deploy</pre>
 support-triage.kolm   38 MB   K=<span class="num">0.94</span>   gate <span class="num">0.70</span> · ship</pre>
 
-      <h2 id="k-score"><span class="num">02</span>K-score</h2>
+      <p class="lede-sec">A release score is useful only when it points to eval evidence and benchmarks. The current product can expose the gate shape; model latency, size, and coverage claims need named-device runs.</p>
       <p class="lede-sec">One number. Below the gate, the artifact does not ship. The K-score is a harmonic average across five components: accuracy on the held-out set, footprint, latency, cost-per-call, and coverage of structured outputs.</p>
 
       <h3 id="formula">Formula</h3>
@@ -232,21 +234,21 @@ K = 5 / ( 1/A + 1/F + 1/L + 1/C + 1/V )
 </div>
       <p>Harmonic mean punishes outliers. A single weak component drags K down sharply. That is intentional: a model that nails accuracy at 8 GiB and 5-second p95 should not ship just because it answers well sometimes.</p>
 
-      <h3 id="gate">Ship gate</h3>
+      <p>The default gate and CI behavior are product targets unless the installed CLI exposes those flags. Treat the manifest and receipt evidence as the current source of truth.</p>
       <p>The default gate is <code>0.70</code>. Set with <code>--gate 0.85</code> for a stricter ship. CI integrations fail the build if K is below the gate; <code>kolm compile</code> exits non-zero. The gate is recorded in the manifest, so a downstream consumer can verify the artifact was held to a known bar.</p>
 
-      <h2 id="anatomy"><span class="num">03</span>.kolm anatomy</h2>
+      <p class="lede-sec">A <code>.kolm</code> file is a deterministically ordered zip. Today: model pointer, placeholder LoRA, recipes, placeholder recall index, evals, manifest, signature, and receipt. Real model/index bytes are bridge outputs.</p>
       <p class="lede-sec">A <code>.kolm</code> file is a deterministically-ordered zip. Inside: model, LoRA, recipes, recall index, tests, manifest, signature. Every layer is content-addressed by SHA-256.</p>
 
       <h3 id="layers">Layer order</h3>
       <div class="layers">
-        <div class="hd">file</div><div class="hd">size</div><div class="hd">role</div>
-        <div class="cell k">model.gguf</div><div class="cell s">≤ 2.5 GiB</div><div class="cell">Base model, INT4-quantized via llama.cpp.</div>
+        <div class="cell k">model.gguf</div><div class="cell s">pointer</div><div class="cell">Base-model pointer record today.</div>
+        <div class="cell k">lora.bin</div><div class="cell s">0 B today</div><div class="cell">Reserved LoRA delta slot.</div>
         <div class="cell k">lora.bin</div><div class="cell s">≤ 100 MiB</div><div class="cell">LoRA delta fine-tuned on verified labels.</div>
-        <div class="cell k">recipes.json</div><div class="cell s">≤ 10 MiB</div><div class="cell">Deterministic-token draft pack for speculative decode.</div>
+        <div class="cell k">index.sqlite-vec</div><div class="cell s">0 B today</div><div class="cell">Reserved recall-index slot.</div>
         <div class="cell k">index.sqlite-vec</div><div class="cell s">≤ 500 MiB</div><div class="cell">Multimodal embedding index of the user corpus.</div>
         <div class="cell k">tests.jsonl</div><div class="cell s">≤ 4 MiB</div><div class="cell">Held-out evaluation set with expected outputs.</div>
-        <div class="cell k">manifest.json</div><div class="cell s">≤ 64 KiB</div><div class="cell">Task, hashes, K-score, registry version.</div>
+        <div class="cell k">signature.sig</div><div class="cell s">64 B</div><div class="cell">Legacy HMAC signature; receipt.json is the primary evidence body.</div>
         <div class="cell k">signature.sig</div><div class="cell s">256 B</div><div class="cell">HMAC chain over every prior layer, anchored.</div>
       </div>
 
@@ -259,10 +261,10 @@ K = 5 / ( 1/A + 1/F + 1/L + 1/C + 1/V )
   <span class="arg">"evals_hash"</span>:   "sha256:9d3e...",
   <span class="arg">"base"</span>:        "qwen2.5-3b@hf:a7f4ae",
   <span class="arg">"teacher"</span>:     "claude-opus-4-7",
-  <span class="arg">"layers"</span>: {
-    "model":   { "sha": "...", "bytes": 1820000000 },
+    "model":   { "sha": "...", "bytes": 388 },
+    "lora":    { "sha": "sha256:e3b0...", "bytes": 0 },
     "lora":    { "sha": "...", "bytes":   86000000 },
-    "recipes": { "sha": "...", "bytes":    4200000 },
+    "index":   { "sha": "sha256:e3b0...", "bytes": 0 }
     "index":   { "sha": "...", "bytes":   38000000 }
   },
   <span class="arg">"k_score"</span>: 0.94,
@@ -272,61 +274,58 @@ K = 5 / ( 1/A + 1/F + 1/L + 1/C + 1/V )
   <span class="arg">"registry"</span>:    "rs-1@v0.1.42"
 }</pre>
 
-      <h2 id="receipts"><span class="num">04</span>Receipts</h2>
-      <p class="lede-sec">Every artifact carries an HMAC chain over every layer. The chain is anchored to the public registry. On-chain anchoring is available for Enterprise. Tampering with any layer breaks the chain; verification is fast and offline.</p>
+      <p class="lede-sec">Every artifact carries an HMAC chain over the fields the current builder emits. External anchoring is roadmap. Tampering with covered bytes breaks local verification.</p>
+      <p class="lede-sec">Every artifact carries an HMAC chain over every layer. The chain is bound in the artifact receipt. External anchoring is roadmap. Tampering with any layer breaks the chain; verification is fast and offline.</p>
 
       <h3 id="chain">HMAC chain</h3>
-<pre>r0 = HMAC(secret, sha256(manifest.json))
-r1 = HMAC(secret, r0 || sha256(model.gguf))
+r1 = HMAC(secret, r0 || sha256(model pointer))
+r2 = HMAC(secret, r1 || sha256(lora placeholder))
 r2 = HMAC(secret, r1 || sha256(lora.bin))
-r3 = HMAC(secret, r2 || sha256(recipes.json))
+r4 = HMAC(secret, r3 || sha256(index placeholder))
 r4 = HMAC(secret, r3 || sha256(index.sqlite-vec))
 r5 = HMAC(secret, r4 || sha256(tests.jsonl))
 
 signature.sig = r5</pre>
-      <p>The <code>secret</code> is per-tenant. Verification is one HMAC chain re-derive against the layer hashes in the manifest, plus a single registry lookup to confirm <code>r5</code> appears at the registered position.</p>
+      <p>The <code>secret</code> is per-tenant. Verification is one HMAC chain re-derive against the layer hashes in the manifest and receipt body. A registry transparency log is a future hardening step, not required for today's local verification.</p>
 
-      <h3 id="anchor">Registry anchor</h3>
-      <p><code>kolm anchor</code> writes the signature into the public registry. The registry is append-only; entries cannot be rewritten. Each anchor records the artifact hash, the tenant pseudonym, and the timestamp. <a class="inline" href="/atlas">/atlas</a> is the public browser.</p>
-      <p>Enterprise tenants can additionally anchor on-chain (Bitcoin OP_RETURN or Arweave). The on-chain reference is added to a secondary signature field, so verification stays fast for the common case.</p>
+      <h3 id="anchor">Anchor extension</h3>
+      <p>The current receipt schema reserves anchor fields for future registry or third-party roots. Today's artifact builder emits HMAC-bound receipts; it does not publish a public transparency log.</p>
+      <p>External ledger anchoring remains a roadmap integration. Treat retained receipts and exported manifest hashes as the current evidence package.</p>
 
       <h2 id="registry"><span class="num">05</span>Registry</h2>
-      <p class="lede-sec">The public registry is two things: an append-only log of artifact anchors, and an MIT-licensed pack of deterministic draft tokens auto-extracted from every compile that opted in. Future compiles get cheaper as the registry grows.</p>
+      <p class="lede-sec">The registry is a versioned catalog for artifacts and deterministic draft packs. It is not yet a public transparency log.</p>
       <p>Pull the current pack:</p>
 <pre>curl -fsSL <span class="arg">https://kolm.ai/v1/registry/export</span> > drafts.parquet
 <span class="com"># pre-shaped for llama.cpp and vLLM speculative-decode callbacks</span></pre>
 
-      <h2 id="serve"><span class="num">06</span>Serve · MCP</h2>
-      <p class="lede-sec">Any artifact can be exposed as a Model Context Protocol server. Drop into Claude, Cursor, Zed, Continue, or any MCP-aware agent.</p>
-<pre><span class="com">$</span> kolm serve ./support.kolm <span class="arg">--mcp</span>
-<span class="ok">›</span> mcp · ws://localhost:8765
-<span class="ok">›</span> stdio · enabled
-<span class="ok">›</span> http  · http://localhost:8765/v1/run
-<span class="ok">›</span> tools exposed: <span class="arg">run</span>, <span class="arg">explain</span>, <span class="arg">cite</span>, <span class="arg">k_score</span></pre>
-      <p>The serving binary is the same one used at compile time. No model server, no GPU, no Docker.</p>
+      <p class="lede-sec">The current CLI can serve artifacts from <code>~/.kolm/artifacts</code> over MCP for local agent calls. Use <code>--http</code> only when you want the MCP server to expose an HTTP transport as well.</p>
+<pre><span class="com">$</span> kolm serve <span class="arg">--mcp</span> <span class="arg">--http</span> <span class="arg">--port 8765</span>
+<span class="ok">ok</span> serving ~/.kolm/artifacts as local tools</pre>
+      <p>No model server is required for current recipe-mode serving. Native model execution, populated vector indexes, and mobile/web bridges still depend on runtime bridge work and published benchmarks.</p>
 
-      <h2 id="runtime"><span class="num">07</span>On-device runtime</h2>
-      <p class="lede-sec">The runtime is llama.cpp + sqlite-vec + a thin native shell. Three flavors:</p>
+      <p class="lede-sec">Current runtime: Node CLI on macOS, Linux, and Windows. Target runtimes: native desktop model loading, web, iOS, and Android after packages and benchmarks exist.</p>
+      <p class="lede-sec">Three runtime tiers:</p>
       <ul>
-        <li><strong>Native</strong> (macOS/Linux/Windows). <code>kolm run</code> ships with llama.cpp, sqlite-vec, and the recipe-pack draft callback.</li>
-        <li><strong>Web</strong> (PWA). <code>wllama.wasm</code> + <code>sqlite-vec.wasm</code>, served by the kolm app at <a class="inline" href="/mobile">/mobile</a>.</li>
-        <li><strong>Mobile</strong> (iOS/Android). Executorch bindings for Neural Engine and NPU. Same artifact loads.</li>
+        <li><strong>Current.</strong> <code>kolm run</code>, <code>kolm eval</code>, <code>kolm inspect</code>, and <code>kolm serve --mcp</code> for recipe-mode artifacts.</li>
+        <li><strong>Roadmap.</strong> Web runtime packages with explicit memory/cache checks.</li>
+        <li><strong>Roadmap.</strong> iOS/Android bindings with named-device latency, memory, battery, and store-policy evidence.</li>
       </ul>
-      <p>Coldstart on a 2024-era phone for a 3B INT4 artifact: ~1.8 seconds to first token. Subsequent tokens are draft-accelerated by the recipe pack at the rates measured in <a class="inline" href="/k-score">/k-score</a>.</p>
+
+      <p>Do not quote mobile cold-start or token-rate numbers until they come from the public benchmark matrix.</p>
 
       <h2 id="cli"><span class="num">08</span>CLI reference</h2>
-      <p class="lede-sec">Every <code>kolm</code> subcommand. <code>kolm --help</code> prints the same list with current flags.</p>
+      <p class="lede-sec">Every current <code>kolm</code> subcommand. <code>kolm --help</code> prints the same list with current flags.</p>
       <ul>
-        <li><code>kolm login</code> &mdash; sign in. Opens the browser; pastes your API key.</li>
+        <li><code>kolm login</code> &mdash; configure your API key for the CLI.</li>
+        <li><code>kolm config [base|api_key] [value]</code> &mdash; inspect or set endpoint and API key config.</li>
         <li><code>kolm compile &lt;task&gt;</code> &mdash; build a <code>.kolm</code> artifact.</li>
         <li><code>kolm run &lt;file&gt; &lt;input&gt;</code> &mdash; run the artifact locally.</li>
-        <li><code>kolm serve &lt;file&gt; [--mcp]</code> &mdash; expose the artifact as MCP/HTTP/stdio.</li>
-        <li><code>kolm inspect &lt;file&gt;</code> &mdash; manifest, K-score, signature chain.</li>
-        <li><code>kolm verify &lt;file&gt;</code> &mdash; verify the receipt chain against the registry.</li>
-        <li><code>kolm anchor &lt;file&gt;</code> &mdash; write the signature to the registry.</li>
-        <li><code>kolm diff &lt;a&gt; &lt;b&gt;</code> &mdash; per-component K-score and layer-hash diff.</li>
-        <li><code>kolm config</code> &mdash; teacher provider, base model, gate defaults.</li>
-        <li><code>kolm account &lt;export|delete|cancel&gt;</code> &mdash; lifecycle.</li>
+        <li><code>kolm inspect &lt;file&gt;</code> &mdash; print manifest, recipes, K-score, and signature metadata.</li>
+        <li><code>kolm eval &lt;file&gt;</code> &mdash; re-run embedded evals.</li>
+        <li><code>kolm score &lt;file&gt;</code> &mdash; print the K-score summary.</li>
+        <li><code>kolm serve --mcp [--http] [--port]</code> &mdash; expose <code>~/.kolm/artifacts</code> as MCP tools.</li>
+        <li><code>kolm publish &lt;file&gt;</code> &mdash; placeholder; public gallery publishing is not implemented.</li>
+        <li><code>kolm version</code> &mdash; print the CLI version.</li>
       </ul>
 
     </div>
@@ -338,13 +337,10 @@ signature.sig = r5</pre>
     <div class="grid">
       <div class="brandcol">
         <a href="/" class="brand" aria-label="kolm">
-          <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
+          <img src="/logo-mark.svg" alt="" class="brand-mark">
           <span>kolm</span>
         </a>
-        <p>The compiler cache for intelligence. RS-1 · RS-1-multimodal · RS-1-receipts. Open spec, MIT-licensed.</p>
+        <p>The private AI compiler. RS-1 · RS-1-multimodal · RS-1-receipts. Open spec, MIT-licensed.</p>
       </div>
       <div>
         <h5>Product</h5>
@@ -353,6 +349,8 @@ signature.sig = r5</pre>
           <li><a href="/serve">Serve</a></li>
           <li><a href="/anatomy">.kolm anatomy</a></li>
           <li><a href="/k-score">K-score</a></li>
+          <li><a href="/benchmarks">Benchmarks</a></li>
+          <li><a href="/compare">Compare</a></li>
           <li><a href="/atlas">Public atlas</a></li>
           <li><a href="/pricing">Pricing</a></li>
         </ul>
@@ -360,7 +358,8 @@ signature.sig = r5</pre>
       <div>
         <h5>Develop</h5>
         <ul>
-          <li><a href="/docs">Docs</a></li>
+          <li><a href="/docs">Docs</a>
+        <a href="/articles">Articles</a></li>
           <li><a href="/manual">Manual</a></li>
           <li><a href="/sdk.js">SDK</a></li>
           <li><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></li>

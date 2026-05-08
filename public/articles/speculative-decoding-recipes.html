@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Speculative Decoding With Deterministic Drafts: Free LLM Inference · kolm</title>
+<title>Speculative Decoding With Deterministic Drafts: Free LLM Inference - kolm</title>
 <meta name="description" content="A draft model is the standard way to do speculative decoding. A deterministic recipe pack is faster, smaller, free at runtime, and verifiably correct. Here is how to use one to cut your local LLM bill to zero.">
 <meta name="keywords" content="speculative decoding, deterministic drafts, recipe-driven decoding, free LLM inference, speculative decoding without draft model, RSD, recipe speculative decoding, llama.cpp speculative">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
 <meta name="author" content="Kolmogorov">
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
@@ -15,13 +15,13 @@
 <meta property="og:description" content="A draft model is one way. A recipe pack is faster, smaller, free at runtime, and verifiably correct.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://kolm.ai/articles/speculative-decoding-recipes">
-<meta property="og:image" content="https://kolm.ai/img/brand-og.png">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Speculative decoding with deterministic drafts">
 <meta name="twitter:description" content="Cut your local LLM bill to zero. The recipe-driven decoding pattern.">
-<meta name="twitter:image" content="https://kolm.ai/img/brand-og.png">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
 <link rel="canonical" href="https://kolm.ai/articles/speculative-decoding-recipes">
-<link rel="preload" as="image" href="/img/mcp-fanout.webp" fetchpriority="high">
+<link rel="preload" as="image" href="/img/kolm-mcp-fanout.svg" fetchpriority="high">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script type="application/ld+json">
 {
@@ -34,7 +34,7 @@
   "datePublished": "2026-05-07",
   "dateModified": "2026-05-07",
   "mainEntityOfPage": { "@type": "WebPage", "@id": "https://kolm.ai/articles/speculative-decoding-recipes" },
-  "image": "https://kolm.ai/img/brand-og.png",
+  "image": "https://kolm.ai/og-card.svg",
   "keywords": "speculative decoding, deterministic drafts, RSD, free inference, llama.cpp",
   "articleSection": "Engineering",
   "wordCount": 2200
@@ -42,30 +42,30 @@
 </script>
 <style>
   :root {
-    --bg: #0a0a0a; --bg-elev: #0f0f12; --bg-card: #13141a;
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
     --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
-    --ink: #ededed; --ink-mute: #9a9da8; --ink-faint: #5a5c66;
-    --accent: #7c8cff; --accent-soft: rgba(124,140,255,0.10); --accent-strong: #93a1ff;
-    --good: #7ce3b6; --bad: #ff7a98;
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-soft: rgba(76,125,255,0.10); --accent-strong: #9db6ff;
+    --good: #7ef0d2; --bad: #ff6b91;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: -0.011em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
   a { color: inherit; text-decoration: none; }
   .wrap { max-width: 760px; margin: 0 auto; padding: 0 32px; }
   .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
   @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
-  header.site { position: sticky; top: 0; z-index: 60; background: rgba(10,10,10,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
   header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
   header.site .left { display: flex; align-items: center; gap: 36px; }
   header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
-  header.site .brand .mark { width: 22px; height: 22px; }
+  header.site .brand img { width: 22px; height: 22px; }
   header.site .brand .lyr { transition: transform 280ms cubic-bezier(.2,.6,.2,1), opacity 280ms; }
   header.site .brand:hover .lyr-1 { transform: translate(-1.4px,-1.4px); }
   header.site .brand:hover .lyr-3 { transform: translate(1.4px,1.4px); }
-  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
+  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: 0; }
   header.site nav { display: flex; gap: 22px; }
   header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
   header.site nav a:hover { color: var(--ink); }
@@ -77,21 +77,21 @@
   @media (max-width: 720px) { header.site nav { display: none; } }
 
   section.hero { padding: 80px 0 36px; position: relative; overflow: hidden; }
-  section.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 900px 460px at 22% 12%, rgba(124,140,255,0.10), transparent 60%); }
+  section.hero::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 900px 460px at 22% 12%, rgba(76,125,255,0.10), transparent 60%); }
   section.hero .wrap { position: relative; }
-  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
   .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-  h1 { margin: 22px 0 18px; font-size: clamp(34px, 5.4vw, 54px); line-height: 1.05; font-weight: 500; letter-spacing: -0.028em; max-width: 22ch; }
+  h1 { margin: 22px 0 18px; font-size: clamp(34px, 5.4vw, 54px); line-height: 1.05; font-weight: 500; letter-spacing: 0; max-width: 22ch; }
   h1 .tone { color: var(--accent); }
   p.lede { margin: 0 0 0; font-size: clamp(17px, 1.4vw, 20px); line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
   p.lede b { color: var(--ink); font-weight: 540; }
-  .meta { display: flex; gap: 18px; margin-top: 22px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
+  .meta { display: flex; gap: 18px; margin-top: 22px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
   .meta b { color: var(--ink-mute); font-weight: 500; }
 
   article { padding: 36px 0 96px; }
-  article h2 { margin: 56px 0 14px; font-size: clamp(24px, 2.6vw, 30px); line-height: 1.2; font-weight: 540; letter-spacing: -0.018em; color: var(--ink); }
+  article h2 { margin: 56px 0 14px; font-size: clamp(24px, 2.6vw, 30px); line-height: 1.2; font-weight: 540; letter-spacing: 0; color: var(--ink); }
   article h2 .tone { color: var(--accent); }
-  article h3 { margin: 36px 0 10px; font-size: 18px; font-weight: 540; letter-spacing: -0.012em; color: var(--ink); }
+  article h3 { margin: 36px 0 10px; font-size: 18px; font-weight: 540; letter-spacing: 0; color: var(--ink); }
   article p { margin: 0 0 16px; font-size: 16.5px; line-height: 1.7; color: var(--ink-mute); }
   article p b { color: var(--ink); font-weight: 540; }
   article p code, article li code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
@@ -99,7 +99,7 @@
   article blockquote p { color: var(--ink); margin: 0; font-weight: 480; }
   article ul { padding-left: 0; list-style: none; margin: 16px 0 24px; }
   article ul li { padding: 8px 0 8px 22px; position: relative; font-size: 16px; line-height: 1.6; color: var(--ink-mute); }
-  article ul li::before { content: "·"; color: var(--accent); position: absolute; left: 6px; font-weight: 700; }
+  article ul li::before { content: "-"; color: var(--accent); position: absolute; left: 6px; font-weight: 560; }
   article ul li b { color: var(--ink); font-weight: 540; }
   article pre { margin: 18px 0 24px; padding: 18px 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.75; color: var(--ink); box-shadow: 0 18px 40px -22px rgba(0,0,0,0.55); }
   article pre .com { color: var(--ink-faint); }
@@ -107,7 +107,7 @@
   article pre .kw { color: #b0bbff; }
 
   .figure { margin: 28px 0; padding: 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 18px 40px -22px rgba(0,0,0,0.55); }
-  .figure .cap { margin-top: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); }
+  .figure .cap { margin-top: 14px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
   .figure .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 720px) { .figure .grid { grid-template-columns: 1fr; } }
   .figure .row { padding: 10px 14px; border: 1px solid var(--line); border-radius: 6px; background: rgba(0,0,0,0.18); display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12.5px; color: var(--ink-mute); }
@@ -118,14 +118,14 @@
   .signpost { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 36px 0 0; }
   @media (max-width: 720px) { .signpost { grid-template-columns: 1fr; } }
   .signpost a { display: flex; flex-direction: column; gap: 8px; padding: 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; transition: transform 220ms cubic-bezier(.2,.6,.2,1), border-color 220ms, box-shadow 220ms; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 18px 40px -22px rgba(0,0,0,0.55); }
-  .signpost a:hover { transform: translateY(-2px); border-color: var(--line-strong); box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 24px 50px -22px rgba(0,0,0,0.65), 0 8px 22px -8px rgba(124,140,255,0.10); }
-  .signpost a .lab { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); }
-  .signpost a .v { color: var(--ink); font-weight: 540; font-size: 16px; letter-spacing: -0.012em; }
+  .signpost a:hover { transform: translateY(-2px); border-color: var(--line-strong); box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 24px 50px -22px rgba(0,0,0,0.65), 0 8px 22px -8px rgba(76,125,255,0.10); }
+  .signpost a .lab { font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
+  .signpost a .v { color: var(--ink); font-weight: 540; font-size: 16px; letter-spacing: 0; }
   .signpost a .v .arrow { color: var(--accent); margin-left: 6px; }
   .signpost a p { margin: 4px 0 0; font-size: 13.5px; color: var(--ink-mute); line-height: 1.5; }
 
   .toc { margin: 28px 0 36px; padding: 18px 22px; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; }
-  .toc h5 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 10px; font-weight: 500; }
+  .toc h5 { font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 10px; font-weight: 500; }
   .toc ol { margin: 0; padding-left: 20px; }
   .toc li { padding: 4px 0; font-size: 14px; color: var(--ink-mute); }
   .toc li a { color: var(--ink-mute); }
@@ -133,14 +133,14 @@
 
   .compare-table { margin: 24px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg-elev); box-shadow: 0 18px 40px -22px rgba(0,0,0,0.55); }
   .compare-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .compare-table th { text-align: left; padding: 14px 16px; background: rgba(0,0,0,0.20); color: var(--ink); font-weight: 540; font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+  .compare-table th { text-align: left; padding: 14px 16px; background: rgba(0,0,0,0.20); color: var(--ink); font-weight: 540; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; border-bottom: 1px solid var(--line); }
   .compare-table td { padding: 12px 16px; border-bottom: 1px solid var(--line); color: var(--ink-mute); }
   .compare-table tr:last-child td { border-bottom: 0; }
   .compare-table .acc { color: var(--accent); }
   .compare-table .good { color: var(--good); }
   .compare-table .bad { color: var(--bad); }
 
-  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-faint); }
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--ink-faint); }
   footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
   footer.site a { color: var(--ink-faint); transition: color 120ms; }
   footer.site a:hover { color: var(--ink-mute); }
@@ -149,19 +149,20 @@
   @media (prefers-reduced-motion: reduce) { body::after { display: none; } }
   /* plate */
 
-  .plate{position:relative;margin:32px 0 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#050507;isolation:isolate}
+  .plate{position:relative;margin:32px 0 0;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;background:#050607;isolation:isolate}
   .plate .img{position:relative;aspect-ratio:16/9;background-position:center;background-size:cover;background-repeat:no-repeat}
   .plate .img::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 50%,rgba(8,8,10,0.78) 100%),linear-gradient(90deg,rgba(8,8,10,0.55) 0%,transparent 30%,transparent 70%,rgba(8,8,10,0.55) 100%)}
-  .plate .img::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(124,140,255,0.5),transparent);pointer-events:none;z-index:2}
-  .plate .stamp{position:absolute;top:18px;left:20px;z-index:3;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing:0.20em;text-transform:uppercase;color:var(--ink-mute);border:1px solid rgba(124,140,255,0.22);background:rgba(10,10,10,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:5px 11px;border-radius:4px}
-  .plate .stamp .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(124,140,255,0.85)}
+  .plate .img::before{content:"";position:absolute;left:12%;right:12%;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(76,125,255,0.5),transparent);pointer-events:none;z-index:2}
+  .plate .stamp{position:absolute;top:18px;left:20px;z-index:3;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;letter-spacing: 0;text-transform:uppercase;color:var(--ink-mute);border:1px solid rgba(76,125,255,0.22);background:rgba(8,9,8,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:5px 11px;border-radius:4px}
+  .plate .stamp .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(76,125,255,0.85)}
   .plate .cap{position:absolute;left:24px;right:24px;bottom:20px;z-index:3;display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
-  .plate .cap .title{font-family:var(--sans);font-size:clamp(17px,1.8vw,22px);font-weight:540;letter-spacing:-0.018em;line-height:1.18;color:var(--ink);max-width:62%;text-shadow:0 1px 2px rgba(0,0,0,0.55)}
-  .plate .cap .title .tone{background:linear-gradient(170deg,#d4daff 0%,#93a1ff 50%,#7c8cff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .plate .cap .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute);letter-spacing:0.06em;text-align:right;line-height:1.7}
+  .plate .cap .title{font-family:var(--sans);font-size:clamp(17px,1.8vw,22px);font-weight:540;letter-spacing: 0;line-height:1.18;color:var(--ink);max-width:62%;text-shadow:0 1px 2px rgba(0,0,0,0.55)}
+  .plate .cap .title .tone{background:linear-gradient(170deg,#faf2e1 0%,#9db6ff 50%,#4c7dff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .plate .cap .meta{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute);letter-spacing: 0;text-align:right;line-height:1.7}
   .plate .cap .meta b{color:var(--ink);font-weight:520}
   @media(max-width:720px){.plate .cap{left:14px;right:14px;bottom:12px;flex-direction:column;align-items:flex-start;gap:8px}.plate .cap .title{font-size:14px;max-width:100%}.plate .cap .meta{text-align:left;font-size:10px}.plate .stamp{top:12px;left:12px;font-size:9px;padding:4px 9px}}
 </style>
+<link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
 
@@ -169,10 +170,7 @@
   <div class="wrap-wide row">
     <div class="left">
       <a href="/" class="brand" aria-label="kolm">
-        <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
+        <img src="/logo-mark.svg" alt="" class="brand-mark">
         <span>kolm</span>
       </a>
       <nav>
@@ -180,7 +178,11 @@
         <a href="/serve">Serve</a>
         <a href="/anatomy">.kolm</a>
         <a href="/k-score">K-score</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+
         <a href="/docs">Docs</a>
+        <a href="/articles">Articles</a>
         <a href="/pricing">Pricing</a>
       </nav>
     </div>
@@ -193,13 +195,13 @@
 
 <section class="hero">
   <div class="wrap">
-    <span class="pill"><span class="dot"></span>Engineering · 2026-05-07 · 10 min read</span>
+    <span class="pill"><span class="dot"></span>Engineering - 2026-05-07 - 10 min read</span>
     <h1>Speculative decoding <span class="tone">with deterministic drafts.</span></h1>
     <p class="lede">A draft model is the standard way to do speculative decoding: pay a small model to predict tokens that the big model can verify in parallel. <b>A recipe pack is faster, smaller, free at runtime, and verifiably correct on the patterns it covers.</b> This is how to use one to cut your local LLM bill to zero on the predictable tokens, which is most of them.</p>
-    <div class="meta"><span><b>By</b>&nbsp;Kolmogorov</span><span><b>Tag</b>&nbsp;speculative decoding · drafts · runtime</span></div>
+    <div class="meta"><span><b>By</b>&nbsp;Kolmogorov</span><span><b>Tag</b>&nbsp;speculative decoding - drafts - runtime</span></div>
     <figure class="plate" role="img" aria-label="kolm artifact essay illustration">
-      <div class="img" style="background-image:url(/img/mcp-fanout.webp)"></div>
-      <span class="stamp"><span class="dot"></span>essay · recipe drafts</span>
+      <div class="img" style="background-image:url(/img/kolm-mcp-fanout.svg)"></div>
+      <span class="stamp"><span class="dot"></span>essay - recipe drafts</span>
       <div class="cap">
         <div class="title">Determinism, <span class="tone">drafted.</span></div>
         <div class="meta">tokenized prefixes<br><b>signed registry</b></div>
@@ -225,11 +227,11 @@
     </div>
 
     <h2 id="refresher">A 60-second refresher on speculative decoding.</h2>
-    <p>Generating a token from an LLM is a forward pass; one forward pass produces one token. <b>Speculative decoding</b> introduces a draft mechanism: cheaply propose <em>k</em> tokens, then run the big model once to verify all <em>k</em> in parallel. If all <em>k</em> are accepted, you generated <em>k</em> tokens at the cost of one forward pass. If only <em>j</em> &lt; <em>k</em> are accepted, you generated <em>j</em> tokens at the cost of one forward pass — still strictly better than serial.</p>
+    <p>Generating a token from an LLM is a forward pass; one forward pass produces one token. <b>Speculative decoding</b> introduces a draft mechanism: cheaply propose <em>k</em> tokens, then run the big model once to verify all <em>k</em> in parallel. If all <em>k</em> are accepted, you generated <em>k</em> tokens at the cost of one forward pass. If only <em>j</em> &lt; <em>k</em> are accepted, you generated <em>j</em> tokens at the cost of one forward pass - still strictly better than serial.</p>
     <p>The accept/reject step is the magic. It's <em>provably correct</em>: after the verify step, the output distribution is identical to the original model's. You don't trade quality for speed; you trade compute layout for speed.</p>
 
     <h2 id="draft">The draft-model approach, and what it costs.</h2>
-    <p>The textbook way to do this is to use a smaller model — say, a 1.5B parameter draft model — to propose tokens for a larger one — say, a 7B target. This works well when the draft model and the target are well-aligned (often a distilled-from-the-target draft).</p>
+    <p>The textbook way to do this is to use a smaller model - say, a 1.5B parameter draft model --to propose tokens for a larger one - say, a 7B target. This works well when the draft model and the target are well-aligned (often a distilled-from-the-target draft).</p>
     <p>The downside is real, and it shows up in three places:</p>
     <ul>
       <li><b>The draft model itself takes memory.</b> A good 1.5B draft for a 7B target is another 1 GB on disk and 800 MB resident. On a 6 GB phone, that's a hard ceiling.</li>
@@ -251,7 +253,7 @@
     <p>During Distill, the compiler runs k-sample verified inference. Every accepted output is parsed for deterministic-token subsequences. A subsequence is "deterministic" if its <em>literal continuation</em> is unambiguously implied by its prefix in the candidate distribution. The compiler runs a token-level alignment across the k samples; tokens that agree across all k are deterministic.</p>
 
     <h3>2. Hash.</h3>
-    <p>Each <code>(prefix → token)</code> pair is hashed by an embedding-shape and a literal-prefix (both indexed). The embedding-shape lookup matches semantically similar prefixes; the literal-prefix lookup matches exact byte sequences. Both are sub-microsecond.</p>
+    <p>Each <code>(prefix -> token)</code> pair is hashed by an embedding-shape and a literal-prefix (both indexed). The embedding-shape lookup matches semantically similar prefixes; the literal-prefix lookup matches exact byte sequences. Both are sub-microsecond.</p>
 
     <h3>3. Pack.</h3>
     <p>The compiler dedupes, sorts by frequency, and writes <code>recipes.json</code>. A typical pack for a support-triage compile is 1,200-1,800 entries totaling 12-18 KB. For a code-review compile, it's 8,000-15,000 entries at 80-150 KB. The pack is content-hashed and ships in the <code>.kolm</code>.</p>
@@ -298,61 +300,61 @@
     </div>
 
     <p>Three things to read out of this table.</p>
-    <p><b>RSD wins big on structured tasks.</b> JSON extraction goes from 38 tok/s cold to 158 tok/s with a recipe pack — 4.2× wall-time speedup at zero accuracy cost. The pack covers 83% of the tokens for free.</p>
-    <p><b>RSD does not help on free prose.</b> A summary task is mostly novel tokens; the recipe pack hit rate is 22%, the speedup is small. <b>That's correct behavior.</b> The recipe pack should not be helping on free prose — it has nothing to predict that a model wouldn't have to figure out anyway.</p>
+    <p><b>RSD wins big on structured tasks.</b> JSON extraction goes from 38 tok/s cold to 158 tok/s with a recipe pack --4.2x wall-time speedup at zero accuracy cost. The pack covers 83% of the tokens for free.</p>
+    <p><b>RSD does not help on free prose.</b> A summary task is mostly novel tokens; the recipe pack hit rate is 22%, the speedup is small. <b>That's correct behavior.</b> The recipe pack should not be helping on free prose - it has nothing to predict that a model wouldn't have to figure out anyway.</p>
     <p><b>The 1.5B draft beats RSD on free prose.</b> If your workload is dominated by open-domain text, a draft model is the better choice. We support both; the compiler picks the right one for the task.</p>
 
     <h2 id="integrate">Integrating with llama.cpp / vLLM.</h2>
     <p>RSD is a callback at the decode loop. Both llama.cpp and vLLM support a draft callback hook. Our reference patches:</p>
 
-    <pre><span class="com">// llama.cpp — register a recipe-pack callback</span>
+    <pre><span class="com">// llama.cpp - register a recipe-pack callback</span>
 <span class="kw">#include</span> <span class="arg">"kolm-rsd.h"</span>
 kolm_rsd_t *rsd = kolm_rsd_load(<span class="arg">"recipes.json"</span>);
 llama_speculative_set_callback(ctx, kolm_rsd_propose, rsd);
 
-<span class="com"># vLLM — pass the pack at startup</span>
+<span class="com"># vLLM - pass the pack at startup</span>
 python -m vllm.entrypoints.openai.api_server \
   --model meta-llama/Llama-3-8B \
   --speculative-config <span class="arg">"kolm-rsd:recipes.json"</span></pre>
 
-    <p>For users running through <code>kolm run</code>, this is automatic — the runtime mounts the pack from the artifact and wires it into the decode loop.</p>
+    <p>For users running through <code>kolm run</code>, this is automatic - the runtime mounts the pack from the artifact and wires it into the decode loop.</p>
 
     <h2>Why RSD compounds across compiles.</h2>
-    <p>Every <code>kolm compile</code> contributes new <code>(prefix-shape, token)</code> pairs to a public registry — opt-in, anonymized to the prefix-shape level (no user data ever touches the registry). The registry is downloadable. Every future compile starts from a richer cache. <b>The marginal compile cost shrinks over time.</b> Tasks that are common in the registry (extracting JSON, writing simple Python, reviewing diffs) compile faster and cheaper because most of their deterministic tokens are already known.</p>
+    <p>The compiler-cache thesis is that common task shapes can become reusable over time. Public contribution, anonymization, and downloadable registry behavior must remain opt-in and verified before they are treated as shipped defaults.</p>
     <p>This is the analogue to gcc's instruction-cache: code patterns become intrinsics over time, and every compiler benefits. The registry is what makes <code>kolm</code> a moat instead of a feature.</p>
 
     <h2 id="faq">FAQ.</h2>
-    <h3>Is the recipe pack lossless?</h3>
+    <h3>Is the recipe pack lossless-</h3>
     <p>Yes. The base always verifies the drafted token in parallel; if the base disagrees, the base wins. The output distribution is identical to the base's. RSD trades compute layout for wall-time, not quality.</p>
 
-    <h3>What happens when my task changes?</h3>
+    <h3>What happens when my task changes-</h3>
     <p>Misses are logged locally (never egressed) and surfaced in the next <code>kolm compile</code>. The compiler resolves the new pattern via verified inference and merges it into the pack. <b>The cache strictly grows.</b></p>
 
-    <h3>Does RSD help on phones?</h3>
-    <p>Yes — disproportionately. Phones are the most compute-constrained target, and the recipe pack adds zero compute and only a few KB of memory. We measure RSD's biggest end-to-end speedups on Apple Silicon at INT4: 2.5-4× on structured tasks, 1.0-1.2× on free prose.</p>
+    <h3>Does RSD help on phones-</h3>
+    <p>Yes --disproportionately. Phones are the most compute-constrained target, and the recipe pack adds zero compute and only a few KB of memory. We measure RSD's biggest end-to-end speedups on Apple Silicon at INT4: 2.5-4x on structured tasks, 1.0-1.2x on free prose.</p>
 
-    <h3>How does this relate to medusa, lookahead, or eagle?</h3>
+    <h3>How does this relate to medusa, lookahead, or eagle-</h3>
     <p>RSD is in the same family as <em>retrieval-based</em> speculative decoding (PLD, REST). The differences: RSD's drafts are scoped to the artifact's task, indexed by both literal and embedding-shape, and shipped in a versioned pack rather than computed on the fly from a context window. Eagle and medusa add layers to the model itself; RSD doesn't touch the model.</p>
 
     <div class="signpost">
       <a href="/articles/ai-compiler">
         <span class="lab">read</span>
-        <span class="v">How an AI compiler works <span class="arrow">→</span></span>
+        <span class="v">How an AI compiler works <span class="arrow">&rarr;</span></span>
         <p>The pipeline that builds the recipe pack at compile time.</p>
       </a>
       <a href="/articles/k-sample-verified-inference">
         <span class="lab">read</span>
-        <span class="v">Verified inference <span class="arrow">→</span></span>
+        <span class="v">Verified inference <span class="arrow">&rarr;</span></span>
         <p>The labeling mechanism that feeds the pack.</p>
       </a>
       <a href="/articles/kolm-file-format">
         <span class="lab">read</span>
-        <span class="v">The <code>.kolm</code> format <span class="arrow">→</span></span>
+        <span class="v">The <code>.kolm</code> format <span class="arrow">&rarr;</span></span>
         <p>Where <code>recipes.json</code> lives, byte by byte.</p>
       </a>
       <a href="/compile">
         <span class="lab">act</span>
-        <span class="v">Run <code>kolm compile</code> <span class="arrow">→</span></span>
+        <span class="v">Run <code>kolm compile</code> <span class="arrow">&rarr;</span></span>
         <p>Compile your first artifact and ship a recipe pack.</p>
       </a>
     </div>
@@ -362,8 +364,8 @@ python -m vllm.entrypoints.openai.api_server \
 
 <footer class="site">
   <div class="wrap-wide row">
-    <span>&copy; 2026 Kolmogorov · the AI compiler · MIT spec</span>
-    <span><a href="/manifesto">Manifesto</a> · <a href="/security">Security</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span>
+    <span>&copy; 2026 Kolmogorov - the AI compiler - MIT spec</span>
+    <span><a href="/manifesto">Manifesto</a> - <a href="/security">Security</a> - <a href="/privacy">Privacy</a> - <a href="/terms">Terms</a></span>
   </div>
 </footer>
 

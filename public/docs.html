@@ -3,721 +3,199 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Docs · kolm</title>
-<meta name="description" content="kolm documentation. Install the CLI, compile your first artifact, learn the concepts, read the API and the open RS-1 spec.">
-<meta name="theme-color" content="#0a0a0a">
+<title>kolm docs - CLI, API, and .kolm artifact format</title>
+<meta name="description" content="Current kolm documentation for the v0 CLI, compile API, signed .kolm artifacts, receipt schemas, and local MCP serving.">
+<meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
-<meta property="og:title" content="Docs · kolm">
-<meta property="og:description" content="Install the CLI, compile your first .kolm, read the API and the open RS-1 spec.">
+<meta property="og:title" content="kolm docs">
+<meta property="og:description" content="Install the CLI, compile a signed .kolm artifact, run it locally, and inspect the current API and schema contracts.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kolm.ai/docs">
-<meta property="og:image" content="https://kolm.ai/img/brand-og.png">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://kolm.ai/docs">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<style>
-  :root {
-    --bg: #0a0a0a; --bg-elev: #0f0f12; --bg-card: #13141a;
-    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12); --line-stronger: rgba(255,255,255,0.18);
-    --ink: #ededed; --ink-mute: #9a9da8; --ink-faint: #5a5c66;
-    --accent: #7c8cff; --accent-soft: rgba(124,140,255,0.10); --accent-strong: #93a1ff;
-    --good: #7ce3b6; --bad: #ff7a98;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    background: var(--bg); color: var(--ink); font-family: var(--sans);
-    font-size: 16px; line-height: 1.55; letter-spacing: -0.011em;
-    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility; font-synthesis: none;
-  }
-  a { color: inherit; text-decoration: none; }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
-  @media (max-width: 720px) { .wrap { padding: 0 20px; } }
-
-  header.site {
-    position: sticky; top: 0; z-index: 60;
-    background: rgba(10,10,10,0.78);
-    backdrop-filter: saturate(160%) blur(14px);
-    -webkit-backdrop-filter: saturate(160%) blur(14px);
-    border-bottom: 1px solid var(--line);
-  }
-  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
-  header.site .left { display: flex; align-items: center; gap: 36px; }
-  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
-  header.site .brand svg { height: 18px; width: 18px; color: var(--ink); }
-  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
-  header.site nav { display: flex; gap: 22px; }
-  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
-  header.site nav a:hover, header.site nav a.active { color: var(--ink); }
-  header.site .right { display: flex; align-items: center; gap: 14px; }
-  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
-  header.site .right .ghost:hover { color: var(--ink); }
-  header.site .right .cta {
-    display: inline-flex; align-items: center; gap: 6px;
-    color: var(--bg); background: var(--ink); border-radius: 6px;
-    padding: 7px 14px; font-size: 13px; font-weight: 540; letter-spacing: -0.01em;
-    transition: background 120ms;
-  }
-  header.site .right .cta:hover { background: #fff; }
-  @media (max-width: 720px) { header.site nav { display: none; } }
-
-  section.hero { position: relative; padding: 88px 0 56px; overflow: hidden; }
-  section.hero::before {
-    content: ""; position: absolute; inset: 0;
-    background:
-      radial-gradient(ellipse 900px 480px at 22% 12%, rgba(124,140,255,0.10), transparent 60%),
-      radial-gradient(ellipse 700px 400px at 88% 90%, rgba(124,140,255,0.04), transparent 60%);
-    pointer-events: none;
-  }
-  section.hero .wrap { position: relative; }
-
-  .pill {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--ink-mute);
-    border: 1px solid var(--line-strong); border-radius: 999px;
-    padding: 5px 12px; background: var(--bg-elev);
-  }
-  .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
-
-  h1.hero-h1 {
-    margin: 24px 0 22px;
-    font-size: clamp(36px, 5.4vw, 64px);
-    line-height: 1.05; font-weight: 500; letter-spacing: -0.028em;
-    color: var(--ink); max-width: 18ch;
-  }
-  h1.hero-h1 .tone { color: var(--accent); }
-
-  p.lede {
-    margin: 0 0 32px;
-    font-size: clamp(15.5px, 1.3vw, 18px);
-    line-height: 1.55; color: var(--ink-mute);
-    max-width: 60ch; letter-spacing: -0.005em;
-  }
-  p.lede b { color: var(--ink); font-weight: 540; }
-  p.lede code {
-    font-family: var(--mono); font-size: 0.92em; color: var(--ink);
-    background: var(--bg-card); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px;
-  }
-
-  /* terminal */
-  .term {
-    background: linear-gradient(180deg, var(--bg-elev), var(--bg-card));
-    border: 1px solid var(--line-strong);
-    border-radius: 10px; overflow: hidden;
-    box-shadow: 0 30px 80px -30px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.02);
-    max-width: 920px;
-  }
-  .term .head {
-    display: flex; align-items: center; gap: 8px;
-    padding: 10px 16px; border-bottom: 1px solid var(--line);
-    background: rgba(0,0,0,0.25);
-  }
-  .term .head .ctl { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,0.12); }
-  .term .head .file {
-    margin-left: 10px;
-    font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint);
-    letter-spacing: 0.04em;
-  }
-  .term .body {
-    padding: 22px 22px 22px;
-    font-family: var(--mono); font-size: 13.5px; line-height: 1.85;
-    color: var(--ink); white-space: pre; overflow-x: auto;
-  }
-  .term .body .com { color: var(--ink-faint); }
-  .term .body .arg { color: var(--accent); }
-  .term .body .ok { color: var(--good); }
-  .term .body .num { color: var(--accent-strong); }
-  .term .body .dim { color: var(--ink-faint); }
-
-  section { padding: 88px 0; position: relative; }
-  section + section { border-top: 1px solid var(--line); }
-  .eyebrow {
-    display: inline-flex; align-items: center; gap: 10px;
-    font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
-    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 18px;
-  }
-  .eyebrow .num { color: var(--accent); }
-  h2 {
-    margin: 0 0 18px;
-    font-size: clamp(26px, 3.2vw, 38px);
-    line-height: 1.1; font-weight: 540; letter-spacing: -0.022em;
-    color: var(--ink); max-width: 22ch;
-  }
-  h2 .tone { color: var(--accent); }
-  p.sec-lede {
-    margin: 0 0 40px; font-size: 16.5px;
-    line-height: 1.55; color: var(--ink-mute); max-width: 60ch;
-  }
-
-  /* install grid (3 paths) */
-  .install { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  @media (max-width: 980px) { .install { grid-template-columns: 1fr; } }
-  .install-card {
-    background: var(--bg-elev); border: 1px solid var(--line);
-    border-radius: 8px; padding: 22px; display: flex; flex-direction: column; gap: 12px;
-  }
-  .install-card .cat {
-    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--ink-faint);
-  }
-  .install-card h4 {
-    margin: 0; font-size: 15px; font-weight: 540; letter-spacing: -0.012em; color: var(--ink); line-height: 1.35;
-  }
-  .install-card pre {
-    margin: 0; font-family: var(--mono); font-size: 12.5px; color: var(--ink);
-    background: var(--bg-card); border: 1px solid var(--line);
-    border-radius: 6px; padding: 12px 14px; overflow-x: auto; line-height: 1.6;
-    white-space: pre;
-  }
-  .install-card pre .arg { color: var(--accent); }
-  .install-card pre .dim { color: var(--ink-faint); }
-
-  /* numbered steps */
-  .steps { display: grid; grid-template-columns: 1fr; gap: 14px; max-width: 920px; }
-  .step {
-    display: grid; grid-template-columns: 56px 1fr; gap: 18px;
-    background: var(--bg-elev); border: 1px solid var(--line);
-    border-radius: 8px; padding: 22px 24px;
-  }
-  .step .n {
-    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--accent);
-    width: 36px; height: 36px; border-radius: 6px;
-    background: var(--accent-soft); border: 1px solid rgba(124,140,255,0.22);
-    display: inline-flex; align-items: center; justify-content: center;
-  }
-  .step .body h4 {
-    margin: 0 0 6px; font-size: 16px; font-weight: 540;
-    letter-spacing: -0.012em; color: var(--ink);
-  }
-  .step .body p { margin: 0 0 12px; font-size: 14px; line-height: 1.55; color: var(--ink-mute); }
-  .step .body p:last-child { margin-bottom: 0; }
-  .step .body code {
-    font-family: var(--mono); font-size: 12.5px; color: var(--ink);
-    background: var(--bg-card); border: 1px solid var(--line);
-    border-radius: 4px; padding: 1px 6px;
-  }
-  .step .body pre {
-    margin: 8px 0 0; font-family: var(--mono); font-size: 12.5px; color: var(--ink);
-    background: var(--bg-card); border: 1px solid var(--line);
-    border-radius: 6px; padding: 12px 14px; overflow-x: auto; line-height: 1.7;
-    white-space: pre;
-  }
-  .step .body pre .arg { color: var(--accent); }
-  .step .body pre .dim { color: var(--ink-faint); }
-  .step .body pre .ok { color: var(--good); }
-
-  /* concepts grid (6 cards) */
-  .concepts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  @media (max-width: 980px) { .concepts { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 540px) { .concepts { grid-template-columns: 1fr; } }
-  .concept {
-    background: var(--bg-elev); border: 1px solid var(--line);
-    border-radius: 8px; padding: 22px;
-  }
-  .concept .ico {
-    width: 28px; height: 28px; border-radius: 6px;
-    background: rgba(124,140,255,0.10);
-    border: 1px solid rgba(124,140,255,0.22);
-    color: var(--accent);
-    display: inline-flex; align-items: center; justify-content: center;
-    margin-bottom: 16px;
-  }
-  .concept h4 {
-    margin: 0 0 8px; font-size: 15px; font-weight: 540;
-    letter-spacing: -0.012em; color: var(--ink);
-  }
-  .concept p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.55; color: var(--ink-mute); }
-  .concept a.more {
-    font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.04em;
-    color: var(--accent); transition: color 120ms;
-  }
-  .concept a.more:hover { color: var(--accent-strong); }
-
-  /* API reference table */
-  .api { display: grid; grid-template-columns: 1fr; gap: 10px; max-width: 920px; }
-  .api-row {
-    display: grid; grid-template-columns: 56px 1fr;
-    gap: 14px; align-items: start;
-    background: var(--bg-elev); border: 1px solid var(--line);
-    border-radius: 8px; padding: 18px 22px;
-  }
-  .api-row .method {
-    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.10em;
-    text-transform: uppercase; font-weight: 540;
-    width: 48px; height: 22px; border-radius: 4px;
-    display: inline-flex; align-items: center; justify-content: center;
-  }
-  .api-row .method.post { color: var(--accent); background: var(--accent-soft); border: 1px solid rgba(124,140,255,0.22); }
-  .api-row .method.get { color: var(--good); background: rgba(124,227,182,0.07); border: 1px solid rgba(124,227,182,0.18); }
-  .api-row .body .path {
-    font-family: var(--mono); font-size: 14px; color: var(--ink); font-weight: 500;
-    letter-spacing: -0.005em;
-  }
-  .api-row .body p {
-    margin: 6px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-mute);
-  }
-  .api-row .body p code {
-    font-family: var(--mono); font-size: 12px; color: var(--ink);
-    background: var(--bg-card); border: 1px solid var(--line);
-    border-radius: 4px; padding: 1px 6px;
-  }
-
-  /* spec downloads */
-  .specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  @media (max-width: 980px) { .specs { grid-template-columns: 1fr; } }
-  .spec {
-    background: var(--bg-elev); border: 1px solid var(--line);
-    border-radius: 8px; padding: 24px; transition: border-color 120ms;
-  }
-  .spec:hover { border-color: var(--line-strong); }
-  .spec .cat {
-    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
-    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 10px;
-  }
-  .spec h4 {
-    margin: 0 0 8px; font-size: 16px; font-weight: 540;
-    letter-spacing: -0.012em; color: var(--ink);
-  }
-  .spec p { margin: 0 0 16px; font-size: 13.5px; line-height: 1.55; color: var(--ink-mute); }
-  .spec .links { display: flex; gap: 14px; flex-wrap: wrap; }
-  .spec .links a {
-    font-family: var(--mono); font-size: 11.5px; color: var(--accent);
-    transition: color 120ms;
-  }
-  .spec .links a:hover { color: var(--accent-strong); }
-
-  .cta-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 36px; }
-  a.btn-primary {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: var(--ink); color: var(--bg);
-    border-radius: 6px; padding: 11px 18px;
-    font-size: 14px; font-weight: 540; letter-spacing: -0.005em;
-    transition: background 120ms;
-  }
-  a.btn-primary:hover { background: #fff; }
-  a.btn-primary code { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--bg); }
-  a.btn-link {
-    display: inline-flex; align-items: center; gap: 6px;
-    color: var(--ink); padding: 11px 14px;
-    font-size: 14px; font-weight: 500; transition: color 120ms;
-  }
-  a.btn-link:hover { color: var(--accent); }
-
-  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); }
-  footer.site .grid { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 36px; margin-bottom: 36px; }
-  @media (max-width: 720px) { footer.site .grid { grid-template-columns: 1fr 1fr; } }
-  footer.site .brandcol .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); margin-bottom: 14px; }
-  footer.site .brandcol .brand svg { height: 16px; width: 16px; }
-  footer.site .brandcol .brand span { font-weight: 540; font-size: 15px; letter-spacing: -0.04em; }
-  footer.site .brandcol p { font-size: 13px; line-height: 1.55; color: var(--ink-mute); margin: 0; max-width: 32ch; }
-  footer.site h5 { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px; font-weight: 500; }
-  footer.site ul { list-style: none; margin: 0; padding: 0; }
-  footer.site li { margin-bottom: 8px; }
-  footer.site li a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
-  footer.site li a:hover { color: var(--ink); }
-  footer.site .legal {
-    padding-top: 22px; border-top: 1px solid var(--line);
-    display: flex; justify-content: space-between; align-items: center;
-    font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; color: var(--ink-faint);
-    flex-wrap: wrap; gap: 12px;
-  }
-</style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 
-<header class="site">
-  <div class="wrap row">
-    <div class="left">
-      <a href="/" class="brand" aria-label="kolm">
-        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
-        <span>kolm</span>
-      </a>
-      <nav>
-        <a href="/compile">Compile</a>
-        <a href="/serve">Serve</a>
-        <a href="/anatomy">.kolm</a>
-        <a href="/k-score">K-score</a>
-        <a href="/docs" class="active">Docs</a>
-        <a href="/pricing">Pricing</a>
-      </nav>
-    </div>
-    <div class="right">
-      <a href="/signin" class="ghost">Sign in</a>
-      <a href="/signup" class="cta">Get kolm</a>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><img src="/logo-mark.svg" alt="" class="brand-mark">kolm</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/compile">compile</a>
+      <a href="/run">run</a>
+      <a href="/recall">recall</a>
+      <a href="/serve">serve</a>
+      <a href="/anatomy">anatomy</a>
+      <a href="/k-score">k-score</a>
+      <a href="/benchmarks">benchmarks</a>
+      <a href="/compare">compare</a>
+      <a href="/pricing">pricing</a>
+      <a href="/docs" class="active">docs</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/signin">sign in</a>
+      <a href="/signup" class="cta">get a key</a>
     </div>
   </div>
 </header>
 
-<section class="hero">
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="pulse"></span>docs</div>
+        <h1>Build against the current product.</h1>
+        <p class="lede">These docs describe what the repo ships today: the Node CLI, the hosted compile API, signed recipe-mode <code>.kolm</code> artifacts, HMAC receipt metadata, and local MCP serving from <code>~/.kolm/artifacts</code>.</p>
+        <div class="actions">
+          <a href="/quickstart" class="btn primary">quickstart</a>
+          <a href="https://github.com/sneaky-hippo/kolmogorov-stack" class="btn ghost">github</a>
+          <a href="/docs/rs-1.md" class="btn accent">RS-1 spec</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">01</span>install</div>
+      <h2>Install and authenticate.</h2>
+      <p class="sec-lede">Until a public package-manager release exists, install the CLI from the GitHub repository or link a local checkout.</p>
+
+      <div class="grid-3">
+        <div class="card">
+          <h3>Install from GitHub.</h3>
+<pre class="code"><code>npm i -g github:sneaky-hippo/kolmogorov-stack
+kolm --version</code></pre>
+        </div>
+        <div class="card">
+          <h3>Link a checkout.</h3>
+<pre class="code"><code>git clone https://github.com/sneaky-hippo/kolmogorov-stack
+cd kolmogorov-stack
+npm install
+npm link
+kolm version</code></pre>
+        </div>
+        <div class="card">
+          <h3>Save cloud config.</h3>
+<pre class="code"><code>kolm config base https://kolm.ai
+kolm login
+# paste your ks_... API key</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">02</span>compile path</div>
+      <h2>Compile, run, inspect, serve.</h2>
+      <p class="sec-lede">The CLI command surface is intentionally small. These examples use only implemented flags and transports.</p>
+
+<pre class="terminal"><span class="prompt">$</span> kolm compile "classify support tickets" \
+  --examples ./support.examples.jsonl \
+  --data ./support-policy \
+  --base-model qwen2.5-coder-7b-instruct-q4_0 \
+  --out ./artifacts
+
+<span class="prompt">$</span> kolm run ./artifacts/support-tickets.kolm '{"input":"checkout fails on Android"}'
+<span class="prompt">$</span> kolm inspect ./artifacts/support-tickets.kolm
+<span class="prompt">$</span> kolm eval ./artifacts/support-tickets.kolm
+<span class="prompt">$</span> kolm benchmark ./artifacts/support-tickets.kolm --runs 5 --out ./benchmark.json
+<span class="prompt">$</span> kolm score ./artifacts/support-tickets.kolm
+<span class="prompt">$</span> kolm serve --mcp --http --port 11455</pre>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">03</span>CLI reference</div>
+      <h2>Every implemented command.</h2>
+      <p class="sec-lede">If a command is not listed here, do not treat it as supported by the current CLI.</p>
+
+      <div class="kv">
+        <div class="row"><span class="k">kolm login</span><span class="v">prompts for a <code>ks_...</code> API key and writes <code>~/.kolm/config.json</code></span></div>
+        <div class="row"><span class="k">kolm config</span><span class="v">reads or sets <code>base</code> and <code>api_key</code></span></div>
+        <div class="row"><span class="k">kolm compile</span><span class="v">posts a task to <code>/v1/compile</code>, polls the job, and downloads the artifact</span></div>
+        <div class="row"><span class="k">kolm run</span><span class="v">executes a local artifact with a JSON input or bare string input</span></div>
+        <div class="row"><span class="k">kolm inspect</span><span class="v">prints manifest, recipes, K-score, and signature metadata</span></div>
+        <div class="row"><span class="k">kolm eval</span><span class="v">re-runs embedded evals using the artifact runner</span></div>
+        <div class="row"><span class="k">kolm benchmark</span><span class="v">runs embedded evals repeatedly, blocks runtime network calls, and emits reproducible benchmark JSON</span></div>
+        <div class="row"><span class="k">kolm score</span><span class="v">prints the artifact K-score summary</span></div>
+        <div class="row"><span class="k">kolm serve</span><span class="v">starts MCP serving for artifacts in <code>~/.kolm/artifacts</code>; use <code>--mcp</code>, optional <code>--http</code> and <code>--port</code></span></div>
+        <div class="row"><span class="k">kolm publish</span><span class="v">currently a placeholder; public gallery publishing is not implemented</span></div>
+        <div class="row"><span class="k">kolm version</span><span class="v">prints the CLI version</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">04</span>API reference</div>
+      <h2>Hosted API surface.</h2>
+      <p class="sec-lede">The CLI uses bearer auth. Browser sessions can use the httpOnly <code>kolm_session</code> cookie set by sign-in routes.</p>
+
+      <div class="kv">
+        <div class="row"><span class="k">POST /v1/signup</span><span class="v">body <code>{ email, name? }</code>; returns tenant metadata and a one-time API key</span></div>
+        <div class="row"><span class="k">POST /v1/signin</span><span class="v">body <code>{ api_key }</code>; validates key and sets <code>kolm_session</code></span></div>
+        <div class="row"><span class="k">POST /v1/session/login</span><span class="v">same API-key session flow for app clients</span></div>
+        <div class="row"><span class="k">GET /v1/account</span><span class="v">returns tenant id, name, plan, quota, usage, and remaining compile budget</span></div>
+        <div class="row"><span class="k">POST /v1/account/rotate-key</span><span class="v">returns a new API key; new keys are stored as hashes at rest</span></div>
+        <div class="row"><span class="k">POST /v1/compile</span><span class="v">body <code>{ task, examples?, corpus_namespace?, base_model? }</code>; returns a compile job id</span></div>
+        <div class="row"><span class="k">GET /v1/compile/:id</span><span class="v">returns status, progress, K-score, and artifact download URL after completion</span></div>
+        <div class="row"><span class="k">GET /v1/compile/:id/.kolm</span><span class="v">downloads the compiled artifact for the authenticated tenant</span></div>
+        <div class="row"><span class="k">GET /v1/registry/export</span><span class="v">exports public recipe metadata and source for current registry entries</span></div>
+        <div class="row"><span class="k">GET /sdk-current.json</span><span class="v">current browser SDK SHA, SRI hash, URL, and byte size</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">05</span>artifact format</div>
+      <h2>Open schemas for the artifact contract.</h2>
+      <p class="sec-lede">The current <code>.kolm</code> file is a zip artifact with manifest, model pointer metadata, recipe data, placeholder LoRA/index members where appropriate, eval data, and HMAC receipt metadata. Native LoRA training, populated vector indexes, and external receipt anchoring remain product-hardening work, not current defaults.</p>
+
+      <div class="grid-3">
+        <div class="card">
+          <h3>RS-1 spec.</h3>
+          <p>Human-readable artifact contract and receipt notes.</p>
+          <p><a href="/docs/rs-1.md">Read rs-1.md</a></p>
+        </div>
+        <div class="card">
+          <h3>Manifest schema.</h3>
+          <p>JSON schema for artifact manifest fields.</p>
+          <p><a href="/docs/manifest-v0.1.json">Read manifest-v0.1.json</a></p>
+        </div>
+        <div class="card">
+          <h3>Receipt schema.</h3>
+          <p>JSON schema for receipt chain fields and signatures.</p>
+          <p><a href="/docs/receipt-v0.1.json">Read receipt-v0.1.json</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
   <div class="wrap">
-    <span class="pill"><span class="dot"></span>docs · v0.1 · live</span>
-    <h1 class="hero-h1">Read once.<br><span class="tone">Build forever.</span></h1>
-    <p class="lede">Everything you need to install <b>kolm</b>, ship your first artifact, and integrate it into the rest of your stack. The CLI, the SDK, the <code>.kolm</code> format, the receipt chain, and the open <code>RS-1</code> spec, in one place.</p>
-
-    <div class="term" aria-label="Quickstart">
-      <div class="head">
-        <span class="ctl"></span><span class="ctl"></span><span class="ctl"></span>
-        <span class="file">~/quickstart · zsh</span>
-      </div>
-      <div class="body"><span class="com">$</span> npm i -g <span class="arg">@kolmogorov/kolm</span>
-<span class="com">$</span> kolm login
-<span class="dim">› opens browser · paste your kolm api key</span>
-<span class="com">$</span> kolm compile <span class="arg">"answer support tickets in our voice"</span> --tpl email-reply
-<span class="dim">› compile id  </span><span class="ok">cmpl_8a3f12</span>
-<span class="dim">› teacher     </span>claude-opus-4-7   <span class="dim">(your key)</span>
-<span class="dim">› package     </span>./out/<span class="arg">support.kolm</span>   <span class="ok">K=0.94</span>
-<span class="com">$</span> kolm serve ./out/support.kolm <span class="dim">--mcp</span>
-<span class="ok">▸</span> mcp · ws://localhost:8765   <span class="dim">stdio + http enabled</span>
-</div>
-    </div>
-
-    <div class="cta-row">
-      <a href="/signup" class="btn-primary">Get kolm <code>·</code> <code>kolm compile</code></a>
-      <a href="#install" class="btn-link">Install →</a>
-    </div>
-  </div>
-</section>
-
-<section id="install">
-  <div class="wrap">
-    <div class="eyebrow"><span class="num">01</span><span>Install</span></div>
-    <h2>Three install paths.<br><span class="tone">Same binary.</span></h2>
-    <p class="sec-lede">The CLI is a single Go binary. Pick the package manager you already use. Every release is signed and reproducible from source at <code>github.com/sneaky-hippo/kolmogorov-stack</code>.</p>
-
-    <div class="install">
-      <div class="install-card">
-        <div class="cat">Node · macOS · Linux · Windows</div>
-        <h4>npm</h4>
-<pre><span class="dim"># global install</span>
-npm i -g <span class="arg">@kolmogorov/kolm</span>
-kolm --version
-<span class="dim"># kolm 0.1.x</span></pre>
-      </div>
-
-      <div class="install-card">
-        <div class="cat">Curl · macOS · Linux</div>
-        <h4>curl</h4>
-<pre><span class="dim"># single command</span>
-curl -fsSL <span class="arg">https://kolm.ai/install.sh</span> | sh
-kolm --version
-<span class="dim"># kolm 0.1.x</span></pre>
-      </div>
-
-      <div class="install-card">
-        <div class="cat">Homebrew · macOS · Linux</div>
-        <h4>brew</h4>
-<pre><span class="dim"># tap and install</span>
-brew install <span class="arg">kolmogorov/tap/kolm</span>
-kolm --version
-<span class="dim"># kolm 0.1.x</span></pre>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <div class="eyebrow"><span class="num">02</span><span>First compile</span></div>
-    <h2>Five steps. <span class="tone">Five minutes.</span></h2>
-    <p class="sec-lede">From <code>kolm login</code> to a signed artifact you can run on a phone. No GPU, no Docker, no MLOps. The only thing that costs money is the frontier API call you would have made anyway.</p>
-
-    <div class="steps">
-      <div class="step">
-        <div class="n">01</div>
-        <div class="body">
-          <h4>Sign in.</h4>
-          <p>Sign up takes an email. The backend issues a <code>kolm</code> API key. Paste it into the CLI once.</p>
-<pre>kolm login
-<span class="dim">› opens https://kolm.ai/signin</span>
-<span class="dim">› paste api key · saved to ~/.kolm/credentials</span>
-<span class="ok">✓</span> signed in as you@company.com</pre>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="n">02</div>
-        <div class="body">
-          <h4>Bring your frontier key.</h4>
-          <p>Anthropic, OpenAI, Google, Mistral, Together, Fireworks, Bedrock, Azure, or your own gateway. Set once. Never persisted server-side.</p>
-<pre>export ANTHROPIC_API_KEY=<span class="arg">sk-ant-...</span>
-<span class="dim"># or</span>
-kolm config set teacher.provider <span class="arg">anthropic</span>
-kolm config set teacher.model    <span class="arg">claude-opus-4-7</span></pre>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="n">03</div>
-        <div class="body">
-          <h4>Compile.</h4>
-          <p>One command. Pick a template, point at your data, set your gate. The orchestrator does distill, decompose, train, evaluate, and package.</p>
-<pre>kolm compile <span class="arg">"summarise tickets in our voice"</span> \
-    --examples <span class="arg">./tickets.jsonl</span> \
-    --base     <span class="arg">qwen2.5-3b</span> \
-    --gate     <span class="arg">0.70</span></pre>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="n">04</div>
-        <div class="body">
-          <h4>Inspect the artifact.</h4>
-          <p><code>kolm inspect</code> opens the file: K-score, tests pass-rate, signature chain, every layer that went into it.</p>
-<pre>kolm inspect ./out/<span class="arg">support.kolm</span>
-<span class="ok">✓</span> manifest    rs-1 v0.1
-<span class="ok">✓</span> k-score     <span class="arg">0.94</span>   <span class="dim">(gate 0.70)</span>
-<span class="ok">✓</span> tests       97.4% pass · n=412
-<span class="ok">✓</span> hmac chain  anchored to registry</pre>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="n">05</div>
-        <div class="body">
-          <h4>Run it. Or serve it.</h4>
-          <p>Run locally on the same machine. Or expose it as an MCP server, an HTTP endpoint, or a stdio process for any agent.</p>
-<pre>kolm run   ./out/<span class="arg">support.kolm</span> <span class="arg">"hi, my login is broken"</span>
-kolm serve ./out/<span class="arg">support.kolm</span> --mcp
-<span class="dim"># or import directly</span>
-import { run } from <span class="arg">"@kolmogorov/sdk"</span>
-const reply = await run(<span class="arg">"./support.kolm"</span>, input)</pre>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <div class="eyebrow"><span class="num">03</span><span>Concepts</span></div>
-    <h2>Six ideas you keep forever.<br><span class="tone">Everything else is wiring.</span></h2>
-    <p class="sec-lede">If you understand these six, you understand kolm. The rest of the docs are reference material you read once and grep later.</p>
-
-    <div class="concepts">
-      <div class="concept">
-        <div class="ico">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><rect x="2.5" y="2.5" width="11" height="11" rx="1"/><path d="M5 6 H11 M5 8 H11 M5 10 H9"/></svg>
-        </div>
-        <h4>Artifact</h4>
-        <p>A single signed <code>.kolm</code> zip: model, LoRA, recipes, recall index, tests, manifest, signature. Reproducible byte-for-byte.</p>
-        <a href="/anatomy" class="more">/anatomy →</a>
-      </div>
-
-      <div class="concept">
-        <div class="ico">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M3 4 L7 8 L3 12 M9 12 L13 12"/></svg>
-        </div>
-        <h4>Recipes</h4>
-        <p>Deterministic draft tokens extracted from observed model behavior. The compute moat. Speculative decoding without a draft model.</p>
-        <a href="/atlas" class="more">/atlas →</a>
-      </div>
-
-      <div class="concept">
-        <div class="ico">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><circle cx="8" cy="8" r="5.5"/><path d="M5.5 8 L7 9.5 L10.5 6"/></svg>
-        </div>
-        <h4>K-score</h4>
-        <p>Harmonic average of accuracy, size, latency, cost, coverage. One number. Below the gate, the artifact does not ship.</p>
-        <a href="/k-score" class="more">/k-score →</a>
-      </div>
-
-      <div class="concept">
-        <div class="ico">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M3 13 L13 13 M5 13 L5 5 L11 5 L11 13 M7 7 L9 7 M7 9 L9 9 M7 11 L9 11"/></svg>
-        </div>
-        <h4>Registry</h4>
-        <p>Public append-only registry of recipe drafts and artifact hashes. Every compile contributes back. Future compiles get cheaper.</p>
-        <a href="/atlas" class="more">/atlas →</a>
-      </div>
-
-      <div class="concept">
-        <div class="ico">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><circle cx="8" cy="8" r="5.5"/><path d="M2.5 8 L13.5 8 M8 2.5 C5 5 5 11 8 13.5 M8 2.5 C11 5 11 11 8 13.5"/></svg>
-        </div>
-        <h4>Recall</h4>
-        <p>Multimodal sqlite-vec index packed inside the artifact. Text, image, audio, video, PDF. Grounding ships with the model.</p>
-        <a href="/anatomy#recall" class="more">/anatomy#recall →</a>
-      </div>
-
-      <div class="concept">
-        <div class="ico">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M2.5 5 L13.5 5 L13.5 13 L2.5 13 Z M5 5 L5 3 L11 3 L11 5 M5.5 9 L7 10.5 L10.5 7"/></svg>
-        </div>
-        <h4>Serve · MCP</h4>
-        <p><code>kolm serve --mcp</code> exposes any artifact as a Model Context Protocol server. Drop into Claude, Cursor, Zed, or any MCP client.</p>
-        <a href="/serve" class="more">/serve →</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <div class="eyebrow"><span class="num">04</span><span>API reference</span></div>
-    <h2>Every endpoint.<br><span class="tone">Auth is one cookie.</span></h2>
-    <p class="sec-lede">Sign in once with an API key. The server sets <code>kolm_session</code> as an httpOnly cookie. Every other call rides that cookie. The CLI does it for you; the SDK does it for you; <code>fetch()</code> does it for you with <code>credentials: "include"</code>.</p>
-
-    <div class="api">
-      <div class="api-row">
-        <span class="method post">POST</span>
-        <div class="body">
-          <span class="path">/v1/signup</span>
-          <p>Body: <code>{ email, name }</code>. Backend auto-issues an <code>api_key</code>. No password, ever.</p>
-        </div>
-      </div>
-      <div class="api-row">
-        <span class="method post">POST</span>
-        <div class="body">
-          <span class="path">/v1/signin</span>
-          <p>Body: <code>{ api_key }</code>. Sets <code>kolm_session</code> httpOnly cookie. Same as <code>/v1/session/login</code>.</p>
-        </div>
-      </div>
-      <div class="api-row">
-        <span class="method get">GET</span>
-        <div class="body">
-          <span class="path">/v1/account</span>
-          <p>Returns your account, current API key, and a snapshot of recent compile jobs.</p>
-        </div>
-      </div>
-      <div class="api-row">
-        <span class="method post">POST</span>
-        <div class="body">
-          <span class="path">/v1/compile</span>
-          <p>Body: <code>{ task, examples?, evals?, base?, gate? }</code>. Returns <code>{ job_id }</code>. The job streams via SSE on the same id.</p>
-        </div>
-      </div>
-      <div class="api-row">
-        <span class="method get">GET</span>
-        <div class="body">
-          <span class="path">/v1/compile/:job_id</span>
-          <p>Status, logs, K-score, and a download URL when ready. The <code>manifest.k_score</code> field is the official ship gate.</p>
-        </div>
-      </div>
-      <div class="api-row">
-        <span class="method get">GET</span>
-        <div class="body">
-          <span class="path">/v1/registry/export</span>
-          <p>The public deterministic-draft pack. Pre-shaped for <code>llama.cpp</code> and <code>vLLM</code>. Cached at the edge for 60 seconds.</p>
-        </div>
-      </div>
-      <div class="api-row">
-        <span class="method get">GET</span>
-        <div class="body">
-          <span class="path">/v1/health</span>
-          <p>Live status. Auth required. Public <code>/health</code> is a single boolean &mdash; no internal state.</p>
-        </div>
-      </div>
-      <div class="api-row">
-        <span class="method get">GET</span>
-        <div class="body">
-          <span class="path">/sdk.js</span>
-          <p>Browser-native SDK. Versioned at <code>/sdk-&lt;sha&gt;.js</code> with SRI hashes published at <code>/sdk-versions.json</code>.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <div class="eyebrow"><span class="num">05</span><span>Open spec · RS-1</span></div>
-    <h2>The format is open.<br><span class="tone">The receipts are open.</span></h2>
-    <p class="sec-lede">RS-1 is the public, MIT-licensed specification of the <code>.kolm</code> artifact, the manifest schema, and the receipt chain. Implementable from scratch in any language. Read it. Fork it. Ship a different runtime.</p>
-
-    <div class="specs">
-      <div class="spec">
-        <div class="cat">RS-1 · core</div>
-        <h4>The .kolm artifact format</h4>
-        <p>Zip layout, layer ordering, manifest fields, signature placement. What every conforming runtime must accept.</p>
-        <div class="links">
-          <a href="/docs/rs-1.md">rs-1.md</a>
-          <a href="https://github.com/sneaky-hippo/kolmogorov-stack/blob/main/docs/rs-1.md">github</a>
-        </div>
-      </div>
-
-      <div class="spec">
-        <div class="cat">RS-1 · manifest</div>
-        <h4>manifest.json schema</h4>
-        <p>JSON Schema for the manifest at the root of every artifact. Task, examples hash, base, K-score, layer hashes.</p>
-        <div class="links">
-          <a href="/docs/manifest-v0.1.json">manifest-v0.1.json</a>
-          <a href="https://github.com/sneaky-hippo/kolmogorov-stack/blob/main/docs/manifest-v0.1.json">github</a>
-        </div>
-      </div>
-
-      <div class="spec">
-        <div class="cat">RS-1 · receipts</div>
-        <h4>Receipt chain schema</h4>
-        <p>HMAC chain from compile-input to artifact to inference-output. Anchored to the public registry. On-chain optional.</p>
-        <div class="links">
-          <a href="/docs/receipt-v0.1.json">receipt-v0.1.json</a>
-          <a href="https://github.com/sneaky-hippo/kolmogorov-stack/blob/main/docs/receipt-v0.1.json">github</a>
-        </div>
-      </div>
-    </div>
-
-    <div class="cta-row">
-      <a href="/signup" class="btn-primary">Get kolm <code>·</code> <code>kolm compile</code></a>
-      <a href="https://github.com/sneaky-hippo/kolmogorov-stack" class="btn-link">GitHub →</a>
-    </div>
-  </div>
-</section>
-
-<footer class="site">
-  <div class="wrap">
-    <div class="grid">
-      <div class="brandcol">
-        <a href="/" class="brand" aria-label="kolm">
-          <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
-          <span>kolm</span>
-        </a>
-        <p>The compiler cache for intelligence. RS-1 · RS-1-multimodal · RS-1-receipts. Open spec, MIT-licensed.</p>
+    <div class="meta"><img src="/logo-mark.svg" alt="" style="width:18px;height:18px;margin-right:8px;vertical-align:-4px;">kolm docs / <a href="/quickstart">quickstart</a> / <a href="/status">status</a></div>
+    <div class="links">
+      <div>
+        <div class="col-h">product</div>
+        <a href="/compile">compile</a>
+        <a href="/run">run</a>
+        <a href="/recall">recall</a>
+        <a href="/serve">serve</a>
       </div>
       <div>
-        <h5>Product</h5>
-        <ul>
-          <li><a href="/compile">Compile</a></li>
-          <li><a href="/serve">Serve</a></li>
-          <li><a href="/anatomy">.kolm anatomy</a></li>
-          <li><a href="/k-score">K-score</a></li>
-          <li><a href="/atlas">Public atlas</a></li>
-          <li><a href="/pricing">Pricing</a></li>
-        </ul>
+        <div class="col-h">proof</div>
+        <a href="/benchmarks">benchmarks</a>
+        <a href="/compare">compare</a>
+        <a href="/security">security</a>
+        <a href="/privacy">privacy</a>
       </div>
-      <div>
-        <h5>Develop</h5>
-        <ul>
-          <li><a href="/docs">Docs</a></li>
-          <li><a href="/manual">Manual</a></li>
-          <li><a href="/sdk.js">SDK</a></li>
-          <li><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></li>
-        </ul>
-      </div>
-      <div>
-        <h5>Trust</h5>
-        <ul>
-          <li><a href="/security">Security</a></li>
-          <li><a href="/status">Status</a></li>
-          <li><a href="/privacy">Privacy</a></li>
-          <li><a href="/terms">Terms</a></li>
-          <li><a href="mailto:dev@kolm.ai">dev@kolm.ai</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="legal">
-      <span>kolmogorov · 2026</span>
-      <span>compile once · run anywhere</span>
     </div>
   </div>
 </footer>

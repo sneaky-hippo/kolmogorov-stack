@@ -4,21 +4,67 @@
 import 'dotenv/config';
 import crypto from 'node:crypto';
 import { findOne, insert, all, update } from './store.js';
+import { isProductionRuntime } from './env.js';
+
+export { isProductionRuntime };
 
 // Token bucket: tenant_id → { tokens, last, capacity, refillPerSec }
 const buckets = new Map();
 const DEFAULT_RATE = parseInt(process.env.RATE_LIMIT_PER_SEC || '20'); // req/s sustained
 const DEFAULT_BURST = parseInt(process.env.RATE_LIMIT_BURST || '60');
 
+function mintApiKey(kind = 'user') {
+  const prefix = kind === 'anon' ? 'kao_' : 'ks_';
+  return prefix + crypto.randomBytes(16).toString('hex');
+}
+
+export function hashApiKey(key) {
+  return 'sha256:' + crypto.createHash('sha256').update(key).digest('hex');
+}
+
+function keyFields(key) {
+  return {
+    api_key_hash: hashApiKey(key),
+    api_key_prefix: key.slice(0, 10),
+  };
+}
+
+function constantTimeEqual(a, b) {
+  const left = Buffer.from(String(a || ''));
+  const right = Buffer.from(String(b || ''));
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+function tenantKeyMatches(tenant, key) {
+  if (!tenant || !key) return false;
+  if (tenant.api_key_hash && constantTimeEqual(tenant.api_key_hash, hashApiKey(key))) return true;
+  return !!tenant.api_key && constantTimeEqual(tenant.api_key, key);
+}
+
+function migrateRawKeyIfNeeded(tenant, key) {
+  if (!tenant?.id || !tenant.api_key) return;
+  update('tenants', x => x.id === tenant.id, {
+    ...keyFields(key),
+    api_key: undefined,
+    key_migrated_at: tenant.key_migrated_at || new Date().toISOString(),
+  });
+}
+
+export function findTenantByApiKey(key) {
+  const tenant = findOne('tenants', x => !x._deleted && tenantKeyMatches(x, key));
+  if (tenant) migrateRawKeyIfNeeded(tenant, key);
+  return tenant;
+}
+
 export function provisionTenant(name, { quota = 10000, plan = 'free', kind = 'user', expires_at = null, email = null } = {}) {
   const existing = all('tenants').find(t => t.name === name);
   if (existing) return existing;
-  const prefix = kind === 'anon' ? 'kao_' : 'ks_';
-  const key = prefix + crypto.randomBytes(16).toString('hex');
+  const key = mintApiKey(kind);
   const t = {
     id: 'tenant_' + crypto.randomBytes(6).toString('hex'),
     name,
-    api_key: key,
+    ...keyFields(key),
     kind,                 // 'user' | 'anon'
     expires_at,           // ISO string for anon tenants; null otherwise
     email,                // null until claimed
@@ -30,7 +76,7 @@ export function provisionTenant(name, { quota = 10000, plan = 'free', kind = 'us
     created_at: new Date().toISOString(),
   };
   insert('tenants', t);
-  return t;
+  return { ...t, api_key: key };
 }
 
 // Mint an anonymous tenant. No email required. 30-day TTL. Lower quota.
@@ -47,26 +93,33 @@ export function provisionAnonTenant({ ttl_days = 30, quota = 1000 } = {}) {
 // - Otherwise upgrades the anon tenant in-place: rotates key to ks_*, clears expiry, raises quota,
 //   marks as 'user'.
 export function claimAnonTenant(anonToken, { email, name }) {
-  const anon = findOne('tenants', x => x.api_key === anonToken && x.kind === 'anon');
-  if (!anon) return { ok: false, reason: 'anon token not found or already claimed' };
+  const anon = findTenantByApiKey(anonToken);
+  if (!anon || anon.kind !== 'anon') return { ok: false, reason: 'anon token not found or already claimed' };
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return { ok: false, reason: 'valid email required' };
   }
   // Look for an existing real tenant with this email
   const existing = all('tenants').find(t => t.email === email && t.kind !== 'anon');
   if (existing) {
+    const newKey = mintApiKey('user');
     // Reassign concepts from anon → existing
     update('concepts', c => c.tenant === anon.name, { tenant: existing.name });
     update('observations', o => o.tenant === anon.name, { tenant: existing.name });
     update('tenants', x => x.id === anon.id, { _deleted: true });
-    return { ok: true, mode: 'merged', api_key: existing.api_key, tenant: existing };
+    update('tenants', x => x.id === existing.id, {
+      ...keyFields(newKey),
+      api_key: undefined,
+      key_rotated_at: new Date().toISOString(),
+    });
+    return { ok: true, mode: 'merged', api_key: newKey, tenant: { ...existing, api_key: newKey } };
   }
   // Otherwise upgrade in place
-  const newKey = 'ks_' + crypto.randomBytes(16).toString('hex');
+  const newKey = mintApiKey('user');
   const slug = (name || email.split('@')[0]).toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 32) || 'user';
   const uniq = `${slug}-${Date.now().toString(36).slice(-4)}`;
   update('tenants', x => x.id === anon.id, {
-    api_key: newKey,
+    ...keyFields(newKey),
+    api_key: undefined,
     name: uniq,
     kind: 'user',
     plan: 'free',
@@ -82,8 +135,12 @@ export function claimAnonTenant(anonToken, { email, name }) {
 }
 
 export function rotateTenantKey(tenant_id) {
-  const newKey = 'ks_' + crypto.randomBytes(16).toString('hex');
-  update('tenants', x => x.id === tenant_id, { api_key: newKey, key_rotated_at: new Date().toISOString() });
+  const newKey = mintApiKey('user');
+  update('tenants', x => x.id === tenant_id, {
+    ...keyFields(newKey),
+    api_key: undefined,
+    key_rotated_at: new Date().toISOString(),
+  });
   return newKey;
 }
 
@@ -121,12 +178,16 @@ const PUBLIC_API = (p) =>
   p === '/v1/anon/claim' ||
   p === '/v1/registry/public';
 
+export function adminApiKey() {
+  return process.env.ADMIN_KEY || (isProductionRuntime() ? null : 'ks_admin_change_me');
+}
+
 export function authMiddleware(req, res, next) {
   const p = req.path;
   // Non-API paths bypass auth entirely (page routes, static, 404 fallback handle them)
   if (!p.startsWith('/v1/')) return next();
   if (PUBLIC_API(p)) return next();
-  const adminKey = process.env.ADMIN_KEY || (process.env.NODE_ENV === 'production' ? null : 'ks_admin_change_me');
+  const adminKey = adminApiKey();
   const header = req.headers.authorization || '';
   const xApi = req.headers['x-api-key'] || '';
   // S7: prefer the httpOnly cookie. Header / query params still accepted
@@ -137,14 +198,14 @@ export function authMiddleware(req, res, next) {
   const cookieKey = (req.cookies && req.cookies.kolm_session) || '';
   const key = cookieKey || header.replace(/^Bearer\s+/i, '').trim() || xApi || req.query.api_key;
 
-  if (key === adminKey) {
+  if (adminKey && key === adminKey) {
     req.tenant = process.env.DEFAULT_TENANT || 'demo';
     req.is_admin = true;
     return next();
   }
 
   if (!key) return res.status(401).json({ error: 'missing api key', hint: 'set Authorization: Bearer <key> or X-API-Key header' });
-  const t = findOne('tenants', x => x.api_key === key && !x._deleted);
+  const t = findTenantByApiKey(key);
   if (!t) return res.status(401).json({ error: 'invalid api key' });
 
   // Anon tokens expire — deny + nudge to claim

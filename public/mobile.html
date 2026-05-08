@@ -3,323 +3,117 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Mobile SDK &middot; kolm</title>
-<meta name="description" content="The kolm Mobile SDK ships your signed AI artifact onto iOS and Android. Personalize on the user's device. Their data never leaves.">
-<meta name="theme-color" content="#050610">
+<title>Mobile AI runtime targets - kolm</title>
+<meta name="description" content="kolm's mobile target plan: compile signed .kolm artifacts today, run through the CLI and MCP runtime now, and evaluate iOS and Android runtime adapters as roadmap targets.">
+<meta name="theme-color" content="#050607">
 <meta name="color-scheme" content="dark">
-<meta property="og:title" content="Mobile SDK &middot; kolm">
-<meta property="og:description" content="Ship a signed AI artifact onto iOS and Android. On-device personalization, offline inference.">
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="kolm mobile runtime targets">
+<meta property="og:description" content="A truthful look at current and planned mobile surfaces for signed .kolm artifacts.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kolm.ai/mobile">
-<meta property="og:image" content="https://kolm.ai/img/brand-og.png">
-<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
 <link rel="canonical" href="https://kolm.ai/mobile">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="preload" as="image" href="/aurora.svg">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#050610;--bg-2:#0b0e15;--bg-3:#0e1320;
-  --line:#1c2738;--line-2:#28324a;--line-3:#2a3144;
-  --fg:#f6f8fb;--fg-2:#dde1ee;--fg-3:#8893ad;--muted:#7d7898;--dim:#6a7385;
-  --violet:#aa9cff;--violet-2:#d4c8ff;--cyan:#65d4ff;--emerald:#5be8b6;
-  --maxw:1180px;--pad-x:max(28px,env(safe-area-inset-left));
-}
-html,body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;min-height:100vh}
-body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.55;letter-spacing:-0.011em;font-feature-settings:"ss01","ss03","cv11","calt";font-optical-sizing:auto;overflow-x:hidden;display:flex;flex-direction:column;min-height:100vh}
-h1,h2,h3,h4{font-family:inherit;font-feature-settings:"ss01","ss03","cv11","calt"}
-img,svg{display:block;max-width:100%}
-a{color:inherit;text-decoration:none}
-ul,ol{list-style:none}
-code,pre,.mono,kbd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Roboto Mono",monospace}
-::selection{background:rgba(170, 156, 255,0.35);color:var(--fg)}
-
-.bg-stage{position:fixed;inset:0;z-index:-2;background:var(--bg);overflow:hidden;pointer-events:none}
-.bg-stage::before{content:"";position:absolute;inset:-10%;background-image:url('/aurora.svg');background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0.30;filter:blur(40px)}
-.bg-stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(5, 6, 10,0) 0%,rgba(5, 6, 10,0.6) 45%,rgba(5, 6, 10,0.95) 100%)}
-.aurora{background-image:url('/aurora.svg');background-size:200% 200%;background-position:center;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
-
-nav.top{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:32px;padding:14px var(--pad-x);background:rgba(5, 6, 10,0.55);backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--line);font-size:14px}
-nav.top .brand{font-weight:600;letter-spacing:-0.025em;font-size:21px;line-height:1}
-nav.top ul.links{display:flex;gap:28px}
-nav.top ul.links a{color:var(--fg-3);transition:color .15s;font-weight:500}
-nav.top ul.links a:hover{color:var(--fg)}
-nav.top .signin{color:var(--fg);font-weight:500;display:inline-flex;align-items:center;gap:6px}
-nav.top .signin .ar{color:var(--fg-3);transition:transform .2s}
-nav.top .signin:hover .ar{transform:translateX(2px);color:var(--fg)}
-@media(max-width:880px){nav.top ul.links{display:none}}
-
-main{flex:1}
-.hero{padding:96px var(--pad-x) 60px;max-width:var(--maxw);margin:0 auto}
-.hero .grid{display:grid;grid-template-columns:1.1fr 1fr;gap:60px;align-items:center}
-@media(max-width:900px){.hero .grid{grid-template-columns:1fr;gap:40px}}
-.hero .eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11.5px;color:var(--fg-3);letter-spacing:0.18em;text-transform:uppercase;padding:7px 14px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;margin-bottom:28px}
-.hero .eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 3px rgba(67, 230, 166,0.18)}
-.hero h1{font-size:clamp(40px,6vw,72px);font-weight:600;letter-spacing:-0.034em;line-height:1.04;margin-bottom:24px}
-.hero h1 .row{display:block}
-.hero .lede{font-size:clamp(17px,1.55vw,20px);color:var(--fg-3);max-width:540px;line-height:1.55;margin-bottom:36px}
-.hero .lede strong{color:var(--fg-2);font-weight:500}
-.cta-stack{display:flex;gap:14px;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:8px;font-size:15px;font-weight:500;letter-spacing:-0.011em;border:1px solid transparent;line-height:1;font-family:inherit;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,color .15s,box-shadow .15s}
-.btn .ar{transition:transform .2s}
-.btn:hover .ar{transform:translateX(3px)}
-.btn-primary{background:linear-gradient(180deg,#fff 0%,#e3deff 100%);color:#050610;border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,0.10),0 8px 28px -8px rgba(170, 156, 255,0.45)}
-.btn-primary:hover{box-shadow:0 0 0 1px rgba(255,255,255,0.18),0 12px 32px -6px rgba(170, 156, 255,0.55)}
-.btn-secondary{background:transparent;color:var(--fg);border-color:var(--line-3)}
-.btn-secondary:hover{border-color:var(--fg);background:rgba(255,255,255,0.04)}
-
-.phone-wrap{display:flex;justify-content:center;align-items:center}
-.phone{width:280px;height:560px;border:1.5px solid var(--line-3);border-radius:38px;background:var(--bg-2);position:relative;box-shadow:0 0 0 8px var(--bg-3),0 30px 80px -20px rgba(170, 156, 255,0.30);overflow:hidden}
-.phone::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:24px;background:var(--bg);border-radius:0 0 16px 16px;z-index:2}
-.phone .screen{position:absolute;inset:0;display:flex;flex-direction:column;padding:44px 18px 24px}
-.phone .screen .stat-bar{display:flex;justify-content:space-between;align-items:center;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:9.5px;color:var(--fg-3);padding:0 6px 18px;letter-spacing:0.04em}
-.phone .screen .app-h{font-size:13px;font-weight:600;color:var(--fg);margin-bottom:6px;padding:0 6px;letter-spacing:-0.011em}
-.phone .screen .app-sub{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;color:var(--violet-2);letter-spacing:0.1em;margin-bottom:18px;padding:0 6px;text-transform:uppercase}
-.phone .msg{background:var(--bg-3);border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:8px;font-size:11.5px;line-height:1.5;color:var(--fg-2)}
-.phone .msg.me{background:rgba(170, 156, 255,0.14);border-color:rgba(170, 156, 255,0.28);color:var(--fg);margin-left:24px}
-.phone .msg.bot{background:var(--bg-3);border-color:var(--line);margin-right:24px}
-.phone .msg .who{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:9px;color:var(--fg-3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px}
-.phone .badge-row{display:flex;gap:6px;margin-top:14px;padding:0 4px}
-.phone .badge-row .bd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:9px;color:var(--emerald);background:rgba(67, 230, 166,0.08);border:1px solid rgba(67, 230, 166,0.30);padding:3px 7px;border-radius:4px;letter-spacing:0.08em}
-.phone .footnote{margin-top:auto;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:9px;color:var(--dim);text-align:center;letter-spacing:0.08em;padding:0 6px}
-
-.section{padding:64px var(--pad-x);max-width:var(--maxw);margin:0 auto}
-.section h2{font-size:clamp(32px,4vw,46px);font-weight:600;letter-spacing:-0.026em;line-height:1.06;margin-bottom:16px}
-.section h2.center{text-align:center}
-.section .sub{font-size:clamp(15.5px,1.4vw,18px);color:var(--fg-3);max-width:640px;line-height:1.55;margin-bottom:40px}
-.section .sub.center{text-align:center;margin-left:auto;margin-right:auto}
-
-.codeblock{background:var(--bg-2);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.codeblock .head{padding:12px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:var(--bg-3)}
-.codeblock .head .lbl{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.16em;color:var(--fg-3);text-transform:uppercase}
-.codeblock .head .meta{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;color:var(--dim)}
-.codeblock pre{padding:22px 24px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13px;line-height:1.7;color:var(--fg-2);overflow-x:auto}
-.codeblock pre .c{color:var(--dim)}
-.codeblock pre .k{color:var(--violet-2)}
-.codeblock pre .s{color:var(--emerald)}
-.codeblock pre .n{color:var(--violet)}
-.codeblock pre .f{color:var(--cyan)}
-
-.split{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-@media(max-width:900px){.split{grid-template-columns:1fr}}
-
-.specs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
-.specs .sp{padding:24px;border:1px solid var(--line);border-radius:12px;background:var(--bg-2)}
-.specs .sp .lbl{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.16em;color:var(--dim);text-transform:uppercase;margin-bottom:8px}
-.specs .sp .v{font-size:24px;font-weight:600;letter-spacing:-0.018em;color:var(--fg);margin-bottom:6px;line-height:1.1}
-.specs .sp .p{font-size:13px;color:var(--fg-3);line-height:1.5}
-@media(max-width:760px){.specs{grid-template-columns:1fr}}
-
-footer{border-top:1px solid var(--line);background:rgba(14,12,28,0.4);padding:48px var(--pad-x);font-size:13px;color:var(--dim);margin-top:auto}
-footer .inner{max-width:var(--maxw);margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:48px}
-footer h4{color:var(--fg);font-size:13px;font-weight:600;margin-bottom:14px;letter-spacing:-0.011em}
-footer .col a{display:block;color:var(--fg-3);padding:6px 0;font-size:13px;transition:color .15s}
-footer .col a:hover{color:var(--fg)}
-footer .legal{font-size:12px;line-height:1.7;color:var(--dim);margin-top:18px}
-footer .brand-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-footer .brand-row .mark{font-size:18px;font-weight:600;letter-spacing:-0.02em}
-@media(max-width:760px){footer .inner{grid-template-columns:1fr 1fr;gap:32px}}
-@media(max-width:480px){footer .inner{grid-template-columns:1fr}}
-</style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 
-<div class="bg-stage" aria-hidden="true"></div>
-
-<nav class="top">
-  <a class="brand aurora" href="/">kolm</a>
-  <ul class="links">
-    <li><a href="/compile">Compile</a></li>
-    <li><a href="/run">Run</a></li>
-    <li><a href="/registry">Registry</a></li>
-    <li><a href="/docs">Docs</a></li>
-    <li><a href="/pricing">Pricing</a></li>
-  </ul>
-  <a class="signin" href="/signin">Sign in <span class="ar">&rsaquo;</span></a>
-</nav>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><img src="/logo-mark.svg" alt="" class="brand-mark">kolm</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/compile">compile</a>
+      <a href="/run">run</a>
+      <a href="/recall">recall</a>
+      <a href="/serve">serve</a>
+      <a href="/anatomy">anatomy</a>
+      <a href="/benchmarks">benchmarks</a>
+      <a href="/compare">compare</a>
+      <a href="/pricing">pricing</a>
+      <a href="/docs">docs</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/signin">sign in</a>
+      <a href="/signup" class="cta">get a key</a>
+    </div>
+  </div>
+</header>
 
 <main>
 <section class="hero">
-  <div class="grid">
-    <div>
-      <div class="eyebrow"><span class="dot"></span> mobile sdk &middot; ios + android</div>
-      <h1>
-        <span class="row">Ship a signed</span>
-        <span class="row aurora">AI artifact</span>
-        <span class="row">onto every phone.</span>
-      </h1>
-      <p class="lede">
-        The kolm Mobile SDK loads a signed <code style="color:var(--violet-2);font-size:0.92em">.kolm</code> artifact, personalizes it on the user's local data, and runs offline. <strong>Their bytes never reach our servers.</strong>
-      </p>
-      <div class="cta-stack">
-        <a class="btn btn-primary" href="/signup?plan=mobile">Start mobile plan <span class="ar">&rsaquo;</span></a>
-        <a class="btn btn-secondary" href="/docs#sdk">SDK reference <span class="ar">&rsaquo;</span></a>
-      </div>
-    </div>
-
-    <div class="phone-wrap">
-      <div class="phone">
-        <div class="screen">
-          <div class="stat-bar"><span>9:41</span><span>5G &nbsp; 100%</span></div>
-          <div class="app-h">Notes assistant</div>
-          <div class="app-sub">on-device &middot; verified</div>
-          <div class="msg me"><div class="who">You</div>Summarize my last week of meetings.</div>
-          <div class="msg bot"><div class="who">Kolm</div>Three themes: pricing rework, mobile SDK launch, and the Friday hire-pipeline review.</div>
-          <div class="msg me"><div class="who">You</div>Draft the Monday update.</div>
-          <div class="msg bot"><div class="who">Kolm</div>Drafted in your voice, grounded on this week's notes. Ready to send.</div>
-          <div class="badge-row">
-            <span class="bd">offline</span>
-            <span class="bd">signed</span>
-            <span class="bd">k=0.91</span>
-          </div>
-          <div class="footnote">artifact &middot; writing-style.kolm</div>
-        </div>
+  <div class="wrap">
+    <div class="hero-copy">
+      <div class="eyebrow"><span class="pulse"></span>mobile target status</div>
+      <h1>Mobile is a target, not a fake SDK page.</h1>
+      <p class="lede">kolm's production surface today is the Node CLI, signed artifact runner, receipt verifier, registry APIs, and MCP server. iOS and Android adapters are planned runtime targets, but the public site should not pretend SwiftPM or Maven packages exist before they ship.</p>
+      <div class="actions">
+        <a href="/run" class="btn primary">current runtime</a>
+        <a href="/benchmarks" class="btn ghost">benchmark contract</a>
+        <a href="/compare" class="btn accent">runtime comparison</a>
       </div>
     </div>
   </div>
 </section>
 
 <section class="section">
-  <h2 class="center">Three calls, two languages.</h2>
-  <p class="sub center">The mobile SDK ships as a Swift package and an Android library. Same shape, same contract. Load. Personalize. Run.</p>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">01</span>current</div>
+    <h2>What works now.</h2>
+    <p class="sec-lede">The current runtime can inspect, verify, evaluate, run, and serve signed artifacts from the CLI. It is the honest base for design partners before native mobile wrappers exist.</p>
 
-  <div class="split">
-    <div class="codeblock">
-      <div class="head">
-        <span class="lbl">Swift &middot; iOS</span>
-        <span class="meta">SwiftPM</span>
+    <div class="grid-3">
+      <div class="card">
+        <h3>Node CLI runtime</h3>
+        <p><code>kolm run</code>, <code>kolm eval</code>, and <code>kolm inspect</code> operate on local <code>.kolm</code> artifacts.</p>
       </div>
-<pre><span class="c">// Add: https://github.com/kolm-ai/kolm-swift</span>
-<span class="k">import</span> Kolm
-
-<span class="c">// 1. Load the signed artifact (App Group bundle).</span>
-<span class="k">let</span> artifact = <span class="k">try await</span> Kolm.<span class="f">load</span>(
-    bundle: <span class="s">"writing-style.kolm"</span>,
-    publicKey: AppConfig.kolmPubKey
-)
-
-<span class="c">// 2. Personalize on the user's local data.</span>
-<span class="k">let</span> session = <span class="k">try await</span> artifact.<span class="f">personalize</span>(
-    with: <span class="f">UserCorpus</span>(
-        notes: notes,
-        privacyScope: .strictlyOnDevice
-    )
-)
-
-<span class="c">// 3. Run.</span>
-<span class="k">let</span> reply = <span class="k">try await</span> session.<span class="f">run</span>(
-    input: <span class="f">.text</span>(<span class="s">"Draft the Monday update"</span>)
-)
-<span class="c">// reply.text, reply.receipt, reply.latencyMs</span></pre>
-    </div>
-
-    <div class="codeblock">
-      <div class="head">
-        <span class="lbl">Kotlin &middot; Android</span>
-        <span class="meta">Maven Central</span>
+      <div class="card">
+        <h3>MCP serving</h3>
+        <p><code>kolm serve --mcp</code> exposes local artifacts as tools for agents and desktop workflows.</p>
       </div>
-<pre><span class="c">// Add: implementation("ai.kolm:runtime:0.1.0")</span>
-<span class="k">import</span> ai.kolm.runtime.Kolm
-
-<span class="c">// 1. Load the signed artifact.</span>
-<span class="k">val</span> artifact = Kolm.<span class="f">load</span>(
-    asset = <span class="s">"writing-style.kolm"</span>,
-    publicKey = BuildConfig.KOLM_PUB_KEY
-)
-
-<span class="c">// 2. Personalize on the user's local data.</span>
-<span class="k">val</span> session = artifact.<span class="f">personalize</span>(
-    corpus = <span class="f">UserCorpus</span>(
-        notes = noteRepo.<span class="f">all</span>(),
-        privacyScope = PrivacyScope.<span class="n">STRICTLY_ON_DEVICE</span>
-    )
-)
-
-<span class="c">// 3. Run.</span>
-<span class="k">val</span> reply = session.<span class="f">run</span>(
-    Input.<span class="f">Text</span>(<span class="s">"Draft the Monday update"</span>)
-)
-<span class="c">// reply.text, reply.receipt, reply.latencyMs</span></pre>
+      <div class="card">
+        <h3>Receipts</h3>
+        <p>Artifacts and runs are HMAC-bound today, with explicit readiness checks for required production secrets.</p>
+      </div>
     </div>
   </div>
 </section>
 
 <section class="section">
-  <h2 class="center">Built for phones.</h2>
-  <p class="sub center">The default Adapter tier ships in a few megabytes, runs on any modern phone, and personalizes in seconds. Bigger artifacts when you need them.</p>
-  <div class="specs">
-    <div class="sp">
-      <div class="lbl">Runtime size</div>
-      <div class="v">~12 MB</div>
-      <div class="p">Static-linked, no JIT, no eval. Same contract on iOS, Android, and web.</div>
-    </div>
-    <div class="sp">
-      <div class="lbl">First personalize</div>
-      <div class="v">~3.4 s</div>
-      <div class="p">Median across 5,000 vectors of personal corpus on a four-year-old phone.</div>
-    </div>
-    <div class="sp">
-      <div class="lbl">Per-call latency</div>
-      <div class="v">~38 ms</div>
-      <div class="p">p50 inference. ANE on iOS, NNAPI on Android, CPU fallback when needed.</div>
-    </div>
-    <div class="sp">
-      <div class="lbl">Network</div>
-      <div class="v">Zero</div>
-      <div class="p">After install, no network calls. Personalize and run work fully offline.</div>
-    </div>
-    <div class="sp">
-      <div class="lbl">Verified output</div>
-      <div class="v">Receipt</div>
-      <div class="p">Every run returns an HMAC-anchored receipt bound to the artifact hash and eval score.</div>
-    </div>
-    <div class="sp">
-      <div class="lbl">App Review</div>
-      <div class="v">2.5.2</div>
-      <div class="p">Declarative graph, no executable code. Cleared App Review for shipped apps.</div>
-    </div>
-  </div>
-</section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">02</span>roadmap</div>
+    <h2>What has to ship before native mobile claims are credible.</h2>
+    <p class="sec-lede">Mobile support becomes a real claim only when these pieces exist, are versioned, and are benchmarked on named devices.</p>
 
-<section class="section">
-  <h2 class="center">Ready to ship?</h2>
-  <p class="sub center">The mobile plan is $9 per month. Unmetered on-device personalize. Compile budget for the apps you ship.</p>
-  <div class="cta-stack" style="justify-content:center">
-    <a class="btn btn-primary" href="/signup?plan=mobile">Start mobile plan <span class="ar">&rsaquo;</span></a>
-    <a class="btn btn-secondary" href="/pricing">Compare plans <span class="ar">&rsaquo;</span></a>
+    <div class="pillars">
+      <div class="pillar">
+        <div class="verb">native loader</div>
+        <h3>Swift and Kotlin packages.</h3>
+        <p>Published packages that verify the manifest, signature, runtime policy, and receipt schema locally.</p>
+      </div>
+      <div class="pillar">
+        <div class="verb">model bridge</div>
+        <h3>Runtime backend per OS.</h3>
+        <p>Documented Core ML, LiteRT, ONNX Runtime, or ExecuTorch target paths with fallback behavior.</p>
+      </div>
+      <div class="pillar">
+        <div class="verb">battery budget</div>
+        <h3>Hardware measurements.</h3>
+        <p>Bundle size, warm load, p50/p95 latency, memory, battery, and thermal results on real phones.</p>
+      </div>
+      <div class="pillar">
+        <div class="verb">app review</div>
+        <h3>Store compliance evidence.</h3>
+        <p>App Store and Play Store policy notes for downloaded artifacts, model updates, and local data access.</p>
+      </div>
+    </div>
   </div>
 </section>
 </main>
 
-<footer>
-  <div class="inner">
-    <div>
-      <div class="brand-row"><span class="mark aurora">kolm</span></div>
-      <p style="color:var(--fg-3);font-size:13.5px;line-height:1.55;max-width:280px">Compile any AI task into a Specialist you own. Cloud compile, on-device run, signed end-to-end.</p>
-      <p class="legal">&copy; 2026 Kolmogorov &middot; <a href="/security" style="color:var(--fg-3)">Security</a></p>
-    </div>
-    <div class="col">
-      <h4>Product</h4>
-      <a href="/compile">Compile</a>
-      <a href="/run">Run</a>
-      <a href="/registry">Registry</a>
-      <a href="/pricing">Pricing</a>
-    </div>
-    <div class="col">
-      <h4>Develop</h4>
-      <a href="/docs">Docs</a>
-      <a href="/docs#cli-compile">CLI</a>
-      <a href="/docs#sdk">SDKs</a>
-      <a href="/playground">Playground</a>
-      <a href="/status">Status</a>
-    </div>
-    <div class="col">
-      <h4>Open</h4>
-      <a href="/docs#rs-1">RS-1 spec</a>
-      <a href="/docs#manifest">Manifest v0.1</a>
-      <a href="/docs#receipts">Receipts v0.1</a>
-      <a href="/security">Security</a>
-    </div>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="meta"><img src="/logo-mark.svg" alt="" style="width:18px;height:18px;margin-right:8px;vertical-align:-4px;">kolm / mobile target status / <a href="/status">status</a></div>
   </div>
 </footer>
 

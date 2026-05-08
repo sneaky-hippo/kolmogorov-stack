@@ -3,404 +3,242 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Dashboard · kolm</title>
-<meta name="description" content="Your kolm artifacts. Compile jobs, K-scores, signed downloads.">
-<meta name="theme-color" content="#0a0a0a">
+<title>Dashboard - kolm</title>
+<meta name="description" content="Your kolm compile jobs, signed artifacts, K-scores, and account usage.">
+<meta name="theme-color" content="#0b0d10">
 <meta name="color-scheme" content="dark">
 <link rel="canonical" href="https://kolm.ai/dashboard">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-
-<style>
-  :root {
-    --bg: #0a0a0a;
-    --bg-elev: #0f0f12;
-    --bg-card: #13141a;
-    --line: rgba(255,255,255,0.06);
-    --line-strong: rgba(255,255,255,0.12);
-    --line-stronger: rgba(255,255,255,0.18);
-    --ink: #ededed;
-    --ink-mute: #9a9da8;
-    --ink-faint: #5a5c66;
-    --accent: #7c8cff;
-    --accent-soft: rgba(124,140,255,0.10);
-    --accent-strong: #93a1ff;
-    --good: #7ce3b6;
-    --bad: #ff7a98;
-    --warn: #f5b86b;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    background: var(--bg); color: var(--ink); font-family: var(--sans);
-    font-size: 15px; line-height: 1.55; letter-spacing: -0.011em;
-    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility; font-synthesis: none;
-    min-height: 100vh; display: flex; flex-direction: column;
-  }
-  a { color: inherit; text-decoration: none; }
-  ::selection { background: rgba(124,140,255,0.30); color: var(--ink); }
-
-  header.site {
-    position: sticky; top: 0; z-index: 60;
-    background: rgba(10,10,10,0.78);
-    backdrop-filter: saturate(160%) blur(14px);
-    -webkit-backdrop-filter: saturate(160%) blur(14px);
-    border-bottom: 1px solid var(--line);
-  }
-  header.site .row {
-    max-width: 1240px; margin: 0 auto; padding: 0 32px;
-    display: flex; align-items: center; justify-content: space-between;
-    height: 60px; gap: 32px;
-  }
-  header.site .left { display: flex; align-items: center; gap: 36px; }
-  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
-  header.site .brand svg { height: 18px; width: 18px; color: var(--ink); }
-  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: -0.04em; }
-  header.site nav { display: flex; gap: 22px; }
-  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
-  header.site nav a:hover, header.site nav a.active { color: var(--ink); }
-  header.site .right { display: flex; align-items: center; gap: 14px; }
-  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; cursor: pointer; background: transparent; border: 0; padding: 0; font-family: inherit; }
-  header.site .right .ghost:hover { color: var(--ink); }
-  header.site .right .cta {
-    display: inline-flex; align-items: center; gap: 6px;
-    color: var(--bg); background: var(--ink); border-radius: 6px;
-    padding: 7px 14px; font-size: 13px; font-weight: 540; letter-spacing: -0.01em;
-  }
-  header.site .right .cta:hover { background: #fff; }
-  @media (max-width: 720px) { header.site .row { padding: 0 20px; } header.site nav { display: none; } }
-
-  main { flex: 1; max-width: 1240px; width: 100%; margin: 0 auto; padding: 48px 32px 96px; }
-  @media (max-width: 720px) { main { padding: 28px 20px 64px; } }
-
-  .head { margin-bottom: 36px; display: flex; align-items: end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
-  .head h1 { font-family: var(--sans); font-weight: 540; letter-spacing: -0.028em; line-height: 1.05; font-size: 36px; margin: 0 0 6px; }
-  .head .lede { color: var(--ink-mute); font-size: 14.5px; margin: 0; max-width: 580px; }
-  .head .actions { display: flex; gap: 10px; }
-
-  .btn {
-    appearance: none; cursor: pointer; font-family: var(--sans);
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 9px 14px; border-radius: 6px; font-size: 13.5px; font-weight: 540;
-    letter-spacing: -0.01em; line-height: 1; border: 1px solid transparent;
-    transition: background 120ms, border-color 120ms, color 120ms;
-    white-space: nowrap;
-  }
-  .btn-primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-  .btn-primary:hover { background: #fff; }
-  .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line-strong); }
-  .btn-ghost:hover { border-color: var(--ink); background: rgba(255,255,255,0.03); }
-  .btn-sm { padding: 5px 9px; font-size: 12px; }
-
-  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 36px; }
-  .cards .c { padding: 22px 22px 18px; background: var(--bg-elev); }
-  .cards .c .lbl { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 10px; }
-  .cards .c .v { font-family: var(--mono); font-size: 30px; font-weight: 540; letter-spacing: -0.022em; line-height: 1; color: var(--ink); }
-  .cards .c .v.tone { color: var(--accent); }
-  .cards .c .note { color: var(--ink-mute); font-size: 12px; margin-top: 8px; line-height: 1.45; }
-  @media (max-width: 760px) { .cards { grid-template-columns: repeat(2, 1fr); } }
-
-  .sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin: 36px 0 14px; }
-  .sec-h h2 { font-family: var(--sans); font-size: 18px; font-weight: 540; letter-spacing: -0.018em; margin: 0; }
-  .sec-h .sub { color: var(--ink-mute); font-size: 13px; }
-
-  .list { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg-elev); }
-  .list .item {
-    display: grid; grid-template-columns: 1fr 110px 110px 130px 24px;
-    gap: 14px; align-items: center; padding: 16px 22px;
-    border-bottom: 1px solid var(--line); transition: background 120ms;
-  }
-  .list .item:last-child { border-bottom: 0; }
-  .list .item:hover { background: var(--bg-card); }
-  .list .name { display: flex; align-items: center; gap: 12px; min-width: 0; }
-  .list .name .mark { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .list .name .mark.completed { background: var(--good); box-shadow: 0 0 0 3px rgba(124,227,182,0.12); }
-  .list .name .mark.running { background: var(--accent); box-shadow: 0 0 0 3px rgba(124,140,255,0.18); animation: pulse 1.6s ease-in-out infinite; }
-  .list .name .mark.queued { background: var(--warn); box-shadow: 0 0 0 3px rgba(245,184,107,0.12); }
-  .list .name .mark.error { background: var(--bad); box-shadow: 0 0 0 3px rgba(255,122,152,0.12); }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
-  .list .name .t { font-weight: 500; font-size: 14px; letter-spacing: -0.011em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
-  .list .name .s { color: var(--ink-faint); font-size: 11.5px; font-family: var(--mono); margin-top: 2px; }
-  .list .col { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
-  .list .col .lbl { display: block; font-size: 10px; color: var(--ink-faint); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 3px; font-family: var(--mono); }
-  .list .col.muted { color: var(--ink-mute); }
-  .list .col.tone { color: var(--accent); }
-  .list .ar { color: var(--ink-faint); text-align: right; }
-  @media (max-width: 760px) {
-    .list .item { grid-template-columns: 1fr 80px 24px; }
-    .list .col:nth-child(3), .list .col:nth-child(4) { display: none; }
-  }
-
-  .empty { padding: 64px 22px; text-align: center; }
-  .empty .glyph { color: var(--ink-faint); margin-bottom: 14px; font-family: var(--mono); font-size: 24px; }
-  .empty h3 { font-family: var(--sans); font-size: 18px; font-weight: 540; letter-spacing: -0.018em; margin: 0 0 6px; }
-  .empty p { color: var(--ink-mute); font-size: 13.5px; margin: 0 0 22px; max-width: 440px; margin-left: auto; margin-right: auto; }
-  .empty .actions { display: inline-flex; gap: 10px; justify-content: center; }
-
-  .acct {
-    margin-top: 36px; padding: 22px;
-    border: 1px solid var(--line); border-radius: 8px;
-    background: var(--bg-elev);
-    display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center;
-  }
-  @media (max-width: 760px) { .acct { grid-template-columns: 1fr; } }
-  .acct h3 { font-family: var(--sans); font-size: 14.5px; font-weight: 540; letter-spacing: -0.014em; margin: 0 0 4px; }
-  .acct p { color: var(--ink-mute); font-size: 13px; margin: 0; line-height: 1.5; }
-  .acct code { font-family: var(--mono); font-size: 12px; color: var(--accent-strong); background: var(--accent-soft); padding: 2px 6px; border-radius: 4px; }
-  .acct .actions { display: flex; gap: 10px; }
-
-  .toast {
-    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
-    background: var(--bg-card); border: 1px solid var(--line-strong);
-    border-radius: 6px; padding: 10px 16px;
-    font-size: 13px; color: var(--ink); display: none;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  }
-  .toast.show { display: block; }
-
-  footer {
-    border-top: 1px solid var(--line); padding: 32px 32px 24px;
-    color: var(--ink-faint); font-size: 12px; text-align: center;
-  }
-  footer a { color: var(--ink-mute); }
-  footer a:hover { color: var(--ink); }
-
-  .skel { display: inline-block; height: 1em; width: 60px; background: linear-gradient(90deg, var(--bg-card) 0%, rgba(255,255,255,0.04) 50%, var(--bg-card) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-radius: 3px; vertical-align: middle; }
-  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-</style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-
-<header class="site">
-  <div class="row">
-    <div class="left">
-      <a class="brand" href="/" aria-label="kolm home">
-        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <path d="M 5 5 L 21 5 L 27 11 L 27 27 L 5 27 Z" fill="currentColor"/>
-          <path d="M 21 5 L 21 11 L 27 11 Z" fill="#7c8cff"/>
-        </svg>
-        <span>kolm</span>
-      </a>
-      <nav>
-        <a href="/dashboard" class="active">Dashboard</a>
-        <a href="/compile">Compile</a>
-        <a href="/atlas">Atlas</a>
-        <a href="/docs">Docs</a>
-      </nav>
-    </div>
-    <div class="right">
-      <button class="ghost" id="signout" type="button">Sign out</button>
-      <a href="/compile" class="cta">New compile <span aria-hidden="true">›</span></a>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand" aria-label="kolm home"><img src="/logo-mark.svg" alt="" class="brand-mark">kolm</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/dashboard" class="active">dashboard</a>
+      <a href="/compile">compile</a>
+      <a href="/benchmarks">benchmarks</a>
+      <a href="/compare">compare</a>
+      <a href="/pricing">pricing</a>
+      <a href="/docs">docs</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/account">account</a>
+      <a class="cta" href="/compile">new compile</a>
     </div>
   </div>
 </header>
 
-<main>
-  <div class="head">
+<main class="page-main">
+  <section class="page-head">
     <div>
-      <h1 id="hd-greet">Welcome.</h1>
-      <p class="lede" id="hd-sub">Your compile jobs, signed artifacts, and account usage.</p>
+      <div class="eyebrow"><span class="pulse"></span>artifact console</div>
+      <h1 id="hd-greet">Dashboard.</h1>
+      <p class="lede" id="hd-sub">Compile jobs, signed artifacts, K-scores, and account usage.</p>
     </div>
-    <div class="actions">
-      <a class="btn btn-ghost" href="/atlas">Browse Atlas</a>
-      <a class="btn btn-primary" href="/compile">Compile <span aria-hidden="true">›</span></a>
+    <div class="page-actions">
+      <a class="btn ghost" href="/benchmarks">View benchmarks</a>
+      <a class="btn primary" href="/compile">Start compile</a>
     </div>
-  </div>
+  </section>
 
-  <div class="cards">
-    <div class="c">
-      <div class="lbl">Compiles</div>
-      <div class="v" id="m-compiles"><span class="skel"></span></div>
-      <div class="note">Total jobs run.</div>
-    </div>
-    <div class="c">
-      <div class="lbl">Artifacts</div>
-      <div class="v" id="m-artifacts"><span class="skel"></span></div>
-      <div class="note">Signed .kolm files ready to download.</div>
-    </div>
-    <div class="c">
-      <div class="lbl">Avg K-score</div>
-      <div class="v tone" id="m-kscore"><span class="skel"></span></div>
-      <div class="note">Mean across completed jobs.</div>
-    </div>
-    <div class="c">
-      <div class="lbl">Plan</div>
-      <div class="v" id="m-plan"><span class="skel"></span></div>
-      <div class="note" id="m-quota"><span class="skel"></span></div>
-    </div>
-  </div>
+  <section class="metric-grid" aria-label="Dashboard metrics">
+    <div class="metric-card"><div class="label">Compiles</div><div class="value" id="m-compiles">...</div><p>Total jobs run.</p></div>
+    <div class="metric-card"><div class="label">Artifacts</div><div class="value" id="m-artifacts">...</div><p>Signed files ready to download.</p></div>
+    <div class="metric-card"><div class="label">Average K-score</div><div class="value tone" id="m-kscore">...</div><p>Completed jobs with manifests.</p></div>
+    <div class="metric-card"><div class="label">Plan</div><div class="value" id="m-plan">...</div><p id="m-quota">Loading account.</p></div>
+  </section>
 
-  <div class="sec-h">
-    <h2>Recent compiles</h2>
-    <span class="sub" id="list-sub">Live · auto-refreshing</span>
-  </div>
+  <section class="dashboard-panel">
+    <div class="section-head">
+      <h2>Recent compiles</h2>
+      <span id="list-sub">Loading</span>
+    </div>
+    <div class="job-list" id="job-list"></div>
+  </section>
 
-  <div class="list" id="job-list"></div>
-
-  <div class="acct">
+  <section class="card dashboard-key">
     <div>
-      <h3>API key</h3>
-      <p>Use <code id="api-key-mask">ks_…</code> as your <code>X-API-Key</code> header, or paste it into <code>kolm login</code>. Treat it like a password.</p>
+      <h2>API key</h2>
+      <p>Use <code id="api-key-mask">ks_...</code> as your API key. Treat it like a password.</p>
     </div>
-    <div class="actions">
-      <button class="btn btn-ghost btn-sm" id="show-key" type="button">Show key</button>
-      <button class="btn btn-ghost btn-sm" id="rotate-key" type="button">Rotate</button>
+    <div class="toolbar">
+      <button class="btn ghost" id="show-key" type="button">Show key</button>
+      <button class="btn accent" id="rotate-key" type="button">Rotate</button>
+      <button class="btn ghost" id="signout" type="button">Sign out</button>
     </div>
-  </div>
+  </section>
 </main>
 
-<footer>
-  &copy; 2026 Kolmogorov · <a href="/security">Security</a> · <a href="/docs">Docs</a> · <a href="/pricing">Pricing</a>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="meta">kolm dashboard / <a href="/security">security</a> / <a href="/docs">docs</a></div>
+  </div>
 </footer>
 
-<div class="toast" id="toast" role="status"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="/app.js"></script>
 <script>
-(function(){
-  // --- helpers ---
-  function getKey(){ try { return localStorage.getItem('kolm_api_key') || ''; } catch(_){ return ''; } }
-  function authHeaders(){ var k = getKey(); var h = { 'content-type': 'application/json' }; if (k) h['X-API-Key'] = k; return h; }
-  function $(id){ return document.getElementById(id); }
-  function toast(text, ms){ var t = $('toast'); t.textContent = text; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, ms || 1800); }
-  function escText(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
-  function fmtBytes(n){ if (!n && n !== 0) return '—'; if (n < 1024) return n + ' B'; if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB'; if (n < 1024*1024*1024) return (n/1024/1024).toFixed(1) + ' MB'; return (n/1024/1024/1024).toFixed(2) + ' GB'; }
-  function fmtAge(iso){
-    if (!iso) return '—';
-    var d = new Date(iso); var s = (Date.now() - d.getTime())/1000;
-    if (s < 60) return Math.floor(s) + 's ago';
-    if (s < 3600) return Math.floor(s/60) + 'm ago';
-    if (s < 86400) return Math.floor(s/3600) + 'h ago';
-    return Math.floor(s/86400) + 'd ago';
-  }
-  function maskKey(k){ if (!k) return 'ks_…'; if (k.length < 12) return k; return k.slice(0,8) + '…' + k.slice(-4); }
-  function statusLabel(s){ return ({queued:'queued', running:'compiling', completed:'ready', error:'error'})[s] || s; }
+(function () {
+  var KS = window.KS;
+  var $ = function (id) { return document.getElementById(id); };
 
-  // --- account + greeting ---
-  function loadAccount(){
-    fetch('/v1/account', { headers: authHeaders(), credentials: 'include' })
-      .then(function(r){ if (!r.ok) throw new Error('auth'); return r.json(); })
-      .then(function(a){
-        var name = a.name || (a.tenant ? String(a.tenant) : 'there');
-        $('hd-greet').textContent = 'Welcome, ' + name + '.';
-        $('m-plan').textContent = (a.plan || 'free');
-        if (typeof a.used === 'number' && typeof a.quota === 'number') {
-          var pct = a.quota ? Math.min(100, Math.round(100 * a.used / a.quota)) : 0;
-          $('m-quota').textContent = a.used + ' / ' + a.quota + ' used (' + pct + '%)';
-        } else {
-          $('m-quota').textContent = 'free tier';
-        }
-        $('api-key-mask').textContent = maskKey(getKey());
-      })
-      .catch(function(){
-        // Not authed — push to signin.
-        location.href = '/signin';
-      });
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
   }
 
-  // --- jobs list ---
-  var lastJobs = [];
-  function renderJobs(jobs){
-    lastJobs = jobs;
-    var listEl = $('job-list');
+  function maskKey(key) {
+    if (!key) return 'ks_...';
+    if (key.length <= 14) return key;
+    return key.slice(0, 8) + '...' + key.slice(-4);
+  }
+
+  function fmtBytes(n) {
+    if (n == null) return '-';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1024 * 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
+    return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+  }
+
+  function fmtAge(iso) {
+    if (!iso) return '-';
+    var then = new Date(iso).getTime();
+    if (!Number.isFinite(then)) return '-';
+    var seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
+    if (seconds < 60) return seconds + 's ago';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    return Math.floor(seconds / 86400) + 'd ago';
+  }
+
+  function statusLabel(status) {
+    return ({ queued: 'queued', running: 'compiling', completed: 'ready', error: 'error' })[status] || status || '-';
+  }
+
+  async function loadAccount() {
+    if (!KS.apiKey()) {
+      location.href = '/signin';
+      return;
+    }
+    try {
+      var account = await KS.api('/v1/account');
+      var name = account.name || account.tenant || account.id || '';
+      $('hd-greet').textContent = name ? 'Welcome, ' + name + '.' : 'Dashboard.';
+      $('m-plan').textContent = account.plan || (account.admin ? 'admin' : 'free');
+      if (typeof account.used === 'number' && typeof account.quota === 'number') {
+        var pct = account.quota ? Math.min(100, Math.round(100 * account.used / account.quota)) : 0;
+        $('m-quota').textContent = account.used + ' / ' + account.quota + ' used (' + pct + '%)';
+      } else {
+        $('m-quota').textContent = 'Usage unavailable.';
+      }
+      $('api-key-mask').textContent = maskKey(KS.apiKey());
+    } catch (_) {
+      KS.clearApiKey();
+      location.href = '/signin';
+    }
+  }
+
+  function renderJobs(jobs) {
+    var list = $('job-list');
     if (!jobs || jobs.length === 0) {
-      listEl.innerHTML = ''
-        + '<div class="empty">'
-        +   '<div class="glyph">.kolm</div>'
-        +   '<h3>No artifacts yet.</h3>'
-        +   '<p>Compile your first task. Frontier runs once, the result lives in a single signed file.</p>'
-        +   '<div class="actions"><a class="btn btn-primary" href="/compile">Start a compile ›</a><a class="btn btn-ghost" href="/atlas">See examples</a></div>'
+      list.innerHTML = ''
+        + '<div class="empty-state">'
+        + '<h3>No artifacts yet.</h3>'
+        + '<p>Compile your first task. The frontier call happens once; the signed artifact lives in your app.</p>'
+        + '<div class="toolbar"><a class="btn primary" href="/compile">Start a compile</a><a class="btn ghost" href="/benchmarks">See benchmarks</a></div>'
         + '</div>';
       return;
     }
-    var rows = jobs.map(function(j){
-      var k = j.manifest && j.manifest.k_score != null ? j.manifest.k_score : null;
-      var bytes = j.artifact_bytes != null ? j.artifact_bytes : null;
-      var taskShort = (j.task || '').replace(/\s+/g,' ').trim();
-      if (taskShort.length > 84) taskShort = taskShort.slice(0, 84) + '…';
-      var rightCell;
-      if (j.status === 'completed') {
-        rightCell = '<a class="col tone" href="/v1/compile/' + escText(j.id) + '/.kolm" download>download</a>';
-      } else if (j.status === 'running') {
-        rightCell = '<span class="col muted">' + (j.progress || 0) + '%</span>';
-      } else if (j.status === 'error') {
-        rightCell = '<span class="col" style="color:var(--bad)">failed</span>';
-      } else {
-        rightCell = '<span class="col muted">queued</span>';
+    list.innerHTML = jobs.map(function (job) {
+      var score = job.manifest && typeof job.manifest.k_score === 'number' ? Number(job.manifest.k_score).toFixed(2) : '-';
+      var task = String(job.task || job.id || '').replace(/\s+/g, ' ').trim();
+      if (task.length > 84) task = task.slice(0, 84) + '...';
+      var action = '<span class="job-action">' + esc(statusLabel(job.status)) + '</span>';
+      if (job.status === 'completed') {
+        action = '<a class="job-action tone" href="/v1/compile/' + esc(job.id) + '/.kolm" download>download</a>';
+      } else if (job.status === 'running') {
+        action = '<span class="job-action">' + esc(job.progress || 0) + '%</span>';
       }
       return ''
-        + '<a class="item" href="/compile?job=' + escText(j.id) + '">'
-        +   '<div class="name">'
-        +     '<span class="mark ' + escText(j.status) + '"></span>'
-        +     '<div style="min-width:0"><div class="t">' + escText(taskShort || j.id) + '</div><div class="s">' + escText(j.id) + ' · ' + fmtAge(j.created_at) + '</div></div>'
-        +   '</div>'
-        +   '<span class="col"><span class="lbl">Status</span>' + escText(statusLabel(j.status)) + '</span>'
-        +   '<span class="col"><span class="lbl">K-score</span>' + (k != null ? '<span class="tone">' + Number(k).toFixed(2) + '</span>' : '—') + '</span>'
-        +   '<span class="col"><span class="lbl">Size</span>' + fmtBytes(bytes) + '</span>'
-        +   rightCell
+        + '<a class="job-row" href="/compile?job=' + esc(job.id) + '">'
+        + '<span class="job-dot ' + esc(job.status || 'queued') + '"></span>'
+        + '<span class="job-main"><strong>' + esc(task || job.id) + '</strong><em>' + esc(job.id) + ' - ' + esc(fmtAge(job.created_at)) + '</em></span>'
+        + '<span class="job-meta"><b>Status</b>' + esc(statusLabel(job.status)) + '</span>'
+        + '<span class="job-meta"><b>K-score</b>' + score + '</span>'
+        + '<span class="job-meta"><b>Size</b>' + esc(fmtBytes(job.artifact_bytes)) + '</span>'
+        + action
         + '</a>';
     }).join('');
-    listEl.innerHTML = rows;
   }
 
-  function updateMetrics(jobs){
+  function updateMetrics(jobs) {
+    jobs = jobs || [];
     $('m-compiles').textContent = jobs.length;
-    var done = jobs.filter(function(j){ return j.status === 'completed'; });
+    var done = jobs.filter(function (job) { return job.status === 'completed'; });
     $('m-artifacts').textContent = done.length;
-    if (done.length) {
-      var ks = done.map(function(j){ return j.manifest && j.manifest.k_score; }).filter(function(v){ return typeof v === 'number'; });
-      $('m-kscore').textContent = ks.length ? (ks.reduce(function(a,b){return a+b;},0)/ks.length).toFixed(2) : '—';
-    } else {
-      $('m-kscore').textContent = '—';
+    var scores = done.map(function (job) { return job.manifest && job.manifest.k_score; }).filter(function (value) { return typeof value === 'number'; });
+    $('m-kscore').textContent = scores.length ? (scores.reduce(function (a, b) { return a + b; }, 0) / scores.length).toFixed(2) : '-';
+  }
+
+  async function loadJobs() {
+    try {
+      var body = await KS.api('/v1/compile');
+      var jobs = body.jobs || [];
+      renderJobs(jobs);
+      updateMetrics(jobs);
+      var running = jobs.some(function (job) { return job.status === 'queued' || job.status === 'running'; });
+      $('list-sub').textContent = running ? 'Live - auto-refreshing' : (jobs.length ? 'Up to date' : '');
+      if (running) setTimeout(loadJobs, 2500);
+    } catch (_) {
+      $('job-list').innerHTML = '<div class="empty-state"><h3>Could not load compiles.</h3><p>Sign in again or rotate your key from account settings.</p></div>';
+      updateMetrics([]);
     }
   }
 
-  function loadJobs(){
-    fetch('/v1/compile', { headers: authHeaders(), credentials: 'include' })
-      .then(function(r){ if (!r.ok) throw new Error('auth'); return r.json(); })
-      .then(function(d){
-        var jobs = (d && d.jobs) || [];
-        renderJobs(jobs);
-        updateMetrics(jobs);
-        var anyRunning = jobs.some(function(j){ return j.status === 'queued' || j.status === 'running'; });
-        $('list-sub').textContent = anyRunning ? 'Live · auto-refreshing' : (jobs.length ? 'Up to date' : '');
-        if (anyRunning) setTimeout(loadJobs, 2500);
-      })
-      .catch(function(){ /* silent */ });
-  }
-
-  // --- key reveal / rotate ---
-  $('show-key').addEventListener('click', function(){
-    var el = $('api-key-mask');
-    var k = getKey();
-    if (!k) { toast('No key in this browser. Sign in again.'); return; }
-    if (el.textContent === k) { el.textContent = maskKey(k); this.textContent = 'Show key'; }
-    else { el.textContent = k; this.textContent = 'Hide'; }
+  $('show-key').addEventListener('click', function () {
+    var key = KS.apiKey();
+    if (!key) {
+      KS.toast('No key in this browser.');
+      return;
+    }
+    var node = $('api-key-mask');
+    if (node.textContent === key) {
+      node.textContent = maskKey(key);
+      $('show-key').textContent = 'Show key';
+    } else {
+      node.textContent = key;
+      $('show-key').textContent = 'Hide key';
+    }
   });
-  $('rotate-key').addEventListener('click', function(){
+
+  $('rotate-key').addEventListener('click', async function () {
     if (!confirm('Rotate your API key? The old key stops working immediately.')) return;
-    fetch('/v1/account/rotate-key', { method: 'POST', headers: authHeaders(), credentials: 'include' })
-      .then(function(r){ return r.json(); })
-      .then(function(j){
-        if (j && j.api_key) { try { localStorage.setItem('kolm_api_key', j.api_key); } catch(_){} $('api-key-mask').textContent = maskKey(j.api_key); toast('Key rotated. Save the new one.'); }
-        else { toast('Rotate failed. Try again.'); }
-      })
-      .catch(function(){ toast('Rotate failed. Try again.'); });
+    try {
+      var body = await KS.api('/v1/account/rotate-key', { method: 'POST' });
+      if (!body.api_key) throw new Error('missing key');
+      KS.setApiKey(body.api_key);
+      $('api-key-mask').textContent = body.api_key;
+      $('show-key').textContent = 'Hide key';
+      KS.toast('Key rotated. Save the new key.', 3600);
+    } catch (_) {
+      KS.toast('Rotate failed. Try again.', 3000);
+    }
   });
 
-  // --- sign out ---
-  $('signout').addEventListener('click', function(){
-    fetch('/v1/signout', { method: 'POST', credentials: 'include' }).catch(function(){});
-    try { localStorage.removeItem('kolm_api_key'); } catch(_){}
+  $('signout').addEventListener('click', function () {
+    fetch('/v1/signout', { method: 'POST', credentials: 'include' }).catch(function () {});
+    KS.clearApiKey();
     location.href = '/';
   });
 
-  // --- boot ---
   loadAccount();
   loadJobs();
 })();
 </script>
-
 </body>
 </html>
