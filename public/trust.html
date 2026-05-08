@@ -304,6 +304,24 @@ receipt[0]      = HMAC(secret, manifest_hash)
 receipt[i]      = HMAC(secret, receipt[i-1] || input_hash[i] || output_hash[i])
 signature       = HMAC(secret, receipt[N])</pre>
       <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Each receipt depends on the previous one. <b>You cannot insert, reorder, or remove a single output without invalidating every later receipt</b> in the chain. The signature at the tail is what an auditor checks against the published artifact_id and the build's HMAC public reference.</p>
+
+      <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">Verify a receipt yourself</h3>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Public, no auth, no SDK. POST any receipt to <code>/v1/receipts/verify</code>. The endpoint walks the HMAC chain server-side and returns <code>{verified, reasons[]}</code>. The same endpoint is what the CLI's <code>kolm verify</code> calls.</p>
+      <pre class="code">curl -s -X POST https://kolm.ai/v1/receipts/verify \
+  -H "Content-Type: application/json" \
+  -d '{"receipt": {"kolm_version":"0.1", "artifact_hash":"...", "chain":[...], "signature":"..."}}'
+
+# response
+{
+  "verified": true,
+  "reasons": [],
+  "receipt_id": "...",
+  "artifact_hash": "...",
+  "eval_score": 0.84
+}</pre>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">A failed chain returns <code>verified: false</code> with each broken ring named: <code>chain[3] hmac mismatch</code>, <code>signature mismatch</code>, <code>chain[4] not anchored to chain[3]</code>. No prose. The CLI flag for the same check: <code>kolm verify ./artifact.kolm</code>.</p>
+      <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">Optional Sigstore Rekor anchor</h3>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Receipts can carry an <code>anchors</code> array. The <code>http</code> kind references our public Sigstore Rekor entry; <code>arweave</code>, <code>btc-op-return</code>, and <code>ots</code> let regulated buyers anchor receipts to substrates the supply-chain auditor already trusts. v0.1 runtimes ignore the field if absent. Schema: <a href="/docs/receipt-v0.1.json" style="color:var(--accent);">receipt-v0.1.json</a>.</p>
       <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">What this defends against</h3>
       <ul class="bul">
         <li><b>Output tampering.</b> If a downstream system rewrites a model output, the recomputed receipt diverges and the chain breaks.</li>
