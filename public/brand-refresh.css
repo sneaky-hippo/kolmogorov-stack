@@ -68,10 +68,20 @@ body {
 header.site,
 .site-header,
 nav.top {
-  background: rgba(11,13,16,.86) !important;
+  background: rgba(11,13,16,.92) !important;
   border-bottom: 1px solid var(--line) !important;
-  backdrop-filter: saturate(150%) blur(14px) !important;
-  -webkit-backdrop-filter: saturate(150%) blur(14px) !important;
+  backdrop-filter: saturate(160%) blur(16px) !important;
+  -webkit-backdrop-filter: saturate(160%) blur(16px) !important;
+}
+@media (max-width: 720px) {
+  /* Phones often render backdrop-filter inconsistently; lock to opaque so menu
+   * never bleeds the page below into the bar. Fixes the "bleedy white on gray"
+   * complaint on iOS/Android Chrome. */
+  header.site,
+  .site-header,
+  nav.top {
+    background: rgba(8,10,13,.97) !important;
+  }
 }
 
 header.site .row,
@@ -231,12 +241,40 @@ header.site .brand .brand-dot,
    * down to icon-only / hidden so the CTA always reaches a tappable size. */
   .site-header .site-actions .gh-star,
   .site-header .site-actions a[href="/signin"],
+  header.site .right .gh-star,
   header.site .right .ghost {
     display: none !important;
   }
   .site-header .site-actions,
   header.site .right { gap: 8px !important; }
 }
+
+/* Unified GitHub pill — same metrics on every header so the right-column
+ * width is identical between homepage, /serve, /anatomy, /k-score and
+ * the nav stops drifting between routes. */
+.gh-star {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--line, rgba(255,255,255,0.06));
+  border-radius: 6px;
+  color: var(--ink-mute, #b5bdb1);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 540;
+  text-transform: lowercase;
+  line-height: 1;
+  text-decoration: none;
+  transition: color 120ms, border-color 120ms;
+  white-space: nowrap;
+}
+.gh-star svg { opacity: 0.85; }
+.gh-star:hover {
+  color: var(--ink, #faf2e1);
+  border-color: rgba(255,255,255,0.12);
+}
+.gh-star:hover svg { opacity: 1; }
 
 /* Inline <code> in body copy: keep readable, mono, with subtle background.
  * On phones, force break-anywhere so multi-flag commands don't trail off-screen. */
@@ -298,7 +336,7 @@ nav.top .nav-links a {
   font-size: 12.5px !important;
   font-weight: 500 !important;
   letter-spacing: 0 !important;
-  color: var(--fg-3, #a8adb7) !important;
+  color: var(--ink-mute, #a39e90) !important;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif !important;
   transition: color 120ms ease;
 }
@@ -308,7 +346,7 @@ header.site nav a.active,
 .site-header .site-nav a.active,
 nav.top .site-nav a:hover,
 nav.top .site-nav a.active {
-  color: var(--fg, #ece7dc) !important;
+  color: var(--ink, #ece7dc) !important;
 }
 
 /* Right-side actions — sign-in + CTA tighter and consistently sized. */
@@ -324,14 +362,14 @@ header.site .right a:not(.cta),
 .site-header .site-actions a:not(.cta),
 .site-actions a:not(.cta) {
   font-size: 12.5px !important;
-  color: var(--fg-3, #a8adb7) !important;
+  color: var(--ink-mute, #a39e90) !important;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif !important;
 }
 header.site .right .ghost:hover,
 header.site .right a:not(.cta):hover,
 .site-header .site-actions a:not(.cta):hover,
 .site-actions a:not(.cta):hover {
-  color: var(--fg, #ece7dc) !important;
+  color: var(--ink, #ece7dc) !important;
 }
 header.site .right .cta,
 .site-header .site-actions .cta,

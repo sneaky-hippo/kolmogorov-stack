@@ -227,25 +227,25 @@
   <div class="wrap">
 
     <div class="panel">
-      <h2>Public surfaces</h2>
-      <p class="note">Edge-facing endpoints. p95 latency over the last hour.</p>
+      <h2>Live probes</h2>
+      <p class="note">Each row hits the named endpoint right now from your browser. Status, HTTP code, and round-trip latency below are measured client-side; refresh the page to reprobe.</p>
 
-      <div class="row-status"><span class="ind up"></span><span class="name">kolm.ai<small>marketing site, docs, atlas</small></span><span class="lab up">Operational</span><span class="lat">42 ms</span></div>
-      <div class="row-status"><span class="ind up"></span><span class="name">/v1/signup · /v1/signin<small>auth + session</small></span><span class="lab up">Operational</span><span class="lat">88 ms</span></div>
-      <div class="row-status"><span class="ind up"></span><span class="name">/v1/account<small>account &amp; key management</small></span><span class="lab up">Operational</span><span class="lat">61 ms</span></div>
-      <div class="row-status"><span class="ind up"></span><span class="name">/v1/registry/export<small>public draft pack</small></span><span class="lab up">Operational</span><span class="lat">110 ms</span></div>
-      <div class="row-status"><span class="ind up"></span><span class="name">/sdk.js · /sdk-versions.json<small>browser SDK + SRI hashes</small></span><span class="lab up">Operational</span><span class="lat">31 ms</span></div>
+      <div id="probe-rows">
+        <div class="row-status" data-probe="/health" data-name="/health" data-desc="server build version + uptime"><span class="ind"></span><span class="name">/health<small>server build version + uptime</small></span><span class="lab">Probing&hellip;</span><span class="lat">— ms</span></div>
+        <div class="row-status" data-probe="/ready" data-name="/ready" data-desc="runtime gates: secrets, storage, model provider"><span class="ind"></span><span class="name">/ready<small>runtime gates: secrets, storage, model provider</small></span><span class="lab">Probing&hellip;</span><span class="lat">— ms</span></div>
+        <div class="row-status" data-probe="/v1/pricing" data-name="/v1/pricing" data-desc="public pricing catalog (no auth)"><span class="ind"></span><span class="name">/v1/pricing<small>public pricing catalog (no auth)</small></span><span class="lab">Probing&hellip;</span><span class="lat">— ms</span></div>
+        <div class="row-status" data-probe="/v1/public/concepts" data-name="/v1/public/concepts" data-desc="public concept gallery (no auth)"><span class="ind"></span><span class="name">/v1/public/concepts<small>public concept gallery (no auth)</small></span><span class="lab">Probing&hellip;</span><span class="lat">— ms</span></div>
+        <div class="row-status" data-probe="/sdk.js" data-name="/sdk.js" data-desc="browser SDK bundle (cache-busted)"><span class="ind"></span><span class="name">/sdk.js<small>browser SDK bundle (cache-busted)</small></span><span class="lab">Probing&hellip;</span><span class="lat">— ms</span></div>
+        <div class="row-status" data-probe="/sitemap.xml" data-name="/sitemap.xml" data-desc="indexable URL set for search engines"><span class="ind"></span><span class="name">/sitemap.xml<small>indexable URL set for search engines</small></span><span class="lab">Probing&hellip;</span><span class="lat">— ms</span></div>
+      </div>
     </div>
 
     <div class="panel">
-      <h2>Compile pipeline</h2>
-      <p class="note">Internal job lanes that run when you call <code style="font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px;">kolm compile</code>.</p>
-
-      <div class="row-status"><span class="ind up"></span><span class="name">orchestrator<small>compile id + job state</small></span><span class="lab up">Operational</span><span class="lat">· ms</span></div>
-      <div class="row-status"><span class="ind up"></span><span class="name">distill · k-sample teacher<small>verified label generation</small></span><span class="lab up">Operational</span><span class="lat">3.1 s/lab</span></div>
-      <div class="row-status"><span class="ind up"></span><span class="name">decompose · recipe extract<small>deterministic draft mining</small></span><span class="lab up">Operational</span><span class="lat">28 ms</span></div>
-      <div class="row-status"><span class="ind up"></span><span class="name">train / LoRA<small>residual fine-tune bridge</small></span><span class="lab up">Operational</span><span class="lat">8.4 s/step</span></div>
-      <div class="row-status"><span class="ind up"></span><span class="name">package / sign<small>HMAC receipt chain</small></span><span class="lab up">Operational</span><span class="lat">410 ms</span></div>
+      <h2>Runtime gates · /ready breakdown</h2>
+      <p class="note">Each gate is a hard precondition for paid tiers. The page reads the live JSON from /ready and shows every check, not just the rolled-up status. Required gates that are <code style="font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px;">false</code> block compile and publish flows.</p>
+      <div id="ready-checks">
+        <div class="row-status"><span class="ind"></span><span class="name">loading&hellip;<small>fetching /ready</small></span><span class="lab">—</span><span class="lat">—</span></div>
+      </div>
     </div>
 
     <div class="panel">
@@ -332,13 +332,171 @@
 
 <script>
   (function () {
-    var el = document.getElementById('stamp');
-    if (!el) return;
-    var now = new Date();
-    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
-    var iso = now.getUTCFullYear() + '-' + pad(now.getUTCMonth() + 1) + '-' + pad(now.getUTCDate()) +
-              ' ' + pad(now.getUTCHours()) + ':' + pad(now.getUTCMinutes()) + ' UTC';
-    el.textContent = 'last refreshed · ' + iso;
+    var stamp = document.getElementById('stamp');
+    if (stamp) {
+      var now = new Date();
+      var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+      var iso = now.getUTCFullYear() + '-' + pad(now.getUTCMonth() + 1) + '-' + pad(now.getUTCDate()) +
+                ' ' + pad(now.getUTCHours()) + ':' + pad(now.getUTCMinutes()) + ' UTC';
+      stamp.textContent = 'last refreshed · ' + iso;
+    }
+
+    function setRowState(row, state, label, latencyMs) {
+      var ind = row.querySelector('.ind');
+      var lab = row.querySelector('.lab');
+      var lat = row.querySelector('.lat');
+      if (ind) {
+        ind.classList.remove('up', 'deg', 'dn');
+        ind.classList.add(state);
+      }
+      if (lab) {
+        lab.classList.remove('up', 'deg', 'dn');
+        lab.classList.add(state);
+        lab.textContent = label;
+      }
+      if (lat) {
+        lat.textContent = (latencyMs == null ? '— ms' : Math.round(latencyMs) + ' ms');
+      }
+    }
+
+    function classifyHttp(status, ok) {
+      if (ok) return { state: 'up', label: 'OPERATIONAL' };
+      if (status === 503) return { state: 'deg', label: 'DEGRADED' };
+      if (status === 401 || status === 429) return { state: 'deg', label: 'GUARDED ' + status };
+      if (status === 0) return { state: 'dn', label: 'NETWORK' };
+      return { state: 'dn', label: 'HTTP ' + status };
+    }
+
+    function probeOne(row) {
+      var path = row.getAttribute('data-probe');
+      var t0 = performance.now();
+      return fetch(path, { credentials: 'omit', cache: 'no-store' })
+        .then(function (res) {
+          var dt = performance.now() - t0;
+          var verdict = classifyHttp(res.status, res.ok);
+          setRowState(row, verdict.state, verdict.label, dt);
+          return { path: path, ok: res.ok, status: res.status };
+        })
+        .catch(function (err) {
+          var dt = performance.now() - t0;
+          setRowState(row, 'dn', 'OFFLINE', dt);
+          return { path: path, ok: false, status: 0, error: err };
+        });
+    }
+
+    function updateMasterPill(results) {
+      var pill = document.querySelector('section.hero .pill');
+      if (!pill) return;
+      var dot = pill.querySelector('.dot');
+      var anyDown = results.some(function (r) { return r && r.ok === false && r.status !== 401; });
+      var allUp = results.every(function (r) { return r && r.ok === true; });
+      pill.firstChild && pill.removeChild(pill.firstChild);
+      while (pill.lastChild) pill.removeChild(pill.lastChild);
+      var newDot = document.createElement('span');
+      newDot.className = 'dot';
+      pill.appendChild(newDot);
+      var label;
+      if (anyDown) {
+        label = ' incident · investigating';
+        newDot.style.background = 'var(--bad)';
+        newDot.style.boxShadow = '0 0 8px var(--bad)';
+      } else if (!allUp) {
+        label = ' partial degradation';
+        newDot.style.background = 'var(--warn)';
+        newDot.style.boxShadow = '0 0 8px var(--warn)';
+      } else {
+        label = ' all systems · operational';
+      }
+      pill.appendChild(document.createTextNode(label));
+    }
+
+    function renderReadyBreakdown(json) {
+      var container = document.getElementById('ready-checks');
+      if (!container) return;
+      while (container.firstChild) container.removeChild(container.firstChild);
+
+      var topState = (json && json.status === 'ready') ? 'up' : (json && json.status === 'degraded' ? 'deg' : 'dn');
+      var topLabel = (json && json.status ? String(json.status).toUpperCase() : 'UNKNOWN');
+
+      var topRow = document.createElement('div');
+      topRow.className = 'row-status';
+      var ind = document.createElement('span'); ind.className = 'ind ' + topState;
+      var nameWrap = document.createElement('span'); nameWrap.className = 'name';
+      nameWrap.appendChild(document.createTextNode('overall'));
+      var small = document.createElement('small');
+      small.textContent = (json && json.production_like ? 'production-like runtime' : 'development runtime') +
+                          (json && json.uptime_s != null ? ' · uptime ' + Math.round(json.uptime_s) + 's' : '');
+      nameWrap.appendChild(small);
+      var lab = document.createElement('span'); lab.className = 'lab ' + topState; lab.textContent = topLabel;
+      var lat = document.createElement('span'); lat.className = 'lat'; lat.textContent = json && json.version ? json.version : '';
+      topRow.appendChild(ind); topRow.appendChild(nameWrap); topRow.appendChild(lab); topRow.appendChild(lat);
+      container.appendChild(topRow);
+
+      var checks = (json && Array.isArray(json.checks)) ? json.checks : [];
+      checks.forEach(function (c) {
+        if (!c || !c.name) return;
+        var ok = c.ok === true;
+        var required = c.required === true;
+        var state = ok ? 'up' : (required ? 'dn' : 'deg');
+        var labelText = ok ? 'OK' : (required ? 'REQUIRED · MISSING' : 'OPTIONAL · MISSING');
+
+        var row = document.createElement('div');
+        row.className = 'row-status';
+
+        var rInd = document.createElement('span'); rInd.className = 'ind ' + state;
+        var rName = document.createElement('span'); rName.className = 'name';
+        rName.appendChild(document.createTextNode(c.public || c.name));
+        var rSmall = document.createElement('small');
+        rSmall.textContent = c.hint || (required ? 'required for paid tiers' : 'optional gate');
+        rName.appendChild(rSmall);
+        var rLab = document.createElement('span'); rLab.className = 'lab ' + state; rLab.textContent = labelText;
+        var rLat = document.createElement('span'); rLat.className = 'lat'; rLat.textContent = required ? 'required' : 'optional';
+
+        row.appendChild(rInd); row.appendChild(rName); row.appendChild(rLab); row.appendChild(rLat);
+        container.appendChild(row);
+      });
+
+      if (checks.length === 0) {
+        var emptyRow = document.createElement('div');
+        emptyRow.className = 'row-status';
+        var eInd = document.createElement('span'); eInd.className = 'ind deg';
+        var eName = document.createElement('span'); eName.className = 'name';
+        eName.appendChild(document.createTextNode('no checks reported'));
+        var eSmall = document.createElement('small');
+        eSmall.textContent = '/ready returned no checks payload';
+        eName.appendChild(eSmall);
+        var eLab = document.createElement('span'); eLab.className = 'lab deg'; eLab.textContent = 'EMPTY';
+        var eLat = document.createElement('span'); eLat.className = 'lat'; eLat.textContent = '—';
+        emptyRow.appendChild(eInd); emptyRow.appendChild(eName); emptyRow.appendChild(eLab); emptyRow.appendChild(eLat);
+        container.appendChild(emptyRow);
+      }
+    }
+
+    function renderReadyError(err) {
+      var container = document.getElementById('ready-checks');
+      if (!container) return;
+      while (container.firstChild) container.removeChild(container.firstChild);
+      var row = document.createElement('div');
+      row.className = 'row-status';
+      var ind = document.createElement('span'); ind.className = 'ind dn';
+      var name = document.createElement('span'); name.className = 'name';
+      name.appendChild(document.createTextNode('/ready unreachable'));
+      var small = document.createElement('small');
+      small.textContent = err && err.message ? err.message : 'fetch failed';
+      name.appendChild(small);
+      var lab = document.createElement('span'); lab.className = 'lab dn'; lab.textContent = 'OFFLINE';
+      var lat = document.createElement('span'); lat.className = 'lat'; lat.textContent = '—';
+      row.appendChild(ind); row.appendChild(name); row.appendChild(lab); row.appendChild(lat);
+      container.appendChild(row);
+    }
+
+    var rows = Array.prototype.slice.call(document.querySelectorAll('[data-probe]'));
+    Promise.all(rows.map(probeOne)).then(updateMasterPill);
+
+    fetch('/ready', { credentials: 'omit', cache: 'no-store' })
+      .then(function (res) { return res.json().then(function (j) { return { ok: res.ok, json: j }; }); })
+      .then(function (r) { renderReadyBreakdown(r.json); })
+      .catch(renderReadyError);
   })();
 </script>
 

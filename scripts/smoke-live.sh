@@ -643,7 +643,8 @@ check "/articles advertises RSS"       has "$AI" 'application/rss+xml'
 H2=$(curl -s "$URL/")
 check "homepage anti-incumbent"        has "$H2" 'Stop renting'
 check "homepage GitHub star button"    has "$H2" 'gh-star-count'
-check "homepage registry counter"      has "$H2" 'registry/public/count'
+check "homepage registry counter"      has "$H2" 'js-registry-count'
+check "homepage registry endpoint"     has "$H2" "fetch('/v1/registry/public'"
 check "homepage compiler-positioning"  has "$H2" 'kolm compiles a task into a working AI you own'
 check "homepage roi link"              has "$H2" '/roi'
 
@@ -699,21 +700,17 @@ check "homepage three-box 01 inputs"   has "$H2" 'three-box\|inputs'
 check "homepage three-box 02 compile"  has "$H2" 'kolm compiles'
 
 echo ""
-echo "=== 30. v7.0 day-1 — brand anchor + rent-vs-buy + /brand ==="
+echo "=== 30. v7.0 day-1 — brand anchor + rent-vs-buy ==="
 B30_HOME=$(curl -s "$URL/")
 check "homepage H1 lock 'compiled to your task'" has "$B30_HOME" 'compiled to your task'
 check "homepage brand-anchor 'Built by Kolmogorov'" has "$B30_HOME" 'Built by .b.Kolmogorov'
 check "homepage rent-vs-buy thesis line"           has "$B30_HOME" 'local LoRA you keep forever'
-check "GET /brand -> 200"                          curl -fsS "$URL/brand"
-B30_BRAND=$(curl -s "$URL/brand")
-check "/brand 'kolm is the binary'"                hashi "$B30_BRAND" 'kolm.*is the binary\|the binary'
-check "/brand mentions Andrey Kolmogorov"          hashi "$B30_BRAND" 'andrey kolmogorov\|1965'
-check "/brand mentions RS-1 spec"                  has "$B30_BRAND" 'RS-1'
+check "homepage brand-anchor lists RS-1 spec"      has "$B30_HOME" 'RS-1'
 B30_MAN=$(curl -s "$URL/manifesto")
 check "/manifesto has brand-anchor paragraph"      hashi "$B30_MAN" 'andrey kolmogorov\|smallest specialist program'
+check "/manifesto mentions RS-1 spec"              has "$B30_MAN" 'RS-1'
 B30_CSS=$(curl -s "$URL/brand-refresh.css")
 check "brand-refresh.css has footer brand-tag"     has "$B30_CSS" 'kolm is the binary'
-check "sitemap lists /brand"                       has "$(curl -s "$URL/sitemap.xml")" 'https://kolm.ai/brand'
 
 echo ""
 echo "=== 31. v7.0 day-2 — REM-era claims stripped, kolm-native framing ==="
@@ -1301,7 +1298,7 @@ echo ""
 echo "=== 45. NEO LAB direction — homepage lab-strip telemetry ==="
 HOME=$(curl -s "$URL/")
 check "/ lab-strip section"            has "$HOME" '<section class="lab-strip"'
-check "/ lab-strip has live tag"       has "$HOME" 'live &middot; kolm lab'
+check "/ lab-strip has spec tag"       has "$HOME" 'spec &middot; kolm-benchmark-1'
 check "/ lab-strip harness panel"      has "$HOME" 'kolm bench <span class="arg">--reproduce swebench-lite-n150'
 check "/ lab-strip k-score gate panel" has "$HOME" 'k-score gate'
 check "/ lab-strip gauge mark 0.85"    has "$HOME" 'data-mark="0.85"'
