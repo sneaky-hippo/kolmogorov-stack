@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Troubleshooting · kolm</title>
+<meta name="description" content="What to do when kolm compile, kolm run, kolm verify, or kolm serve fails. Errors, causes, fixes.">
+<meta name="theme-color" content="#0b0d10">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Troubleshooting &middot; kolm">
+<meta property="og:description" content="Errors, causes, fixes for kolm compile, run, verify, and serve.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/troubleshooting">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/troubleshooting">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #4c7dff; --accent-soft: rgba(76,125,255,0.10); --accent-strong: #9db6ff;
+    --good: #7ef0d2; --bad: #ff6b91;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
+  header.site .brand span { font-weight: 540; font-size: 16px; letter-spacing: 0; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .ghost:hover { color: var(--ink); }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+  header.site .right .cta:hover { background: #fff; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 40px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  h1 { margin: 24px 0 16px; font-size: clamp(36px, 5vw, 56px); line-height: 1.05; font-weight: 500; letter-spacing: 0; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 24px; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 56ch; }
+
+  .toc { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 12px; padding: 0; list-style: none; }
+  .toc a { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; transition: color 120ms, border-color 120ms; }
+  .toc a:hover { color: var(--accent); border-color: var(--line-strong); }
+
+  article { padding: 24px 0 80px; }
+  .group { margin: 56px 0 0; padding-top: 32px; border-top: 1px solid var(--line); }
+  .group:first-of-type { margin-top: 28px; padding-top: 28px; }
+  .group h2 { margin: 0 0 22px; font-size: clamp(20px, 2vw, 24px); font-weight: 540; color: var(--ink); letter-spacing: 0; }
+  .qa { padding: 22px 0; border-bottom: 1px solid var(--line); }
+  .qa:last-child { border-bottom: none; }
+  .qa h3 { margin: 0 0 10px; font-size: 16px; font-weight: 540; color: var(--ink); letter-spacing: 0; line-height: 1.35; font-family: var(--mono); }
+  .qa h3 .tag { color: var(--ink-faint); font-weight: 400; }
+  .qa p { margin: 0 0 10px; font-size: 15px; line-height: 1.65; color: var(--ink-mute); }
+  .qa p:last-child { margin-bottom: 0; }
+  .qa p b { color: var(--ink); font-weight: 540; }
+  .qa code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
+  .qa a { color: var(--accent); }
+  .qa a:hover { color: var(--accent-strong); }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--ink-faint); }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand" aria-label="kolm"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill">Troubleshooting</span>
+    <h1>When something <span class="tone">breaks.</span></h1>
+    <p class="lede">Errors, causes, fixes. If your case is not listed, run <code>kolm doctor</code> first; if that comes back clean, mail <a href="mailto:dev@kolm.ai" style="color:var(--accent);">dev@kolm.ai</a> with the failing command and the trailing 30 lines of output.</p>
+    <ul class="toc" aria-label="Section nav">
+      <li><a href="#install">Install</a></li>
+      <li><a href="#auth">Auth &amp; API key</a></li>
+      <li><a href="#compile">Compile</a></li>
+      <li><a href="#run">Run</a></li>
+      <li><a href="#verify">Verify</a></li>
+      <li><a href="#serve">Serve</a></li>
+    </ul>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group" id="install">
+      <h2>Install</h2>
+      <div class="qa">
+        <h3>command not found: kolm</h3>
+        <p>The npm global bin is not on your <code>PATH</code>. Run <code>npm config get prefix</code> and add <code>$(prefix)/bin</code> to your shell profile, or reinstall with <code>npm install -g @kolmogorov/kolm</code> after fixing the prefix.</p>
+      </div>
+      <div class="qa">
+        <h3>EACCES on npm install -g</h3>
+        <p>Avoid <code>sudo</code>. Set a user-owned prefix: <code>npm config set prefix ~/.npm-global</code>, then add <code>~/.npm-global/bin</code> to <code>PATH</code>. Reinstall.</p>
+      </div>
+      <div class="qa">
+        <h3>Node version too old</h3>
+        <p>kolm requires Node 20+. Check with <code>node -v</code>. Upgrade via your version manager (nvm, fnm, volta).</p>
+      </div>
+    </div>
+
+    <div class="group" id="auth">
+      <h2>Auth &amp; API key</h2>
+      <div class="qa">
+        <h3>401 unauthorized on kolm compile</h3>
+        <p>Your key is missing or wrong. <code>kolm login</code> writes the key to <code>~/.kolm/config.json</code>. To inspect: <code>cat ~/.kolm/config.json</code>. To rotate: <code>kolm logout &amp;&amp; kolm login</code>.</p>
+      </div>
+      <div class="qa">
+        <h3>402 payment required</h3>
+        <p>The free tier ran out of compile minutes for the month or your plan was downgraded. Check <code>/account</code>. Upgrade at <code>/pricing</code> or wait for the next reset.</p>
+      </div>
+      <div class="qa">
+        <h3>429 rate limited on signup</h3>
+        <p>Signup is gated to 10 attempts per IP per 24 hours. If you are testing from a shared egress, switch IPs or wait. This is not a bug.</p>
+      </div>
+    </div>
+
+    <div class="group" id="compile">
+      <h2>Compile</h2>
+      <div class="qa">
+        <h3>K-score below gate, artifact not produced</h3>
+        <p>The compile log names the failing sub-score (accuracy, size, latency, cost, coverage). Most common: accuracy below threshold because the example set is too small or contradictory. Add more examples; remove contradictions; rerun. To ship a prototype anyway, override with <code>--gate 0.70</code> (not for production).</p>
+      </div>
+      <div class="qa">
+        <h3>verifier synthesis failed</h3>
+        <p>Your task description does not name a verifiable property. Either (1) add 5 to 10 paired examples that the verifier can learn from, or (2) tighten the task to one judgable output (classification, extraction, structured output). Free-form generation tasks need a regex/JSON-schema check or a paired-LM judge.</p>
+      </div>
+      <div class="qa">
+        <h3>teacher API returned 4xx</h3>
+        <p>Your frontier key is invalid or out of quota. kolm uses your own Anthropic / OpenAI / Google key for k-sample inference and stops if the provider rejects. Check the key against <code>https://api.anthropic.com/v1/messages</code> directly, then re-run.</p>
+      </div>
+      <div class="qa">
+        <h3>compile job stuck at "k-sampling"</h3>
+        <p>Frontier provider is slow or rate-limiting. The job will resume; do not cancel. If it has been over 30 minutes, kill the job (<code>kolm compile --cancel &lt;job-id&gt;</code>) and retry with <code>--k 4</code> instead of the default 8.</p>
+      </div>
+      <div class="qa">
+        <h3>distill ran out of memory</h3>
+        <p>Your base model is too large for the build host. On Free tier, only Phi-3-mini and Qwen2.5-3B fit. Pro and above support up to 14B. Upgrade or pick a smaller base.</p>
+      </div>
+      <div class="qa">
+        <h3>artifact size exceeds budget</h3>
+        <p>The compile log shows the budget and the actual. Drop the base to a smaller model, prune the recipe pack with <code>--max-recipes</code>, or accept the size penalty by raising <code>--budget-mb</code>.</p>
+      </div>
+    </div>
+
+    <div class="group" id="run">
+      <h2>Run</h2>
+      <div class="qa">
+        <h3>kolm run: signature does not verify</h3>
+        <p>The artifact was tampered with after compile, or the file is partially downloaded. Re-fetch from the original source. <code>kolm inspect &lt;file&gt;</code> shows the manifest hash; compare it to the publisher's hash. Never run an artifact whose signature does not match.</p>
+      </div>
+      <div class="qa">
+        <h3>kolm run: model file missing</h3>
+        <p>The artifact zip is corrupt or truncated. <code>unzip -l &lt;file.kolm&gt;</code> should list seven entries. Re-download.</p>
+      </div>
+      <div class="qa">
+        <h3>kolm run: tokens/sec below my expectation</h3>
+        <p>Check that you are running the matching runtime for your hardware. <code>kolm run --device auto</code> picks Metal on Apple silicon, CUDA on NVIDIA, CPU otherwise. Force with <code>--device metal</code> or <code>--device cuda</code>.</p>
+      </div>
+      <div class="qa">
+        <h3>kolm run: prompt exceeds context window</h3>
+        <p>The base model has a fixed window. Either trim input, switch to a base with longer context (<code>--base</code> at compile time), or use the recipe-mode shortcut which routes long prompts through recall.</p>
+      </div>
+    </div>
+
+    <div class="group" id="verify">
+      <h2>Verify</h2>
+      <div class="qa">
+        <h3>kolm verify: receipt chain broken</h3>
+        <p>One of the four HMAC rings does not match. The artifact has been modified since signing, or the runtime mis-recorded the receipt. Open <code>kolm verify --explain</code> to see which ring failed; ring 1 (model) failure means a tampered weights file, ring 4 (manifest) failure means metadata edits.</p>
+      </div>
+      <div class="qa">
+        <h3>kolm verify: signature key not recognized</h3>
+        <p>The artifact was signed by a key not in your trust store. <code>kolm trust add &lt;key-id&gt;</code> after confirming the publisher. For self-published artifacts, the key is in <code>~/.kolm/config.json</code>.</p>
+      </div>
+    </div>
+
+    <div class="group" id="serve">
+      <h2>Serve</h2>
+      <div class="qa">
+        <h3>kolm serve --mcp: client cannot find the server</h3>
+        <p>MCP discovery uses mDNS plus a <code>.well-known/mcp.json</code> on loopback. Confirm the server is on with <code>kolm serve --status</code> and that the client (claude code, cursor, continue) is configured for stdio or SSE. Loopback first; only expose externally if you understand the auth implications.</p>
+      </div>
+      <div class="qa">
+        <h3>kolm serve: port in use</h3>
+        <p>Default is 7327. Change with <code>--port 7328</code>. To find what is on 7327: <code>lsof -iTCP:7327 -sTCP:LISTEN</code>.</p>
+      </div>
+      <div class="qa">
+        <h3>MCP tool calls return empty</h3>
+        <p>The artifact has no exposed tools, or the recipe pack is empty. <code>kolm inspect &lt;file&gt;</code> shows the recipe count. Compile with <code>--export-tools</code> if your task involves callable functions.</p>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolmogorov &middot; 2026 &middot; troubleshooting</span>
+    <span><a href="mailto:dev@kolm.ai" style="color:var(--ink-faint);">dev@kolm.ai</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

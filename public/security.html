@@ -325,7 +325,7 @@
 <section class="hero">
   <div class="wrap">
     <span class="pill"><span class="dot"></span>RS-1-receipts &middot; MIT &middot; verifiable offline</span>
-    <p class="lede">Every <b>.kolm</b> artifact is HMAC-signed over the components the current builder emits. Receipts can be verified from the artifact bytes. Base-model, LoRA, recall-index, and external-registry claims become production evidence only when the corresponding bridge ships.</p>
+    <p class="lede">Every <b>.kolm</b> artifact is HMAC-signed over its emitted components; receipts verify from the artifact bytes. Base-model, LoRA, recall-index, and external-registry claims become production evidence only when the corresponding bridge ships.</p>
 
   </div>
 </section>
@@ -333,8 +333,7 @@
 <section>
   <div class="wrap">
     <div class="eyebrow"><span class="num">01</span><span>Architecture &middot; data flow</span></div>
-    <p class="sec-lede">The hosted preview accepts task specs, examples, and evals needed to compile. The current runtime surface is the Node CLI and MCP server. Customer-hosted compile and native offline runtimes are deployment targets that need contract review and benchmark evidence.</p>
-    <p class="sec-lede">The compile pipeline runs in our cloud (or your VPC, on Enterprise). The runtime runs on your users' device. After compile, the only thing that crosses our boundary is the manifest hash - never the artifact, never the corpus, never the receipts.</p>
+    <p class="sec-lede">Compile runs in our cloud (or your VPC on Enterprise). Runtime is the Node CLI and MCP server, on-device. Post-compile only the manifest hash crosses the boundary: not the artifact, not the corpus, not the receipts. Customer-hosted compile and native offline runtimes pending contract review.</p>
 
       <div class="arch-grid" aria-label="kolm data flow: customer inputs to compile pipeline to on-device runtime">
         <div class="lane">
@@ -368,23 +367,22 @@
       </div>
       <div class="arch-anchor" aria-label="anchor extension">
         <span class="a-tag">Anchor extension</span>
-        <span class="a-body">Optional Enterprise add-on. The manifest hash is anchored to a public ledger; the artifact and receipts never leave the device.</span>
+        <span class="a-body">Optional Enterprise add-on: manifest hash anchored to a public ledger; artifact and receipts stay on device.</span>
       </div>
-      <p class="arch-cap">Three lanes, one boundary. The artifact crosses from compile to device once. Receipts never cross.</p>
+      <p class="arch-cap">Three lanes, one boundary. Artifact crosses once. Receipts never cross.</p>
 
       <div class="arch-legend">
         <div class="lg-item">
           <div class="lg-tag">In</div>
-          <p>Hosted preview submissions are service inputs. Retention, redaction, and regulated-data handling must be reviewed per deployment before sensitive data is in scope.</p>
-          <p>Encrypted at rest while in flight through the compile pipeline. Deleted post-compile. Eval set retained 30 days for K-score audit only, then purged.</p>
+          <p>Encrypted at rest in the compile pipeline. Deleted post-compile. Eval set retained 30 days for K-score audit, then purged. Regulated data requires per-deployment review.</p>
         </div>
         <div class="lg-item">
           <div class="lg-tag">Through</div>
-          <p>API key is pass-through; we never persist your key, prompts, or completions. The teacher's outputs become labels and dissolve into the LoRA.</p>
+          <p>API key is pass-through; we never persist your key, prompts, or completions. Teacher outputs become labels and dissolve into the LoRA.</p>
         </div>
         <div class="lg-item">
           <div class="lg-tag">Out</div>
-          <p>One signed file. You download it. We delete the build inputs. Your users run it offline and the receipts they generate never leave their device.</p>
+          <p>One signed file. You download it. Build inputs deleted. Users run it offline; receipts never leave their device.</p>
         </div>
       </div>
     </div>
@@ -395,13 +393,12 @@
   <div class="wrap">
     <div class="eyebrow"><span class="num">02</span><span>Three layers of provenance</span></div>
     <h2>Signed at compile.<br><span class="tone">Verified by receipt.</span></h2>
-    <p class="sec-lede">Each layer is independent. You can verify the artifact and receipt chain from the bytes you hold: offline, with a single command, no service required. External ledger anchoring ships as an Enterprise add-on.</p>
+    <p class="sec-lede">Each layer independent. Verify offline, single command, no service.</p>
 
     <div class="layers">
       <div class="layer-card">
         <div class="num">Layer 01</div>
-        <p>HMAC-SHA-256 covers every emitted component: model pointer, recipes, eval set, manifest, and receipt body. Tampering with any byte breaks the chain.</p>
-        <p><code>kolm inspect</code> prints the full chain. <code>kolm verify</code> re-runs the receipt against the artifact you hold: no key, no service.</p>
+        <p>HMAC-SHA-256 over model pointer, recipes, eval set, manifest, receipt body. Tampering breaks the chain. <code>kolm inspect</code> prints it; <code>kolm verify</code> re-runs against the artifact you hold.</p>
         <pre><span class="dim">$</span> kolm inspect support-triage.kolm
 <span class="ok">ok</span> manifest.signature_alg hmac-sha256
 <span class="ok">ok</span> receipt.signature_alg  hmac-sha256
@@ -410,14 +407,14 @@
       <div class="layer-card">
         <div class="num">Layer 02</div>
         <h3>Registry record.</h3>
-        <p>Public artifact metadata is published through the registry export endpoint and can be diffed against the artifact bytes you hold. Each entry carries the manifest hash and signature algorithm.</p>
+        <p>Public metadata via registry export, diffable against artifact bytes. Each entry carries manifest hash and signature algorithm.</p>
         <pre><span class="dim">$</span> curl -fsSL https://kolm.ai/v1/registry/export
 <span class="ok">ok</span> public recipe metadata export</pre>
       </div>
       <div class="layer-card">
         <div class="num">Layer 03</div>
         <h3>External anchor extension.</h3>
-        <p>The receipt schema carries an anchor field for transparency-log roots and third-party timestamps. Available as an Enterprise add-on; the field is empty by default on Free / Pro tiers.</p>
+        <p>Receipt schema carries an anchor field for transparency-log roots and third-party timestamps. Enterprise add-on; empty on Free / Pro.</p>
         <pre><span class="dim">$</span> kolm inspect support-triage.kolm
 <span class="dim">anchors  </span>[]
 <span class="ok">ok</span> reserved extension field</pre>
@@ -430,38 +427,38 @@
   <div class="wrap">
     <div class="eyebrow"><span class="num">03</span><span>Compliance posture</span></div>
     <h2>What's shipped.<br><span class="tone">What's tracking.</span></h2>
-    <p class="sec-lede">Plain table. One source of truth, attestation calendar, no hand-waving. Same posture we hand to your auditor.</p>
+    <p class="sec-lede">Same posture we hand to your auditor.</p>
 
     <div class="compl">
       <div class="compl-card">
         <div class="head"><span class="nm">SOC 2</span><span class="st flight">Type I &middot; Q4 2026</span></div>
-        <h4>Type I attestation tracking Q4 2026, Type II Q2 2027.</h4>
-        <p>Controls library, evidence checklist, and audit calendar available under NDA for Enterprise diligence.</p>
+        <h4>Type I Q4 2026, Type II Q2 2027.</h4>
+        <p>Controls library, evidence checklist, audit calendar under NDA for Enterprise diligence.</p>
       </div>
       <div class="compl-card">
         <div class="head"><span class="nm">HIPAA</span><span class="st">BAA on Enterprise</span></div>
         <h4>BAA reviewed and countersigned on Enterprise.</h4>
-        <p>Customer-hosted runtime keeps PHI inside the boundary the auditor already trusts. Tenancy, retention, networking, and responsibility boundaries documented before contract.</p>
+        <p>Customer-hosted runtime keeps PHI inside the boundary your auditor trusts. Tenancy, retention, networking, responsibility documented pre-contract.</p>
       </div>
       <div class="compl-card">
         <div class="head"><span class="nm">EU AI Act</span><span class="st flight">documentation path &middot; 2027 Q2</span></div>
-        <h4>Designed to support technical documentation, not to determine your risk tier.</h4>
-        <p>Logging, transparency, human oversight, and robustness are product requirements. Risk tier and conformity obligations remain customer- and use-case-specific.</p>
+        <h4>Supports technical documentation, does not set your risk tier.</h4>
+        <p>Logging, transparency, human oversight, robustness are product requirements. Risk tier and conformity remain use-case-specific.</p>
       </div>
       <div class="compl-card">
         <div class="head"><span class="nm">FedRAMP</span><span class="st flight">no authorization today</span></div>
-        <h4>No FedRAMP authorization is claimed.</h4>
-        <p>Government or prime-contractor deployments require a separate customer-led hosting and controls review.</p>
+        <h4>No FedRAMP authorization claimed.</h4>
+        <p>Government and prime-contractor deployments need a customer-led hosting and controls review.</p>
       </div>
       <div class="compl-card">
         <div class="head"><span class="nm">GDPR &middot; UK GDPR</span><span class="st">DPA path</span></div>
-        <h4>EU-resident compile regions are a deployment requirement, not a public guarantee today.</h4>
-        <p>DPA and DPIA templates are prepared for enterprise review. Receipts can be redacted while preserving chain integrity.</p>
+        <h4>EU-resident compile regions are a deployment requirement, not a guarantee today.</h4>
+        <p>DPA and DPIA templates ready. Receipts redactable without breaking the chain.</p>
       </div>
       <div class="compl-card">
         <div class="head"><span class="nm">Disclosure</span><span class="st">live</span></div>
-        <h4>Responsible-disclosure process for real security findings.</h4>
-        <p>Scope: kolm.ai, the compile pipeline, the registry, the runtime, and the SDK. See disclosure section below for PGP key and process.</p>
+        <h4>Responsible-disclosure for real findings.</h4>
+        <p>Scope: kolm.ai, compile pipeline, registry, runtime, SDK. See section 06.</p>
       </div>
     </div>
   </div>
@@ -471,38 +468,38 @@
   <div class="wrap">
     <div class="eyebrow"><span class="num">04</span><span>Supply chain</span></div>
     <h2>What ran. <span class="tone">Where the bytes came from.</span></h2>
-    <p class="sec-lede">Every release of the kolm CLI, runtime, and SDK is reproducible from source, attested at build time, and signed before publication. The same provenance applies to the recipe registry, the Docker images, and the npm and Homebrew artifacts. If you can&rsquo;t verify the supply chain, the receipts in section 02 don&rsquo;t mean much.</p>
+    <p class="sec-lede">CLI, runtime, SDK, registry, Docker, npm, Homebrew: reproducible from source, attested at build, signed before publication.</p>
 
     <div class="compl">
       <div class="compl-card">
         <div class="head"><span class="nm">SLSA</span><span class="st">Level 3 target &middot; Q3 2026</span></div>
         <h4>Build provenance attested by GitHub Actions OIDC.</h4>
-        <p>Every release tag triggers a hermetic build; the resulting <code>provenance.intoto.jsonl</code> is signed by the runner identity and uploaded next to the release artifact. Verifiable with <code>slsa-verifier</code> against any tag.</p>
+        <p>Release tags trigger a hermetic build. <code>provenance.intoto.jsonl</code> signed by runner identity. Verify with <code>slsa-verifier</code>.</p>
       </div>
       <div class="compl-card">
         <div class="head"><span class="nm">Sigstore</span><span class="st">live</span></div>
         <h4>Cosign signatures on every published artifact.</h4>
-        <p>npm tarballs, Homebrew bottles, Docker images, GitHub release zips, and the public recipe registry deltas are signed with keyless Sigstore. <code>cosign verify</code> works against the Rekor transparency log without contacting kolm.</p>
+        <p>npm, Homebrew, Docker, release zips, registry deltas: keyless Sigstore. <code>cosign verify</code> hits Rekor without contacting kolm.</p>
       </div>
       <div class="compl-card">
         <div class="head"><span class="nm">SBOM</span><span class="st">CycloneDX 1.5</span></div>
         <h4>One SBOM per release, machine-readable.</h4>
-        <p>Published at <code>github.com/sneaky-hippo/kolmogorov-stack/releases/&lt;tag&gt;/sbom.cdx.json</code>. Every transitive dependency is named, versioned, and hashed. Auditors can diff release-to-release without running our tooling.</p>
+        <p><code>github.com/sneaky-hippo/kolmogorov-stack/releases/&lt;tag&gt;/sbom.cdx.json</code>. Every transitive dep named, versioned, hashed. Diffable release-to-release.</p>
       </div>
       <div class="compl-card">
         <div class="head"><span class="nm">Reproducible build</span><span class="st flight">verified per release</span></div>
         <h4>Independent rebuilds match byte-for-byte.</h4>
-        <p>The CLI and runtime build under fixed Node and Rust toolchains, with locked OS images. Two independent clones at the same commit produce the same SHA-256 for every published binary. RS-1 §9 applies to the compiler itself, not just compiled artifacts.</p>
+        <p>Fixed Node and Rust toolchains, locked OS images. Two clones at the same commit produce the same SHA-256.</p>
       </div>
       <div class="compl-card">
         <div class="head"><span class="nm">Pinned dependencies</span><span class="st">live</span></div>
         <h4>npm, cargo, pip locked. CI fails on drift.</h4>
-        <p>Lockfiles are part of the release. Renovate raises PRs for security advisories; merges require a human and a passing CI matrix. No floating semver ranges in production deps.</p>
+        <p>Lockfiles ship with releases. Renovate raises advisory PRs; merges need a human and passing CI.</p>
       </div>
       <div class="compl-card">
         <div class="head"><span class="nm">Vuln disclosure</span><span class="st">RFC 9116</span></div>
         <h4>Canonical contact at <code>/.well-known/security.txt</code>.</h4>
-        <p>PGP key published at <code>kolm.ai/.well-known/pgp-key.txt</code>. 24h acknowledgement, 3-day initial triage, paid bounty on real findings. Researchers credited at <code>kolm.ai/security/researchers</code>.</p>
+        <p>PGP key at <code>kolm.ai/.well-known/pgp-key.txt</code>. 24h ack, 3-day triage, paid bounty. Hall of fame at <code>kolm.ai/security/researchers</code>.</p>
       </div>
     </div>
 
@@ -510,7 +507,6 @@
       <a href="/.well-known/security.txt" style="color:var(--accent)">security.txt &rarr;</a>
       <a href="/.well-known/pgp-key.txt" style="color:var(--accent)">PGP key &rarr;</a>
       <a href="https://github.com/sneaky-hippo/kolmogorov-stack/releases" style="color:var(--accent)">Releases &amp; SBOMs &rarr;</a>
-      <span style="color:var(--ink-faint)">verify with <code style="font-family:var(--mono);background:var(--bg-card);border:1px solid var(--line);padding:1px 6px;border-radius:4px;color:var(--ink)">cosign verify</code> &middot; <code style="font-family:var(--mono);background:var(--bg-card);border:1px solid var(--line);padding:1px 6px;border-radius:4px;color:var(--ink)">slsa-verifier</code></span>
     </div>
   </div>
 </section>
@@ -519,7 +515,7 @@
   <div class="wrap">
     <div class="eyebrow"><span class="num">05</span><span>Data handling</span></div>
     <h2>What we hold.<br><span class="tone">What we don't.</span></h2>
-    <p class="sec-lede">The shortest possible answer to "where does our data go?" Written so a procurement team can read it once and tell their CISO what to do next.</p>
+    <p class="sec-lede">Where data lives, by class and deployment.</p>
 
     <div class="data-tbl">
       <table>
@@ -535,7 +531,7 @@
           <tr><td>Eval / held-out set</td><td>encrypted at rest, retained 30d</td><td>never leaves your VPC</td></tr>
           <tr><td>Recall corpus</td><td>your namespace, encrypted, durable</td><td>your sqlite-vec, on disk</td></tr>
           <tr><td>Compiled artifact</td><td>downloadable, deleted post-compile</td><td>written to your storage</td></tr>
-          <tr><td>Manifest hash</td><td>stored with artifact metadata</td><td>private registry namespace or direct artifact distribution</td></tr>
+          <tr><td>Manifest hash</td><td>stored with artifact metadata</td><td>private registry or direct distribution</td></tr>
           <tr><td>Receipts</td><td>your account, exportable</td><td>your storage, exportable</td></tr>
           <tr><td>Frontier API key</td><td><span class="n">pass-through target</span></td><td><span class="n">deployment reviewed</span></td></tr>
           <tr><td>Frontier prompts / completions</td><td><span class="n">retention by deployment</span></td><td><span class="n">customer boundary design</span></td></tr>
@@ -551,10 +547,10 @@
     <div class="disc">
       <div>
         <h3>Found a flaw?<br><span class="tone">Tell us first.</span></h3>
-        <p>We run a continuous responsible-disclosure program. Real findings get acknowledged within 24 hours and resolved on a fixed schedule. We pay for findings that materially affect security.</p>
-        <p><b>Scope:</b> kolm.ai, the compile pipeline, the public registry, the runtime, the SDK, the CLI, RS-1 spec implementations.</p>
+        <p>Continuous responsible-disclosure. 24h ack, fixed-schedule resolution, paid bounty on findings that materially affect security.</p>
+        <p><b>Scope:</b> kolm.ai, compile pipeline, public registry, runtime, SDK, CLI, RS-1 spec implementations.</p>
         <p><b>Out of scope:</b> social engineering, denial of service, spam, third-party services we don't control.</p>
-        <p>Mail <a href="mailto:security@kolm.ai?subject=Security">security@kolm.ai</a>. PGP-encrypt anything sensitive. <a href="/.well-known/security.txt">security.txt</a> lists the canonical contact and PGP fingerprint.</p>
+        <p>Mail <a href="mailto:security@kolm.ai?subject=Security">security@kolm.ai</a>; PGP-encrypt anything sensitive. <a href="/.well-known/security.txt">security.txt</a> has the canonical contact and fingerprint.</p>
       </div>
       <div>
         <dl>

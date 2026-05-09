@@ -133,7 +133,7 @@
   <div class="wrap">
     <span class="pill"><span class="dot"></span>Trust center</span>
     <h1>Compliance is a <span class="tone">build artifact.</span></h1>
-    <p class="lede">Every <code>.kolm</code> ships with a manifest hash, a HMAC-SHA256 receipt chain, and an explicit K-score gate. <b>Every output is cryptographically receiptable.</b> This page is the trust posture: certifications, subprocessors, residency, SLAs, and how to file a security report.</p>
+    <p class="lede">Every <code>.kolm</code> ships with a manifest hash, a HMAC-SHA256 receipt chain, and an explicit K-score gate. <b>Every output is cryptographically receiptable.</b></p>
     <ul class="toc">
       <li><a href="#status">Status</a></li>
       <li><a href="#certifications">Certifications</a></li>
@@ -153,21 +153,21 @@
 
     <div class="group" id="status">
       <h2>Live status</h2>
-      <p class="kicker">Engineering posts uptime to a public dashboard. Incidents are written there in plain language with timestamps. No marketing.</p>
+      <p class="kicker">Public dashboard. Incidents timestamped.</p>
       <div class="grid c-3">
         <div class="card">
           <h3>kolm.ai surface</h3>
-          <p>36 routes, 100% uptime target. Status page polls each route on a 60s cron.</p>
+          <p>36 routes, 100% uptime target. 60s polling cron.</p>
           <div class="meta ok">live</div>
         </div>
         <div class="card">
           <h3>Compile pipeline</h3>
-          <p>Synthesis + verification + registry write. p50 under 8s on the recipe-mode preview.</p>
+          <p>Synthesis + verification + registry write. p50 under 8s.</p>
           <div class="meta ok">live</div>
         </div>
         <div class="card">
           <h3>Registry</h3>
-          <p>Public artifact index at <code>/v1/registry/public</code>. Read-only by default; per-tenant write via API key.</p>
+          <p><code>/v1/registry/public</code>. Read-only; per-tenant write via API key.</p>
           <div class="meta ok">live</div>
         </div>
       </div>
@@ -176,7 +176,7 @@
 
     <div class="group" id="certifications">
       <h2>Certifications</h2>
-      <p class="kicker">Each line below is timestamped. We update this page when an item closes.</p>
+      <p class="kicker">Status reflects current attestation.</p>
       <div class="badges">
         <span class="badge in-progress"><span class="stat"></span>SOC 2 Type I - Q4 2026</span>
         <span class="badge in-progress"><span class="stat"></span>SOC 2 Type II - Q2 2027</span>
@@ -184,12 +184,12 @@
         <span class="badge"><span class="stat"></span>HIPAA-eligible workflows - <a href="/healthcare" style="color:inherit;">/healthcare</a></span>
         <span class="badge"><span class="stat"></span>GDPR DPA - <a href="/legal" style="color:inherit;">/legal</a></span>
       </div>
-      <p style="color:var(--ink-mute); font-size:14px; margin-top:18px;">Enterprise contracts include a custom DPA and BAA where relevant. Mail <a href="mailto:trust@kolm.ai" style="color:var(--accent);">trust@kolm.ai</a> for the current attestation packet.</p>
+      <p style="color:var(--ink-mute); font-size:14px; margin-top:18px;">Enterprise: custom DPA and BAA. Attestation packet: <a href="mailto:trust@kolm.ai" style="color:var(--accent);">trust@kolm.ai</a>.</p>
     </div>
 
     <div class="group" id="subprocessors">
       <h2>Subprocessors</h2>
-      <p class="kicker">The processors that touch managed-tier customer data. Bring-your-own-key tenants can opt out of any third-party teacher entirely - the local CLI runtime never reaches them.</p>
+      <p class="kicker">Processors touching managed-tier data. BYO-key tenants opt out of third-party teachers; the local CLI never reaches them.</p>
       <table class="tbl">
         <thead>
           <tr>
@@ -202,20 +202,20 @@
         <tbody>
           <tr>
             <td><b>Vercel</b></td>
-            <td>Hosting for kolm.ai marketing surface</td>
+            <td>kolm.ai marketing surface</td>
             <td>Public website only</td>
             <td>Global edge (US East primary)</td>
           </tr>
           <tr>
             <td><b>Railway</b></td>
-            <td>Hosting for the managed compile API</td>
+            <td>Managed compile API</td>
             <td>API request / artifact metadata</td>
             <td>US West</td>
           </tr>
           <tr>
             <td><b>Anthropic</b> <span class="meta">optional</span></td>
-            <td>Frontier teacher during compile (BYO key)</td>
-            <td>Customer-supplied training samples</td>
+            <td>Frontier teacher (BYO key)</td>
+            <td>Customer training samples</td>
             <td>Anthropic-managed</td>
           </tr>
           <tr>
@@ -226,37 +226,37 @@
           </tr>
           <tr>
             <td><b>SendGrid</b></td>
-            <td>Transactional email (sign-up, password reset)</td>
+            <td>Transactional email</td>
             <td>Email + token</td>
             <td>US</td>
           </tr>
         </tbody>
       </table>
-      <p style="color:var(--ink-mute); font-size:14px; margin-top:14px;">Every frontier teacher is a BYO-API-key concern. Customer data flows from your environment to your chosen provider; kolm proxies the call but never resells tokens or stores prompt bodies beyond the receipt-chain hash.</p>
+      <p style="color:var(--ink-mute); font-size:14px; margin-top:14px;">Frontier teachers are BYO-key. kolm proxies; never resells tokens nor stores prompt bodies beyond the receipt hash.</p>
     </div>
 
     <div class="group" id="residency">
       <h2>Data residency</h2>
-      <p class="kicker">Where your data sits, where it moves, where it doesn't.</p>
+      <p class="kicker">Where data sits, where it moves.</p>
       <div class="grid c-2">
         <div class="card">
           <h3>Local CLI runtime</h3>
-          <p>The CLI executes <code>.kolm</code> artifacts on your machine. Inference does not transit kolm.ai. Receipts stay on disk under <code>~/.kolm/receipts/</code> until you choose to publish them.</p>
+          <p>Inference runs on your machine; never transits kolm.ai. Receipts stay under <code>~/.kolm/receipts/</code> until published.</p>
           <div class="meta ok">your machine</div>
         </div>
         <div class="card">
           <h3>Managed compile API</h3>
-          <p>Hosted today in US West (Railway). Customer compile jobs may transit your chosen frontier teacher (BYO key). EU residency available on Enterprise.</p>
+          <p>US West (Railway). Compile jobs transit your chosen frontier teacher via BYO key. EU residency on Enterprise.</p>
           <div class="meta">US West &middot; EU on contract</div>
         </div>
         <div class="card">
           <h3>Registry</h3>
-          <p>Public concepts are mirrored globally; private concepts are pinned to the same region as the compile job. Encrypted at rest with per-tenant keys.</p>
+          <p>Public concepts mirrored globally; private concepts pinned to the compile-job region. Encrypted at rest, per-tenant keys.</p>
           <div class="meta ok">tenant-pinned</div>
         </div>
         <div class="card">
           <h3>Receipts</h3>
-          <p>HMAC chain anchors live in your registry namespace and (optional) on a public Merkle root. The registry never stores plaintext output - only the SHA-256 hash.</p>
+          <p>HMAC chain anchors in your registry namespace plus optional public Merkle root. Plaintext output never stored, only SHA-256 hash.</p>
           <div class="meta ok">hash only</div>
         </div>
       </div>
@@ -264,7 +264,7 @@
 
     <div class="group" id="sla">
       <h2>Service level</h2>
-      <p class="kicker">Uptime, response time, and incident communication commitments. Reproducible numbers. No vague language.</p>
+      <p class="kicker">Contractual uptime and response targets per plan.</p>
       <table class="tbl">
         <thead>
           <tr><th>Plan</th><th>Uptime target</th><th>Severity-1 ack</th><th>Compile queue p50</th></tr>
@@ -280,16 +280,16 @@
 
     <div class="group" id="disclosure">
       <h2>Vulnerability disclosure</h2>
-      <p class="kicker">Coordinated disclosure with a real human, fast. Bug bounty brackets below; out-of-scope examples after.</p>
+      <p class="kicker">Coordinated disclosure. Brackets and out-of-scope below.</p>
       <div class="grid c-2">
         <div class="card">
           <h3>How to report</h3>
-          <p>Mail <a href="mailto:security@kolm.ai">security@kolm.ai</a> with the affected URL, reproduction, and your contact. Encrypted reports welcome via the PGP key in <code>/.well-known/security.txt</code>.</p>
+          <p><a href="mailto:security@kolm.ai">security@kolm.ai</a> with affected URL, repro, contact. PGP via <code>/.well-known/security.txt</code>.</p>
           <div class="meta">RFC 9116 compliant</div>
         </div>
         <div class="card">
           <h3>Bounty brackets</h3>
-          <p>Critical RCE / receipt-chain forgery: $500-$2,000. High auth/billing: $250-$500. Medium IDOR/XSS: $100-$250. Low: swag + credit. Out-of-scope: rate-limit policy, missing CSP nonces (we use 'unsafe-inline' on inline JS pending the CSP-nonce migration).</p>
+          <p>Critical RCE / receipt-chain forgery: $500&ndash;$2,000. High auth/billing: $250&ndash;$500. Medium IDOR/XSS: $100&ndash;$250. Low: swag + credit. Out-of-scope: rate-limit policy, missing CSP nonces (inline JS pending nonce migration).</p>
           <div class="meta">live brackets</div>
         </div>
       </div>
@@ -297,17 +297,17 @@
 
     <div class="group" id="verification">
       <h2>How verification works</h2>
-      <p class="kicker">A plain-language threat model. What kolm signs, what tampering looks like, what verification proves.</p>
+      <p class="kicker">What kolm signs. What tampering looks like. What verification proves.</p>
       <h3 style="margin:18px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">The chain</h3>
       <pre class="code">manifest.json   = { artifact_id, base_model_hash, recipe_pack_hash, k_score, build_time }
 manifest_hash   = sha256(manifest.json)
 receipt[0]      = HMAC(secret, manifest_hash)
 receipt[i]      = HMAC(secret, receipt[i-1] || input_hash[i] || output_hash[i])
 signature       = HMAC(secret, receipt[N])</pre>
-      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Each receipt depends on the previous one. <b>You cannot insert, reorder, or remove a single output without invalidating every later receipt</b> in the chain. The signature at the tail is what an auditor checks against the published artifact_id and the build's HMAC public reference. <a href="/anatomy#walker" style="color:var(--accent);">Walk the four rings interactively &rarr;</a></p>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Each receipt chains to the previous. <b>Insert, reorder, or remove any output: every later receipt invalidates.</b> Auditors check the tail signature against the published artifact_id and HMAC reference. <a href="/anatomy#walker" style="color:var(--accent);">Walk the four rings interactively &rarr;</a></p>
 
       <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">Verify a receipt yourself</h3>
-      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Public endpoint, no auth, no SDK. Paste any receipt below — the widget POSTs to <code>/v1/receipts/verify</code>, walks the HMAC chain server-side, and returns each broken ring by name: <code>chain[3] hmac mismatch</code>, <code>signature mismatch</code>, <code>chain[4] not anchored to chain[3]</code>. The CLI's <code>kolm verify</code> calls the same endpoint.</p>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Public endpoint, no auth. POSTs to <code>/v1/receipts/verify</code>; broken rings come back named, e.g. <code>chain[3] hmac mismatch</code>. <code>kolm verify</code> uses the same endpoint.</p>
       <div id="rcpt-widget" style="margin:14px 0 6px;border:1px solid var(--line-strong);border-radius:10px;background:var(--bg-elev);padding:14px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;flex-wrap:wrap;">
           <span style="font-family:var(--mono);font-size:11.5px;text-transform:uppercase;color:var(--ink-faint);letter-spacing:0.04em;">receipt JSON</span>
@@ -323,32 +323,32 @@ signature       = HMAC(secret, receipt[N])</pre>
         </div>
         <div id="rcpt-result" style="margin-top:14px;display:none;border-top:1px solid var(--line);padding-top:14px;"></div>
       </div>
-      <p style="color:var(--ink-faint);font-size:12.5px;line-height:1.6;margin-top:6px;">Or, programmatically:</p>
+      <p style="color:var(--ink-faint);font-size:12.5px;line-height:1.6;margin-top:6px;">Programmatic:</p>
       <pre class="code">curl -s -X POST https://kolm.ai/v1/receipts/verify \
   -H "Content-Type: application/json" \
   -d '{"receipt": {"kolm_version":"0.1", "artifact_hash":"...", "chain":[...], "signature":"..."}}'</pre>
 
       <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">Optional Sigstore Rekor anchor</h3>
-      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Receipts can carry an <code>anchors</code> array. The <code>http</code> kind references our public Sigstore Rekor entry; <code>arweave</code>, <code>btc-op-return</code>, and <code>ots</code> let regulated buyers anchor receipts to substrates the supply-chain auditor already trusts. v0.1 runtimes ignore the field if absent. Schema: <a href="/docs/receipt-v0.1.json" style="color:var(--accent);">receipt-v0.1.json</a>.</p>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Receipts can carry an <code>anchors</code> array. Kinds: <code>http</code> (Sigstore Rekor), <code>arweave</code>, <code>btc-op-return</code>, <code>ots</code>. v0.1 runtimes ignore the field if absent. Schema: <a href="/docs/receipt-v0.1.json" style="color:var(--accent);">receipt-v0.1.json</a>.</p>
       <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">What this defends against</h3>
       <ul class="bul">
-        <li><b>Output tampering.</b> If a downstream system rewrites a model output, the recomputed receipt diverges and the chain breaks.</li>
-        <li><b>Model swap.</b> If a deployed <code>.kolm</code> is replaced with a different artifact, the manifest hash differs and the K-score gate fails.</li>
-        <li><b>Behavior drift.</b> The K-score gate is recomputed on a held-out test set at every release. A drifted artifact does not promote.</li>
-        <li><b>Input replay.</b> Each receipt embeds the input hash. A replay with different inputs produces a different chain.</li>
-        <li><b>Auditor fraud.</b> The chain is verifiable by anyone with the public anchor; no trust required in the auditor's claim.</li>
+        <li><b>Output tampering.</b> Chain breaks on rewrite.</li>
+        <li><b>Model swap.</b> Manifest hash differs; gate fails.</li>
+        <li><b>Behavior drift.</b> K-score recomputed per release; drifted artifact does not promote.</li>
+        <li><b>Input replay.</b> Receipts embed input hash; different inputs, different chain.</li>
+        <li><b>Auditor fraud.</b> Chain verifiable from the public anchor; no auditor trust required.</li>
       </ul>
       <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">What this does not defend against</h3>
       <ul class="bul">
-        <li><b>Malicious training data.</b> If your <code>--examples</code> are poisoned, the artifact is poisoned. Verification is honest about provenance, not correctness.</li>
-        <li><b>K-score gaming.</b> If the verifier itself is built from the same data it scores, the K-score is uninformative. Use a held-out test source.</li>
-        <li><b>Compromised signing secret.</b> Standard HMAC threat model: protect the secret. Enterprise plan rotates per-tenant.</li>
+        <li><b>Malicious training data.</b> Poisoned <code>--examples</code> poison the artifact. Verification proves provenance, not correctness.</li>
+        <li><b>K-score gaming.</b> Verifier sharing data with what it scores leaves K uninformative. Hold out the test source.</li>
+        <li><b>Compromised signing secret.</b> Standard HMAC threat model. Enterprise rotates per-tenant.</li>
       </ul>
     </div>
 
     <div class="group" id="k-score-gate">
       <h2>K-score, worked</h2>
-      <p class="kicker">The promotion gate at every release. Five components, fixed weights, a single scalar. Below the gate, the artifact does not promote.</p>
+      <p class="kicker">Promotion gate at every release. Five components, fixed weights, single scalar. Below the gate, no promote.</p>
 
       <pre class="code">K = 0.40&middot;A + 0.15&middot;S + 0.15&middot;L + 0.15&middot;C + 0.15&middot;V    where K, A, S, L, C, V &isin; [0, 1]</pre>
 
@@ -357,16 +357,16 @@ signature       = HMAC(secret, receipt[N])</pre>
           <tr><th style="width:5ch">var</th><th>component</th><th style="width:7ch">weight</th><th>signal</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>A</code></td><td><b>Accuracy</b></td><td>0.40</td><td>pass rate on a held-out eval slice the model has never seen</td></tr>
-          <tr><td><code>S</code></td><td><b>Size</b></td><td>0.15</td><td>1 &minus; (artifact_bytes / size_envelope), clipped to [0, 1]</td></tr>
-          <tr><td><code>L</code></td><td><b>Latency</b></td><td>0.15</td><td>p50_target / observed_p50, clipped to [0, 1]</td></tr>
-          <tr><td><code>C</code></td><td><b>Cost</b></td><td>0.15</td><td>$/call_target / observed_$/call, clipped to [0, 1]</td></tr>
-          <tr><td><code>V</code></td><td><b>Coverage</b></td><td>0.15</td><td>fraction of the intended task slice the eval set actually exercises</td></tr>
+          <tr><td><code>A</code></td><td><b>Accuracy</b></td><td>0.40</td><td>pass rate on held-out eval slice</td></tr>
+          <tr><td><code>S</code></td><td><b>Size</b></td><td>0.15</td><td>1 &minus; (artifact_bytes / size_envelope), clipped [0,1]</td></tr>
+          <tr><td><code>L</code></td><td><b>Latency</b></td><td>0.15</td><td>p50_target / observed_p50, clipped [0,1]</td></tr>
+          <tr><td><code>C</code></td><td><b>Cost</b></td><td>0.15</td><td>$/call_target / observed_$/call, clipped [0,1]</td></tr>
+          <tr><td><code>V</code></td><td><b>Coverage</b></td><td>0.15</td><td>fraction of intended task slice exercised by eval</td></tr>
         </tbody>
       </table>
 
       <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">A passing release</h3>
-      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">From <code>kolm bench</code> on a recent recipe pack:</p>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">From <code>kolm bench</code>:</p>
       <pre class="code">A = 0.92    accuracy   :: 138/150 held-out tasks pass
 S = 0.85    size       :: 3.4 GB inside a 5.0 GB envelope
 L = 0.90    latency    :: p50 220 ms vs 200 ms target
@@ -380,7 +380,7 @@ K = 0.40&middot;0.92 + 0.15&middot;0.85 + 0.15&middot;0.90 + 0.15&middot;0.88 + 
 gate = 0.85    K &ge; gate    promote</pre>
 
       <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">A drifted release</h3>
-      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Same envelope, accuracy slipped on a math-style slice. Identical S, L, C, V:</p>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Accuracy slipped on math-style; S, L, C, V unchanged:</p>
       <pre class="code">A = 0.78    accuracy   :: 117/150 &mdash; drift on math-style tasks
 S = 0.85
 L = 0.90
@@ -393,31 +393,31 @@ K = 0.40&middot;0.78 + 0.15&middot;0.85 + 0.15&middot;0.90 + 0.15&middot;0.88 + 
 
 gate = 0.85    K &lt; gate    DO NOT PROMOTE</pre>
 
-      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;margin-top:14px;"><b style="color:var(--ink);font-weight:540;">Two relaxed gates exist.</b> Safety-critical recipes require <code>K &ge; 0.95</code>; prototype recipes can ship with <code>K &ge; 0.70</code> and a <code>kolm.unstable</code> tag. The default for every public artifact is <b>0.85</b>. The gate, the inputs, and the held-out eval set are part of the receipt chain &mdash; if any of the five components were measured against the training set, the receipt names that fact.</p>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;margin-top:14px;"><b style="color:var(--ink);font-weight:540;">Two relaxed gates.</b> Safety-critical: <code>K &ge; 0.95</code>. Prototype: <code>K &ge; 0.70</code> with <code>kolm.unstable</code> tag. Public default: <b>0.85</b>. Gate, inputs, and held-out eval set are part of the receipt chain; any component measured against training is named in the receipt.</p>
     </div>
 
     <div class="group" id="docs">
       <h2>Downloads</h2>
-      <p class="kicker">Schemas, security policy, and machine-readable trust assets.</p>
+      <p class="kicker">Schemas and machine-readable trust assets.</p>
       <div class="grid c-2">
         <div class="card">
           <h3>RS-1 spec</h3>
-          <p><a href="/docs/rs-1.md">rs-1.md</a> - the open spec for the .kolm artifact format and receipt chain. MIT-licensed.</p>
+          <p><a href="/docs/rs-1.md">rs-1.md</a>. Open spec for .kolm format and receipt chain. MIT.</p>
           <div class="meta">spec</div>
         </div>
         <div class="card">
           <h3>Manifest schema</h3>
-          <p><a href="/docs/manifest-v0.1.json">manifest-v0.1.json</a> - JSON schema for the .kolm manifest. Validate with any standard tool.</p>
+          <p><a href="/docs/manifest-v0.1.json">manifest-v0.1.json</a>. JSON schema for the .kolm manifest.</p>
           <div class="meta">schema</div>
         </div>
         <div class="card">
           <h3>Receipt schema</h3>
-          <p><a href="/docs/receipt-v0.1.json">receipt-v0.1.json</a> - JSON schema for the receipt chain.</p>
+          <p><a href="/docs/receipt-v0.1.json">receipt-v0.1.json</a>. JSON schema for the receipt chain.</p>
           <div class="meta">schema</div>
         </div>
         <div class="card">
           <h3>security.txt</h3>
-          <p><a href="/.well-known/security.txt">/.well-known/security.txt</a> - RFC 9116 contact and disclosure policy.</p>
+          <p><a href="/.well-known/security.txt">/.well-known/security.txt</a>. RFC 9116 contact and disclosure.</p>
           <div class="meta">RFC 9116</div>
         </div>
       </div>
