@@ -18,6 +18,17 @@ import { verifiedInference } from './verified.js';
 import { createJob, getJob, listJobs, runJob } from './compile.js';
 import * as recall from './recall.js';
 import { verifyStripeSignature, planFromAmount, appendCheckoutParams } from './stripe.js';
+import {
+  pickAnthropicUpstream,
+  pickOpenAIUpstream,
+  sanitizeNamespace,
+  extractPromptForCapture,
+  extractCompletionText,
+  modelFromBody,
+  forwardAnthropic,
+  forwardOpenAI,
+  promptHash,
+} from './capture.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -2004,6 +2015,224 @@ export function buildRouter() {
       },
       compounds_to: specialists.length > 0 ? `Specialist (${specialists[0].id})` : (invocations.length >= 1000 ? 'eligible for Specialist training' : 'still maturing'),
     });
+  });
+
+  // ---------- Capture-and-distill (rent-vs-buy) ----------
+  // Drop-in proxy endpoints for Anthropic / OpenAI that record the (input,
+  // output, latency_us, model, namespace) tuple on every call. The customer
+  // points OPENAI_BASE_URL or ANTHROPIC_API_URL at us; their own provider
+  // key arrives in `x-upstream-api-key`. We strip it on the way through and
+  // never persist it. The capture rolls into the same `observations` table
+  // that /v1/bridges/observe writes to, so /v1/bridges/auto-synthesize and
+  // /v1/specialists/auto-distill can promote captures to recipes / LoRAs.
+
+  function recordCapture({ tenant, provider, model, namespace, prompt, response, latency_us, status, cost_usd }) {
+    if (!prompt || response === undefined || response === null) return null;
+    const hash = promptHash(prompt + '|' + (model || ''));
+    const obs = {
+      id: 'cap_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      tenant,
+      template_hash: hash,
+      template_preview: String(prompt).slice(0, 200),
+      model: String(model || '').slice(0, 128),
+      prompt: String(prompt).slice(0, 8000),
+      variable_input: null,
+      response: typeof response === 'string' ? response.slice(0, 16000) : response,
+      latency_ms: Math.round((latency_us || 0) / 1000),
+      latency_us: latency_us || 0,
+      cost_usd: cost_usd || 0,
+      provider,
+      corpus_namespace: namespace,
+      status,
+      created_at: new Date().toISOString(),
+    };
+    try { insert('observations', obs); } catch (_) {}
+    return obs;
+  }
+
+  // POST /v1/capture/anthropic — proxy to Anthropic, capture the round-trip.
+  // The body is the upstream Anthropic Messages payload, unmodified.
+  r.post('/v1/capture/anthropic', authMiddleware, async (req, res) => {
+    if (!req.tenant_record && !req.tenant) return res.status(401).json({ error: 'auth required' });
+    const upstreamKey = req.header('x-upstream-api-key') || req.header('x-anthropic-api-key') || '';
+    const namespace = sanitizeNamespace(req.header('x-kolm-namespace') || req.query?.namespace || 'default');
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    if (!Array.isArray(body.messages) || body.messages.length === 0) {
+      return res.status(400).json({ error: { type: 'invalid_request', message: 'messages array required' } });
+    }
+    const url = pickAnthropicUpstream();
+    const anthropicVersion = req.header('anthropic-version') || '2023-06-01';
+    let result;
+    try {
+      result = await forwardAnthropic({ url, body, upstreamKey, anthropicVersion });
+    } catch (e) {
+      return res.status(502).json({ error: { type: 'upstream_error', message: String(e.message || e) } });
+    }
+    const prompt = extractPromptForCapture(body, 'anthropic');
+    const completion = result.status >= 200 && result.status < 300
+      ? extractCompletionText(result.json, 'anthropic')
+      : '';
+    const obs = recordCapture({
+      tenant: req.tenant,
+      provider: 'anthropic',
+      model: modelFromBody(body, 'anthropic'),
+      namespace,
+      prompt,
+      response: completion || (result.json && result.json.error ? `[error] ${result.json.error.message || result.json.error.type || 'upstream'}` : ''),
+      latency_us: result.elapsed_us || 0,
+      status: result.status,
+    });
+    res.set('x-kolm-capture-id', obs ? obs.id : '');
+    res.set('x-kolm-namespace', namespace);
+    res.status(result.status).json(result.json);
+  });
+
+  // POST /v1/capture/openai — same shape, OpenAI Chat Completions API.
+  r.post('/v1/capture/openai', authMiddleware, async (req, res) => {
+    if (!req.tenant_record && !req.tenant) return res.status(401).json({ error: 'auth required' });
+    // The kolm api key is in Authorization (auth middleware already consumed it).
+    // The customer's real OpenAI key MUST come in x-upstream-api-key — we never
+    // fall back to Authorization here, since that would forward our own key.
+    const upstreamKey = req.header('x-upstream-api-key') || '';
+    const namespace = sanitizeNamespace(req.header('x-kolm-namespace') || req.query?.namespace || 'default');
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    if (!Array.isArray(body.messages) || body.messages.length === 0) {
+      return res.status(400).json({ error: { type: 'invalid_request', message: 'messages array required' } });
+    }
+    const url = pickOpenAIUpstream();
+    let result;
+    try {
+      result = await forwardOpenAI({ url, body, upstreamKey });
+    } catch (e) {
+      return res.status(502).json({ error: { type: 'upstream_error', message: String(e.message || e) } });
+    }
+    const prompt = extractPromptForCapture(body, 'openai');
+    const completion = result.status >= 200 && result.status < 300
+      ? extractCompletionText(result.json, 'openai')
+      : '';
+    const obs = recordCapture({
+      tenant: req.tenant,
+      provider: 'openai',
+      model: modelFromBody(body, 'openai'),
+      namespace,
+      prompt,
+      response: completion || (result.json && result.json.error ? `[error] ${result.json.error.message || result.json.error.type || 'upstream'}` : ''),
+      latency_us: result.elapsed_us || 0,
+      status: result.status,
+    });
+    res.set('x-kolm-capture-id', obs ? obs.id : '');
+    res.set('x-kolm-namespace', namespace);
+    res.status(result.status).json(result.json);
+  });
+
+  // GET /v1/labels/synthesize-corpus?namespace=<n>&format=jsonl|json
+  // Returns the captured (input, output) pairs for a namespace as JSONL or
+  // a JSON envelope. This is what `kolm labels` downloads. Counts go to the
+  // status command so the customer can see "ready to distill at 1000 pairs."
+  r.get('/v1/labels/synthesize-corpus', authMiddleware, (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const namespace = sanitizeNamespace(req.query?.namespace || 'default');
+    const fmt = String(req.query?.format || 'jsonl').toLowerCase();
+    const limit = Math.min(Math.max(parseInt(String(req.query?.limit || '10000'), 10) || 10000, 1), 50000);
+    const obs = all('observations').filter(o =>
+      o.tenant === req.tenant && (o.corpus_namespace === namespace || (namespace === 'default' && !o.corpus_namespace))
+    );
+    const pairs = obs.slice(0, limit).map(o => ({
+      input: o.prompt,
+      output: o.response,
+      model: o.model,
+      provider: o.provider || null,
+      latency_us: o.latency_us || (o.latency_ms || 0) * 1000,
+      created_at: o.created_at,
+    }));
+    if (req.query?.count_only === '1' || req.query?.count_only === 'true') {
+      return res.json({
+        namespace,
+        count: obs.length,
+        ready_to_distill: obs.length >= 1000,
+        threshold: 1000,
+      });
+    }
+    if (fmt === 'jsonl' || fmt === 'ndjson') {
+      const lines = pairs.map(p => JSON.stringify(p)).join('\n') + (pairs.length > 0 ? '\n' : '');
+      res.set('content-type', 'application/x-ndjson');
+      res.set('x-kolm-namespace', namespace);
+      res.set('x-kolm-count', String(obs.length));
+      return res.send(lines);
+    }
+    res.json({
+      namespace,
+      count: obs.length,
+      returned: pairs.length,
+      ready_to_distill: obs.length >= 1000,
+      threshold: 1000,
+      pairs,
+    });
+  });
+
+  // POST /v1/specialists/auto-distill — kicks off LoRA training on the
+  // namespace's captured corpus via the REM Labs training bridge.
+  // {namespace, base_model, target_size} → {job_id, status_url}. Stubbed
+  // until REM_LABS_BRIDGE_URL is configured; returns 503 with a clear
+  // operator hint so the gap is visible (not silently no-op).
+  r.post('/v1/specialists/auto-distill', authMiddleware, async (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const namespace = sanitizeNamespace((req.body || {}).namespace || req.query?.namespace || 'default');
+    const base_model = String((req.body || {}).base_model || 'qwen2.5-coder-7b-instruct').slice(0, 128);
+    const target_size = String((req.body || {}).target_size || 'phi-3-mini').slice(0, 64);
+    const obs = all('observations').filter(o =>
+      o.tenant === req.tenant && (o.corpus_namespace === namespace || (namespace === 'default' && !o.corpus_namespace))
+    );
+    if (obs.length < 1000) {
+      return res.status(400).json({
+        error: 'not enough captures',
+        namespace,
+        count: obs.length,
+        threshold: 1000,
+        message: `Capture ${1000 - obs.length} more pairs before distill is unlocked.`,
+      });
+    }
+    const bridge = process.env.REM_LABS_BRIDGE_URL;
+    if (!bridge) {
+      return res.status(503).json({
+        ok: false,
+        error: 'distill_bridge_not_configured',
+        message: 'REM_LABS_BRIDGE_URL is not set on this server. Auto-distill is a hosted-cloud feature; on-prem trainer ships in Wave 2.',
+        namespace,
+        count: obs.length,
+        next_steps: 'Email hello@kolm.ai to request access, or run `kolm labels --namespace <n> --out corpus.jsonl` and train locally.',
+      });
+    }
+    // Bridge configured — POST to it and return the job id.
+    try {
+      const jobRes = await fetch(bridge.replace(/\/+$/, '') + '/distill', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'authorization': `Bearer ${process.env.REM_LABS_BRIDGE_TOKEN || ''}` },
+        body: JSON.stringify({
+          tenant: req.tenant,
+          namespace,
+          base_model,
+          target_size,
+          pair_count: obs.length,
+          callback_url: `${process.env.PUBLIC_BASE || 'https://kolm.ai'}/v1/specialists/auto-distill/callback`,
+        }),
+      });
+      const text = await jobRes.text();
+      let body;
+      try { body = JSON.parse(text); } catch (_) { body = { _raw: text }; }
+      if (!jobRes.ok) return res.status(502).json({ error: 'bridge_error', upstream_status: jobRes.status, upstream_body: body });
+      return res.json({
+        ok: true,
+        job_id: body.job_id || null,
+        status_url: body.status_url || null,
+        namespace,
+        base_model,
+        target_size,
+        pair_count: obs.length,
+      });
+    } catch (e) {
+      return res.status(502).json({ error: 'bridge_unreachable', message: String(e.message || e) });
+    }
   });
 
   // POST /v1/memory/recall — REM Memory ↔ Skills bridge.

@@ -110,6 +110,10 @@ COMMANDS
   inspect <art.kolm>               manifest + recipes + signature
   serve [--mcp] [--http] [--port]  expose ~/.kolm/artifacts/* as MCP tools
   publish <art.kolm>               push to public gallery (Sprint 4)
+  capture --provider <p> --as <t>  configure a drop-in proxy for OpenAI/Anthropic
+  capture status [--namespace <n>] pairs captured / pairs until distill
+  labels [--namespace <n>] [--out] download the captured corpus as JSONL
+  distill --namespace <n>          auto-distill the namespace into a local LoRA
   config [base|api_key] [value]    inspect or set config
   version                          print version (CLI + server contract)
 
@@ -244,6 +248,58 @@ USAGE
   kolm publish <artifact.kolm>
 
 NOTE: The public gallery ships in Sprint 4. Until then, this exits with status 1.
+`,
+  capture: `kolm capture - drop-in proxy for OpenAI / Anthropic that captures (input, output) pairs.
+
+USAGE
+  kolm capture --provider <openai|anthropic> --as <task-name> [--namespace <n>]
+  kolm capture status [--namespace <n>]
+
+The first form writes ~/.kolm/capture/<task>.json with the upstream URL and the
+headers your app should send. Point OPENAI_BASE_URL or ANTHROPIC_API_URL at us
+and your existing SDK calls Just Work — every round-trip is captured into the
+namespace's corpus.
+
+Pass your real OpenAI / Anthropic key in the x-upstream-api-key header on each
+request. The kolm api key goes in Authorization: Bearer kolm_… as usual.
+
+The status form prints how many pairs have been captured and how many are
+needed before \`kolm distill\` is unlocked (default threshold: 1000 pairs).
+
+EXAMPLE
+  kolm capture --provider openai --as ticket-classifier --namespace tickets
+  # … your app makes 1000 calls …
+  kolm capture status --namespace tickets
+  kolm distill --namespace tickets
+`,
+  labels: `kolm labels - download the captured corpus as JSONL or JSON.
+
+USAGE
+  kolm labels [--namespace <n>] [--out <file>] [--format jsonl|json]
+
+DEFAULTS
+  --namespace default
+  --format    jsonl
+
+EXAMPLE
+  kolm labels --namespace tickets --out tickets-corpus.jsonl
+`,
+  distill: `kolm distill - auto-distill a captured namespace into a local LoRA via the REM Labs bridge.
+
+USAGE
+  kolm distill --namespace <n> [--base-model <name>] [--target <size>]
+
+DEFAULTS
+  --base-model qwen2.5-coder-7b-instruct
+  --target     phi-3-mini
+
+EXIT CODES
+  0  job started; the .kolm artifact is delivered to ~/.kolm/artifacts/ when done.
+  2  REM Labs bridge not configured on this kolm cloud (hosted-only feature).
+  3  not enough captured pairs yet (default threshold: 1000).
+
+If the bridge is unavailable, run \`kolm labels --namespace <n> --out corpus.jsonl\`
+and train locally with the on-prem trainer (Wave 2).
 `,
   config: `kolm config - inspect or set config keys.
 
@@ -826,6 +882,157 @@ function cmdConfig(args) {
   console.log('saved');
 }
 
+// kolm capture --provider <openai|anthropic> --as <task> --namespace <n>
+//   Writes ~/.kolm/capture/<task>.json with the upstream URL + headers the
+//   customer should use. Customer points OPENAI_BASE_URL or ANTHROPIC_API_URL
+//   at us; we proxy the call and record the (input, output) tuple.
+//
+// kolm capture status [--namespace <n>]
+//   Calls /v1/labels/synthesize-corpus?count_only=1 and prints
+//   "<count> pairs captured (<remaining> until distill)."
+async function cmdCapture(args) {
+  if (maybeHelp('capture', args)) return;
+  const sub = args[0];
+  if (sub === 'status') {
+    const c = loadConfig();
+    if (!c.api_key) { console.error('not logged in. run: kolm login'); process.exit(1); }
+    const ns = pickFlag(args, '--namespace') || pickFlag(args, '-n') || 'default';
+    const j = await api(c, 'GET', `/v1/labels/synthesize-corpus?namespace=${encodeURIComponent(ns)}&count_only=1`);
+    const remaining = Math.max(0, (j.threshold || 1000) - (j.count || 0));
+    console.log(`namespace ${j.namespace}: ${j.count} pair${j.count === 1 ? '' : 's'} captured`);
+    console.log(`distill threshold: ${j.threshold}`);
+    if (j.ready_to_distill) console.log('  ✓ ready to distill — run: kolm distill --namespace ' + j.namespace);
+    else console.log(`  ${remaining} more pair${remaining === 1 ? '' : 's'} until distill is unlocked`);
+    return;
+  }
+  // Default subcommand: write capture config.
+  const provider = (pickFlag(args, '--provider') || pickFlag(args, '-p') || '').toLowerCase();
+  const taskName = pickFlag(args, '--as') || args.find(a => !a.startsWith('-') && !['capture', 'status'].includes(a));
+  const namespace = pickFlag(args, '--namespace') || pickFlag(args, '-n') || taskName || 'default';
+  if (!provider || !['openai', 'anthropic'].includes(provider)) {
+    console.error('error: --provider <openai|anthropic> required');
+    console.error('usage: kolm capture --provider <openai|anthropic> --as <task-name> [--namespace <n>]');
+    process.exit(1);
+  }
+  if (!taskName) {
+    console.error('error: --as <task-name> required');
+    process.exit(1);
+  }
+  const c = loadConfig();
+  if (!c.api_key) {
+    console.error('not logged in. run: kolm login');
+    process.exit(1);
+  }
+  const captureDir = path.join(KOLM_DIR, 'capture');
+  fs.mkdirSync(captureDir, { recursive: true });
+  const base = (c.base || 'https://kolm.ai').replace(/\/+$/, '');
+  const baseUrl = `${base}/v1/capture/${provider}`;
+  const cfg = {
+    provider,
+    task: taskName,
+    namespace,
+    base_url: baseUrl,
+    kolm_api_key: c.api_key,
+    upstream_key_env: provider === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY',
+    created_at: new Date().toISOString(),
+  };
+  const cfgPath = path.join(captureDir, `${taskName}.json`);
+  fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2));
+  fs.chmodSync(cfgPath, 0o600);
+  console.log(`saved capture config: ${cfgPath}`);
+  console.log('');
+  console.log('to start capturing, set in your app:');
+  if (provider === 'openai') {
+    console.log(`  export OPENAI_BASE_URL="${baseUrl}"`);
+    console.log(`  # also pass your real OpenAI key in the x-upstream-api-key header`);
+    console.log(`  # the SDK's Authorization header should be: Bearer ${c.api_key.slice(0, 8)}...`);
+  } else {
+    console.log(`  export ANTHROPIC_API_URL="${baseUrl}"`);
+    console.log(`  # also pass your real Anthropic key in the x-upstream-api-key header`);
+    console.log(`  # the kolm api key goes in: Authorization: Bearer ${c.api_key.slice(0, 8)}...`);
+  }
+  console.log(`  # and pass: x-kolm-namespace: ${namespace}`);
+  console.log('');
+  console.log('check capture progress: kolm capture status --namespace ' + namespace);
+}
+
+// kolm labels [--namespace <n>] [--out <file.jsonl>] [--format jsonl|json]
+//   Downloads the captured corpus as JSONL (or JSON envelope).
+async function cmdLabels(args) {
+  if (maybeHelp('labels', args)) return;
+  const c = loadConfig();
+  if (!c.api_key) { console.error('not logged in. run: kolm login'); process.exit(1); }
+  const ns = pickFlag(args, '--namespace') || pickFlag(args, '-n') || 'default';
+  const fmt = (pickFlag(args, '--format') || 'jsonl').toLowerCase();
+  const out = pickFlag(args, '--out');
+  const url = c.base.replace(/\/+$/, '') + `/v1/labels/synthesize-corpus?namespace=${encodeURIComponent(ns)}&format=${encodeURIComponent(fmt)}`;
+  const res = await fetch(url, { headers: authHeaders(c) });
+  if (!res.ok) {
+    const t = await res.text();
+    console.error(`error: http ${res.status} ${t.slice(0, 400)}`);
+    process.exit(1);
+  }
+  const text = await res.text();
+  if (out) {
+    fs.writeFileSync(out, text);
+    const count = res.headers.get('x-kolm-count') || '?';
+    console.log(`wrote ${count} pair${count === '1' ? '' : 's'} to ${out}`);
+  } else {
+    process.stdout.write(text);
+  }
+}
+
+// kolm distill --namespace <n> [--base-model <m>] [--target <size>]
+//   Triggers auto-distill via the REM Labs bridge. Returns 503 with a clear
+//   operator hint until the server has REM_LABS_BRIDGE_URL configured.
+async function cmdDistill(args) {
+  if (maybeHelp('distill', args)) return;
+  const c = loadConfig();
+  if (!c.api_key) { console.error('not logged in. run: kolm login'); process.exit(1); }
+  const ns = pickFlag(args, '--namespace') || pickFlag(args, '-n') || 'default';
+  const base_model = pickFlag(args, '--base-model') || 'qwen2.5-coder-7b-instruct';
+  const target_size = pickFlag(args, '--target') || pickFlag(args, '--target-size') || 'phi-3-mini';
+  const url = c.base.replace(/\/+$/, '') + '/v1/specialists/auto-distill';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...authHeaders(c) },
+    body: JSON.stringify({ namespace: ns, base_model, target_size }),
+  });
+  const text = await res.text();
+  let j;
+  try { j = JSON.parse(text); } catch { j = { _raw: text }; }
+  if (!res.ok) {
+    if (res.status === 503 && j.error === 'distill_bridge_not_configured') {
+      console.error('distill is not yet enabled on this kolm cloud.');
+      console.error('  ' + (j.message || ''));
+      if (j.next_steps) console.error('  next: ' + j.next_steps);
+      process.exit(2);
+    }
+    if (res.status === 400 && (j.error || '').startsWith('not enough')) {
+      console.error(`namespace ${j.namespace}: ${j.count}/${j.threshold} pairs captured`);
+      console.error(`  ${j.message || 'capture more before distill'}`);
+      process.exit(3);
+    }
+    console.error(`error: http ${res.status} ${text.slice(0, 400)}`);
+    process.exit(1);
+  }
+  console.log('distill job started.');
+  console.log('  job_id:    ' + (j.job_id || '?'));
+  console.log('  namespace: ' + j.namespace);
+  console.log('  base:      ' + j.base_model);
+  console.log('  target:    ' + j.target_size);
+  console.log('  pairs:     ' + j.pair_count);
+  if (j.status_url) console.log('  status:    ' + j.status_url);
+}
+
+function pickFlag(args, name) {
+  const i = args.indexOf(name);
+  if (i < 0) return null;
+  const v = args[i + 1];
+  if (v === undefined || v.startsWith('-')) return '';
+  return v;
+}
+
 async function cmdVersion(args) {
   if (maybeHelp('version', args)) return;
   const c = loadConfig();
@@ -880,6 +1087,9 @@ async function main() {
       case 'inspect':  await cmdInspect(rest); break;
       case 'serve':    await cmdServe(rest); break;
       case 'publish':  cmdPublish(rest); break;
+      case 'capture':  await cmdCapture(rest); break;
+      case 'labels':   await cmdLabels(rest); break;
+      case 'distill':  await cmdDistill(rest); break;
       case 'config':   cmdConfig(rest); break;
       case 'version':
       case '--version':

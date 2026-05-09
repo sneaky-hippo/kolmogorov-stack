@@ -1151,6 +1151,73 @@ check "robots disallows /launch-checklist.md"   has "$RB" "/launch-checklist.md"
 SM_LC=$(curl -s "$URL/sitemap.xml" | grep -c "launch-checklist" || true)
 check "sitemap does NOT list launch-checklist"  eq "$SM_LC" 0
 
+echo "=== 42. Workstream E backend — capture proxy + labels + auto-distill ==="
+# These endpoints are the rent-vs-buy thesis made real: drop-in proxy for
+# OpenAI / Anthropic that records (input, output) pairs, then promote a
+# namespace to a local LoRA via the REM Labs bridge.
+EKEY_RAW=$(curl -s -X POST "$URL/v1/signup" \
+  -H 'Content-Type: application/json' \
+  -d "{\"email\":\"e-backend-$(date +%s)-$RANDOM@example.com\"}")
+EKEY=$(echo "$EKEY_RAW" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{console.log(JSON.parse(s).api_key||'')}catch{console.log('')}})")
+if [ -z "$EKEY" ]; then
+  check "Workstream E signup minted"            eq "skipped" "skipped"
+else
+  AUTH="-H \"Authorization: Bearer $EKEY\""
+  # /v1/labels/synthesize-corpus reachable + count_only mode.
+  LBL_CO=$(curl -s -H "Authorization: Bearer $EKEY" "$URL/v1/labels/synthesize-corpus?namespace=etest&count_only=1")
+  check "labels count_only is JSON"             has "$LBL_CO" "\"namespace\":\"etest\""
+  check "labels count_only has count field"     has "$LBL_CO" "\"count\":"
+  check "labels count_only has threshold 1000"  has "$LBL_CO" "\"threshold\":1000"
+  check "labels count_only ready_to_distill F"  has "$LBL_CO" "\"ready_to_distill\":false"
+  # /v1/labels/synthesize-corpus jsonl mode (empty namespace returns empty body).
+  LBL_JL_RC=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $EKEY" "$URL/v1/labels/synthesize-corpus?namespace=etest&format=jsonl")
+  check "labels jsonl mode 200"                 eq "$LBL_JL_RC" 200
+  # /v1/labels/synthesize-corpus json envelope.
+  LBL_J=$(curl -s -H "Authorization: Bearer $EKEY" "$URL/v1/labels/synthesize-corpus?namespace=etest&format=json")
+  check "labels json envelope namespace"        has "$LBL_J" "\"namespace\":\"etest\""
+  check "labels json envelope returned"         has "$LBL_J" "\"returned\":"
+  check "labels json envelope pairs key"        has "$LBL_J" "\"pairs\":"
+  # /v1/labels namespace sanitization — unsafe chars stripped to 'default'-style.
+  LBL_BAD=$(curl -s -H "Authorization: Bearer $EKEY" "$URL/v1/labels/synthesize-corpus?namespace=../etc/passwd&count_only=1")
+  check "labels sanitizes namespace"            has "$LBL_BAD" "\"namespace\":\"etcpasswd\""
+  # Auth required.
+  LBL_AUTH_RC=$(curl -s -o /dev/null -w "%{http_code}" "$URL/v1/labels/synthesize-corpus?namespace=etest")
+  check "labels requires auth (no key)"         eq "$LBL_AUTH_RC" 401
+
+  # /v1/specialists/auto-distill — empty namespace 400 with helpful message.
+  AD_EMPTY=$(curl -s -X POST -H "Authorization: Bearer $EKEY" -H 'Content-Type: application/json' \
+    -d '{"namespace":"etest"}' "$URL/v1/specialists/auto-distill")
+  check "auto-distill 400 on empty"             has "$AD_EMPTY" "\"error\":\"not enough captures\""
+  check "auto-distill 400 reports threshold"    has "$AD_EMPTY" "\"threshold\":1000"
+  AD_RC=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Authorization: Bearer $EKEY" -H 'Content-Type: application/json' \
+    -d '{"namespace":"etest"}' "$URL/v1/specialists/auto-distill")
+  check "auto-distill HTTP 400 on empty"        eq "$AD_RC" 400
+
+  # /v1/capture/anthropic — body validation + upstream key validation.
+  CAP_NOMSG=$(curl -s -X POST -H "Authorization: Bearer $EKEY" -H 'Content-Type: application/json' \
+    -d '{}' "$URL/v1/capture/anthropic")
+  check "capture/anthropic rejects empty body"  has "$CAP_NOMSG" "messages array required"
+  CAP_NOKEY=$(curl -s -X POST -H "Authorization: Bearer $EKEY" -H 'Content-Type: application/json' \
+    -d '{"model":"claude-opus-4-7","messages":[{"role":"user","content":"hi"}]}' \
+    "$URL/v1/capture/anthropic")
+  check "capture/anthropic missing upstream"    has "$CAP_NOKEY" "no_upstream_key"
+  check "capture/anthropic mentions header"     has "$CAP_NOKEY" "x-upstream-api-key"
+
+  # /v1/capture/openai — body validation + upstream key validation.
+  CAP_OPENAI_BAD=$(curl -s -X POST -H "Authorization: Bearer $EKEY" -H 'Content-Type: application/json' \
+    -d '{}' "$URL/v1/capture/openai")
+  check "capture/openai rejects empty body"     has "$CAP_OPENAI_BAD" "messages array required"
+  CAP_OPENAI_NK=$(curl -s -X POST -H "Authorization: Bearer $EKEY" -H 'Content-Type: application/json' \
+    -d '{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}' \
+    "$URL/v1/capture/openai")
+  check "capture/openai missing upstream"       has "$CAP_OPENAI_NK" "no_upstream_key"
+
+  # Auth required on capture endpoints too.
+  CAP_NOAUTH_RC=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
+    -d '{"messages":[{"role":"user","content":"hi"}]}' "$URL/v1/capture/anthropic")
+  check "capture/anthropic requires auth"       eq "$CAP_NOAUTH_RC" 401
+fi
+
 echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"
