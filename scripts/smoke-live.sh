@@ -1395,6 +1395,33 @@ check "/anatomy inspect renumbered 04"   has "$ANATOMY" '<span class="num">04</s
 check "/anatomy no orphan inspect 03"    hashno "$ANATOMY" '<span class="num">03</span> · Inspect'
 
 echo ""
+echo "=== 49a. /faq question-mark restoration + K-score formula correction ==="
+FAQ=$(curl -s "$URL/faq")
+check "/faq has 35+ question h3"           test "$(echo "$FAQ" | grep -c '?</h3>')" -ge 35
+check "/faq no stale -</h3>"               test "$(echo "$FAQ" | grep -c -- '-</h3>')" -eq 0
+check "/faq K-score canonical formula"     has "$FAQ" 'K = 0.40&middot;A + 0.15&middot;S + 0.15&middot;L + 0.15&middot;C + 0.15&middot;V'
+check "/faq no harmonic mean lie"          hashno "$FAQ" 'harmonic mean of size'
+check "/faq runtime MCP h3 added"          has "$FAQ" 'Does it integrate with Claude, Cursor, Codex, Zed?'
+check "/faq links worked example"          has "$FAQ" '/trust#k-score-gate'
+
+echo ""
+echo "=== 49b. /pricing stale labels + multiplier fix ==="
+PRICING=$(curl -s "$URL/pricing")
+check "/pricing aria starter not mobile"   has "$PRICING" 'aria-label="Six-tier pricing ladder: developer, starter, pro, teams'
+check "/pricing aria no mobile leak"       hashno "$PRICING" 'free, mobile, pro, team, business'
+check "/pricing 28x cheaper not 27-"       has "$PRICING" '<b>28&times; cheaper</b>'
+check "/pricing no orphan 27- multiplier"  hashno "$PRICING" '27- cheaper'
+check "/pricing h4 question marks"         test "$(echo "$PRICING" | grep -c '?</h4>')" -ge 4
+check "/pricing no stale -</h4>"           test "$(echo "$PRICING" | grep -c -- '-</h4>')" -eq 0
+
+echo ""
+echo "=== 49c. articles question-mark restoration ==="
+for art in ai-compiler hipaa-on-device k-sample-verified-inference kolm-file-format speculative-decoding-recipes; do
+  ART_BODY=$(curl -s "$URL/articles/$art")
+  check "/articles/$art no stale -</h3>"    test "$(echo "$ART_BODY" | grep -c -- '-</h3>')" -eq 0
+done
+
+echo ""
 echo "=== 49. K-score worked example on /trust ==="
 TRUST=$(curl -s "$URL/trust")
 check "/trust has k-score-gate id"          has "$TRUST" 'id="k-score-gate"'

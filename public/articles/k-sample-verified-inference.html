@@ -353,16 +353,16 @@ function score(input, output) {
     <p><b>For the receipt-chain itself.</b> You can export the chain root and verify it offline against your retained evidence. The Enterprise tier publishes chain roots to Sigstore / Rekor for cross-organization diligence.</p>
 
     <h2 id="faq">FAQ.</h2>
-    <h3>Why not just save the raw model output and call it a day-</h3>
+    <h3>Why not just save the raw model output and call it a day?</h3>
     <p>Because nothing prevents an attacker (or a careless engineer) from rewriting your saved output later. A receipt is content-anchored: changing the output changes the hash, which invalidates the receipt, which invalidates every later receipt in the chain.</p>
 
-    <h3>Does the verifier need to be deterministic-</h3>
+    <h3>Does the verifier need to be deterministic?</h3>
     <p>Yes. If the verifier is non-deterministic, you cannot re-derive the same winner from the same samples. The synthesis pipeline rejects verifiers that don't pass a determinism check (run the verifier 100 times on a fixed input and a fixed candidate; reject if any output differs).</p>
 
-    <h3>What about the frontier vendor's silent model rolls-</h3>
+    <h3>What about the frontier vendor's silent model rolls?</h3>
     <p>If the vendor changes the model under your contract, the same prompt produces a different sample distribution; verified inference makes that visible (the receipt's <code>model_id</code> shows the vendor's reported version, but the sample-distribution shift is detectable). For local artifacts, the LoRA's content hash is in the receipt; you control when it changes.</p>
 
-    <h3>Can I bring my own verifier-</h3>
+    <h3>Can I bring my own verifier?</h3>
     <p>Yes. Pass <code>--verifier ./mine.js</code> to <code>kolm compile</code>. The compiler still synthesizes a fallback from your seeds, but a hand-written verifier always wins. You publish the verifier's content hash so downstream auditors can re-run it.</p>
 
     <div class="signpost">

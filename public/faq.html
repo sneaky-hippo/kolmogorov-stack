@@ -124,47 +124,47 @@
     <div class="group" id="product">
       <h2>Product</h2>
       <div class="qa">
-        <h3>What is kolm, in one sentence-</h3>
+        <h3>What is kolm, in one sentence?</h3>
         <p>kolm is the build system for private AI. <code>kolm compile</code> takes a task description, your data, and a frontier model API key, and produces a single signed <code>.kolm</code> file that runs on-device or behind your VPC with no runtime egress.</p>
       </div>
       <div class="qa">
-        <h3>Isn't this just llama.cpp / MLC.ai / ExecuTorch-</h3>
+        <h3>Isn't this just llama.cpp / MLC.ai / ExecuTorch?</h3>
         <p>Those are <b>runtimes</b>. kolm is the <b>compile step</b> above the runtime. The artifact kolm produces runs on top of any of them. Runtimes give you a way to execute open-weight models locally; kolm gives you the way to teach a small model your task, ground it in your data, gate it on a quality score, and seal it as one portable file. <a href="/compare">Comparison table</a>.</p>
       </div>
       <div class="qa">
-        <h3>What's a Specialist-</h3>
+        <h3>What's a Specialist?</h3>
         <p>A Specialist is the artifact that comes out of <code>kolm compile</code>. It's a single signed zip with the base model, a personal LoRA, a recipe pack, a recall index, the verifier, the manifest, and the signature chain. <a href="/anatomy">/anatomy</a> shows the structure.</p>
       </div>
       <div class="qa">
-        <h3>What is the K-score-</h3>
-        <p>The harmonic mean of size, accuracy, latency, cost, and coverage, normalized against the frontier baseline measured at compile time. One number on the cover. Five you can defend. Default ship gate is 0.85. <a href="/k-score">/k-score</a>.</p>
+        <h3>What is the K-score?</h3>
+        <p>A weighted scalar over five components measured at compile time: <code>K = 0.40&middot;A + 0.15&middot;S + 0.15&middot;L + 0.15&middot;C + 0.15&middot;V</code> (accuracy, size, latency, cost, coverage). One number on the cover, five you can defend. Default ship gate is 0.85; safety-critical recipes require 0.95; prototypes can ship at 0.70. <a href="/k-score">/k-score</a> &middot; <a href="/trust#k-score-gate">worked example</a>.</p>
       </div>
     </div>
 
     <div class="group" id="compile">
       <h2>Compile</h2>
       <div class="qa">
-        <h3>What does the compile pipeline actually do-</h3>
+        <h3>What does the compile pipeline actually do?</h3>
         <p>You bring the frontier teacher (Anthropic, OpenAI, Google, your own). kolm runs k-sample inference, deterministically verifies, and uses the winning labels to distill. The student base is open-weight: Qwen 2.5, Llama 3.1, Phi-3, Hermes-3, Mistral. You pick. The artifact ships with the student baked in.</p>
       </div>
       <div class="qa">
-        <h3>What happens if my K-score is below the gate-</h3>
+        <h3>What happens if my K-score is below the gate?</h3>
         <p>The artifact does not ship. The compile log tells you which sub-score failed (size, accuracy, latency, cost, or coverage), the failing eval cases, and the suggested remediation: more examples, a smaller base model for size pressure, more recipe coverage, or a tighter task scope. You re-run <code>kolm compile</code> and try again.</p>
       </div>
       <div class="qa">
-        <h3>How long does a compile take-</h3>
+        <h3>How long does a compile take?</h3>
         <p>Recipe-mode preview compiles complete in 60-180 seconds for a typical task. Full LoRA distill against a 100k-row corpus is in the 30-90 minute range on Pro hardware. The compile log streams progress so you can stop early if the eval trace shows the task spec is wrong.</p>
       </div>
       <div class="qa">
-        <h3>How do I debug a compile-</h3>
+        <h3>How do I debug a compile?</h3>
         <p><code>kolm compile --explain</code> prints the full eval trace, the failing examples with the model's outputs, and the verifier's reasoning. If a specific eval fails repeatedly, that's usually a task-spec ambiguity or a contradiction between examples. <code>kolm compile --dry-run</code> runs the verifier synthesis without spending teacher tokens.</p>
       </div>
       <div class="qa">
-        <h3>Can I bring my own base model-</h3>
+        <h3>Can I bring my own base model?</h3>
         <p>On Pro and Enterprise, yes. <code>--base ./my-model.gguf</code> or <code>--base hf://org/repo</code>. The artifact will record the base hash in the manifest and sign it like any other component.</p>
       </div>
       <div class="qa">
-        <h3>What if the frontier model I distilled from is deprecated-</h3>
+        <h3>What if the frontier model I distilled from is deprecated?</h3>
         <p>The artifact is already compiled and signed. It runs unchanged for the life of the deployment. If you re-compile, you can pin a version of the teacher (<code>--teacher-version</code>) or switch teachers entirely; the new artifact will record the new lineage in the manifest.</p>
       </div>
     </div>
@@ -172,22 +172,23 @@
     <div class="group" id="runtime">
       <h2>Runtime</h2>
       <div class="qa">
-        <h3>Where does a <code>.kolm</code> artifact run-</h3>
+        <h3>Where does a <code>.kolm</code> artifact run?</h3>
         <p>The Node CLI inspects, evaluates, runs, and serves <code>.kolm</code> artifacts over MCP on macOS, Linux, and Windows today. The same signed bytes execute on iOS and Android through native adapters; each adapter verifies the manifest and receipt before the model is loaded.</p>
       </div>
       <div class="qa">
-        <h3>Does it actually run offline-</h3>
+        <h3>Does it actually run offline?</h3>
         <p>Yes. After the artifact is present, recipe-mode and LoRA-backed artifacts execute locally with no network call. Verify with <code>kolm inspect</code> and <code>kolm eval</code> on a disconnected machine to confirm the runtime path declared in the manifest.</p>
       </div>
       <div class="qa">
-        <h3>How do I update an artifact-</h3>
+        <h3>How do I update an artifact?</h3>
         <p>Re-run <code>kolm compile</code> with new examples or a new corpus, push the new artifact to your distribution channel (MDM, App Store, internal mirror, signed sneakernet). The manifest carries a version field; clients can pin or auto-upgrade.</p>
       </div>
       <div class="qa">
+        <h3>Does it integrate with Claude, Cursor, Codex, Zed?</h3>
         <p>The artifact joins the local MCP bus and is discoverable by Claude, Codex, Cursor, and Zed by name. Matching agent calls hit the local cache instead of the frontier. Latency drops from cloud round-trip to local. <a href="/serve">/serve</a>.</p>
       </div>
       <div class="qa">
-        <h3>What if my user's device is too old-</h3>
+        <h3>What if my user's device is too old?</h3>
         <p>Each release publishes a benchmark matrix on named hardware: p50 / p95 latency, memory, bundle size, battery draw, and thermal posture. The artifact picks the best fit at runtime (native LoRA on capable devices, recipe-only on tighter ones) with a documented fallback chain. Hardware-tier targeting expands across the device matrix on each release.</p>
       </div>
     </div>
@@ -195,19 +196,19 @@
     <div class="group" id="privacy">
       <h2>Privacy &amp; data</h2>
       <div class="qa">
-        <h3>Where does my data go during compile-</h3>
+        <h3>Where does my data go during compile?</h3>
         <p>On the hosted Pro tier, task specs, examples, and evals stay inside the kolm compile pipeline and are purged on a 24-hour window. On Enterprise, the compile bridge runs inside your VPC and raw data never leaves the boundary.</p>
       </div>
       <div class="qa">
-        <h3>Do you train on my compile inputs-</h3>
+        <h3>Do you train on my compile inputs?</h3>
         <p>No. Your compile inputs are not used to train any model we ship, and they are not used to improve the compiler. The compiler improves on the schema of <em>which task descriptions yield high K-scores against which bases</em>, which is metadata, not your content.</p>
       </div>
       <div class="qa">
-        <h3>What exactly is sent to the kolm cloud-</h3>
+        <h3>What exactly is sent to the kolm cloud?</h3>
         <p>Task description, examples, evals, base-model selection, target hardware, frontier-teacher API endpoint. During compile, the cloud sends prompts to your frontier teacher on your behalf. Outputs are verified locally to the compile pipeline and used to distill the LoRA. After compile, the inputs are purged on a default 24-hour window; on Enterprise, a 0-retention mode is available.</p>
       </div>
       <div class="qa">
-        <h3>What does the runtime see-</h3>
+        <h3>What does the runtime see?</h3>
         <p>Whatever the local runtime reads from the artifact and the user-approved local context. The signed bytes you ship are exactly what runs. CLI recipe-mode and LoRA-backed runs both execute locally with no network call.</p>
       </div>
     </div>
@@ -215,27 +216,27 @@
     <div class="group" id="compliance">
       <h2>Compliance</h2>
       <div class="qa">
-        <h3>HIPAA Business Associate Agreement-</h3>
+        <h3>HIPAA Business Associate Agreement?</h3>
         <p>BAA reviewed and countersigned on Enterprise. The customer-hosted runtime keeps PHI inside the boundary the auditor already trusts. Tenancy, retention, networking, and responsibility split are documented before contract. <a href="/healthcare">Healthcare overview</a>.</p>
       </div>
       <div class="qa">
-        <h3>SOC 2-</h3>
+        <h3>SOC 2?</h3>
         <p>Type I attestation tracking Q4 2026, Type II Q2 2027. Controls library, evidence checklist, and audit calendar available under NDA for Enterprise diligence.</p>
       </div>
       <div class="qa">
-        <h3>EU AI Act-</h3>
+        <h3>EU AI Act?</h3>
         <p>Designed with high-risk Annex III obligations in mind. Per-artifact manifests, verifier gates, and receipts support technical documentation; the actual risk tier and conformity path are customer- and use-case-specific.</p>
       </div>
       <div class="qa">
-        <h3>FedRAMP, CMMC, ITAR-</h3>
+        <h3>FedRAMP, CMMC, ITAR?</h3>
         <p>No FedRAMP authorization, CMMC certification, or ITAR compliance attestation is available today. The defense page describes an architecture direction for offline artifact provenance; regulated deployments require customer-led classification, controls mapping, and legal review. <a href="/defense">Defense &amp; intel overview</a>.</p>
       </div>
       <div class="qa">
-        <h3>Is the privacy claim audited by anyone other than you-</h3>
+        <h3>Is the privacy claim audited by anyone other than you?</h3>
         <p>No third-party audit report is published yet. The receipt chain is cryptographically checkable today for the HMAC-bound fields it covers: manifest hash, layer hashes, eval metadata, and receipt body. That is useful evidence, not a replacement for a security audit.</p>
       </div>
       <div class="qa">
-        <h3>Where's your security contact / vulnerability disclosure-</h3>
+        <h3>Where's your security contact / vulnerability disclosure?</h3>
         <p><a href="mailto:dev@kolm.ai?subject=Security">dev@kolm.ai</a> - PGP fingerprint and disclosure policy on <a href="/security">/security</a>. We commit to triage within 48 hours.</p>
       </div>
     </div>
@@ -243,27 +244,27 @@
     <div class="group" id="commercial">
       <h2>Commercial</h2>
       <div class="qa">
-        <h3>Who pays for the model API calls-</h3>
+        <h3>Who pays for the model API calls?</h3>
         <p>You do. kolm doesn't resell tokens. You bring your own API key (Anthropic, OpenAI, Google, your own). The compile pipeline runs against it. The artifact you walk away with is yours; the frontier bill amortizes to zero after compile.</p>
       </div>
       <div class="qa">
-        <h3>What's in the Developer (free) tier-</h3>
+        <h3>What's in the Developer (free) tier?</h3>
         <p>Developer tier ($0): 3 compiles per month, recipe-only artifacts (no LoRA), 4B-class open bases. Enough to prove the architecture for your use case end-to-end. <a href="/pricing">/pricing</a>.</p>
       </div>
       <div class="qa">
-        <h3>What does Enterprise actually cost-</h3>
+        <h3>What does Enterprise actually cost?</h3>
         <p>Enterprise is <b>$2,999/month, self-serve</b>. Provisioned the moment you submit the form, no scoping call required. Includes private registry, customer-hosted compile bridge option, BAA/DPA paths, and signed receipts anchored to your CA. <a href="/signup?plan=enterprise">Start Enterprise</a> or read <a href="/pricing">/pricing</a>.</p>
       </div>
       <div class="qa">
-        <h3>Annual billing-</h3>
+        <h3>Annual billing?</h3>
         <p>Yes, ~17% off (two months free) on Pro. Toggle on <a href="/pricing">/pricing</a>.</p>
       </div>
       <div class="qa">
-        <h3>What happens when I exhaust my compile quota-</h3>
+        <h3>What happens when I exhaust my compile quota?</h3>
         <p>Existing artifacts keep running. The next compile blocks with a clear upgrade path. No surprise overages: we don't auto-charge past your tier.</p>
       </div>
       <div class="qa">
-        <h3>Refunds-</h3>
+        <h3>Refunds?</h3>
         <p>30-day no-questions refund on the first month of any paid tier. After that, prorated refund on cancellation.</p>
       </div>
     </div>
@@ -271,19 +272,19 @@
     <div class="group" id="open">
       <h2>Open source</h2>
       <div class="qa">
-        <h3>What's open-</h3>
+        <h3>What's open?</h3>
         <p>The artifact format, the receipt-chain spec, the Node SDK source, the browser SDK at <code>/sdk.js</code>, the GitHub Actions integration, and the public route examples are all open. The proprietary surface is the compiler service itself; everything that ships out of it is yours under MIT.</p>
       </div>
       <div class="qa">
-        <h3>What's closed-</h3>
+        <h3>What's closed?</h3>
         <p>The compiler itself. That's the proprietary surface, because the compile flywheel (which task descriptions yield high K-scores against which bases) is the moat.</p>
       </div>
       <div class="qa">
-        <h3>Can I host my own registry-</h3>
+        <h3>Can I host my own registry?</h3>
         <p>Yes, the artifact format is portable. Private distribution today: share the signed <code>.kolm</code> directly through any object store, verify with <code>kolm inspect</code> and <code>kolm eval</code>. A first-party <code>kolm publish</code> command lands with the public atlas.</p>
       </div>
       <div class="qa">
-        <h3>Where's the GitHub-</h3>
+        <h3>Where's the GitHub?</h3>
         <p><a href="https://github.com/sneaky-hippo/kolmogorov-stack">github.com/sneaky-hippo/kolmogorov-stack</a> - the runtime SDK and the spec live there. Sample apps coming this month.</p>
       </div>
     </div>

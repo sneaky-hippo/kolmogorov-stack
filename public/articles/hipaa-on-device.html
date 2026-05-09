@@ -321,19 +321,19 @@ kolm run <span class="arg">chart-summary.kolm</span> --recall <span class="arg">
     <p><b>Not on the device:</b> the frontier API key (it lived in the compile-time clean room and never reaches the device), the original training data (it stays on the compile environment's storage), and any vendor sub-processor relationship (there is no vendor in the runtime pipeline).</p>
 
     <h2 id="faq">FAQ.</h2>
-    <h3>Is this the same as &quot;running an open-source model locally&quot;-</h3>
+    <h3>Is this the same as &quot;running an open-source model locally&quot;?</h3>
     <p>No. Off-the-shelf open-source models are not tuned to your task and will produce unreliable clinical output. The compile step is what closes the gap: a 7B-class base behaves like a frontier model on your task because the frontier model was its teacher during distillation.</p>
 
-    <h3>What about HHS&apos;s emerging AI rule-</h3>
+    <h3>What about HHS&apos;s emerging AI rule?</h3>
     <p>HHS&apos;s 2026 Health AI rule (and equivalent state acts) emphasize transparency, auditability, and minimum-disclosure. A compiled <code>.kolm</code> directly satisfies the minimum-disclosure standard (zero PHI egress) and provides the auditable receipt chain that transparency requires. We track regulatory developments at <a href="/healthcare" style="color:var(--accent)">/healthcare</a>.</p>
 
-    <h3>What if my clinical team needs a model bigger than the device can run-</h3>
+    <h3>What if my clinical team needs a model bigger than the device can run?</h3>
     <p>This is the core insight: a 70B model on the patient&apos;s phone is a fantasy, but a 7B compiled artifact whose behavior on <em>your specific clinical tasks</em> matches a 70B is achievable, because the 70B was its teacher. <a href="/articles/ai-compiler" style="color:var(--accent)">Read the compile primer &rarr;</a></p>
 
-    <h3>What about prompt-injection attacks against the device-local model-</h3>
+    <h3>What about prompt-injection attacks against the device-local model?</h3>
     <p>Prompt-injection still exists, the same way SQL injection still exists in any software product that takes user input. The compile-time verifier catches a meaningful fraction (it gates outputs by structure, length, and reference-vocabulary match). For higher-assurance deployments, the recipe pack is restricted to approved prefix-shapes; out-of-distribution prompts trigger a fallback to a more conservative branch.</p>
 
-    <h3>Can I get a BAA from Kolmogorov-</h3>
+    <h3>Can I get a BAA from Kolmogorov?</h3>
     <p>Enterprise customers do, but the surface is much smaller: only the compile-time orchestrator handles your de-identified seeds. The runtime artifact has no relationship to Kolmogorov at all once it ships to the device. We are happy to walk you through the security architecture during procurement.</p>
 
     <div class="signpost">
