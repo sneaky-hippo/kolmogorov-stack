@@ -1303,6 +1303,26 @@ check "/ lab-strip prefers-reduced"    has "$HOME" 'prefers-reduced-motion'
 check "/ registry-count dual class"    has "$HOME" 'id="registry-count" class="js-registry-count"'
 check "/ no fabricated +10pp claim"    hashno "$HOME" '\+10\.67pp'
 check "/ no fabricated +15pp claim"    hashno "$HOME" '\+15\.33pp'
+check "/ lab-strip canonical formula"  has "$HOME" 'K = 0.40&middot;A + 0.15&middot;S + 0.15&middot;L + 0.15&middot;C + 0.15&middot;V'
+check "/ lab-strip 5 components"       has "$HOME" 'accuracy &middot; size &middot; latency &middot; cost &middot; coverage'
+
+echo ""
+echo "=== 46. K-score gate consistency — site-wide 0.85 ==="
+KSCORE=$(curl -s "$URL/k-score")
+check "/k-score gate header 0.85"      has "$KSCORE" '0.85 ships'
+check "/k-score big gate ≥ 0.85"       has "$KSCORE" '≥&nbsp;0.85'
+check "/k-score legend gate ≥ 0.85"    has "$KSCORE" 'gate &ge; 0.85'
+check "/k-score figure aria 0.85"      has "$KSCORE" 'gated at 0.85'
+check "/k-score override copy 0.85"    has "$KSCORE" 'like 0.85, override it'
+check "/k-score no orphan default 0.70" hashno "$KSCORE" 'Default ship gate.[^<]*K&nbsp;&lt;&nbsp;0.70'
+COMPILE=$(curl -s "$URL/compile")
+check "/compile gate-line 0.85"        has "$COMPILE" 'gate 0.85 - ship'
+check "/compile cli flag --gate 0.85"  has "$COMPILE" '--gate <span class="num">0.85</span>'
+check "/compile templates K >= 0.85"   has "$COMPILE" 'K &gt;= 0.85'
+check "/compile no orphan gate 0.70"   hashno "$COMPILE" 'gate 0.70 - ship'
+check "/compile no orphan flag 0.70"   hashno "$COMPILE" '--gate <span class="num">0.70</span>'
+check "/compile sign hmac canon"       has "$COMPILE" '<b>Sign</b><span>hmac-sha256</span>'
+check "/compile no vestigial ed25519"  hashno "$COMPILE" '<b>Sign</b><span>ed25519</span>'
 
 echo ""
 echo "================================================"
