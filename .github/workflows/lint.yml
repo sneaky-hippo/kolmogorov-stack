@@ -18,7 +18,10 @@ jobs:
 
       - name: forbid innerHTML with template literal in public/
         run: |
-          if grep -rn 'innerHTML[[:space:]]*=[[:space:]]*`' public/ 2>/dev/null; then
+          # _archive is intentionally retired code — kept for git history but not
+          # served. Live pages must build DOM via createElement + textContent or
+          # an explicitly-escaped helper, never raw template-literal innerHTML.
+          if grep -rn --exclude-dir=_archive 'innerHTML[[:space:]]*=[[:space:]]*`' public/ 2>/dev/null; then
             echo "::error::innerHTML with template literal found — XSS regression risk"
             exit 1
           fi

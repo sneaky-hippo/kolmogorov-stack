@@ -299,19 +299,30 @@ function fired(out) {
 }
 
 function renderEmpty(meta) {
-  resultsEl.innerHTML = '';
+  resultsEl.replaceChildren();
   for (const r of meta) {
     const el = document.createElement('div');
     el.className = 'dev-result';
     el.dataset.name = r.name;
-    el.innerHTML = `
-      <div>
-        <div class="name">${esc(r.name)}</div>
-        <div class="desc">${esc(r.description || '')}</div>
-        <div class="out" style="margin-top:6px;color:var(--ink-faint);">(type to run)</div>
-      </div>
-      <div class="lat">&hellip;</div>
-    `;
+
+    const left = document.createElement('div');
+    const nameEl = document.createElement('div');
+    nameEl.className = 'name';
+    nameEl.textContent = r.name;
+    const descEl = document.createElement('div');
+    descEl.className = 'desc';
+    descEl.textContent = r.description || '';
+    const outEl = document.createElement('div');
+    outEl.className = 'out';
+    outEl.style.cssText = 'margin-top:6px;color:var(--ink-faint);';
+    outEl.textContent = '(type to run)';
+    left.append(nameEl, descEl, outEl);
+
+    const lat = document.createElement('div');
+    lat.className = 'lat';
+    lat.textContent = '…';
+
+    el.append(left, lat);
     resultsEl.appendChild(el);
   }
 }

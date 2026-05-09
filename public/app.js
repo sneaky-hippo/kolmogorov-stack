@@ -128,11 +128,23 @@ window.KS = (() => {
     banner.id = 'ks-key-banner';
     banner.className = 'card';
     banner.style.cssText = 'margin-bottom:18px;padding:10px 14px;display:flex;align-items:center;gap:12px;font-size:12.5px;';
-    banner.innerHTML = `
-      <span class="pill good">DEMO KEY</span>
-      <span class="mono faint" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHTML(key)}">${escapeHTML(key)}</span>
-      <a href="/signup" style="color:var(--accent);text-decoration:none;">Get your own</a>
-    `;
+
+    const pill = document.createElement('span');
+    pill.className = 'pill good';
+    pill.textContent = 'DEMO KEY';
+
+    const keyEl = document.createElement('span');
+    keyEl.className = 'mono faint';
+    keyEl.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    keyEl.title = key;
+    keyEl.textContent = key;
+
+    const link = document.createElement('a');
+    link.href = '/signup';
+    link.style.cssText = 'color:var(--accent);text-decoration:none;';
+    link.textContent = 'Get your own';
+
+    banner.append(pill, keyEl, link);
     root.insertBefore(banner, root.firstChild);
   }
 

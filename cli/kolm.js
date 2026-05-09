@@ -864,6 +864,9 @@ const REPRODUCE_SUITES = {
 };
 
 async function cmdBenchReproduce(args) {
+  // Use process.exitCode + return rather than process.exit() so buffered
+  // stderr drains before the process tears down. process.exit() in pipe
+  // contexts (CI captures via $(...)) can truncate the last few writes.
   const idx = args.indexOf('--reproduce');
   const suite = idx >= 0 ? args[idx + 1] : undefined;
   if (!suite || suite.startsWith('-')) {
@@ -872,13 +875,13 @@ async function cmdBenchReproduce(args) {
     for (const [name, s] of Object.entries(REPRODUCE_SUITES)) {
       console.error(`  ${name}    ${s.headline}`);
     }
-    process.exit(1);
+    process.exitCode = 1; return;
   }
   const cfg = REPRODUCE_SUITES[suite];
   if (!cfg) {
     console.error('error: unknown suite:', suite);
     console.error('available suites: ' + Object.keys(REPRODUCE_SUITES).join(', '));
-    process.exit(1);
+    process.exitCode = 1; return;
   }
   const value = (flag) => {
     const i = args.indexOf(flag);
@@ -890,11 +893,11 @@ async function cmdBenchReproduce(args) {
   const dryRun = args.includes('--dry-run');
   if (!Number.isInteger(seed) || seed < 0) {
     console.error('error: --seed must be a non-negative integer');
-    process.exit(1);
+    process.exitCode = 1; return;
   }
   if (!Number.isInteger(n) || n < 1 || n > 300) {
     console.error('error: --n must be an integer in [1, 300]');
-    process.exit(1);
+    process.exitCode = 1; return;
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY || value('--api-key');
@@ -938,7 +941,7 @@ async function cmdBenchReproduce(args) {
     console.error(`  kolm bench --reproduce ${suite} --seed ${seed} --n ${n}`);
     console.error('');
     console.error(`estimated: ${plan.estimated_minutes} min, $${plan.estimated_dollars} in Opus-4.7 spend`);
-    process.exit(2);
+    process.exitCode = 2; return;
   }
   if (!dockerOk) {
     console.error('error: docker not available on PATH');
@@ -946,7 +949,7 @@ async function cmdBenchReproduce(args) {
     console.error('the reproducer runs in a pinned image so the harness + evaluator versions');
     console.error('are byte-identical to the published numbers. install docker and retry:');
     console.error('  https://docs.docker.com/get-docker/');
-    process.exit(2);
+    process.exitCode = 2; return;
   }
 
   // Image-pull / inspect. If the image is not yet published to the registry,
@@ -962,7 +965,7 @@ async function cmdBenchReproduce(args) {
     console.error('  - watch https://github.com/kolmogorov/kolm-bench-reproducer/releases');
     console.error('  - or build locally from source (clone kolm-bench-reproducer, docker build -t ' + cfg.image + ' .)');
     console.error('  - or run the n=5 smoke locally without docker: kolm bench --reproduce ' + suite + ' --dry-run');
-    process.exit(2);
+    process.exitCode = 2; return;
   }
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
@@ -980,7 +983,7 @@ async function cmdBenchReproduce(args) {
   ], { stdio: 'inherit' });
   if (run.status !== 0) {
     console.error('error: reproducer exited with code ' + run.status);
-    process.exit(run.status || 1);
+    process.exitCode = run.status || 1; return;
   }
   console.log('');
   console.log(`✓ report written to ${outPath}`);
