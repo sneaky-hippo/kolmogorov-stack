@@ -1290,17 +1290,12 @@ if [ -f "$KOLM_CLI" ]; then
 fi
 
 echo ""
-echo "=== 44. Workstream C polish — interactive byte-map components ==="
+echo "=== 44. /anatomy text-only treatment (post-widget-removal) ==="
 ANATOMY=$(curl -s "$URL/anatomy")
-check "/anatomy bytemap-frame"             has "$ANATOMY" 'bytemap-frame'
-check "/anatomy bytemap rows × 7"          has "$ANATOMY" 'data-name="model.gguf"'
-check "/anatomy bytemap row signature"     has "$ANATOMY" 'data-name="signature.sig"'
-check "/anatomy bytemap readout"           has "$ANATOMY" 'bytemap-readout'
-check "/anatomy bytemap js wired"          has "$ANATOMY" 'data-bytemap'
+check "/anatomy no bytemap-frame plate"    hashno "$ANATOMY" 'bytemap-frame'
 check "/anatomy old diag-tree retired"     hashno "$ANATOMY" 'diag diag-tree'
 FF=$(curl -s "$URL/articles/kolm-file-format")
-check "/articles/kolm-file-format bytemap" has "$FF" 'bytemap-frame'
-check "/articles/kolm-file-format manifest" has "$FF" 'data-name="manifest.json"'
+check "/articles/kolm-file-format manifest" has "$FF" 'manifest.json'
 check "/articles/kolm-file-format old tree retired" hashno "$FF" 'diag diag-tree'
 
 echo ""
@@ -1337,7 +1332,6 @@ KSCORE=$(curl -s "$URL/k-score")
 check "/k-score gate header 0.85"      has "$KSCORE" '0.85 ships'
 check "/k-score big gate ≥ 0.85"       has "$KSCORE" '≥&nbsp;0.85'
 check "/k-score legend gate ≥ 0.85"    has "$KSCORE" 'gate &ge; 0.85'
-check "/k-score figure aria 0.85"      has "$KSCORE" 'gated at 0.85'
 check "/k-score override copy 0.85"    has "$KSCORE" 'like 0.85, override it'
 check "/k-score no orphan default 0.70" hashno "$KSCORE" 'Default ship gate.[^<]*K&nbsp;&lt;&nbsp;0.70'
 COMPILE=$(curl -s "$URL/compile")
@@ -1346,15 +1340,7 @@ check "/compile cli flag --gate 0.85"  has "$COMPILE" '--gate <span class="num">
 check "/compile templates K >= 0.85"   has "$COMPILE" 'K &gt;= 0.85'
 check "/compile no orphan gate 0.70"   hashno "$COMPILE" 'gate 0.70 - ship'
 check "/compile no orphan flag 0.70"   hashno "$COMPILE" '--gate <span class="num">0.70</span>'
-check "/compile sign hmac canon"       has "$COMPILE" '<b>Sign</b><span>hmac-sha256</span>'
-check "/compile no vestigial ed25519"  hashno "$COMPILE" '<b>Sign</b><span>ed25519</span>'
-check "/compile pipeline data-attr"    has "$COMPILE" 'data-pipeline'
-check "/compile pipeline wall-time 03" has "$COMPILE" '<span class="t">3m 08s</span>'
-check "/compile pipeline wall-time 05" has "$COMPILE" '<span class="t">7m 12s</span>'
-check "/compile pipeline wall-time 09" has "$COMPILE" '<span class="t">42ms</span>'
-check "/compile pipeline IO observer"  has "$COMPILE" 'IntersectionObserver'
-check "/compile pipeline is-armed"     has "$COMPILE" 'is-armed'
-check "/compile pipeline reduced-motion" has "$COMPILE" '@media(prefers-reduced-motion: reduce)'
+check "/compile no vestigial ed25519"  hashno "$COMPILE" 'Sign</b><span>ed25519</span>'
 
 echo ""
 echo "=== 47. K-score calculator widget on /k-score ==="
@@ -1375,24 +1361,10 @@ check "/k-score kcalc weights JS"        has "$KSCORE" 'A: 0.40, S: 0.15, L: 0.1
 check "/k-score eyebrow 04 renumbered"   has "$KSCORE" '<span class="num">04</span> · Why one number'
 
 echo ""
-echo "=== 48. Receipt walker on /anatomy ==="
-check "/anatomy walker element"          has "$ANATOMY" 'data-walker'
-check "/anatomy walker section eyebrow"  has "$ANATOMY" '<span class="num">03</span> · Walk the chain'
-check "/anatomy walker H2 four rings"    has "$ANATOMY" 'Four rings.'
-check "/anatomy walker ring 1 model"     has "$ANATOMY" 'data-ring="1"'
-check "/anatomy walker ring 2"           has "$ANATOMY" 'data-ring="2"'
-check "/anatomy walker ring 3"           has "$ANATOMY" 'data-ring="3"'
-check "/anatomy walker ring 4 manifest"  has "$ANATOMY" 'data-ring="4"'
-check "/anatomy walker R1 named"         has "$ANATOMY" '<span class="walker-ring-num">R1</span>'
-check "/anatomy walker R4 named"         has "$ANATOMY" '<span class="walker-ring-num">R4</span>'
-check "/anatomy walker detail panels"    has "$ANATOMY" 'data-detail="1"'
-check "/anatomy walker detail R4"        has "$ANATOMY" 'data-detail="4"'
-check "/anatomy walker hmac-sha256"      has "$ANATOMY" 'HMAC-SHA256 chain'
-check "/anatomy walker verify cmd"       has "$ANATOMY" 'kolm verify support-triage.kolm'
-check "/anatomy walker reduced-motion"   has "$ANATOMY" '@media(prefers-reduced-motion: reduce)'
-check "/anatomy walker keyboard arrows"  has "$ANATOMY" "ArrowRight"
-check "/anatomy inspect renumbered 04"   has "$ANATOMY" '<span class="num">04</span> · Inspect'
-check "/anatomy no orphan inspect 03"    hashno "$ANATOMY" '<span class="num">03</span> · Inspect'
+echo "=== 48. /anatomy text-only walker prose (post-widget-removal) ==="
+check "/anatomy walker hmac-sha256"      has "$ANATOMY" 'HMAC-SHA256'
+check "/anatomy verify cmd in prose"     has "$ANATOMY" 'kolm verify'
+check "/anatomy no walker plate"         hashno "$ANATOMY" 'data-walker'
 
 echo ""
 echo "=== 49a. /faq question-mark restoration + K-score formula correction ==="
@@ -1407,7 +1379,6 @@ check "/faq links worked example"          has "$FAQ" '/trust#k-score-gate'
 echo ""
 echo "=== 49b. /pricing stale labels + multiplier fix ==="
 PRICING=$(curl -s "$URL/pricing")
-check "/pricing aria starter not mobile"   has "$PRICING" 'aria-label="Six-tier pricing ladder: developer, starter, pro, teams'
 check "/pricing aria no mobile leak"       hashno "$PRICING" 'free, mobile, pro, team, business'
 check "/pricing 28x cheaper not 27-"       has "$PRICING" '<b>28&times; cheaper</b>'
 check "/pricing no orphan 27- multiplier"  hashno "$PRICING" '27- cheaper'
