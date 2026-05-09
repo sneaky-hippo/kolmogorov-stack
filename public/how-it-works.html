@@ -29,9 +29,22 @@
   .hiw-step .out { border-color: rgba(126,240,210,0.20); }
   .hiw-step .in { border-color: rgba(76,125,255,0.20); }
   .hiw-step ul { margin: 0; padding-left: 20px; font-size: 13px; color: var(--ink-mute, #b5bdb1); line-height: 1.7; }
-  .pipe-svg { display: block; margin: 56px auto 24px; max-width: 1100px; padding: 0 24px; }
-  .pipe-svg svg { display: block; width: 100%; height: auto; }
-  .pipe-cap { text-align: center; font-family: var(--mono); font-size: 11px; color: var(--ink-faint, #737c73); letter-spacing: 0.04em; margin: 0 0 56px; }
+  .pipe-grid { display: block; margin: 56px auto 16px; max-width: 1100px; padding: 0 24px; }
+  .pipe-grid .row { display: grid; grid-template-columns: 56px 1fr 1fr 1fr; gap: 0; border-top: 1px solid var(--line); padding: 14px 0; }
+  .pipe-grid .row:last-child { border-bottom: 1px solid var(--line); }
+  .pipe-grid .col { padding: 0 16px 0 0; }
+  .pipe-grid .num { font-family: var(--mono); font-size: 11px; color: var(--violet, #4c7dff); letter-spacing: 0.06em; padding: 2px 0 0; }
+  .pipe-grid .name { font-family: var(--mono); font-size: 13px; color: var(--ink, #faf2e1); font-weight: 540; letter-spacing: -0.005em; }
+  .pipe-grid .col h5 { margin: 0 0 4px; font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint, #737c73); font-weight: 540; }
+  .pipe-grid .col p { margin: 0; font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute, #b5bdb1); line-height: 1.55; }
+  .pipe-grid .head { border-top: 0; padding: 0 0 10px; }
+  .pipe-grid .head .col h5 { color: var(--ink-faint, #737c73); }
+  .pipe-cap { text-align: center; font-family: var(--mono); font-size: 11px; color: var(--ink-faint, #737c73); letter-spacing: 0.04em; margin: 24px 0 56px; }
+  @media (max-width: 720px) {
+    .pipe-grid .row { grid-template-columns: 36px 1fr; }
+    .pipe-grid .row .col:nth-child(3), .pipe-grid .row .col:nth-child(4) { display: none; }
+    .pipe-grid .head { display: none; }
+  }
   .spec-table { width: 100%; max-width: 70ch; border-collapse: collapse; margin: 8px 0 0; font-size: 13px; }
   .spec-table th, .spec-table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
   .spec-table th { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint, #737c73); font-weight: 540; width: 30%; }
@@ -68,182 +81,61 @@
     </div>
   </section>
 
-  <div class="pipe-svg">
-    <svg viewBox="0 0 1080 240" role="img" aria-labelledby="pipeline-title pipeline-desc" xmlns="http://www.w3.org/2000/svg">
-      <title id="pipeline-title">The kolm compile pipeline</title>
-      <desc id="pipeline-desc">Eight stages from inputs to a signed artifact: gather, spec, synthesize, k-sample, verify, fit, observe, sign.</desc>
-      <defs>
-        <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M0,0 L8,4 L0,8 z" fill="#737c73"/>
-        </marker>
-        <linearGradient id="boxFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="rgba(76,125,255,0.10)"/>
-          <stop offset="1" stop-color="rgba(76,125,255,0.03)"/>
-        </linearGradient>
-      </defs>
-      <style>
-        .stg-box{fill:url(#boxFill);stroke:rgba(76,125,255,0.30);stroke-width:1;}
-        .stg-num{font-family:ui-monospace,monospace;font-size:9.5px;fill:#4c7dff;letter-spacing:0.06em;font-weight:540;}
-        .stg-label{font-family:ui-monospace,monospace;font-size:11px;fill:#faf2e1;font-weight:540;}
-        .stg-glyph{stroke:#4c7dff;stroke-width:1.4;fill:none;stroke-linecap:round;stroke-linejoin:round;}
-        .stg-fill{fill:#4c7dff;}
-        .flow{stroke:#3a423a;stroke-width:1;fill:none;}
-        .annot{font-family:ui-monospace,monospace;font-size:9.5px;fill:#737c73;}
-        .annot-em{font-family:ui-monospace,monospace;font-size:9.5px;fill:#b5bdb1;font-weight:540;}
-      </style>
-
-      <!-- top annotation row: data flowing between stages -->
-      <text x="540" y="18" text-anchor="middle" class="annot-em">what flows between stages</text>
-
-      <!-- stage rectangles, evenly spaced. 8 stages, 105px wide, 11.4px gap -->
-      <!-- positions: x = 30 + i*116.25 -->
-
-      <!-- 01 gather -->
-      <g transform="translate(30,90)">
-        <rect class="stg-box" width="105" height="100" rx="6"/>
-        <text x="9" y="17" class="stg-num">01</text>
-        <!-- folder + split -->
-        <path class="stg-glyph" d="M30,42 L42,42 L46,38 L70,38 L70,58 L30,58 Z"/>
-        <line class="stg-glyph" x1="38" y1="68" x2="50" y2="68"/>
-        <line class="stg-glyph" x1="55" y1="68" x2="68" y2="68"/>
-        <line class="stg-glyph" x1="50" y1="58" x2="44" y2="68"/>
-        <line class="stg-glyph" x1="55" y1="58" x2="60" y2="68"/>
-        <text x="52" y="90" class="stg-label" text-anchor="middle">gather</text>
-      </g>
-
-      <!-- 02 spec -->
-      <g transform="translate(146.25,90)">
-        <rect class="stg-box" width="105" height="100" rx="6"/>
-        <text x="9" y="17" class="stg-num">02</text>
-        <!-- bracket and check -->
-        <path class="stg-glyph" d="M32,38 L28,38 L28,68 L32,68"/>
-        <path class="stg-glyph" d="M72,38 L76,38 L76,68 L72,68"/>
-        <path class="stg-glyph" d="M42,52 L50,60 L66,44"/>
-        <text x="52" y="90" class="stg-label" text-anchor="middle">spec</text>
-      </g>
-
-      <!-- 03 synthesize -->
-      <g transform="translate(262.5,90)">
-        <rect class="stg-box" width="105" height="100" rx="6"/>
-        <text x="9" y="17" class="stg-num">03</text>
-        <!-- branching tree -->
-        <line class="stg-glyph" x1="52" y1="38" x2="52" y2="48"/>
-        <line class="stg-glyph" x1="52" y1="48" x2="38" y2="58"/>
-        <line class="stg-glyph" x1="52" y1="48" x2="66" y2="58"/>
-        <line class="stg-glyph" x1="38" y1="58" x2="32" y2="68"/>
-        <line class="stg-glyph" x1="38" y1="58" x2="44" y2="68"/>
-        <line class="stg-glyph" x1="66" y1="58" x2="60" y2="68"/>
-        <line class="stg-glyph" x1="66" y1="58" x2="72" y2="68"/>
-        <circle class="stg-fill" cx="52" cy="38" r="2"/>
-        <circle class="stg-fill" cx="32" cy="68" r="1.6"/>
-        <circle class="stg-fill" cx="44" cy="68" r="1.6"/>
-        <circle class="stg-fill" cx="60" cy="68" r="1.6"/>
-        <circle class="stg-fill" cx="72" cy="68" r="1.6"/>
-        <text x="52" y="90" class="stg-label" text-anchor="middle">synthesize</text>
-      </g>
-
-      <!-- 04 k-sample -->
-      <g transform="translate(378.75,90)">
-        <rect class="stg-box" width="105" height="100" rx="6"/>
-        <text x="9" y="17" class="stg-num">04</text>
-        <!-- 1 input fanning to 4 outputs -->
-        <circle class="stg-fill" cx="30" cy="53" r="2.4"/>
-        <line class="stg-glyph" x1="34" y1="53" x2="68" y2="38"/>
-        <line class="stg-glyph" x1="34" y1="53" x2="68" y2="46"/>
-        <line class="stg-glyph" x1="34" y1="53" x2="68" y2="60"/>
-        <line class="stg-glyph" x1="34" y1="53" x2="68" y2="68"/>
-        <circle class="stg-fill" cx="72" cy="38" r="1.8"/>
-        <circle class="stg-fill" cx="72" cy="46" r="1.8"/>
-        <circle class="stg-fill" cx="72" cy="60" r="1.8"/>
-        <circle class="stg-fill" cx="72" cy="68" r="1.8"/>
-        <text x="52" y="90" class="stg-label" text-anchor="middle">k-sample</text>
-      </g>
-
-      <!-- 05 verify -->
-      <g transform="translate(495,90)">
-        <rect class="stg-box" width="105" height="100" rx="6"/>
-        <text x="9" y="17" class="stg-num">05</text>
-        <!-- funnel filter -->
-        <path class="stg-glyph" d="M30,38 L74,38 L58,56 L58,68 L46,68 L46,56 Z"/>
-        <line class="stg-glyph" x1="38" y1="44" x2="66" y2="44"/>
-        <text x="52" y="90" class="stg-label" text-anchor="middle">verify</text>
-      </g>
-
-      <!-- 06 fit -->
-      <g transform="translate(611.25,90)">
-        <rect class="stg-box" width="105" height="100" rx="6"/>
-        <text x="9" y="17" class="stg-num">06</text>
-        <!-- base layer + overlay (LoRA on base) -->
-        <rect class="stg-glyph" x="30" y="40" width="44" height="14" rx="2"/>
-        <rect class="stg-glyph" x="30" y="58" width="44" height="14" rx="2"/>
-        <line class="stg-glyph" x1="36" y1="47" x2="68" y2="47"/>
-        <path class="stg-glyph" d="M40,65 L52,65 L52,69 L62,65 L52,61 L52,65"/>
-        <text x="52" y="90" class="stg-label" text-anchor="middle">fit</text>
-      </g>
-
-      <!-- 07 observe -->
-      <g transform="translate(727.5,90)">
-        <rect class="stg-box" width="105" height="100" rx="6"/>
-        <text x="9" y="17" class="stg-num">07</text>
-        <!-- ring with inner dot, two convergent ticks -->
-        <circle class="stg-glyph" cx="52" cy="53" r="14"/>
-        <circle class="stg-fill" cx="52" cy="53" r="2.6"/>
-        <line class="stg-glyph" x1="52" y1="35" x2="52" y2="39"/>
-        <line class="stg-glyph" x1="52" y1="67" x2="52" y2="71"/>
-        <line class="stg-glyph" x1="34" y1="53" x2="38" y2="53"/>
-        <line class="stg-glyph" x1="66" y1="53" x2="70" y2="53"/>
-        <text x="52" y="90" class="stg-label" text-anchor="middle">observe</text>
-      </g>
-
-      <!-- 08 sign -->
-      <g transform="translate(843.75,90)">
-        <rect class="stg-box" width="105" height="100" rx="6"/>
-        <text x="9" y="17" class="stg-num">08</text>
-        <!-- lock with hash chain -->
-        <path class="stg-glyph" d="M44,46 L44,40 a8,8 0 0 1 16,0 L60,46"/>
-        <rect class="stg-glyph" x="38" y="46" width="28" height="20" rx="2"/>
-        <circle class="stg-fill" cx="52" cy="56" r="1.8"/>
-        <line class="stg-glyph" x1="52" y1="56" x2="52" y2="62"/>
-        <text x="52" y="90" class="stg-label" text-anchor="middle">sign</text>
-      </g>
-
-      <!-- output box on the right (.kolm artifact) -->
-      <g transform="translate(960,114)">
-        <rect width="100" height="52" rx="6" fill="rgba(126,240,210,0.06)" stroke="rgba(126,240,210,0.32)" stroke-width="1"/>
-        <text x="50" y="22" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#7ef0d2" font-weight="540">.kolm</text>
-        <text x="50" y="38" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#7ef0d2" opacity="0.75">signed artifact</text>
-      </g>
-
-      <!-- flow lines + arrow markers between stage boxes -->
-      <line class="flow" x1="135" y1="140" x2="146.25" y2="140" marker-end="url(#arr)"/>
-      <line class="flow" x1="251.25" y1="140" x2="262.5" y2="140" marker-end="url(#arr)"/>
-      <line class="flow" x1="367.5" y1="140" x2="378.75" y2="140" marker-end="url(#arr)"/>
-      <line class="flow" x1="483.75" y1="140" x2="495" y2="140" marker-end="url(#arr)"/>
-      <line class="flow" x1="600" y1="140" x2="611.25" y2="140" marker-end="url(#arr)"/>
-      <line class="flow" x1="716.25" y1="140" x2="727.5" y2="140" marker-end="url(#arr)"/>
-      <line class="flow" x1="832.5" y1="140" x2="843.75" y2="140" marker-end="url(#arr)"/>
-      <line class="flow" x1="948.75" y1="140" x2="960" y2="140" marker-end="url(#arr)"/>
-
-      <!-- inputs box on the left -->
-      <g transform="translate(0,114)">
-        <text x="0" y="14" class="annot-em">inputs</text>
-        <text x="0" y="30" class="annot">examples.jsonl</text>
-        <text x="0" y="44" class="annot">corpus/</text>
-        <text x="0" y="58" class="annot">policy.md</text>
-      </g>
-
-      <!-- under-row data flow annotations -->
-      <g>
-        <text x="92.5" y="208" text-anchor="middle" class="annot">data_hash</text>
-        <text x="208.75" y="208" text-anchor="middle" class="annot">verifier.json</text>
-        <text x="325" y="208" text-anchor="middle" class="annot">recipe pack</text>
-        <text x="441.25" y="208" text-anchor="middle" class="annot">k candidates</text>
-        <text x="557.5" y="208" text-anchor="middle" class="annot">verified labels</text>
-        <text x="673.75" y="208" text-anchor="middle" class="annot">LoRA delta</text>
-        <text x="790" y="208" text-anchor="middle" class="annot">tightened pack</text>
-        <text x="906.25" y="208" text-anchor="middle" class="annot">HMAC chain</text>
-      </g>
-    </svg>
+  <div class="pipe-grid" aria-label="The kolm compile pipeline: eight stages from input to signed artifact">
+    <div class="row head">
+      <div class="col"><h5>#</h5></div>
+      <div class="col"><h5>stage</h5></div>
+      <div class="col"><h5>flows in</h5></div>
+      <div class="col"><h5>flows out</h5></div>
+    </div>
+    <div class="row">
+      <div class="col num">01</div>
+      <div class="col name">gather</div>
+      <div class="col"><p>examples.jsonl &middot; corpus/ &middot; policy.md</p></div>
+      <div class="col"><p>data_hash, train/eval split, vec namespace</p></div>
+    </div>
+    <div class="row">
+      <div class="col num">02</div>
+      <div class="col name">spec</div>
+      <div class="col"><p>gold examples</p></div>
+      <div class="col"><p>verifier.json &middot; score(input, output) -&gt; [0,1]</p></div>
+    </div>
+    <div class="row">
+      <div class="col num">03</div>
+      <div class="col name">synthesize</div>
+      <div class="col"><p>verifier &middot; gold examples</p></div>
+      <div class="col"><p>recipe pack &middot; deterministic drafts by prefix &amp; embedding</p></div>
+    </div>
+    <div class="row">
+      <div class="col num">04</div>
+      <div class="col name">k-sample</div>
+      <div class="col"><p>recipe pack &middot; teacher API key</p></div>
+      <div class="col"><p>k candidates per input from the frontier teacher</p></div>
+    </div>
+    <div class="row">
+      <div class="col num">05</div>
+      <div class="col name">verify</div>
+      <div class="col"><p>k candidates &middot; verifier.json</p></div>
+      <div class="col"><p>verified labels &middot; rejections recorded</p></div>
+    </div>
+    <div class="row">
+      <div class="col num">06</div>
+      <div class="col name">fit</div>
+      <div class="col"><p>verified labels &middot; base model pointer</p></div>
+      <div class="col"><p>LoRA delta &middot; eval score on held-out 20%</p></div>
+    </div>
+    <div class="row">
+      <div class="col num">07</div>
+      <div class="col name">observe</div>
+      <div class="col"><p>recipe pack &middot; LoRA &middot; eval set</p></div>
+      <div class="col"><p>tightened pack &middot; coverage stats &middot; latency floor</p></div>
+    </div>
+    <div class="row">
+      <div class="col num">08</div>
+      <div class="col name">sign</div>
+      <div class="col"><p>tightened pack &middot; LoRA &middot; verifier &middot; manifest</p></div>
+      <div class="col"><p>.kolm artifact &middot; HMAC-SHA-256 receipt chain</p></div>
+    </div>
   </div>
   <p class="pipe-cap">Eight stages. Frontier as teacher. Artifact as student. Receipt as audit row.</p>
 

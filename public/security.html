@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Security · kolm</title>
 <meta name="description" content="Every .kolm artifact is signed, every output produces a receipt, every receipt verifies. Healthcare, finance, defense buyers can audit the chain without trusting us.">
-<meta name="theme-color" content="#050607">
+<meta name="theme-color" content="#0b0d10">
 <meta name="color-scheme" content="dark">
 <meta property="og:title" content="Security · kolm">
 <meta property="og:description" content="Receipts you can verify. Runtime you can audit. The chain holds without trusting us.">
@@ -197,12 +197,38 @@
   .data-tbl .y { color: var(--good); }
   .data-tbl .n { color: var(--ink-faint); }
 
-  /* architecture diagram */
-  .arch {
-    background: var(--bg-elev); border: 1px solid var(--line);
-    border-radius: 10px; padding: 32px;
+  /* architecture text grid */
+  .arch-grid {
+    display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 0;
+    border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
   }
-  .arch svg { width: 100%; height: auto; display: block; }
+  @media (max-width: 800px) { .arch-grid { grid-template-columns: 1fr; } }
+  .arch-grid .lane { padding: 22px 22px 24px; border-right: 1px solid var(--line); background: var(--bg-elev); }
+  .arch-grid .lane:last-child { border-right: 0; }
+  @media (max-width: 800px) { .arch-grid .lane { border-right: 0; border-bottom: 1px solid var(--line); } .arch-grid .lane:last-child { border-bottom: 0; } }
+  .arch-grid .lane.compile { background: var(--bg-card); }
+  .arch-grid .lane h4 {
+    margin: 0 0 14px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 540;
+  }
+  .arch-grid .lane.compile h4 { color: var(--accent); }
+  .arch-grid .lane ul { margin: 0; padding: 0; list-style: none; }
+  .arch-grid .lane li {
+    padding: 9px 0; border-bottom: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink); line-height: 1.45;
+  }
+  .arch-grid .lane li:last-child { border-bottom: 0; }
+  .arch-grid .lane li .meta {
+    display: block; font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint);
+    letter-spacing: 0.02em; margin-top: 2px;
+  }
+  .arch-grid .lane.compile li { color: var(--ink); }
+  .arch-grid .lane.compile li::before { content: counter(stage, decimal-leading-zero) " · "; counter-increment: stage; font-family: var(--mono); font-size: 10.5px; color: var(--accent); letter-spacing: 0.04em; }
+  .arch-grid .lane.compile { counter-reset: stage; }
+  .arch-grid .lane.compile .post { font-family: var(--mono); font-size: 10.5px; color: var(--accent); letter-spacing: 0.04em; padding-top: 14px; border-top: 1px solid var(--line); margin-top: 4px; }
+  .arch-anchor { padding: 16px 22px; border-top: 1px solid var(--line); background: var(--bg-elev); display: flex; align-items: baseline; gap: 12px; }
+  .arch-anchor .a-tag { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); }
+  .arch-anchor .a-body { font-size: 12.5px; color: var(--ink-mute); line-height: 1.5; }
   .arch-cap {
     margin: 18px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--ink-faint);
     font-family: var(--mono); letter-spacing: 0; text-align: center;
@@ -310,83 +336,41 @@
     <p class="sec-lede">The hosted preview accepts task specs, examples, and evals needed to compile. The current runtime surface is the Node CLI and MCP server. Customer-hosted compile and native offline runtimes are deployment targets that need contract review and benchmark evidence.</p>
     <p class="sec-lede">The compile pipeline runs in our cloud (or your VPC, on Enterprise). The runtime runs on your users' device. After compile, the only thing that crosses our boundary is the manifest hash - never the artifact, never the corpus, never the receipts.</p>
 
-      <svg viewBox="0 0 980 460" role="img" aria-label="kolm data flow: hosted compile to signed recipe-mode artifact, current CLI runtime, and reserved future registry anchoring">
-        <defs>
-          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#4c7dff"/>
-          </marker>
-          <marker id="arrn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#737c73"/>
-          </marker>
-        </defs>
-        <!-- Background lanes -->
-        <rect x="0" y="0" width="320" height="460" fill="#0d0d11" stroke="rgba(255,255,255,0.04)"/>
-        <rect x="320" y="0" width="340" height="460" fill="#0a0a0e" stroke="rgba(255,255,255,0.04)"/>
-        <rect x="660" y="0" width="320" height="460" fill="#0d0d11" stroke="rgba(255,255,255,0.04)"/>
-        <!-- Lane labels -->
-        <text x="160" y="32" font-family="ui-monospace, Menlo, monospace" font-size="11" letter-spacing="2" fill="#737c73" text-anchor="middle">YOU &middot; CUSTOMER</text>
-        <text x="490" y="32" font-family="ui-monospace, Menlo, monospace" font-size="11" letter-spacing="2" fill="#737c73" text-anchor="middle">KOLM &middot; COMPILE PIPELINE</text>
-        <text x="820" y="32" font-family="ui-monospace, Menlo, monospace" font-size="11" letter-spacing="2" fill="#737c73" text-anchor="middle">YOUR USER &middot; DEVICE</text>
-
-        <!-- Customer-side boxes -->
-        <rect x="40" y="78" width="240" height="56" rx="6" fill="#101514" stroke="rgba(76,125,255,0.32)"/>
-        <text x="160" y="100" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">Seed examples</text>
-        <text x="160" y="118" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">10&ndash;50,000 rows &middot; JSONL</text>
-
-        <rect x="40" y="156" width="240" height="56" rx="6" fill="#101514" stroke="rgba(76,125,255,0.32)"/>
-        <text x="160" y="178" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">Eval set</text>
-        <text x="160" y="196" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">held-out &middot; pass criteria</text>
-
-        <rect x="40" y="234" width="240" height="56" rx="6" fill="#101514" stroke="rgba(76,125,255,0.32)"/>
-        <text x="160" y="256" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">Recall corpus</text>
-        <text x="160" y="274" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">your folders &middot; namespaces</text>
-
-        <rect x="40" y="312" width="240" height="56" rx="6" fill="#101514" stroke="rgba(76,125,255,0.32)"/>
-        <text x="160" y="334" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">Frontier model API key</text>
-        <text x="160" y="352" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">pass-through target</text>
-
-        <!-- Center: compile box -->
-        <rect x="350" y="120" width="280" height="220" rx="8" fill="#0b0f10" stroke="rgba(76,125,255,0.5)" stroke-width="1.4"/>
-        <text x="490" y="148" font-family="ui-monospace, Menlo, monospace" font-size="11" letter-spacing="2" fill="#4c7dff" text-anchor="middle">KOLM COMPILE</text>
-        <line x1="370" y1="160" x2="610" y2="160" stroke="rgba(255,255,255,0.06)"/>
-        <text x="490" y="184" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">1 &middot; synthesize verifier</text>
-        <text x="490" y="208" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">2 &middot; k-sample teacher</text>
-        <text x="490" y="232" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">3 &middot; distill LoRA</text>
-        <text x="490" y="256" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">4 &middot; build recipe pack</text>
-        <text x="490" y="280" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">5 &middot; package &amp; sign</text>
-        <text x="490" y="318" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#4c7dff" text-anchor="middle">post-compile: inputs deleted</text>
-
-        <!-- Right: device box -->
-        <rect x="700" y="120" width="240" height="86" rx="6" fill="#101514" stroke="rgba(76,125,255,0.32)"/>
-        <text x="820" y="166" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">recipes + evals + placeholders</text>
-        <text x="820" y="184" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">+ recall index + tests</text>
-
-        <text x="820" y="248" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">CLI runtime</text>
-        <text x="820" y="266" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">recipe-mode &middot; MCP</text>
-
-        <rect x="700" y="302" width="240" height="56" rx="6" fill="#101514" stroke="rgba(76,125,255,0.32)"/>
-        <text x="820" y="324" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">Receipts</text>
-        <text x="820" y="342" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">stay on device &middot; exportable</text>
-
-        <!-- Arrows: customer -> compile -->
-        <path d="M 280 106 L 350 130" stroke="#4c7dff" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
-        <path d="M 280 184 L 350 184" stroke="#4c7dff" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
-        <path d="M 280 262 L 350 230" stroke="#4c7dff" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
-        <path d="M 280 340 L 350 280" stroke="#4c7dff" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
-
-        <!-- Arrow: compile -> artifact (signed bundle) -->
-        <path d="M 630 168 L 700 158" stroke="#4c7dff" stroke-width="1.8" fill="none" marker-end="url(#arr)"/>
-        <text x="665" y="148" font-family="ui-monospace, Menlo, monospace" font-size="10" letter-spacing="1" fill="#4c7dff" text-anchor="middle">signed</text>
-
-        <!-- Bottom registry box -->
-        <text x="490" y="390" font-family="-apple-system, system-ui" font-size="13" font-weight="540" fill="#faf2e1" text-anchor="middle">Anchor extension</text>
-        <text x="490" y="408" font-family="ui-monospace, Menlo, monospace" font-size="10.5" letter-spacing="1" fill="#b5bdb1" text-anchor="middle">enterprise add-on</text>
-
-        <!-- Compile -> registry (hash only) -->
-        <path d="M 490 340 L 490 368" stroke="#737c73" stroke-width="1.2" fill="none" marker-end="url(#arrn)" stroke-dasharray="3 3"/>
-        <text x="556" y="358" font-family="ui-monospace, Menlo, monospace" font-size="10" letter-spacing="1" fill="#737c73">hash only</text>
-      </svg>
-      <p class="arch-cap">Solid arrows show the inputs you provide and the artifact you receive. Dashed anchoring is a reserved extension that anchors the manifest hash only, never the artifact itself.</p>
+      <div class="arch-grid" aria-label="kolm data flow: customer inputs to compile pipeline to on-device runtime">
+        <div class="lane">
+          <h4>You &middot; Customer</h4>
+          <ul>
+            <li>Seed examples<span class="meta">10 - 50,000 rows &middot; JSONL</span></li>
+            <li>Eval set<span class="meta">held-out &middot; pass criteria</span></li>
+            <li>Recall corpus<span class="meta">your folders &middot; namespaces</span></li>
+            <li>Frontier model API key<span class="meta">pass-through target</span></li>
+          </ul>
+        </div>
+        <div class="lane compile">
+          <h4>kolm &middot; Compile pipeline</h4>
+          <ul>
+            <li>synthesize verifier</li>
+            <li>k-sample teacher</li>
+            <li>distill LoRA</li>
+            <li>build recipe pack</li>
+            <li>package &amp; sign</li>
+          </ul>
+          <div class="post">post-compile: inputs deleted</div>
+        </div>
+        <div class="lane">
+          <h4>Your User &middot; Device</h4>
+          <ul>
+            <li>.kolm artifact<span class="meta">recipes + LoRA + verifier + index + tests</span></li>
+            <li>CLI runtime<span class="meta">recipe-mode &middot; MCP</span></li>
+            <li>Receipts<span class="meta">stay on device &middot; exportable</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="arch-anchor" aria-label="anchor extension">
+        <span class="a-tag">Anchor extension</span>
+        <span class="a-body">Optional Enterprise add-on. The manifest hash is anchored to a public ledger; the artifact and receipts never leave the device.</span>
+      </div>
+      <p class="arch-cap">Three lanes, one boundary. The artifact crosses from compile to device once. Receipts never cross.</p>
 
       <div class="arch-legend">
         <div class="lg-item">
