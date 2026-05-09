@@ -507,6 +507,18 @@ check "homepage mentions MCP" hashi "$HOME" "mcp"
 # /serve carries the kolm serve --mcp claim (moved off /run in v5)
 SERVE_BODY=$(curl -s "$URL/serve")
 check "/serve advertises kolm serve --mcp" has "$SERVE_BODY" 'kolm serve --mcp'
+SERVE_FLAT=$(echo "$SERVE_BODY" | tr -d '\n')
+check "/serve no duplicate pre close"      hashno "$SERVE_FLAT" 'anchors empty)</pre>  <span class="ok">●</span> receipts'
+check "/serve clients have h4 cursor"      has "$SERVE_BODY" '<h4>Cursor</h4>'
+check "/serve clients have h4 continue"    has "$SERVE_BODY" '<h4>Continue.dev</h4>'
+check "/serve no orphan offline dup"       hashno "$SERVE_FLAT" 'artifact-dependent</span></div>        <div class="stat"><span class="lbl">Offline'
+check "/serve no orphan receipt fragment"  hashno "$SERVE_BODY" 'checks the upstream anchor, useful when an artifact is shared across machines.</p>'
+check "/serve answer carries receipt h2"   has "$SERVE_BODY" 'Every answer carries a receipt.'
+check "/serve footer p valid"              has "$SERVE_BODY" 'max-width:36ch;color:var(--ink-faint)">The private AI compiler.</p>'
+for p in serve anatomy cloud k-score; do
+  body=$(curl -s "$URL/$p")
+  check "/$p footer markup valid"          hashno "$body" 'letter-spacing: 0;font-size:12.5px;margin:0;max-width:36ch">The private AI compiler.</p>'
+done
 RUN_BODY=$(curl -s "$URL/run")
 check "/run shows .kolm contents" has "$RUN_BODY" 'manifest.json'
 

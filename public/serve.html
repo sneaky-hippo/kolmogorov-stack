@@ -156,7 +156,6 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
   <span class="ok">●</span> protocol       : mcp/0.1 + sse
   <span class="ok">●</span> tools exposed  : <span class="key">triage</span>, <span class="key">explain_label</span>
   <span class="ok">●</span> receipts       : on (hmac, anchors empty)</pre>
-  <span class="ok">●</span> receipts       : on (hmac, anchors empty)</pre>
 
     <figure class="plate" role="img" aria-label="A single .kolm artifact fans out to every MCP-aware client over a local socket.">
       <div class="img diag-bg">
@@ -180,27 +179,26 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
 <section>
   <div class="wrap">
     <div class="eyebrow"><span class="num">01</span> · The pitch</div>
-    <p class="lede">Same task surface, but locally served through the current CLI/MCP path. Native model latency and offline claims require the runtime bridge and benchmarks.</p>
-    <p class="lede">Same task. Same prompt. The agent doesn’t know the difference.
-      But the user’s phone, wallet, and threat model do.</p>
+    <p class="lede">Same task. Same prompt. The agent doesn&rsquo;t know the difference.
+      But the user&rsquo;s phone, wallet, and threat model do.</p>
 
     <div class="compare">
       <div class="col before">
         <h3>Cold frontier (today)</h3>
         <div class="stat"><span class="lbl">Latency p50</span><span class="val">1240 ms</span></div>
         <div class="stat"><span class="lbl">Cost / 1k calls</span><span class="val">$0.018</span></div>
-        <div class="stat"><span class="lbl">Privacy</span><span class="val">prompt → vendor</span></div>
+        <div class="stat"><span class="lbl">Privacy</span><span class="val">prompt &rarr; vendor</span></div>
         <div class="stat"><span class="lbl">Offline</span><span class="val">no</span></div>
         <div class="stat"><span class="lbl">Receipt</span><span class="val">none</span></div>
         <div class="stat"><span class="lbl">Discovery</span><span class="val">manual MCP config</span></div>
       </div>
       <div class="col after">
+        <h3>kolm serve --mcp (local)</h3>
         <div class="stat"><span class="lbl">Latency p50</span><span class="val">measure per artifact</span></div>
         <div class="stat"><span class="lbl">Cost / 1k calls</span><span class="val">recipe-mode local</span></div>
         <div class="stat"><span class="lbl">Privacy</span><span class="val">local CLI boundary</span></div>
         <div class="stat"><span class="lbl">Offline</span><span class="val">artifact-dependent</span></div>
-        <div class="stat"><span class="lbl">Offline</span><span class="val">yes</span></div>
-        <div class="stat"><span class="lbl">Discovery</span><span class="val">manual MCP config</span></div>
+        <div class="stat"><span class="lbl">Receipt</span><span class="val">HMAC chain on every call</span></div>
         <div class="stat"><span class="lbl">Discovery</span><span class="val">auto via mDNS + .well-known</span></div>
       </div>
     </div>
@@ -210,30 +208,25 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
 <section>
   <div class="wrap">
     <div class="eyebrow"><span class="num">02</span> · How it works</div>
-    <p class="lede">Run the CLI process, point your MCP-aware agent at it, and keep the artifact boundary inspectable.</p>
     <p class="lede">No daemons. No control plane. Run the binary, agents see it.
-      Stop the binary, they don’t.</p>
+      Stop the binary, they don&rsquo;t.</p>
 
     <div class="steps">
       <div class="step">
         <div class="n">01</div>
-        <p>kolm serves the artifact through the configured local process. Check <code>kolm serve --help</code> for the current transport and port options.</p>
         <p>kolm binds <code>127.0.0.1:7327</code> by default and writes a <code>.well-known/mcp.json</code> next to the artifact so any client on this machine can read its capabilities.</p>
       </div>
       <div class="step">
         <div class="n">02</div>
-        <p>Configure your MCP client to point at the local kolm process. Loopback is the supported path for solo dev.</p>
         <p>kolm announces itself as <code>_kolm._tcp.local</code> for LAN-aware clients. No router config needed; loopback works fine for solo dev.</p>
       </div>
       <div class="step">
         <div class="n">03</div>
-        <p>Authenticate the local process according to the installed CLI/API configuration. Every supported tool call should return receipt evidence.</p>
-        <p>The artifact’s manifest signs a short-lived bearer token; clients exchange it on first connect. Every tool call returns a hmac-chained receipt.</p>
+        <p>The artifact&rsquo;s manifest signs a short-lived bearer token; clients exchange it on first connect. Every tool call returns a hmac-chained receipt.</p>
       </div>
       <div class="step">
         <div class="n">04</div>
-        <p>Tool schemas come from the artifact and server configuration, so the agent sees the surface the current runtime actually exposes.</p>
-        <p>Standard MCP over SSE. Tool schemas come straight from the artifact’s manifest, so the agent sees exactly the surface kolm sealed in.</p>
+        <p>Standard MCP over SSE. Tool schemas come straight from the artifact&rsquo;s manifest, so the agent sees exactly the surface kolm sealed in.</p>
       </div>
     </div>
   </div>
@@ -251,12 +244,12 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
         <code>"command": "kolm", "args": ["serve","--mcp","./support-triage.kolm"]</code>
       </div>
       <div class="client">
-        <p>Add a local MCP server entry. Any automatic routing should be verified in the target client version.</p>
-        <p>MCP server settings → add Local. Cursor’s agent picks up tool schemas and types them into the prompt automatically.</p>
+        <h4>Cursor</h4>
+        <p>MCP server settings &rarr; add Local. Cursor&rsquo;s agent picks up tool schemas and types them into the prompt automatically.</p>
         <code>cursor add-mcp support-triage</code>
       </div>
       <div class="client">
-        <p>Register a local MCP target and point it at the artifact path. Receipt display depends on the client integration.</p>
+        <h4>Continue.dev</h4>
         <p>Same shape: register a local MCP target, point at the artifact path. Continue auto-routes tool calls and surfaces receipts inline.</p>
         <code>~/.continue/config.yaml</code>
       </div>
@@ -266,13 +259,11 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
 
 <section>
   <div class="wrap">
-    <h2>Every supported answer can carry a receipt.</h2>
+    <h2>Every answer carries a receipt.</h2>
     <p>kolm receipts bind the source hash, input hash, output hash, runtime version, and issue time with HMAC-SHA256 on every output.
       Verification works fully offline against the artifact bytes and retained receipt evidence.
-      The Enterprise tier extends the chain with Sigstore / Rekor anchoring for cross-organization audit.</p>
+      The Enterprise tier extends the chain with Sigstore / Rekor anchoring for cross-organization audit, useful when an artifact is shared across machines.</p>
 
-
-      checks the upstream anchor, useful when an artifact is shared across machines.</p>
     <pre>$ kolm serve --mcp support-triage.kolm | jq '.receipts[0]'
 {
   <span class="key">"spec"</span>:           "rs-1",
@@ -297,7 +288,9 @@ $ kolm serve --mcp <span class="key">support-triage.kolm</span>
       <div>
         <a class="brand" href="/" style="display:inline-flex;align-items:center;gap:9px;color:var(--ink);margin-bottom:10px">
           <img src="/logo-mark.svg" alt="" class="brand-mark">
-          <span style="font-weight:540;font-size:15px;letter-spacing: 0;font-size:12.5px;margin:0;max-width:36ch">The private AI compiler.</p>
+          <span style="font-weight:540;font-size:15px;letter-spacing: 0">kolm</span>
+        </a>
+        <p style="font-size:12.5px;margin:0;max-width:36ch;color:var(--ink-faint)">The private AI compiler.</p>
       </div>
       <div><h4>Product</h4><ul><li><a href="/compile">Compile</a></li><li><a href="/serve">Serve --mcp</a></li><li><a href="/anatomy">.kolm format</a></li><li><a href="/k-score">K-score</a></li>
           <li><a href="/benchmarks">Benchmarks</a></li>
