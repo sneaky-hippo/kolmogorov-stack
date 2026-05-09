@@ -1305,6 +1305,14 @@ check "/ no fabricated +10pp claim"    hashno "$HOME" '\+10\.67pp'
 check "/ no fabricated +15pp claim"    hashno "$HOME" '\+15\.33pp'
 check "/ lab-strip canonical formula"  has "$HOME" 'K = 0.40&middot;A + 0.15&middot;S + 0.15&middot;L + 0.15&middot;C + 0.15&middot;V'
 check "/ lab-strip 5 components"       has "$HOME" 'accuracy &middot; size &middot; latency &middot; cost &middot; coverage'
+check "/ reg-tele band present"        has "$HOME" 'class="reg-tele"'
+check "/ reg-tele 4 cells"             has "$HOME" 'reg-tele-cell'
+check "/ reg-tele artifacts label"     has "$HOME" 'artifacts signed'
+check "/ reg-tele spec RS-1"           has "$HOME" '<span class="accent">RS-1</span>'
+check "/ reg-tele runtime kolm"        has "$HOME" 'kolm/0.5'
+check "/ reg-tele receipt HMAC"        has "$HOME" '>HMAC<'
+check "/ reg-tele receipt SHA-256"     has "$HOME" 'SHA-256</span>'
+check "/ no orphan registry-counter"   hashno "$HOME" 'class="registry-counter"'
 
 echo ""
 echo "=== 46. K-score gate consistency — site-wide 0.85 ==="

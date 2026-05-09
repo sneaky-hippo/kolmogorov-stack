@@ -91,9 +91,19 @@
   .triple .triple-cell h3 { margin: 0 0 10px; font-size: 17px; font-weight: 540; color: var(--fg, #faf2e1); }
   .triple .triple-cell p { margin: 0; font-size: 13.5px; color: var(--fg-2, #c9c2b2); line-height: 1.6; }
 
-  /* registry counter */
-  .registry-counter { margin: 60px auto 0; padding: 0 32px; max-width: 1180px; text-align: center; font-family: var(--mono); color: var(--ink-faint, #737c73); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .registry-counter b { color: var(--violet, #4c7dff); font-weight: 540; }
+  /* registry telemetry — NEO LAB band, replaces bare counter line */
+  .reg-tele { margin: 64px auto 0; padding: 0 32px; max-width: 1180px; }
+  .reg-tele-inner { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 10px; overflow: hidden; background: var(--line, rgba(255,255,255,0.08)); position: relative; }
+  .reg-tele-inner::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(76,125,255,0.45), transparent); pointer-events: none; z-index: 2; }
+  .reg-tele-cell { padding: 16px 20px; background: #0a0c10; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .reg-tele-id { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint, #737c73); display: inline-flex; align-items: center; gap: 7px; }
+  .reg-tele-id .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--violet, #4c7dff); box-shadow: 0 0 8px rgba(76,125,255,0.55); }
+  .reg-tele-val { font-family: var(--mono); font-size: 18px; font-weight: 540; color: var(--ink, #faf2e1); letter-spacing: 0; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .reg-tele-val .unit { font-size: 11px; color: var(--ink-faint, #737c73); margin-left: 6px; font-weight: 400; }
+  .reg-tele-val .accent { color: var(--violet, #4c7dff); }
+  .reg-tele-meta { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint, #737c73); letter-spacing: 0; }
+  @media (max-width: 880px) { .reg-tele-inner { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .reg-tele-inner { grid-template-columns: 1fr; } }
 
   /* brand anchor — Kolmogorov is the company, kolm is the binary */
   .brand-anchor { margin: 30px auto 0; max-width: 1180px; padding: 0 32px; }
@@ -705,8 +715,29 @@
   </div>
 </section>
 
-<section class="registry-counter" aria-label="public registry stats">
-  <div>signed artifacts in the public registry: <b id="registry-count" class="js-registry-count">-</b> · live</div>
+<section class="reg-tele" aria-label="public registry telemetry">
+  <div class="reg-tele-inner">
+    <div class="reg-tele-cell">
+      <span class="reg-tele-id"><span class="dot"></span>artifacts signed</span>
+      <span class="reg-tele-val"><span id="registry-count" class="js-registry-count">&mdash;</span></span>
+      <span class="reg-tele-meta">public registry &middot; live</span>
+    </div>
+    <div class="reg-tele-cell">
+      <span class="reg-tele-id"><span class="dot"></span>spec</span>
+      <span class="reg-tele-val"><span class="accent">RS-1</span><span class="unit">@2026-05</span></span>
+      <span class="reg-tele-meta">MIT &middot; pinned</span>
+    </div>
+    <div class="reg-tele-cell">
+      <span class="reg-tele-id"><span class="dot"></span>runtime</span>
+      <span class="reg-tele-val">kolm/0.5<span class="unit">.x</span></span>
+      <span class="reg-tele-meta">npm &middot; brew &middot; winget</span>
+    </div>
+    <div class="reg-tele-cell">
+      <span class="reg-tele-id"><span class="dot"></span>receipt</span>
+      <span class="reg-tele-val">HMAC<span class="unit">SHA-256</span></span>
+      <span class="reg-tele-meta">4-ring chain &middot; tamper-evident</span>
+    </div>
+  </div>
 </section>
 
 <section class="vs-strip" aria-label="kolm versus alternatives">
