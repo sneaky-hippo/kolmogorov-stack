@@ -944,14 +944,17 @@ async function cmdCapture(args) {
   console.log('to start capturing, set in your app:');
   if (provider === 'openai') {
     console.log(`  export OPENAI_BASE_URL="${baseUrl}"`);
-    console.log(`  # also pass your real OpenAI key in the x-upstream-api-key header`);
-    console.log(`  # the SDK's Authorization header should be: Bearer ${c.api_key.slice(0, 8)}...`);
+    console.log(`  # then per request:`);
+    console.log(`  #   Authorization: Bearer ${c.api_key.slice(0, 8)}...    (your kolm key)`);
+    console.log(`  #   x-upstream-api-key: sk-...                           (your real OpenAI key)`);
   } else {
-    console.log(`  export ANTHROPIC_API_URL="${baseUrl}"`);
-    console.log(`  # also pass your real Anthropic key in the x-upstream-api-key header`);
-    console.log(`  # the kolm api key goes in: Authorization: Bearer ${c.api_key.slice(0, 8)}...`);
+    console.log(`  export ANTHROPIC_BASE_URL="${baseUrl}"     # SDKs >=0.18`);
+    console.log(`  export ANTHROPIC_API_URL="${baseUrl}"      # older SDKs`);
+    console.log(`  # then per request:`);
+    console.log(`  #   Authorization: Bearer ${c.api_key.slice(0, 8)}...    (your kolm key)`);
+    console.log(`  #   x-upstream-api-key: sk-ant-...                       (your real Anthropic key)`);
   }
-  console.log(`  # and pass: x-kolm-namespace: ${namespace}`);
+  console.log(`  #   x-kolm-namespace: ${namespace}`);
   console.log('');
   console.log('check capture progress: kolm capture status --namespace ' + namespace);
 }
