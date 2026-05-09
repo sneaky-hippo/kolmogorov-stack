@@ -1550,6 +1550,24 @@ check "/vs-langsmith title colon"           has "$(curl -s $URL/vs-langsmith)" '
 check "/vs-ollama title colon"              has "$(curl -s $URL/vs-ollama)" 'kolm vs Ollama: which one'
 check "/vs-openpipe title colon"            has "$(curl -s $URL/vs-openpipe)" 'kolm vs OpenPipe: capture'
 
+echo "=== 49j. /api capture & distill section ==="
+API_PG=$(curl -s "$URL/api")
+check "/api capture-anthropic anchor"       has "$API_PG" 'id="capture-anthropic"'
+check "/api capture-openai anchor"          has "$API_PG" 'id="capture-openai"'
+check "/api labels-corpus anchor"           has "$API_PG" 'id="labels-corpus"'
+check "/api auto-distill anchor"            has "$API_PG" 'id="auto-distill"'
+check "/api capture sidebar group"          has "$API_PG" 'Capture &amp; distill</h4>'
+check "/api capture sidebar link"           has "$API_PG" 'href="#capture-anthropic"'
+check "/api distill sidebar link"           has "$API_PG" 'href="#auto-distill"'
+check "/api capture section h2"             has "$API_PG" '<h2>Capture &amp; distill</h2>'
+check "/api capture-anthropic path"         has "$API_PG" '<span class="path">/v1/capture/anthropic</span>'
+check "/api capture-openai path"            has "$API_PG" '<span class="path">/v1/capture/openai</span>'
+check "/api labels-corpus path"             has "$API_PG" '<span class="path">/v1/labels/synthesize-corpus</span>'
+check "/api auto-distill path"              has "$API_PG" '<span class="path">/v1/specialists/auto-distill</span>'
+check "/api auto-distill threshold doc"    has "$API_PG" 'threshold: 1000, message'
+check "/api capture upstream-key header"    has "$API_PG" 'x-upstream-api-key'
+check "/api capture namespace header"       has "$API_PG" 'x-kolm-namespace'
+
 echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"

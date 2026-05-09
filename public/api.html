@@ -117,6 +117,13 @@
           <a href="#embed">POST /v1/embed</a>
         </div>
         <div class="grp">
+          <h4>Capture &amp; distill</h4>
+          <a href="#capture-anthropic">POST /v1/capture/anthropic</a>
+          <a href="#capture-openai">POST /v1/capture/openai</a>
+          <a href="#labels-corpus">GET /v1/labels/synthesize-corpus</a>
+          <a href="#auto-distill">POST /v1/specialists/auto-distill</a>
+        </div>
+        <div class="grp">
           <h4>Receipts</h4>
           <a href="#verify">POST /v1/receipts/verify</a>
         </div>
@@ -482,6 +489,120 @@ Authorization: Bearer ks_&lt;your-key&gt;</pre>
 }</pre>
               <h5>Response</h5>
               <pre class="res">{ "indexed": 2, "skipped": 0, "namespace": "tenant/patient-corpus" }</pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="api-section">
+          <h2>Capture &amp; distill</h2>
+          <p class="lede">Drop-in proxy endpoints that mirror upstream Anthropic and OpenAI shapes. Every call you forward through us is recorded as an <code>(input, output)</code> pair under a tenant namespace. At 1,000 pairs the namespace is eligible for <code>auto-distill</code> &middot; we train a LoRA on the captured corpus and ship you a signed <code>.kolm</code> you keep forever. Your frontier API key never touches our store; we forward it via <code>x-upstream-api-key</code> and strip it before logging.</p>
+
+          <div class="endpoint" id="capture-anthropic">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/capture/anthropic</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Mirror of the Anthropic Messages API. Forward your request through this URL with your real Anthropic key in <code>x-upstream-api-key</code>; we proxy upstream, return the upstream response verbatim, and record the <code>(prompt, completion, model, latency)</code> tuple under <code>x-kolm-namespace</code>.</p>
+              <h5>Headers</h5>
+              <pre class="req">X-API-Key:           ks_&lt;your-kolm-key&gt;
+x-upstream-api-key:  sk-ant-&lt;your-anthropic-key&gt;
+anthropic-version:   2023-06-01
+x-kolm-namespace:    support-classifier   # optional; defaults to "default"</pre>
+              <h5>Request</h5>
+              <pre class="req">{
+  "model":      "claude-sonnet-4-6",
+  "max_tokens": 1024,
+  "messages":   [{ "role": "user", "content": "Classify: checkout fails on Android" }]
+}</pre>
+              <h5>Response</h5>
+              <pre class="res">// Upstream Anthropic response, verbatim. Plus two response headers:
+//   x-kolm-capture-id: obs_8f2a...
+//   x-kolm-namespace:  support-classifier</pre>
+              <h5>Errors</h5>
+              <div class="errors">
+                <span class="code">400</span><span class="desc">missing <code>messages</code> array</span>
+                <span class="code">401</span><span class="desc">missing or invalid kolm bearer key</span>
+                <span class="code">502</span><span class="desc">upstream Anthropic unreachable or returned non-JSON</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="endpoint" id="capture-openai">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/capture/openai</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Mirror of the OpenAI Chat Completions API. Same shape as <code>/v1/capture/anthropic</code> with the OpenAI request body. Your real OpenAI key MUST come in <code>x-upstream-api-key</code> &middot; we never fall back to the Authorization header here.</p>
+              <h5>Headers</h5>
+              <pre class="req">X-API-Key:          ks_&lt;your-kolm-key&gt;
+x-upstream-api-key: sk-&lt;your-openai-key&gt;
+x-kolm-namespace:   ticket-router   # optional</pre>
+              <h5>Request</h5>
+              <pre class="req">{
+  "model":    "gpt-4.1",
+  "messages": [{ "role": "user", "content": "Route: invoice export request" }]
+}</pre>
+              <h5>Response</h5>
+              <pre class="res">// Upstream OpenAI response, verbatim. Plus two response headers:
+//   x-kolm-capture-id: obs_3e1b...
+//   x-kolm-namespace:  ticket-router</pre>
+              <h5>Errors</h5>
+              <div class="errors">
+                <span class="code">400</span><span class="desc">missing <code>messages</code> array</span>
+                <span class="code">401</span><span class="desc">missing or invalid kolm bearer key</span>
+                <span class="code">502</span><span class="desc">upstream OpenAI unreachable</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="endpoint" id="labels-corpus">
+            <div class="ep-head"><span class="method get">GET</span><span class="path">/v1/labels/synthesize-corpus</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Download captured pairs for a namespace as JSONL or a JSON envelope. Pass <code>?count_only=1</code> for a cheap header-style probe (returns <code>count</code>, <code>ready_to_distill</code>, threshold). The CLI command <code>kolm capture status</code> wraps this.</p>
+              <h5>Query</h5>
+              <pre class="req">namespace   string   default "default"
+format      string   "jsonl" | "json"   default "jsonl"
+limit       int      1..50000   default 10000
+count_only  bool     "1" | "true"</pre>
+              <h5>Response (jsonl, default)</h5>
+              <pre class="res">// Content-Type: application/x-ndjson
+// Header: x-kolm-count: 4287
+{"input":"...","output":"...","model":"claude-sonnet-4-6","provider":"anthropic","latency_us":812000,"created_at":"2026-05-09T..."}
+{"input":"...","output":"...","model":"gpt-4.1","provider":"openai","latency_us":740000,"created_at":"2026-05-09T..."}
+...</pre>
+              <h5>Response (count_only)</h5>
+              <pre class="res">{
+  "namespace":         "support-classifier",
+  "count":             4287,
+  "ready_to_distill":  true,
+  "threshold":         1000
+}</pre>
+            </div>
+          </div>
+
+          <div class="endpoint" id="auto-distill">
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/specialists/auto-distill</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-body">
+              <p>Kick off a LoRA training run against a namespace's captured corpus. Locked under 1,000 pairs (returns 400 with a count). Once eligible, we hand off to the training bridge and return a job id you can poll. The resulting <code>.kolm</code> is signed and downloadable through <code>/v1/compile/:id/.kolm</code>.</p>
+              <h5>Request</h5>
+              <pre class="req">{
+  "namespace":   "support-classifier",
+  "base_model":  "qwen2.5-coder-7b-instruct",
+  "target_size": "phi-3-mini"
+}</pre>
+              <h5>Response (200)</h5>
+              <pre class="res">{
+  "ok":          true,
+  "job_id":      "distill_4f8a...",
+  "status_url":  "https://kolm.ai/v1/specialists/auto-distill/4f8a/status",
+  "namespace":   "support-classifier",
+  "base_model":  "qwen2.5-coder-7b-instruct",
+  "target_size": "phi-3-mini",
+  "pair_count":  4287
+}</pre>
+              <h5>Errors</h5>
+              <div class="errors">
+                <span class="code">400</span><span class="desc">not enough captures &middot; <code>{ count, threshold: 1000, message }</code></span>
+                <span class="code">401</span><span class="desc">missing bearer</span>
+                <span class="code">502</span><span class="desc">training bridge returned a non-2xx</span>
+                <span class="code">503</span><span class="desc"><code>distill_bridge_not_configured</code> &middot; on-prem trainer ships in Wave 2; email hello@kolm.ai for hosted access</span>
+              </div>
             </div>
           </div>
         </section>
