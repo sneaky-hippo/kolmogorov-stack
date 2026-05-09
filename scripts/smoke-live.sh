@@ -1494,6 +1494,18 @@ check "/ year-1 savings ndash range"       has "$HOME" '15&ndash;30&times;'
 check "/ no stale 15-30x ascii"            hashno "$HOME" '>15 - 30x<'
 
 echo ""
+echo "=== 49h. /changelog v7.0 + v6.6 entries ==="
+CHL=$(curl -s "$URL/changelog")
+check "/changelog pill v7.0 in flight"     has "$CHL" 'Updated 2026-05-09 &middot; v7.0 launch prep in flight'
+check "/changelog no stale v6.5 pill"      hashno "$CHL" 'Updated 2026-05-08 &middot; v6.5 live'
+check "/changelog v7.0 ver entry"          has "$CHL" '<span class="ver">v7.0</span>'
+check "/changelog v6.6 ver entry"          has "$CHL" '<span class="ver">v6.6</span>'
+check "/changelog v7.0 launch prep tag"    has "$CHL" 'In flight - launch-readiness pass'
+check "/changelog v6.6 13 URLs"            has "$CHL" 'Thirteen new public URLs'
+check "/changelog v7.0 capture proxy"      has "$CHL" '/v1/capture/anthropic'
+check "/changelog v7.0 K-score formula"    has "$CHL" 'K = 0.40&middot;A + 0.15&middot;S + 0.15&middot;L + 0.15&middot;C + 0.15&middot;V'
+
+echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"
 if [ $FAIL -gt 0 ]; then

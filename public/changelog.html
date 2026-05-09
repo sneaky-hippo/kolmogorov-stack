@@ -109,7 +109,7 @@
 
 <section class="hero">
   <div class="wrap">
-    <span class="pill"><span class="dot"></span>Updated 2026-05-08 &middot; v6.5 live</span>
+    <span class="pill"><span class="dot"></span>Updated 2026-05-09 &middot; v7.0 launch prep in flight</span>
     <h1>What shipped, <span class="tone">when.</span></h1>
     <p class="lede">Public log of every release, spec change, fix, and benchmark posted by Kolmogorov. Subscribe to the Atom feed at <a href="/changelog.xml" style="color:var(--accent);">/changelog.xml</a> for one-line notifications when anything moves.</p>
   </div>
@@ -119,6 +119,49 @@
   <div class="wrap">
 
     <div class="release recent">
+      <div class="rel-head">
+        <span class="ver">v7.0</span>
+        <span class="date">2026-05-09</span>
+        <span class="tag major">In flight - launch-readiness pass, 26 of 30 boxes green</span>
+        <h2>Fourteen-day pre-launch pass against the v7.0 plan: replace marketing illustrations with interactive engineering components, tie every benchmark claim to a one-command reproducer, productize the rent-vs-buy capture loop, anchor the brand surface, and walk every typography seam end-to-end. <b>Day 5 status: 26 of 30 launch boxes green; smoke battery at 642/77 local.</b> Remaining work: Stripe webhook (Workstream D), SVG diagram retirement on the last three pages, /audit-log opt-in (Workstream H), CI lint workflow (Workstream I).</h2>
+      </div>
+      <div class="rel-body">
+        <p>The frame: ship the launch surface we can stand behind for twelve months. No claims that read as marketing without a reproducer behind them; no SVG illustrations where an interactive component does engineering work; no paid plans that flip without a webhook.</p>
+        <ul>
+          <li><b>Workstream A + F (Day 1).</b> Brand cred-band on homepage anchors "Built by Kolmogorov, <code>kolm</code> is the binary"; rent-vs-buy hero line above the install tabs. <code>/brand</code> page ships the proper-noun rules and the "we know about the prog-rock band" disclaimer. <code>/manifesto</code> opens with the Kolmogorov 1965 anchor. Site-wide footer brand-tag normalized via <code>brand-refresh.css</code>.</li>
+          <li><b>Workstream B (Day 2-3).</b> <code>kolm bench --reproduce swebench-lite-n150</code> scaffold landed in the npm CLI. Honest reframing of the +15.33pp number on every public surface; methodology page <code>/articles/how-we-benchmark</code> drafted alongside the reproducer command. The headline number was real (n=150, seed=42, Opus-4.7, swebench 4.1.0) but read as marketing without a reproducer behind it; the reproducer is now the artifact.</li>
+          <li><b>Workstream C (Day 4-6).</b> Three of six AI-style SVGs retired in favor of interactive components: <code>.kolm</code> anatomy walker on <code>/anatomy</code>, IntersectionObserver-gated 10-stage compile timeline on <code>/compile</code>, MCP fan-out animation on <code>/serve</code>. Receipt walker, browser-WASM device picker, K-score slider component still queued.</li>
+          <li><b>Workstream E (Day 5).</b> Capture-and-distill productized end-to-end. <code>POST /v1/capture/anthropic</code> and <code>POST /v1/capture/openai</code> proxy the upstream surface, write to <code>observations</code>, sample a configurable fraction through <code>verifiedInference()</code>. <code>GET /v1/labels/synthesize-corpus</code> returns the captured pairs as JSONL or parquet. <code>POST /v1/specialists/auto-distill</code> queues a LoRA training job. CLI: <code>kolm capture &middot; kolm distill &middot; kolm capture status</code>. New article <code>/articles/rent-vs-buy-compute</code> + use-case page <code>/use-cases/capture-and-distill</code>.</li>
+          <li><b>Workstream H (Day 5-6).</b> <code>/trust</code> rewritten to lead with verifier evidence over policy. K-score worked example (passing release K=0.9005, drifted release K=0.8445) inline with the canonical 5-component formula <code>K = 0.40&middot;A + 0.15&middot;S + 0.15&middot;L + 0.15&middot;C + 0.15&middot;V</code>. Walker links to the four-ring HMAC chain on <code>/anatomy#walker</code>. <code>/security</code> SVG rebuild: malformed diagram had a duplicate <code>&lt;svg&gt;</code> opener, six overlapping text labels, no closing tag; clean rebuild restored the missing <b>step 2 (k-sample teacher)</b> in the compile pipeline numbering.</li>
+          <li><b>Site-wide typography sweep.</b> 58 question marks restored across <code>/faq</code>, <code>/pricing</code>, five articles, <code>/security</code>, and <code>/device</code> demos that an over-eager em-dash cleanup had turned into hyphens. Footer brand-tag separator normalized to <code>&amp;middot;</code> on <code>/compile</code>, <code>/pricing</code>, <code>/security</code>. Homepage <code>15-30x</code> range fixed to <code>15&ndash;30&times;</code>.</li>
+          <li><b>Smoke battery: 642 pass / 77 fail local.</b> The 77 failures are unauthenticated API endpoints that need a real key; every visible page test passes. <code>scripts/smoke-live.sh</code> grew 33 new tests in the last 48 hours guarding the fixes above.</li>
+        </ul>
+        <p>Founder-blocked items still in queue: Stripe webhook real signature path (server is wired, payment links provisioned, <code>checkout.session.completed</code> handler stubbed), public reproducer log on <code>/articles/how-we-benchmark</code>, <code>/audit-log</code> opt-in tenant page, and CI lint workflow with the no-innerHTML grep guard.</p>
+      </div>
+    </div>
+
+    <div class="release">
+      <div class="rel-head">
+        <span class="ver">v6.6</span>
+        <span class="date">2026-05-09</span>
+        <span class="tag major">Major - 13 new URLs, hero typewriter, Business tier, 300/0 smoke</span>
+        <h2>Thirteen new public URLs land in one pass: five use-case pages (<code>/use-cases/agentic-coding</code>, <code>/use-cases/ai-saas</code>, <code>/use-cases/mobile</code>, <code>/use-cases/embedded</code>, <code>/use-cases/web3-verifiable</code>), three cornerstone articles, <code>/whitepaper</code>, <code>/customers</code>, and a rewritten <code>/manifesto</code>. Homepage hero gains a live typewriter terminal and a design-partner bar. New <b>Business tier at $1,499/mo</b> sits between Team and Enterprise on the pricing ladder, wired into <code>PLAN_CATALOG</code>, <code>/v1/account</code>, and the API throughout. Smoke battery: 300/0, all green on production.</h2>
+      </div>
+      <div class="rel-body">
+        <p>The five use-case pages each carry their own JSON-LD <code>TechArticle</code> schema, K-score profile, latency profile across three target devices, and a code path the reader can copy. The three articles are written paper-shaped, not blog-shaped: each opens with the question, walks the math or the mechanism, and closes with what would invalidate the result.</p>
+        <ul>
+          <li><b>Use-case pages.</b> <code>/use-cases/agentic-coding</code>, <code>/use-cases/ai-saas</code>, <code>/use-cases/mobile</code>, <code>/use-cases/embedded</code>, <code>/use-cases/web3-verifiable</code>. Each one is a standalone read with its own meta, OG card, and JSON-LD.</li>
+          <li><b>Articles.</b> Three new long-form pieces under <code>/articles</code> walking the verified-inference math, the <code>.kolm</code> file format, and the speculative-decoding recipe pattern.</li>
+          <li><b>/whitepaper.</b> Long-form spec sheet for buyers who want the whole pitch on one URL.</li>
+          <li><b>/customers.</b> Design-partner page; updates as the program slots fill.</li>
+          <li><b>/manifesto rewrite.</b> Anchored to the Kolmogorov 1965 question (smallest specialist program that produces a given behavior). Brand stack laid out plainly: Kolmogorov is the company, <code>kolm</code> is the binary, <code>.kolm</code> is the file format, RS-1 is the spec.</li>
+          <li><b>Hero typewriter.</b> Live terminal under the homepage H1, IntersectionObserver-gated, prefers-reduced-motion fallback. Shows <code>kolm compile</code> &rarr; <code>K-score</code> &rarr; <code>kolm run</code> in three lines.</li>
+          <li><b>Business tier.</b> $1,499/mo, sits between Team ($499) and Enterprise ($2,999). Same self-serve provisioning surface; covers private registry, six seats, BAA / DPA on request.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="release">
       <div class="rel-head">
         <span class="ver">v6.5</span>
         <span class="date">2026-05-08</span>
