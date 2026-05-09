@@ -1336,6 +1336,13 @@ check "/compile no orphan gate 0.70"   hashno "$COMPILE" 'gate 0.70 - ship'
 check "/compile no orphan flag 0.70"   hashno "$COMPILE" '--gate <span class="num">0.70</span>'
 check "/compile sign hmac canon"       has "$COMPILE" '<b>Sign</b><span>hmac-sha256</span>'
 check "/compile no vestigial ed25519"  hashno "$COMPILE" '<b>Sign</b><span>ed25519</span>'
+check "/compile pipeline data-attr"    has "$COMPILE" 'data-pipeline'
+check "/compile pipeline wall-time 03" has "$COMPILE" '<span class="t">3m 08s</span>'
+check "/compile pipeline wall-time 05" has "$COMPILE" '<span class="t">7m 12s</span>'
+check "/compile pipeline wall-time 09" has "$COMPILE" '<span class="t">42ms</span>'
+check "/compile pipeline IO observer"  has "$COMPILE" 'IntersectionObserver'
+check "/compile pipeline is-armed"     has "$COMPILE" 'is-armed'
+check "/compile pipeline reduced-motion" has "$COMPILE" '@media(prefers-reduced-motion: reduce)'
 
 echo ""
 echo "=== 47. K-score calculator widget on /k-score ==="

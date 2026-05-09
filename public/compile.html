@@ -396,19 +396,41 @@
 
     <figure class="plate" role="img" aria-label="A frontier model is distilled into a small signed kolm artifact via the kolm compile pipeline.">
       <div class="img diag-bg">
-        <div class="diag diag-pipeline">
-          <div class="stage"><span class="n">01</span><b>Synthesize</b><span>verifier from spec</span></div>
-          <div class="stage"><span class="n">02</span><b>Recall</b><span>seed examples</span></div>
-          <div class="stage"><span class="n">03</span><b>k-Sample</b><span>frontier proxy</span></div>
-          <div class="stage"><span class="n">04</span><b>Verify</b><span>gate &amp; label</span></div>
-          <div class="stage"><span class="n">05</span><b>Train</b><span>LoRA on signal</span></div>
-          <div class="stage"><span class="n">06</span><b>Extract</b><span>recipes</span></div>
-          <div class="stage"><span class="n">07</span><b>Index</b><span>sqlite-vec</span></div>
-          <div class="stage"><span class="n">08</span><b>Assemble</b><span>seven layers</span></div>
-          <div class="stage"><span class="n">09</span><b>Sign</b><span>hmac-sha256</span></div>
-          <div class="stage acc"><span class="n">10</span><b>.kolm</b><span>signed artifact</span></div>
+        <div class="diag diag-pipeline" data-pipeline>
+          <div class="stage"><span class="n">01</span><b>Synthesize</b><span>verifier from spec</span><span class="t">12s</span></div>
+          <div class="stage"><span class="n">02</span><b>Recall</b><span>seed examples</span><span class="t">4s</span></div>
+          <div class="stage"><span class="n">03</span><b>k-Sample</b><span>frontier proxy</span><span class="t">3m 08s</span></div>
+          <div class="stage"><span class="n">04</span><b>Verify</b><span>gate &amp; label</span><span class="t">22s</span></div>
+          <div class="stage"><span class="n">05</span><b>Train</b><span>LoRA on signal</span><span class="t">7m 12s</span></div>
+          <div class="stage"><span class="n">06</span><b>Extract</b><span>recipes</span><span class="t">28s</span></div>
+          <div class="stage"><span class="n">07</span><b>Index</b><span>sqlite-vec</span><span class="t">11s</span></div>
+          <div class="stage"><span class="n">08</span><b>Assemble</b><span>seven layers</span><span class="t">3s</span></div>
+          <div class="stage"><span class="n">09</span><b>Sign</b><span>hmac-sha256</span><span class="t">42ms</span></div>
+          <div class="stage acc"><span class="n">10</span><b>.kolm</b><span>signed artifact</span><span class="t">ok</span></div>
         </div>
       </div>
+      <style>
+        [data-pipeline] .stage{position:relative;opacity:0;transform:translateY(6px);transition:opacity 240ms cubic-bezier(.2,.6,.2,1) var(--d,0ms),transform 240ms cubic-bezier(.2,.6,.2,1) var(--d,0ms),border-color 240ms ease-out var(--d,0ms),background 240ms ease-out var(--d,0ms)}
+        [data-pipeline].is-armed .stage{opacity:1;transform:translateY(0)}
+        [data-pipeline] .stage .t{display:block;margin-top:5px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:9px;color:#9db6ff;letter-spacing:0;font-variant-numeric:tabular-nums}
+        [data-pipeline] .stage.acc .t{color:#7ef0d2}
+        [data-pipeline] .stage::after{content:"";position:absolute;left:50%;top:-3px;width:0;height:1px;background:linear-gradient(90deg,transparent,rgba(76,125,255,0.55),transparent);transform:translateX(-50%);transition:width 320ms ease-out var(--d,0ms);pointer-events:none}
+        [data-pipeline].is-armed .stage::after{width:100%}
+        @media(prefers-reduced-motion: reduce){[data-pipeline] .stage,[data-pipeline] .stage::after{transition:none;opacity:1;transform:none}[data-pipeline] .stage::after{width:100%}}
+      </style>
+      <script>
+        (() => {
+          const pipe = document.querySelector('[data-pipeline]');
+          if (!pipe) return;
+          const stages = pipe.querySelectorAll('.stage');
+          stages.forEach((s, i) => s.style.setProperty('--d', (i * 90) + 'ms'));
+          if (!('IntersectionObserver' in window)) { pipe.classList.add('is-armed'); return; }
+          const io = new IntersectionObserver((entries) => {
+            entries.forEach((e) => { if (e.isIntersecting) { pipe.classList.add('is-armed'); io.disconnect(); } });
+          }, { threshold: 0.30 });
+          io.observe(pipe);
+        })();
+      </script>
       <span class="stamp"><span class="dot"></span>kolm compile &middot; pipeline</span>
       <div class="cap">
         <div class="title">Frontier in. <span class="tone">.kolm out.</span></div>
