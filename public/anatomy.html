@@ -381,7 +381,184 @@
 
 <section>
   <div class="wrap">
-    <div class="eyebrow"><span class="num">03</span> · Inspect</div>
+    <div class="eyebrow"><span class="num">03</span> · Walk the chain</div>
+    <h2>Four rings. <span class="tone">One signature.</span></h2>
+    <p class="lede">The <code>signature.sig</code> file is the tail of a 4-ring HMAC-SHA256 chain.
+      Each ring covers the previous ring's tag plus a fresh set of layer hashes.
+      Tampering with one byte of <em>any</em> layer changes that ring's tag and cascades through every downstream ring.
+      <b>Click a ring to walk the pre-image.</b></p>
+
+    <figure class="walker" data-walker aria-label="Interactive 4-ring HMAC receipt chain walker">
+      <div class="walker-rings" role="tablist" aria-label="Receipt rings">
+        <button class="walker-ring" data-ring="1" role="tab" aria-selected="true" aria-controls="walker-detail-1" id="walker-ring-1">
+          <span class="walker-ring-num">R1</span>
+          <span class="walker-ring-name">model</span>
+          <span class="walker-ring-tag">a3f973…7c</span>
+        </button>
+        <span class="walker-arrow" aria-hidden="true">&rarr;</span>
+        <button class="walker-ring" data-ring="2" role="tab" aria-selected="false" aria-controls="walker-detail-2" id="walker-ring-2">
+          <span class="walker-ring-num">R2</span>
+          <span class="walker-ring-name">adapter + recipes</span>
+          <span class="walker-ring-tag">b1c742…58</span>
+        </button>
+        <span class="walker-arrow" aria-hidden="true">&rarr;</span>
+        <button class="walker-ring" data-ring="3" role="tab" aria-selected="false" aria-controls="walker-detail-3" id="walker-ring-3">
+          <span class="walker-ring-num">R3</span>
+          <span class="walker-ring-name">tests + index</span>
+          <span class="walker-ring-tag">9e02ab…aa</span>
+        </button>
+        <span class="walker-arrow" aria-hidden="true">&rarr;</span>
+        <button class="walker-ring" data-ring="4" role="tab" aria-selected="false" aria-controls="walker-detail-4" id="walker-ring-4">
+          <span class="walker-ring-num">R4</span>
+          <span class="walker-ring-name">manifest</span>
+          <span class="walker-ring-tag">7f3a8e…c8</span>
+        </button>
+      </div>
+
+      <div class="walker-detail" data-detail="1" id="walker-detail-1" role="tabpanel" aria-labelledby="walker-ring-1">
+        <div class="walker-row">
+          <span class="walker-key">key</span>
+          <span class="walker-val"><code>K&#8320; = HMAC(receipt_secret, "rs-1.r1")</code> &mdash; derived from <code>RECEIPT_SECRET</code> in <code>~/.kolm/config.json</code>, never written into the artifact.</span>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">pre-image</span>
+          <pre class="walker-pre">model.gguf:9f1a8c89bf12d2c4af55b3e0a76d2e89b3</pre>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">tag</span>
+          <pre class="walker-pre"><span class="walker-tag">R1 = a3f9737a8e02ab1c742581c2adf45e9c0d3a7c</span></pre>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">covers</span>
+          <span class="walker-val">The 2.1&nbsp;GB of base weights. Flipping a single bit of <code>model.gguf</code> changes <code>R1</code> and breaks every downstream ring.</span>
+        </div>
+      </div>
+
+      <div class="walker-detail" data-detail="2" id="walker-detail-2" role="tabpanel" aria-labelledby="walker-ring-2" hidden>
+        <div class="walker-row">
+          <span class="walker-key">key</span>
+          <span class="walker-val"><code>K&#8321; = R1</code> &mdash; the prior ring's tag becomes the next ring's key. No fresh secret enters the chain after R1.</span>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">pre-image</span>
+          <pre class="walker-pre">lora.bin:4d22efa1b8c1
+recipes.json:ab02f1d9c47e</pre>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">tag</span>
+          <pre class="walker-pre"><span class="walker-tag">R2 = b1c742581c2adf45e9c02d59f7a8e8b3c0d258</span></pre>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">covers</span>
+          <span class="walker-val">The personal layer: the LoRA adapter and the speculative-decoding recipe pack. Either layer mutating breaks <code>R2</code>.</span>
+        </div>
+      </div>
+
+      <div class="walker-detail" data-detail="3" id="walker-detail-3" role="tabpanel" aria-labelledby="walker-ring-3" hidden>
+        <div class="walker-row">
+          <span class="walker-key">key</span>
+          <span class="walker-val"><code>K&#8322; = R2</code></span>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">pre-image</span>
+          <pre class="walker-pre">tests.jsonl:ef44a3b27c8d
+index.sqlite-vec:8b73e91d4e02
+verifier.json:2d59c1a07e91</pre>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">tag</span>
+          <pre class="walker-pre"><span class="walker-tag">R3 = 9e02ab1c742581c2adf45e9c0d3a7c8b73aa</span></pre>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">covers</span>
+          <span class="walker-val">The eval suite, the recall index, and the embedded verifier. <code>kolm eval</code> rebuilds these on disk and re-derives <code>R3</code>; mismatch fails the gate.</span>
+        </div>
+      </div>
+
+      <div class="walker-detail" data-detail="4" id="walker-detail-4" role="tabpanel" aria-labelledby="walker-ring-4" hidden>
+        <div class="walker-row">
+          <span class="walker-key">key</span>
+          <span class="walker-val"><code>K&#8323; = R3</code></span>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">pre-image</span>
+          <pre class="walker-pre">manifest.json:1a92c4d801a92c4aa</pre>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">tag</span>
+          <pre class="walker-pre"><span class="walker-tag">R4 = 7f3a8e02ab1c742581c2adf45e9c0d3a7c0c91c8</span></pre>
+        </div>
+        <div class="walker-row">
+          <span class="walker-key">covers</span>
+          <span class="walker-val"><code>R4</code> is what gets written to <code>signature.sig</code>. The manifest pins K-score, gate, registry version, and base hash &mdash; covering them last means a forged manifest cannot escape the chain.</span>
+        </div>
+      </div>
+
+      <div class="walker-foot">
+        <span class="walker-foot-label">verify locally</span>
+        <code class="walker-foot-cmd">kolm verify support-triage.kolm</code>
+        <span class="walker-foot-hint">re-derives all four rings &middot; ~80&nbsp;ms</span>
+      </div>
+    </figure>
+
+    <style>
+      .walker{margin:32px 0 0;border:1px solid var(--line-strong);border-radius:14px;background:radial-gradient(ellipse 800px 320px at 50% -10%,rgba(76,125,255,0.10),transparent 60%),#070809;padding:28px 28px 26px;font-family:var(--mono);position:relative;overflow:hidden}
+      .walker::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(76,125,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(76,125,255,0.04) 1px,transparent 1px);background-size:32px 32px;mask-image:radial-gradient(ellipse at center,#000 0%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse at center,#000 0%,transparent 75%);pointer-events:none}
+      .walker > *{position:relative;z-index:1}
+      .walker-rings{display:flex;align-items:stretch;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 22px}
+      .walker-ring{appearance:none;background:rgba(8,9,8,0.62);border:1px solid var(--line);border-radius:10px;padding:13px 18px;display:flex;flex-direction:column;align-items:flex-start;gap:5px;cursor:pointer;font-family:var(--mono);transition:background 140ms,border-color 140ms,box-shadow 140ms;min-width:152px;color:var(--ink)}
+      .walker-ring:hover{border-color:rgba(76,125,255,0.32);background:rgba(76,125,255,0.05)}
+      .walker-ring:focus-visible{outline:none;border-color:rgba(76,125,255,0.55);box-shadow:0 0 0 2px rgba(76,125,255,0.30)}
+      .walker-ring[aria-selected="true"]{border-color:rgba(76,125,255,0.55);background:rgba(76,125,255,0.10);box-shadow:0 0 0 1px rgba(76,125,255,0.30) inset}
+      .walker-ring-num{font-size:10.5px;color:var(--accent);letter-spacing:0;text-transform:uppercase;font-weight:540}
+      .walker-ring-name{font-size:13px;color:var(--ink);font-weight:540;letter-spacing:0;font-family:var(--sans)}
+      .walker-ring-tag{font-size:11px;color:var(--ink-faint);font-variant-numeric:tabular-nums}
+      .walker-arrow{display:inline-flex;align-items:center;color:var(--ink-faint);font-size:14px;align-self:center;padding:0 2px}
+      @media(max-width:720px){.walker-arrow{display:none}.walker-ring{min-width:auto;width:100%}}
+      .walker-detail{border:1px solid var(--line);border-radius:10px;background:#080a0c;overflow:hidden}
+      .walker-row{display:grid;grid-template-columns:96px 1fr;gap:18px;padding:14px 18px;border-bottom:1px solid var(--line);align-items:start}
+      .walker-row:last-child{border-bottom:none}
+      .walker-key{font-size:10.5px;color:var(--ink-faint);letter-spacing:0;text-transform:uppercase;padding-top:3px;font-weight:540}
+      .walker-val{font-size:13px;color:var(--ink-mute);line-height:1.6;font-family:var(--sans);max-width:62ch}
+      .walker-val code{font-family:var(--mono);font-size:11.5px;color:var(--ink);background:var(--bg);padding:1px 5px;border-radius:3px}
+      .walker-pre{margin:0;background:transparent;border:none;padding:0;font-size:12px;color:var(--ink);white-space:pre-wrap;word-break:break-all;line-height:1.6}
+      .walker-tag{color:var(--accent);font-weight:540}
+      .walker-foot{margin:18px 0 0;padding:13px 18px;border:1px solid var(--line);border-radius:8px;background:rgba(8,9,8,0.72);display:grid;grid-template-columns:auto auto 1fr;gap:14px;align-items:center;font-size:11.5px}
+      .walker-foot-label{color:var(--ink-faint);letter-spacing:0;text-transform:uppercase;font-size:10.5px}
+      .walker-foot-cmd{color:var(--ink);font-size:12px;background:var(--bg);border:1px solid var(--line);padding:4px 8px;border-radius:4px}
+      .walker-foot-hint{color:var(--ink-faint);font-size:11px;text-align:right}
+      @media(max-width:720px){.walker{padding:20px 18px 18px}.walker-row{grid-template-columns:1fr;gap:6px}.walker-foot{grid-template-columns:1fr;gap:6px}.walker-foot-hint{text-align:left}}
+      @media(prefers-reduced-motion: reduce){.walker-ring{transition:none}}
+    </style>
+    <script>
+      (() => {
+        const root = document.querySelector('[data-walker]');
+        if (!root) return;
+        const rings = root.querySelectorAll('.walker-ring');
+        const details = root.querySelectorAll('[data-detail]');
+        const show = (n) => {
+          rings.forEach((r) => r.setAttribute('aria-selected', r.dataset.ring === n ? 'true' : 'false'));
+          details.forEach((d) => {
+            if (d.dataset.detail === n) d.removeAttribute('hidden');
+            else d.setAttribute('hidden', '');
+          });
+        };
+        rings.forEach((r) => {
+          r.addEventListener('click', () => show(r.dataset.ring));
+          r.addEventListener('keydown', (e) => {
+            const n = parseInt(r.dataset.ring, 10);
+            if (e.key === 'ArrowRight' && n < 4) { e.preventDefault(); rings[n].focus(); show(String(n + 1)); }
+            if (e.key === 'ArrowLeft' && n > 1) { e.preventDefault(); rings[n - 2].focus(); show(String(n - 1)); }
+          });
+        });
+      })();
+    </script>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">04</span> · Inspect</div>
     <h2>Open the box.</h2>
     <p class="lede">Every artifact is a normal zip. <code>kolm inspect</code> formats the
       contents for humans; <code>unzip -l</code> works fine if you don’t have kolm installed.</p>

@@ -1343,6 +1343,26 @@ check "/k-score kcalc weights JS"        has "$KSCORE" 'A: 0.40, S: 0.15, L: 0.1
 check "/k-score eyebrow 04 renumbered"   has "$KSCORE" '<span class="num">04</span> · Why one number'
 
 echo ""
+echo "=== 48. Receipt walker on /anatomy ==="
+check "/anatomy walker element"          has "$ANATOMY" 'data-walker'
+check "/anatomy walker section eyebrow"  has "$ANATOMY" '<span class="num">03</span> · Walk the chain'
+check "/anatomy walker H2 four rings"    has "$ANATOMY" 'Four rings.'
+check "/anatomy walker ring 1 model"     has "$ANATOMY" 'data-ring="1"'
+check "/anatomy walker ring 2"           has "$ANATOMY" 'data-ring="2"'
+check "/anatomy walker ring 3"           has "$ANATOMY" 'data-ring="3"'
+check "/anatomy walker ring 4 manifest"  has "$ANATOMY" 'data-ring="4"'
+check "/anatomy walker R1 named"         has "$ANATOMY" '<span class="walker-ring-num">R1</span>'
+check "/anatomy walker R4 named"         has "$ANATOMY" '<span class="walker-ring-num">R4</span>'
+check "/anatomy walker detail panels"    has "$ANATOMY" 'data-detail="1"'
+check "/anatomy walker detail R4"        has "$ANATOMY" 'data-detail="4"'
+check "/anatomy walker hmac-sha256"      has "$ANATOMY" 'HMAC-SHA256 chain'
+check "/anatomy walker verify cmd"       has "$ANATOMY" 'kolm verify support-triage.kolm'
+check "/anatomy walker reduced-motion"   has "$ANATOMY" '@media(prefers-reduced-motion: reduce)'
+check "/anatomy walker keyboard arrows"  has "$ANATOMY" "ArrowRight"
+check "/anatomy inspect renumbered 04"   has "$ANATOMY" '<span class="num">04</span> · Inspect'
+check "/anatomy no orphan inspect 03"    hashno "$ANATOMY" '<span class="num">03</span> · Inspect'
+
+echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"
 if [ $FAIL -gt 0 ]; then
