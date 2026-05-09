@@ -1395,6 +1395,28 @@ check "/anatomy inspect renumbered 04"   has "$ANATOMY" '<span class="num">04</s
 check "/anatomy no orphan inspect 03"    hashno "$ANATOMY" '<span class="num">03</span> · Inspect'
 
 echo ""
+echo "=== 49. K-score worked example on /trust ==="
+TRUST=$(curl -s "$URL/trust")
+check "/trust has k-score-gate id"          has "$TRUST" 'id="k-score-gate"'
+check "/trust h2 K-score worked"            has "$TRUST" '<h2>K-score, worked</h2>'
+check "/trust toc K-score gate worked"      has "$TRUST" '#k-score-gate'
+check "/trust canonical formula present"    has "$TRUST" 'K = 0.40&middot;A + 0.15&middot;S + 0.15&middot;L + 0.15&middot;C + 0.15&middot;V'
+check "/trust component A accuracy"         has "$TRUST" '<b>Accuracy</b>'
+check "/trust component S size"             has "$TRUST" '<b>Size</b>'
+check "/trust component L latency"          has "$TRUST" '<b>Latency</b>'
+check "/trust component C cost"             has "$TRUST" '<b>Cost</b>'
+check "/trust component V coverage"         has "$TRUST" '<b>Coverage</b>'
+check "/trust passing release K=0.9005"     has "$TRUST" '0.9005'
+check "/trust passing release promote"      has "$TRUST" 'gate = 0.85    K &ge; gate    promote'
+check "/trust drifted release K=0.8445"     has "$TRUST" '0.8445'
+check "/trust drifted release DO NOT"       has "$TRUST" 'DO NOT PROMOTE'
+check "/trust safety gate 0.95"             has "$TRUST" 'K &ge; 0.95'
+check "/trust prototype gate 0.70"          has "$TRUST" 'K &ge; 0.70'
+check "/trust default gate 0.85 in body"    has "$TRUST" 'default for every public artifact is <b>0.85</b>'
+check "/trust chain links to walker"        has "$TRUST" 'href="/anatomy#walker"'
+check "/trust Walk the four rings link"     has "$TRUST" 'Walk the four rings interactively'
+
+echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"
 if [ $FAIL -gt 0 ]; then

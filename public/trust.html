@@ -142,6 +142,7 @@
       <li><a href="#sla">SLA</a></li>
       <li><a href="#disclosure">Vulnerability disclosure</a></li>
       <li><a href="#verification">How verification works</a></li>
+      <li><a href="#k-score-gate">K-score gate, worked</a></li>
       <li><a href="#docs">Downloads</a></li>
     </ul>
   </div>
@@ -303,7 +304,7 @@ manifest_hash   = sha256(manifest.json)
 receipt[0]      = HMAC(secret, manifest_hash)
 receipt[i]      = HMAC(secret, receipt[i-1] || input_hash[i] || output_hash[i])
 signature       = HMAC(secret, receipt[N])</pre>
-      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Each receipt depends on the previous one. <b>You cannot insert, reorder, or remove a single output without invalidating every later receipt</b> in the chain. The signature at the tail is what an auditor checks against the published artifact_id and the build's HMAC public reference.</p>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Each receipt depends on the previous one. <b>You cannot insert, reorder, or remove a single output without invalidating every later receipt</b> in the chain. The signature at the tail is what an auditor checks against the published artifact_id and the build's HMAC public reference. <a href="/anatomy#walker" style="color:var(--accent);">Walk the four rings interactively &rarr;</a></p>
 
       <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">Verify a receipt yourself</h3>
       <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Public endpoint, no auth, no SDK. Paste any receipt below — the widget POSTs to <code>/v1/receipts/verify</code>, walks the HMAC chain server-side, and returns each broken ring by name: <code>chain[3] hmac mismatch</code>, <code>signature mismatch</code>, <code>chain[4] not anchored to chain[3]</code>. The CLI's <code>kolm verify</code> calls the same endpoint.</p>
@@ -343,6 +344,56 @@ signature       = HMAC(secret, receipt[N])</pre>
         <li><b>K-score gaming.</b> If the verifier itself is built from the same data it scores, the K-score is uninformative. Use a held-out test source.</li>
         <li><b>Compromised signing secret.</b> Standard HMAC threat model: protect the secret. Enterprise plan rotates per-tenant.</li>
       </ul>
+    </div>
+
+    <div class="group" id="k-score-gate">
+      <h2>K-score, worked</h2>
+      <p class="kicker">The promotion gate at every release. Five components, fixed weights, a single scalar. Below the gate, the artifact does not promote.</p>
+
+      <pre class="code">K = 0.40&middot;A + 0.15&middot;S + 0.15&middot;L + 0.15&middot;C + 0.15&middot;V    where K, A, S, L, C, V &isin; [0, 1]</pre>
+
+      <table class="tbl" style="margin-top:16px;">
+        <thead>
+          <tr><th style="width:5ch">var</th><th>component</th><th style="width:7ch">weight</th><th>signal</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>A</code></td><td><b>Accuracy</b></td><td>0.40</td><td>pass rate on a held-out eval slice the model has never seen</td></tr>
+          <tr><td><code>S</code></td><td><b>Size</b></td><td>0.15</td><td>1 &minus; (artifact_bytes / size_envelope), clipped to [0, 1]</td></tr>
+          <tr><td><code>L</code></td><td><b>Latency</b></td><td>0.15</td><td>p50_target / observed_p50, clipped to [0, 1]</td></tr>
+          <tr><td><code>C</code></td><td><b>Cost</b></td><td>0.15</td><td>$/call_target / observed_$/call, clipped to [0, 1]</td></tr>
+          <tr><td><code>V</code></td><td><b>Coverage</b></td><td>0.15</td><td>fraction of the intended task slice the eval set actually exercises</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">A passing release</h3>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">From <code>kolm bench</code> on a recent recipe pack:</p>
+      <pre class="code">A = 0.92    accuracy   :: 138/150 held-out tasks pass
+S = 0.85    size       :: 3.4 GB inside a 5.0 GB envelope
+L = 0.90    latency    :: p50 220 ms vs 200 ms target
+C = 0.88    cost       :: $0.0011 / call vs $0.0010 target
+V = 0.92    coverage   :: 92% of the named task slice exercised
+
+K = 0.40&middot;0.92 + 0.15&middot;0.85 + 0.15&middot;0.90 + 0.15&middot;0.88 + 0.15&middot;0.92
+  = 0.368 + 0.1275 + 0.135 + 0.132 + 0.138
+  = 0.9005
+
+gate = 0.85    K &ge; gate    promote</pre>
+
+      <h3 style="margin:24px 0 10px;font-size:15px;font-weight:540;color:var(--ink);">A drifted release</h3>
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;">Same envelope, accuracy slipped on a math-style slice. Identical S, L, C, V:</p>
+      <pre class="code">A = 0.78    accuracy   :: 117/150 &mdash; drift on math-style tasks
+S = 0.85
+L = 0.90
+C = 0.88
+V = 0.92
+
+K = 0.40&middot;0.78 + 0.15&middot;0.85 + 0.15&middot;0.90 + 0.15&middot;0.88 + 0.15&middot;0.92
+  = 0.312 + 0.1275 + 0.135 + 0.132 + 0.138
+  = 0.8445
+
+gate = 0.85    K &lt; gate    DO NOT PROMOTE</pre>
+
+      <p style="color:var(--ink-mute);font-size:14.5px;line-height:1.65;margin-top:14px;"><b style="color:var(--ink);font-weight:540;">Two relaxed gates exist.</b> Safety-critical recipes require <code>K &ge; 0.95</code>; prototype recipes can ship with <code>K &ge; 0.70</code> and a <code>kolm.unstable</code> tag. The default for every public artifact is <b>0.85</b>. The gate, the inputs, and the held-out eval set are part of the receipt chain &mdash; if any of the five components were measured against the training set, the receipt names that fact.</p>
     </div>
 
     <div class="group" id="docs">
