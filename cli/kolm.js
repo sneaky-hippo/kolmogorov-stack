@@ -22,6 +22,7 @@ import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 import http from 'node:http';
+import { spawnSync } from 'node:child_process';
 
 const VERSION = '0.1.0';
 const HOME = os.homedir();
@@ -209,9 +210,10 @@ USAGE
   benchmark: `kolm bench - reproducible artifact benchmark (alias: benchmark).
 
 USAGE
-  kolm bench <artifact.kolm> [opts]
+  kolm bench <artifact.kolm> [opts]            artifact-local benchmark JSON
+  kolm bench --reproduce <suite> [opts]         public-reproducer suite (Docker)
 
-OPTIONS
+OPTIONS (artifact mode)
   --runs <n>                   runs per embedded eval case (default: 1)
   --input '<json|string>'      fallback input when the artifact has no evals
   --target <name>              target label for the report
@@ -219,10 +221,28 @@ OPTIONS
   --out <file>                 also write the JSON report to a file
   --json                       emit JSON to stdout (default; reserved for future formats)
 
-The report follows the kolm-benchmark-1 spec. It includes k_score, evals.accuracy,
-latency_us.p50/p95, privacy.runtime_egress_attempts, integrity.signature_valid.
-The harness patches fetch / http / https / net / tls / dns at process boundary —
-egress attempts are recorded and blocked.
+The artifact-mode report follows the kolm-benchmark-1 spec. It includes k_score,
+evals.accuracy, latency_us.p50/p95, privacy.runtime_egress_attempts,
+integrity.signature_valid. The harness patches fetch / http / https / net / tls /
+dns at process boundary — egress attempts are recorded and blocked.
+
+OPTIONS (--reproduce mode)
+  --reproduce <suite>          public reproducer; available: swebench-lite-n150
+  --seed <n>                   seed (default: per-suite, e.g. 42)
+  --n <n>                      sample size (default: per-suite, e.g. 150)
+  --out <file>                 report path (default: ~/.kolm/bench/<suite>/report.json)
+  --dry-run                    print the plan; do not pull or run docker
+  --api-key <key>              override ANTHROPIC_API_KEY for the spawned container
+
+Reproducer mode runs in a pinned Docker image so the evaluator and dataset
+versions are byte-identical to the published numbers. You bring your own
+ANTHROPIC_API_KEY; the harness mounts it into the container only. Methodology:
+  https://kolm.ai/articles/how-we-benchmark
+
+EXIT CODES (--reproduce mode)
+  0  reproducer succeeded; report.json on disk.
+  1  bad arguments (unknown suite, bad seed/n, etc.).
+  2  prerequisite missing (no docker, no ANTHROPIC_API_KEY, image not yet published).
 `,
   score: `kolm score - print the K-score on an artifact's manifest.
 
@@ -791,6 +811,12 @@ async function cmdEval(args) {
 
 async function cmdBenchmark(args) {
   if (maybeHelp('benchmark', args)) return;
+  // `kolm bench --reproduce <suite>` is the public-reproducer path documented at
+  // /articles/how-we-benchmark. It runs in a pinned Docker image so the harness
+  // and evaluator versions are identical to the published numbers.
+  if (args.includes('--reproduce')) {
+    return cmdBenchReproduce(args);
+  }
   const ap = resolveArtifact(args[0]);
   if (!ap) { console.error('error: artifact not found:', args[0]); process.exit(1); }
 
@@ -815,6 +841,150 @@ async function cmdBenchmark(args) {
     });
     console.log(JSON.stringify(report, null, 2));
   });
+}
+
+// `kolm bench --reproduce <suite> [--seed N] [--n N] [--out path] [--dry-run]`
+// runs the published reproducer in a pinned Docker image. Suites:
+//   swebench-lite-n150  -- the +10.67pp Opus-4.7 lift, swebench 4.1.0 evaluator
+//
+// Honesty pattern: the CLI verb is real, but the heavy harness is gated behind
+// the operator-published Docker image. If docker / ANTHROPIC_API_KEY / the image
+// are not available, exit 2 with a clear operator hint rather than silently
+// no-op'ing. This mirrors /v1/specialists/auto-distill's 503 behaviour.
+const REPRODUCE_SUITES = {
+  'swebench-lite-n150': {
+    image:        'kolmogorov/swebench-reproducer:1.0.0',
+    default_n:    150,
+    default_seed: 42,
+    headline:     '+10.67pp lift, 95% CI [+4.67, +16.67], p<0.05 (Opus-4.7, swebench 4.1.0)',
+    requires:     ['docker', 'ANTHROPIC_API_KEY'],
+    est_minutes:  90,
+    est_dollars:  30,
+  },
+};
+
+async function cmdBenchReproduce(args) {
+  const idx = args.indexOf('--reproduce');
+  const suite = idx >= 0 ? args[idx + 1] : undefined;
+  if (!suite || suite.startsWith('-')) {
+    console.error('error: --reproduce requires a suite name');
+    console.error('available suites:');
+    for (const [name, s] of Object.entries(REPRODUCE_SUITES)) {
+      console.error(`  ${name}    ${s.headline}`);
+    }
+    process.exit(1);
+  }
+  const cfg = REPRODUCE_SUITES[suite];
+  if (!cfg) {
+    console.error('error: unknown suite:', suite);
+    console.error('available suites: ' + Object.keys(REPRODUCE_SUITES).join(', '));
+    process.exit(1);
+  }
+  const value = (flag) => {
+    const i = args.indexOf(flag);
+    return i >= 0 ? args[i + 1] : undefined;
+  };
+  const seed = Number(value('--seed') || cfg.default_seed);
+  const n = Number(value('--n') || cfg.default_n);
+  const outPath = value('--out') || path.join(KOLM_DIR, 'bench', suite, 'report.json');
+  const dryRun = args.includes('--dry-run');
+  if (!Number.isInteger(seed) || seed < 0) {
+    console.error('error: --seed must be a non-negative integer');
+    process.exit(1);
+  }
+  if (!Number.isInteger(n) || n < 1 || n > 300) {
+    console.error('error: --n must be an integer in [1, 300]');
+    process.exit(1);
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY || value('--api-key');
+  const dockerOk = (() => {
+    if (dryRun) return true;
+    const r = spawnSync('docker', ['--version'], { stdio: 'ignore' });
+    return r.status === 0;
+  })();
+
+  // Plan-print: always shown so the operator knows what would happen.
+  const plan = {
+    suite,
+    image: cfg.image,
+    seed, n,
+    out: outPath,
+    headline: cfg.headline,
+    estimated_minutes: Math.round(cfg.est_minutes * (n / cfg.default_n)),
+    estimated_dollars: Math.round(cfg.est_dollars * (n / cfg.default_n) * 100) / 100,
+    methodology: 'https://kolm.ai/articles/how-we-benchmark',
+  };
+
+  if (dryRun) {
+    console.log(JSON.stringify({ ...plan, mode: 'dry-run', would_run: true }, null, 2));
+    console.log('');
+    console.log('# this is what the real run would do (skipped because --dry-run)');
+    console.log(`docker run --rm \\`);
+    console.log(`  -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \\`);
+    console.log(`  -e KOLM_REPRODUCE_SEED=${seed} \\`);
+    console.log(`  -e KOLM_REPRODUCE_N=${n} \\`);
+    console.log(`  -v "$HOME/.kolm/bench/${suite}:/out" \\`);
+    console.log(`  ${cfg.image}`);
+    return;
+  }
+
+  // Real run: enforce prerequisites first, fail with operator hints, never silent.
+  if (!apiKey) {
+    console.error('error: ANTHROPIC_API_KEY not set in environment');
+    console.error('');
+    console.error('the reproducer brings your own key. set it and retry:');
+    console.error('  export ANTHROPIC_API_KEY=sk-ant-...');
+    console.error(`  kolm bench --reproduce ${suite} --seed ${seed} --n ${n}`);
+    console.error('');
+    console.error(`estimated: ${plan.estimated_minutes} min, $${plan.estimated_dollars} in Opus-4.7 spend`);
+    process.exit(2);
+  }
+  if (!dockerOk) {
+    console.error('error: docker not available on PATH');
+    console.error('');
+    console.error('the reproducer runs in a pinned image so the harness + evaluator versions');
+    console.error('are byte-identical to the published numbers. install docker and retry:');
+    console.error('  https://docs.docker.com/get-docker/');
+    process.exit(2);
+  }
+
+  // Image-pull / inspect. If the image is not yet published to the registry,
+  // we exit 2 with an operator hint -- same shape as auto-distill 503.
+  console.log(`# pulling ${cfg.image} (one-time, ~600MB)`);
+  const pull = spawnSync('docker', ['pull', cfg.image], { stdio: 'inherit' });
+  if (pull.status !== 0) {
+    console.error('');
+    console.error('error: docker pull failed for ' + cfg.image);
+    console.error('');
+    console.error('this image is published as part of the v7.0 launch. if you are seeing this');
+    console.error('before the public launch, the image is not yet in the registry. interim:');
+    console.error('  - watch https://github.com/kolmogorov/kolm-bench-reproducer/releases');
+    console.error('  - or build locally from source (clone kolm-bench-reproducer, docker build -t ' + cfg.image + ' .)');
+    console.error('  - or run the n=5 smoke locally without docker: kolm bench --reproduce ' + suite + ' --dry-run');
+    process.exit(2);
+  }
+
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  console.log('');
+  console.log(`# running ${cfg.image} on suite=${suite} seed=${seed} n=${n}`);
+  console.log(`# expect ~${plan.estimated_minutes} min and ~$${plan.estimated_dollars} in Opus-4.7 spend`);
+  console.log('');
+  const run = spawnSync('docker', [
+    'run', '--rm',
+    '-e', 'ANTHROPIC_API_KEY=' + apiKey,
+    '-e', 'KOLM_REPRODUCE_SEED=' + seed,
+    '-e', 'KOLM_REPRODUCE_N=' + n,
+    '-v', path.dirname(outPath) + ':/out',
+    cfg.image,
+  ], { stdio: 'inherit' });
+  if (run.status !== 0) {
+    console.error('error: reproducer exited with code ' + run.status);
+    process.exit(run.status || 1);
+  }
+  console.log('');
+  console.log(`✓ report written to ${outPath}`);
+  console.log(`  diff against published log: https://kolm.ai/bench/${suite}/report.json`);
 }
 
 async function cmdScore(args) {

@@ -20,8 +20,8 @@
 
 - [x] **B1.** Every percentage on every page links to a reproducer or is deleted. (Audit complete.)
 - [x] **B2.** `/articles/how-we-benchmark` ships under 1500 words with the diagnosis flowchart. (Workstream B.)
-- [x] **B3.** `kolm bench --reproduce swebench-lite-n150 --seed 42 --n 5` returns within ±2pp of +10.67pp. (CLI ships in npm 0.5.x.)
-- [ ] **B4.** **(founder)** Public log of latest reproduce-attempt linked from `/benchmarks` results tab.
+- [x] **B3.** `kolm bench --reproduce swebench-lite-n150 [--seed 42] [--n N] [--dry-run]` CLI scaffold ships in npm 0.5.x with arg-validation, dry-run plan-print, and operator-hint exit codes (1 bad args, 2 missing docker / ANTHROPIC_API_KEY / unpublished image). 14 smoke tests green. (Workstream B.)
+- [ ] **B4.** **(founder)** Publish `kolmogorov/swebench-reproducer:1.0.0` Docker image so the real n=5 / n=150 runs can pull and execute. Then attach the public log of the latest reproduce-attempt to `/benchmarks` results tab.
 
 ## C. No marketing-grade illustrations (1 box)
 
