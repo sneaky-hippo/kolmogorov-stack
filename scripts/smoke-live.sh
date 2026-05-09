@@ -1444,6 +1444,50 @@ check "/trust chain links to walker"        has "$TRUST" 'href="/anatomy#walker"
 check "/trust Walk the four rings link"     has "$TRUST" 'Walk the four rings interactively'
 
 echo ""
+echo "=== 49d. /security SVG architecture cleanup ==="
+SEC=$(curl -s "$URL/security")
+check "/security single svg opener"        test "$(echo "$SEC" | grep -c 'viewBox="0 0 980 460"')" -eq 1
+check "/security has </svg> close"         has "$SEC" '</svg>'
+check "/security no dup compile step 3"    test "$(echo "$SEC" | grep -c 'reserve model bridge')" -eq 0
+check "/security has step 1 verifier"      has "$SEC" '1 &middot; synthesize verifier'
+check "/security has step 2 k-sample"      has "$SEC" '2 &middot; k-sample teacher'
+check "/security has step 3 distill LoRA"  has "$SEC" '3 &middot; distill LoRA'
+check "/security has step 4 recipe pack"   has "$SEC" '4 &middot; build recipe pack'
+check "/security has step 5 package sign"  has "$SEC" '5 &middot; package &amp; sign'
+check "/security no dup retention text"    hashno "$SEC" 'retention controlled by deployment'
+check "/security has post-compile delete"  has "$SEC" 'post-compile: inputs deleted'
+check "/security no dup model bridge text" hashno "$SEC" 'model/index bridge reserved'
+check "/security has recall index tests"   has "$SEC" '+ recall index + tests'
+check "/security single recipe-mode MCP"   test "$(echo "$SEC" | grep -c 'recipe-mode &middot; MCP')" -eq 1
+check "/security single enterprise add-on" test "$(echo "$SEC" | grep -c 'enterprise add-on')" -eq 1
+check "/security single arch-cap"          test "$(echo "$SEC" | grep -c '<p class="arch-cap">')" -eq 1
+check "/security eyebrow middot fix"       has "$SEC" 'Architecture &middot; data flow'
+check "/security no eyebrow dash"          hashno "$SEC" 'Architecture - data flow'
+check "/security data-go question fix"     has "$SEC" 'where does our data go?'
+check "/security no data-go dash"          hashno "$SEC" 'where does our data go-'
+check "/security disclosure h3 question"   has "$SEC" 'Found a flaw?'
+check "/security footer middot fix"        has "$SEC" 'RS-1 &middot; RS-1-multimodal &middot; RS-1-receipts'
+check "/security no footer dash leak"      hashno "$SEC" 'RS-1 - RS-1-multimodal'
+
+echo ""
+echo "=== 49e. /device demo question-mark restoration ==="
+DEVICE=$(curl -s "$URL/device")
+check "/device meeting 3pm question"       has "$DEVICE" 'is the meeting still at 3pm?'
+check "/device invoice question"           has "$DEVICE" '\$400 invoice?'
+check "/device spanish question"           has "$DEVICE" '&iquest;C&oacute;mo est&aacute;s?\|¿Cómo estás?'
+check "/device no 3pm dash leak"           hashno "$DEVICE" 'is the meeting still at 3pm-'
+check "/device no invoice dash leak"       hashno "$DEVICE" 'invoice-">Calendar'
+
+echo ""
+echo "=== 49f. footer brand-tag separator normalization ==="
+COMPILE=$(curl -s "$URL/compile")
+PRICE2=$(curl -s "$URL/pricing")
+check "/compile footer middot RS-1"        has "$COMPILE" 'RS-1 &middot; RS-1-multimodal &middot; RS-1-receipts'
+check "/compile no footer dash leak"       hashno "$COMPILE" 'RS-1 - RS-1-multimodal'
+check "/pricing footer middot RS-1"        has "$PRICE2" 'RS-1 &middot; RS-1-multimodal &middot; RS-1-receipts'
+check "/pricing no footer dash leak"       hashno "$PRICE2" 'RS-1 - RS-1-multimodal'
+
+echo ""
 echo "================================================"
 echo " RESULTS: $PASS pass, $FAIL fail"
 if [ $FAIL -gt 0 ]; then
