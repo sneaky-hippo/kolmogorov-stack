@@ -76,14 +76,14 @@ curl -X POST https://kolmogorov-stack-production.up.railway.app/v1/signup \
 
 ## Three pillars
 
-| Pillar | What it remembers | Today |
+| Pillar | What it does | Today |
 |---|---|---|
-| **Memory** | What happened (facts, sessions, context) | shipped — `remlabs.ai` |
-| **Skills** | How to do things (deterministic functions) | this package |
-| **Specialists** | A model that's *been* the task (fine-tuned LoRA) | Day 60-120 |
+| **Skills** | Deterministic JS classifiers, microsecond runs | this package |
+| **Recipes** | Compose skills into pipelines, signed `.kolm` artifacts | shipped — `kolm.ai` |
+| **Specialists** | Distill traffic into a fine-tuned LoRA you keep forever | shipped — `/v1/specialists/auto-distill` |
 
-> Memory remembers. Skills repeat. Specialists become.
+> Show how once. Run forever.
 
 ## License
 
-MIT © [REM Labs](https://remlabs.ai)
+MIT © [Kolmogorov](https://kolm.ai)

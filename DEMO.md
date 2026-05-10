@@ -86,7 +86,7 @@ Type in the search box: `extract email addresses`. Watch `extract-emails` rank f
 
 Click into it. Show the friendly summary card: **Quality 1.00 · p50 latency 47 µs · Built by Claude**. The engineering details (vector dim, source hash, lineage) are tucked behind a `(details)` toggle — they're there if engineers want them, not in the way otherwise.
 
-Run it on `ping me at rodney@remlabs.ai or hi@slop.gg`. Returns `["rodney@remlabs.ai", "hi@slop.gg"]`.
+Run it on `ping me at hello@kolm.ai or hi@example.com`. Returns `["hello@kolm.ai", "hi@example.com"]`.
 
 ---
 
@@ -111,10 +111,10 @@ Show:
 In the playground or via curl:
 
 ```bash
-curl -X POST https://kolmogorov-stack-production.up.railway.app/v1/compose \
+curl -X POST https://kolm.ai/v1/compose \
   -H "Authorization: Bearer $KS" -H "Content-Type: application/json" -d '{
     "query": "extract things from text",
-    "input": "contact rodney@remlabs.ai or 555-123-4567 about $99 price on 2026-04-15",
+    "input": "contact hello@kolm.ai or 555-123-4567 about $99 price on 2026-04-15",
     "strategy": "attention",
     "k": 5
   }'
@@ -124,7 +124,7 @@ Returns the merged output of `extract-emails`, `extract-phones`, `extract-prices
 
 ```json
 {
-  "output": ["rodney@remlabs.ai", "$99", "2026-04-15", "555-123-4567"],
+  "output": ["hello@kolm.ai", "$99", "2026-04-15", "555-123-4567"],
   "dispatched": [4 recipes, all sub-100µs],
   "strategy": "attention"
 }
@@ -140,7 +140,7 @@ Click `/specialists` in the top nav. Pause for them to read the headline:
 
 > *"Paste examples. Get a tiny model trained for your task. Runs locally, free, forever."*
 
-> "Recipe is one pillar of three. Memory is what an AI remembers — that's REM Labs core. Skills is what it can repeat — that's Recipe. Specialists is *a model that's been the task* — same examples, but baked into a small LoRA you can run on your laptop, your edge, your phone."
+> "Recipe is one pillar of three. Skills is what an AI can repeat — that's Recipe. Specialists is *a model that's been the task* — same examples, but baked into a small LoRA you can run on your laptop, your edge, your phone. The artifact you ship is a signed `.kolm` file."
 
 > "Today you'd see Recipe ship. Day 60–120 you'll see the same examples produce a Specialist. Day 180 they compound — recipes become training data, Specialists generate new recipes, Memory routes between them."
 

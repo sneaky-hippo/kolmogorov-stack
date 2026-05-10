@@ -1,6 +1,6 @@
 # @kolmogorov/recipe-mcp
 
-> MCP server for [Recipe](https://kolmogorov-stack-production.up.railway.app) — show your AI agent how once, run forever.
+> MCP server for [Recipe](https://kolm.ai) — show your AI agent how once, run forever.
 
 Adds 13 tools to Claude Code (or any MCP client) for synthesizing, running, searching, and composing deterministic JS classifiers. Use these inside an agent loop instead of paying for repeat LLM-as-judge calls.
 
@@ -54,4 +54,4 @@ Compared to 200 LLM calls (~$0.20 + 200×600ms latency), the agent finishes in m
 
 ## License
 
-MIT © [REM Labs](https://remlabs.ai)
+MIT © [Kolmogorov](https://kolm.ai)

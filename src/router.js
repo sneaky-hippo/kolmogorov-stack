@@ -1965,6 +1965,19 @@ export function buildRouter() {
     res.json({ submission_id: sub.id, status: sub.status, message: 'submitted — public review on Day 120-180 schedule' });
   });
 
+  // Tenant audit log. Beta — opt-in via POST /v1/account/audit-log {enabled:true}.
+  // Until the durable per-tenant log lands in Wave 2, return 503 with a clear
+  // error so /audit-log.html shows the static disclosure card. Probe-safe:
+  // never returns 404 (which would 404 the whole `/v1/audit/log` path under a
+  // CDN-misconfigured deploy) — returns 503 with a structured body instead.
+  r.get('/v1/audit/log', (_req, res) => {
+    res.status(503).json({
+      error: 'audit_log_beta',
+      message: 'Per-tenant durable audit log ships in Wave 2 (Days 22-60). Opt in via POST /v1/account/audit-log {"enabled":true} once available.',
+      entries: [],
+    });
+  });
+
   r.get('/v1/public/featured', (_req, res) => {
     // Hand-pick the most useful public recipes for the home registry view.
     const featured_names = ['classify-issue-type','is-spam','extract-emails','classify-toxicity','extract-prices','classify-intent','sentiment','detect-pii','classify-language','is-question'];

@@ -1,7 +1,7 @@
 """
 Recipe — show your AI agent how once, run forever.
 
-The Skills layer of REM Labs. A thin Python client over the Recipe HTTP API.
+The Skills layer of Kolmogorov Stack. A thin Python client over the Recipe HTTP API.
 
 Quick use::
 

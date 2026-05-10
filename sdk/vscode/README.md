@@ -56,4 +56,4 @@ lunch?          → false
 
 ## License
 
-MIT © [REM Labs](https://remlabs.ai)
+MIT © [Kolmogorov](https://kolm.ai)
