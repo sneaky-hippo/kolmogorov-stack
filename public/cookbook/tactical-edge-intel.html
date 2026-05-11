@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tactical-edge intel recipe · kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that summarizes ISR feeds into single-paragraph briefs. Built for ruggedized hardware in disconnected environments.">
+<meta name="theme-color" content="#0b0d10">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Tactical-edge intel recipe">
+<meta property="og:description" content="ISR feeds → analyst-grade briefs. Local, signed, runs disconnected.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Tactical-edge intel recipe" />
+<meta name="twitter:description" content="ISR feeds → analyst-grade briefs. Local, signed, runs disconnected." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<meta property="og:url" content="https://kolm.ai/cookbook/tactical-edge-intel">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/tactical-edge-intel">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"HowTo","name":"Tactical-edge intel recipe","description":"ISR feeds → analyst-grade briefs. Local, signed, runs disconnected.","url":"https://kolm.ai/cookbook/tactical-edge-intel","totalTime":"PT5M","tool":[{"@type":"HowToTool","name":"kolm CLI"}],"step":[{"@type":"HowToStep","name":"Install","text":"npm i -g @kolmogorov/kolm"},{"@type":"HowToStep","name":"Compile","text":"kolm compile tactical-edge-intel.toml"},{"@type":"HowToStep","name":"Run","text":"kolm run tactical-edge-intel.kolm"}]}</script>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/evolve">Evolve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; tactical-edge-intel</div>
+    <span class="pill">Recipe &middot; vertical</span>
+    <h1>Disconnected ISR feeds, <span class="tone">summarized in seconds.</span></h1>
+    <p class="lede">A local <code>.kolm</code> that condenses raw ISR feed text (sigint, geoint excerpts, structured sensor logs) into a single-paragraph brief in the analyst's house style. Compiled inside the enclave on held-out analyst-graded notes; runs on a ruggedized laptop with no uplink.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-7b-instruct</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">520 (364 train / 156 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.78</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">112 MB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~50 min (in the enclave)</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">summarizer + grounded</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Analysts at the edge get raw feeds far faster than they can read them. This recipe compiles a small summarizer that produces a one-paragraph brief in the unit's house style. The grounded verifier rejects any claim that doesn't trace to a span in the input feed &mdash; the model can compress and structure but cannot invent.</p>
+      <p>The training corpus is pairs of <em>(raw feed, analyst's actual brief)</em> drawn from the unit's own archive. Held-out is a separate cohort the model never sees. Compile happens entirely inside the customer-controlled enclave; weights, gold corpus, and artifact never leave.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"text"</span>,
+  <span class="k">"length_bounds"</span>: { <span class="k">"min_words"</span>: 60, <span class="k">"max_words"</span>: 180 },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"every_claim_must_be_grounded"</span>: <span class="ok">true</span>,
+    <span class="k">"style_match_house_corpus"</span>: <span class="ok">true</span>,
+    <span class="k">"banned_phrases"</span>: <span class="k">"./speculation-bans.regex"</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile (inside the enclave)</h2>
+      <pre class="code">kolm compile <span class="k">"ISR-feed analyst brief in house style"</span> \
+  --base qwen2.5-7b-instruct \
+  --pairs ./feed-brief-gold/*.jsonl \
+  --offline-base-mirror ./base-models/ \
+  --verifier grounded-claim,house-style \
+  --k-floor 0.78 \
+  --output tactical-edge-intel.kolm
+
+<span class="ok">ok</span> wrote <span class="k">tactical-edge-intel.kolm</span>
+   k_score=0.81  signature=hmac-sha256
+   grounded-claim 100% &middot; house-style match 0.87</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.81</span>
+        <span class="k-detail">held-out 156 feeds &middot; grounded-claim 100% &middot; house-style 87% &middot; analyst-rated useful 79%</span>
+      </div>
+      <p>Analyst rating: a panel re-read 50 held-out briefs and scored them <em>useful</em> / <em>requires-rewrite</em> / <em>discard</em>. 79% useful, 21% requires-rewrite, 0% discard. No held-out brief contained an ungrounded claim.</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">Ruggedized laptop</div><div class="v">3.4<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">680<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Mac mini</div><div class="v">3.1<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">Embedded ARM</div><div class="v">8.2<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># Edge laptop — runs against incoming feed buffer:</span>
+on_feed_chunk = (chunk) =&gt; {
+  const brief = kolm.run(<span class="k">'tactical-edge-intel.kolm'</span>, chunk.text);
+  cache.append(chunk.id, brief.text);
+  audit.log({ artifact: <span class="k">'tactical-edge-intel.kolm'</span>, chunk_id: chunk.id, k_score: brief.receipt.k_score });
+};</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/embedded-sensor-classifier"><div class="h">Sensor classifier</div><div class="d">Edge sensor stream → labeled events.</div></a>
+        <a href="/cookbook/on-call-page-classifier"><div class="h">Page classifier</div><div class="d">Triage incoming pages by severity.</div></a>
+        <a href="/cookbook/incident-summarizer"><div class="h">Incident summarizer</div><div class="d">Ops postmortem → bounded summary.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

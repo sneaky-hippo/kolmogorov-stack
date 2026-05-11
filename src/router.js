@@ -2079,6 +2079,54 @@ export function buildRouter() {
     res.json({ suggestions, total: suggestions.length });
   });
 
+  // GET /v1/bridges/observations — flat list of recent captures for the /captures inbox.
+  // Filters: ?namespace=<ns> (optional), ?limit=<n> (default 50, max 200), ?include_discarded=1.
+  r.get('/v1/bridges/observations', (req, res) => {
+    const ns = req.query?.namespace ? String(req.query.namespace) : null;
+    const lim = Math.min(200, Math.max(1, parseInt(req.query?.limit, 10) || 50));
+    const includeDiscarded = req.query?.include_discarded === '1';
+    let obs = all('observations').filter(o => o.tenant === req.tenant);
+    if (ns) obs = obs.filter(o => (o.namespace || 'default') === ns);
+    if (!includeDiscarded) obs = obs.filter(o => !o.discarded);
+    obs.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    const namespaces = [...new Set(all('observations').filter(o => o.tenant === req.tenant).map(o => o.namespace || 'default'))];
+    const ready = namespaces.map(n => ({
+      namespace: n,
+      pairs: all('observations').filter(o => o.tenant === req.tenant && (o.namespace || 'default') === n && !o.discarded).length,
+    })).filter(x => x.pairs >= 1000);
+    res.json({
+      total: obs.length,
+      namespaces,
+      ready_to_distill: ready,
+      observations: obs.slice(0, lim).map(o => ({
+        id: o.id,
+        namespace: o.namespace || 'default',
+        model: o.model || '',
+        input_excerpt: String(o.prompt || o.template_preview || '').slice(0, 240),
+        output_excerpt: typeof o.response === 'string' ? o.response.slice(0, 240) : JSON.stringify(o.response || '').slice(0, 240),
+        latency_ms: o.latency_ms || (o.latency_us ? Math.round(o.latency_us / 1000) : 0),
+        created_at: o.created_at || null,
+        discarded: !!o.discarded,
+        kept: !!o.kept,
+        promoted_recipe_id: o.promoted_recipe_id || null,
+      })),
+    });
+  });
+
+  // POST /v1/bridges/observations/:id — soft-update an observation (keep/discard).
+  // Body: { discarded: true } | { kept: true } | { discarded: false }. Tenant-scoped.
+  r.post('/v1/bridges/observations/:id', (req, res) => {
+    const id = req.params.id;
+    const obs = all('observations').find(o => o.id === id && o.tenant === req.tenant);
+    if (!obs) return res.status(404).json({ error: 'observation_not_found' });
+    const patch = {};
+    if (typeof req.body?.discarded === 'boolean') patch.discarded = req.body.discarded;
+    if (typeof req.body?.kept === 'boolean') patch.kept = req.body.kept;
+    if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'no_fields_to_update' });
+    update('observations', o => o.id === id && o.tenant === req.tenant, patch);
+    res.json({ id, ...patch });
+  });
+
   // POST /v1/bridges/auto-synthesize — turn an observation cluster into a recipe.
   r.post('/v1/bridges/auto-synthesize', async (req, res) => {
     const hash = req.body?.template_hash || req.query?.template_hash;

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Captures · kolm</title>
+<meta name="description" content="Every inference your agents make, captured and triaged. Keep / discard / promote each observation. When a namespace hits 1,000 pairs, distill it into a signed .kolm artifact.">
+<meta name="theme-color" content="#0b0d10">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="kolm captures inbox">
+<meta property="og:description" content="Rent-vs-buy inbox: capture every upstream inference, triage with one click, distill into a Specialist when ready.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/captures">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/captures">
+<meta name="robots" content="noindex,follow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #faf2e1; --accent-strong: #c9c2b2;
+    --good: #7ef0d2; --warn: #ffd07a; --bad: #ff6b91;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 540; font-size: 16px; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .ghost:hover { color: var(--ink); }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 540; }
+
+  section.hero { padding: 88px 0 24px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
+  .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  h1 { margin: 22px 0 16px; font-size: clamp(36px, 5.4vw, 56px); line-height: 1.05; font-weight: 500; max-width: 22ch; }
+  h1 .tone { color: var(--good); }
+  p.lede { margin: 0 0 28px; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 64ch; }
+  p.lede b { color: var(--ink); font-weight: 540; }
+
+  h2 { margin: 48px 0 12px; font-size: 22px; font-weight: 540; }
+  p { margin: 0 0 14px; color: var(--ink-mute); font-size: 14.5px; line-height: 1.65; }
+  p code, li code, td code { font-family: var(--mono); font-size: 0.92em; color: var(--ink); background: var(--bg-card); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 16px 0 28px; }
+  @media (max-width: 720px) { .stats { grid-template-columns: 1fr; } }
+  .stat { border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; background: var(--bg-elev); }
+  .stat .k { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); }
+  .stat .v { margin-top: 4px; font-size: 28px; font-weight: 500; color: var(--ink); font-family: var(--mono); line-height: 1; }
+  .stat .v small { font-size: 13px; color: var(--ink-mute); margin-left: 8px; font-weight: 400; }
+  .stat.ready { border-color: rgba(126,240,210,0.25); }
+  .stat.ready .v { color: var(--good); }
+
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 24px; align-items: center; }
+  .toolbar .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--bg-elev); color: var(--ink-mute); cursor: pointer; }
+  .toolbar .btn:hover { color: var(--ink); }
+  .toolbar .btn.primary { background: var(--good); color: var(--bg); border-color: var(--good); font-weight: 540; }
+  .toolbar .btn.primary:hover { color: var(--bg); opacity: 0.9; }
+  .toolbar .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .toolbar select { background: var(--bg-elev); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 10px; font-family: var(--mono); font-size: 12px; }
+
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 8px 0 0; table-layout: fixed; }
+  table.tbl th, table.tbl td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+  table.tbl th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; font-weight: 540; }
+  table.tbl td { color: var(--ink-mute); word-break: break-word; }
+  table.tbl td b { color: var(--ink); font-weight: 540; }
+  table.tbl td.excerpt { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+  table.tbl td.actions { white-space: nowrap; }
+  table.tbl tr.discarded td { opacity: 0.4; text-decoration: line-through; }
+  table.tbl tr.kept td { background: rgba(126,240,210,0.04); }
+
+  .act { display: inline-flex; gap: 4px; }
+  .act button, .act a { font-family: var(--mono); font-size: 11px; padding: 4px 9px; border-radius: 5px; border: 1px solid var(--line-strong); background: var(--bg-elev); color: var(--ink-mute); cursor: pointer; line-height: 1.4; }
+  .act button:hover, .act a:hover { color: var(--ink); }
+  .act .keep:hover { color: var(--good); border-color: var(--good); }
+  .act .disc:hover { color: var(--bad); border-color: var(--bad); }
+  .act .prom:hover { color: var(--accent); border-color: var(--accent-strong); }
+
+  pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.55; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; overflow-x: auto; color: var(--ink); margin: 12px 0; white-space: pre; }
+  @media (max-width: 720px) { pre.code { white-space: pre-wrap; word-break: break-word; } }
+  pre.code .com { color: var(--ink-faint); }
+  pre.code .ok { color: var(--good); }
+  pre.code .arg { color: var(--accent-strong); }
+
+  .panel { border: 1px solid var(--line); border-radius: 10px; padding: 22px; background: var(--bg-elev); margin: 16px 0; }
+  .panel h3 { margin: 0 0 8px; font-size: 16px; font-weight: 540; color: var(--ink); }
+  .panel p { font-size: 14px; }
+
+  .empty { display: none; padding: 32px; border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--bg-elev); margin: 16px 0; text-align: center; }
+  .empty.on { display: block; }
+  .empty h3 { margin: 0 0 12px; font-size: 17px; font-weight: 540; color: var(--ink); }
+  .empty p { font-size: 14px; max-width: 60ch; margin: 0 auto 16px; }
+
+  .ns-tag { display: inline-block; font-family: var(--mono); font-size: 11px; padding: 2px 8px; border: 1px solid var(--line-strong); border-radius: 4px; color: var(--ink-mute); background: var(--bg-card); }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 80px; }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  footer.site a { color: var(--ink-mute); }
+  footer.site a:hover { color: var(--ink); }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--bg-card); border: 1px solid var(--line-strong); padding: 10px 16px; border-radius: 8px; font-family: var(--mono); font-size: 12px; color: var(--ink); display: none; z-index: 100; }
+  .toast.on { display: block; }
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Captures · kolm",
+  "description": "Per-tenant capture inbox: keep, discard, or promote each upstream inference. Distill into a signed .kolm artifact at 1,000 pairs.",
+  "url": "https://kolm.ai/captures",
+  "publisher": {"@type":"Organization","name":"Kolmogorov","url":"https://kolm.ai"}
+}
+</script>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/evolve">Evolve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap-wide">
+    <span class="pill"><span class="dot"></span>Rent &rarr; buy inbox</span>
+    <h1>Every inference, <span class="tone">triaged.</span></h1>
+    <p class="lede"><b>Point your provider client at kolm. Every call is captured, hashed, and dropped into this inbox.</b> Keep what matters, discard what's noise, promote a winner into a recipe. When a namespace hits 1,000 pairs, distill it into a signed <code>.kolm</code> Specialist that runs on your own model &mdash; no upstream tokens, no per-call latency, full receipt chain.</p>
+
+    <div id="signedout" class="panel">
+      <h3>Sign in to view your captures</h3>
+      <p>The captures inbox is gated by your API key. <a href="/signin" style="color:var(--good)">Sign in</a> or <a href="/signup" style="color:var(--good)">get an API key</a> and your live captures land here.</p>
+    </div>
+
+    <div id="livewrap" style="display:none">
+      <div class="stats">
+        <div class="stat"><div class="k">Captured</div><div class="v" id="stat-total">0</div></div>
+        <div class="stat ready"><div class="k">Ready to distill</div><div class="v" id="stat-ready">0 <small>≥1,000 pairs / namespace</small></div></div>
+        <div class="stat"><div class="k">Namespaces</div><div class="v" id="stat-ns">0</div></div>
+      </div>
+
+      <div class="toolbar">
+        <select id="ns-filter"><option value="">All namespaces</option></select>
+        <label style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);display:inline-flex;align-items:center;gap:6px"><input type="checkbox" id="show-discarded"> show discarded</label>
+        <span style="flex:1"></span>
+        <button class="btn" id="refresh" type="button">Refresh</button>
+        <button class="btn primary" id="distill" type="button" disabled>Distill ready namespaces &rarr;</button>
+      </div>
+
+      <table class="tbl" id="obs-table">
+        <thead>
+          <tr>
+            <th style="width:14%">Model / NS</th>
+            <th style="width:30%">Input</th>
+            <th style="width:30%">Output</th>
+            <th style="width:10%">Latency</th>
+            <th style="width:16%">Action</th>
+          </tr>
+        </thead>
+        <tbody id="obs-rows"></tbody>
+      </table>
+
+      <div id="empty" class="empty">
+        <h3>No captures yet</h3>
+        <p>Point your provider client at kolm. Every upstream call is hashed and lands here. Triage with one click. Below, the two paths.</p>
+        <div style="text-align:left;max-width:680px;margin:16px auto 0">
+          <p style="margin:0 0 6px;color:var(--ink);font-weight:540;font-family:var(--mono);font-size:12px">OpenAI clients</p>
+          <pre class="code"><span class="com"># Forward every chat completion through kolm. Your OpenAI key is</span>
+<span class="com"># forwarded once and dropped &mdash; never persisted.</span>
+<span class="arg">export</span> OPENAI_BASE_URL=<span class="ok">https://kolm.ai/v1/capture/openai</span></pre>
+          <p style="margin:14px 0 6px;color:var(--ink);font-weight:540;font-family:var(--mono);font-size:12px">Anthropic clients</p>
+          <pre class="code"><span class="arg">export</span> ANTHROPIC_API_URL=<span class="ok">https://kolm.ai/v1/capture/anthropic</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <h2>How the loop closes</h2>
+    <table class="tbl">
+      <thead><tr><th>Step</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td><b>1. Capture</b></td><td>Your client hits <code>kolm.ai/v1/capture/{openai,anthropic}</code>. We forward upstream, return the response, and record <code>(model, prompt_hash, output_hash, latency, ts)</code>.</td></tr>
+        <tr><td><b>2. Triage</b></td><td><b>Keep</b> &mdash; lock into the next distill batch. <b>Discard</b> &mdash; remove from training. <b>Promote</b> &mdash; deep-link into the recipe playground to lift this single observation into a reusable spec.</td></tr>
+        <tr><td><b>3. Distill</b></td><td>At 1,000 kept pairs in a namespace, the namespace flips to <i>ready</i>. One click fires <code>POST /v1/specialists/auto-distill</code>: the trainer bridge fits a LoRA, stamps a K-score, and returns a signed <code>.kolm</code> artifact.</td></tr>
+        <tr><td><b>4. Switch</b></td><td>Re-point the client at your own <code>kolm serve</code>. Per-call cost drops to electricity; the artifact ships with the receipt chain that proves how it was built.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>What we never persist</h2>
+    <p>Your upstream provider key (forwarded in <code>x-upstream-api-key</code>, dropped after the call). Cross-tenant data &mdash; the inbox is scoped to your tenant id by your API key. Raw bodies older than your retention window: hashes only, configurable per-namespace.</p>
+  </div>
+</section>
+
+<div id="toast" class="toast"></div>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>Kolmogorov &middot; The AI compiler &middot; <code style="font-family:var(--mono);color:var(--ink-mute)">kolm</code> is the binary &middot; <code style="font-family:var(--mono);color:var(--ink-mute)">.kolm</code> is the file format &middot; RS-1 is the spec, MIT-licensed.</span>
+  </div>
+  <div class="wrap-wide row" style="margin-top:14px;font-size:12.5px;gap:18px;flex-wrap:wrap;color:var(--ink-faint)">
+    <a href="/manifesto">Manifesto</a>
+    <a href="/trust">Trust</a>
+    <a href="/security">Security</a>
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/changelog">Changelog</a>
+    <a href="https://github.com/sneaky-hippo/kolmogorov-stack" rel="noopener">GitHub</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  function key() {
+    try { return (window.KS && window.KS.apiKey && window.KS.apiKey()) || localStorage.getItem('kolm.api_key') || ''; }
+    catch (_) { return ''; }
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('on');
+    setTimeout(function () { t.classList.remove('on'); }, 2400);
+  }
+
+  var apiKey = key();
+  if (!apiKey) return;
+
+  var so = document.getElementById('signedout');
+  if (so) so.style.display = 'none';
+  var lw = document.getElementById('livewrap');
+  lw.style.display = 'block';
+
+  var state = { ns: '', includeDiscarded: false, ready: [] };
+
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ authorization: 'Bearer ' + apiKey, 'content-type': 'application/json' }, opts.headers || {});
+    return fetch(path, opts).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || ('http_' + r.status)); }, function () { throw new Error('http_' + r.status); });
+      return r.json();
+    });
+  }
+
+  function load() {
+    var qs = 'limit=50';
+    if (state.ns) qs += '&namespace=' + encodeURIComponent(state.ns);
+    if (state.includeDiscarded) qs += '&include_discarded=1';
+    api('/v1/bridges/observations?' + qs).then(function (j) {
+      document.getElementById('stat-total').textContent = j.total || 0;
+      var ready = j.ready_to_distill || [];
+      state.ready = ready;
+      document.getElementById('stat-ready').innerHTML = ready.length + ' <small>' + (ready.length ? ready.map(function (x) { return esc(x.namespace); }).join(', ') : '≥1,000 pairs / namespace') + '</small>';
+      document.getElementById('stat-ns').textContent = (j.namespaces || []).length;
+      var distillBtn = document.getElementById('distill');
+      distillBtn.disabled = ready.length === 0;
+
+      var sel = document.getElementById('ns-filter');
+      var current = sel.value;
+      sel.innerHTML = '<option value="">All namespaces</option>' + (j.namespaces || []).map(function (n) {
+        return '<option value="' + esc(n) + '"' + (n === current ? ' selected' : '') + '>' + esc(n) + '</option>';
+      }).join('');
+
+      var rows = document.getElementById('obs-rows');
+      var empty = document.getElementById('empty');
+      var obs = j.observations || [];
+      if (obs.length === 0) {
+        rows.innerHTML = '';
+        empty.classList.add('on');
+      } else {
+        empty.classList.remove('on');
+        rows.innerHTML = obs.map(function (o) {
+          var cls = o.discarded ? 'discarded' : (o.kept ? 'kept' : '');
+          return '<tr class="' + cls + '" data-id="' + esc(o.id) + '">' +
+            '<td><b>' + esc(o.model || '-') + '</b><br><span class="ns-tag">' + esc(o.namespace) + '</span></td>' +
+            '<td class="excerpt">' + esc(o.input_excerpt) + '</td>' +
+            '<td class="excerpt">' + esc(o.output_excerpt) + '</td>' +
+            '<td>' + esc(o.latency_ms) + '&thinsp;ms</td>' +
+            '<td class="actions"><div class="act">' +
+              '<button class="keep" data-act="keep">keep</button>' +
+              '<button class="disc" data-act="discard">discard</button>' +
+              '<a class="prom" href="/playground?from=observation&id=' + encodeURIComponent(o.id) + '">promote</a>' +
+            '</div></td>' +
+          '</tr>';
+        }).join('');
+      }
+    }).catch(function (e) { toast('error: ' + e.message); });
+  }
+
+  document.getElementById('refresh').addEventListener('click', load);
+  document.getElementById('ns-filter').addEventListener('change', function (e) { state.ns = e.target.value; load(); });
+  document.getElementById('show-discarded').addEventListener('change', function (e) { state.includeDiscarded = e.target.checked; load(); });
+
+  document.getElementById('obs-rows').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    var tr = btn.closest('tr[data-id]');
+    if (!tr) return;
+    var id = tr.getAttribute('data-id');
+    var act = btn.getAttribute('data-act');
+    var body = act === 'keep' ? { kept: true, discarded: false } : { discarded: true, kept: false };
+    api('/v1/bridges/observations/' + encodeURIComponent(id), { method: 'POST', body: JSON.stringify(body) })
+      .then(function () { toast(act === 'keep' ? 'kept' : 'discarded'); load(); })
+      .catch(function (err) { toast('error: ' + err.message); });
+  });
+
+  document.getElementById('distill').addEventListener('click', function () {
+    var ready = state.ready;
+    if (!ready.length) return;
+    var ns = ready[0].namespace;
+    if (!confirm('Fire auto-distill for namespace "' + ns + '" (' + ready[0].pairs + ' pairs)?')) return;
+    api('/v1/specialists/auto-distill', { method: 'POST', body: JSON.stringify({ namespace: ns }) })
+      .then(function (j) { toast('distill queued: ' + (j.job_id || j.id || 'ok')); })
+      .catch(function (err) { toast('error: ' + err.message); });
+  });
+
+  load();
+})();
+</script>
+<script src="/nav.js" defer></script>
+</body>
+</html>

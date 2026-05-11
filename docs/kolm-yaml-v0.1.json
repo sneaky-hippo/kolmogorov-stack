@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kolm.ai/docs/kolm-yaml-v0.1.json",
+  "title": "kolm.yaml project file, v0.1",
+  "description": "Schema for the kolm.yaml project file. A kolm.yaml lives at the repo root and declares which .kolm artifacts belong to the project, how MCP exposes them, how the benchmark harness runs, and which compile/run hooks fire. Mirrors the role of Continue's config.yaml or Cursor's .cursorrules: one declarative file, not many imperative steps.",
+  "type": "object",
+  "required": ["kolm_yaml_version", "name", "artifacts"],
+  "additionalProperties": false,
+  "properties": {
+    "kolm_yaml_version": {
+      "type": "string",
+      "const": "0.1",
+      "description": "Schema version this kolm.yaml conforms to."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[a-z0-9][a-z0-9-_]*$",
+      "description": "Project name. Lowercase alnum + dash/underscore. Used as the namespace prefix in MCP tool names: mcp__<name>__<artifact>."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-z0-9.]+)?$",
+      "description": "Project version (semver). Independent of kolm_yaml_version."
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "One-line project description. Surfaces in MCP tool listings and SKILL.md."
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": ["path", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path (relative to kolm.yaml) of the .kolm artifact, or a directory of .kolm artifacts, or a glob (e.g. ./artifacts/*.kolm)."
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-_]*$",
+            "description": "Stable identifier used as the MCP tool name and the SKILL.md filename."
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Tool description seen by frontier agents. Frontier model picks tool by description; be specific. Defaults to the artifact's manifest.task on emit."
+          },
+          "allowed-tools": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string" },
+            "description": "MCP tool names this artifact may invoke when running as a sub-agent. Default: empty (no further tool calls). Matches Claude Code SKILL.md frontmatter."
+          },
+          "paths": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string" },
+            "description": "Glob patterns. When set, harnesses auto-attach this artifact when the user/agent is editing matching files (Cursor + Claude Code pattern)."
+          },
+          "k_min": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Minimum K-score required to expose this artifact via MCP. Reject below this floor at serve time."
+          }
+        }
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "transport": {
+          "type": "string",
+          "enum": ["stdio", "http", "sse"],
+          "default": "stdio"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Port for http/sse transports. Ignored on stdio."
+        },
+        "host": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "description": "Host for http/sse. Default 127.0.0.1; never default to 0.0.0.0."
+        }
+      }
+    },
+    "bench": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "suite": {
+          "type": "string",
+          "description": "Reproducer suite id (e.g. swebench-lite-n150). Resolved against the kolm public registry."
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Sample size to run."
+        },
+        "model": {
+          "type": "string",
+          "description": "Frontier model used for the Pass 2 / REM-injected arm (e.g. claude-opus-4-7-20251225)."
+        }
+      }
+    },
+    "hooks": {
+      "type": "object",
+      "description": "Map of event name to list of script paths (relative to kolm.yaml). Events: PreCompile, PostCompile, PreRun, PostRun, PreBench, PostBench. Each script receives a JSON event on stdin; exit code 0 = allow, 2 = block. Stdout JSON may modify the event (additionalContext, updatedInput).",
+      "additionalProperties": false,
+      "properties": {
+        "PreCompile":  { "type": "array", "items": { "type": "string" } },
+        "PostCompile": { "type": "array", "items": { "type": "string" } },
+        "PreRun":      { "type": "array", "items": { "type": "string" } },
+        "PostRun":     { "type": "array", "items": { "type": "string" } },
+        "PreBench":    { "type": "array", "items": { "type": "string" } },
+        "PostBench":   { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "skills_dir": {
+      "type": "string",
+      "default": "./.kolm/skills",
+      "description": "Where kolm compile writes SKILL.md sidecars. Convention: ./.kolm/skills emits one SKILL.md per artifact; harnesses (Claude Code, Cursor, Cline, Continue) index this directory."
+    },
+    "registry": {
+      "type": "string",
+      "format": "uri",
+      "default": "https://kolm.ai",
+      "description": "Registry base URL. Override for self-hosted or staging."
+    }
+  }
+}

@@ -20,10 +20,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import { runArtifact, inspectArtifact } from '../../src/artifact-runner.js';
+import { findProjectConfig, resolveArtifactPaths } from '../../src/project.js';
 
 const PROTOCOL_VERSION = '2024-11-05';
 
-function listArtifacts(artifactsDir) {
+function listArtifactsInDir(artifactsDir) {
   if (!fs.existsSync(artifactsDir)) return [];
   return fs.readdirSync(artifactsDir)
     .filter(f => f.endsWith('.kolm'))
@@ -31,37 +32,105 @@ function listArtifacts(artifactsDir) {
 }
 
 function safeName(filename) {
-  // tool names have to be alnum / underscore / hyphen for most MCP clients.
   return path.basename(filename, '.kolm').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
 }
 
-function listTools(artifactsDir) {
-  const out = [];
-  for (const ap of listArtifacts(artifactsDir)) {
-    let info;
-    try { info = inspectArtifact(ap); } catch { continue; }
-    out.push({
-      name: safeName(ap),
-      description: `${info.task || 'compiled kolm skill'} — k=${info.k_score?.composite ?? '?'}, recipes=${info.recipes_n}, ${info.signature_valid ? 'signed' : 'UNSIGNED'}`,
-      inputSchema: {
-        type: 'object',
-        properties: {
-          input: { description: 'whatever the recipe expects (string, number, object, array)' },
-          params: { type: 'object', description: 'optional tenant-runtime config (extra patterns, vertical-specific rules) — never re-signed into the artifact' },
-        },
-        required: ['input'],
-      },
-      _kolm: {
-        artifact_path: ap,
-        k_score: info.k_score,
-        tier: info.tier,
-        pack_present: info.pack_present,
-        index_present: info.index_present,
-        job_id: info.job_id,
-      },
+// Source = a discovery root: either the user-global artifacts dir or a
+// project-scoped one. Each source can specify a k_min floor and a project
+// name that becomes the MCP tool prefix (mcp__<project>__<artifact>).
+//
+// Discovery order:
+//   1) global ~/.kolm/artifacts (always present, no project prefix)
+//   2) any kolm.yaml at cwd: its declared artifacts[] globs + k_min
+function discoverSources(ctx) {
+  const sources = [];
+  if (ctx.artifactsDir) {
+    sources.push({
+      dir: ctx.artifactsDir,
+      files: listArtifactsInDir(ctx.artifactsDir),
+      project: null,
+      k_min: 0,
+      meta: {},
     });
   }
+  const proj = findProjectConfig(ctx.projectCwd || process.cwd());
+  if (proj && proj.config) {
+    const cfg = proj.config;
+    const seen = new Set();
+    const items = cfg.artifacts && cfg.artifacts.length ? cfg.artifacts : [
+      { path: './.kolm/artifacts/*.kolm', name: cfg.name, description: cfg.description, k_min: cfg.k_min },
+    ];
+    for (const entry of items) {
+      if (!entry || !entry.path) continue;
+      const files = resolveArtifactPaths(entry.path, proj.root);
+      for (const f of files) {
+        if (seen.has(f)) continue;
+        seen.add(f);
+      }
+      sources.push({
+        dir: path.dirname(path.resolve(proj.root, entry.path.replace(/\*.*$/, ''))) || proj.root,
+        files: [...seen].filter(f => files.includes(f)),
+        project: cfg.name,
+        k_min: Math.max(cfg.k_min || 0, entry.k_min || 0),
+        meta: {
+          description: entry.description || cfg.description || '',
+          paths: entry.paths || [],
+          allowed_tools: entry.allowed_tools || [],
+        },
+      });
+    }
+  }
+  return sources;
+}
+
+function listTools(ctx) {
+  const sources = discoverSources(ctx);
+  const out = [];
+  const seen = new Set();
+  for (const src of sources) {
+    for (const ap of src.files) {
+      if (seen.has(ap)) continue;
+      seen.add(ap);
+      let info;
+      try { info = inspectArtifact(ap); } catch { continue; }
+      const k = info.k_score?.composite;
+      if (src.k_min > 0 && typeof k === 'number' && k < src.k_min) continue;
+      const baseName = safeName(ap);
+      const toolName = src.project ? `mcp__${src.project}__${baseName}` : baseName;
+      const desc = src.meta.description
+        ? `${src.meta.description} — k=${k ?? '?'}, ${info.signature_valid ? 'signed' : 'UNSIGNED'}`
+        : `${info.task || 'compiled kolm skill'} — k=${k ?? '?'}, recipes=${info.recipes_n}, ${info.signature_valid ? 'signed' : 'UNSIGNED'}`;
+      out.push({
+        name: toolName,
+        description: desc,
+        inputSchema: {
+          type: 'object',
+          properties: {
+            input: { description: 'whatever the recipe expects (string, number, object, array)' },
+            params: { type: 'object', description: 'optional tenant-runtime config (extra patterns, vertical-specific rules) — never re-signed into the artifact' },
+          },
+          required: ['input'],
+        },
+        _kolm: {
+          artifact_path: ap,
+          k_score: info.k_score,
+          tier: info.tier,
+          pack_present: info.pack_present,
+          index_present: info.index_present,
+          job_id: info.job_id,
+          project: src.project,
+          paths: src.meta.paths,
+        },
+      });
+    }
+  }
   return out;
+}
+
+function findArtifactByToolName(ctx, name) {
+  const tools = listTools(ctx);
+  const hit = tools.find(t => t.name === name);
+  return hit ? hit._kolm.artifact_path : null;
 }
 
 async function handleRpc(req, ctx) {
@@ -78,7 +147,7 @@ async function handleRpc(req, ctx) {
       });
 
     case 'tools/list': {
-      const tools = listTools(ctx.artifactsDir).map(t => {
+      const tools = listTools(ctx).map(t => {
         // Strip _kolm metadata before sending to the wire — MCP clients
         // ignore unknown keys but the spec is cleaner without them.
         const { _kolm, ...wire } = t;
@@ -90,7 +159,7 @@ async function handleRpc(req, ctx) {
     case 'tools/call': {
       const { name, arguments: args } = req.params || {};
       if (!name) return fail(-32602, 'name required');
-      const ap = listArtifacts(ctx.artifactsDir).find(p => safeName(p) === name);
+      const ap = findArtifactByToolName(ctx, name);
       if (!ap) return fail(-32602, 'no such tool: ' + name);
       try {
         const r = await runArtifact(ap, args?.input, { params: args?.params });
@@ -123,9 +192,16 @@ async function handleRpc(req, ctx) {
 
 function printClientConfig(ctx) {
   const { artifactsDir, http: isHttp, port } = ctx;
-  const tools = listTools(artifactsDir);
+  const proj = findProjectConfig(ctx.projectCwd || process.cwd());
+  const tools = listTools(ctx);
   console.error(`\n┌─ kolm MCP server ─────────────────────────────────────────`);
-  console.error(`│  artifacts: ${artifactsDir}`);
+  console.error(`│  global:    ${artifactsDir}`);
+  if (proj) {
+    console.error(`│  project:   ${proj.config.name}  (${path.relative(process.cwd(), proj.path)})`);
+    if ((proj.config.k_min || 0) > 0) {
+      console.error(`│  k_min:     ${proj.config.k_min}  (refusing artifacts below this score)`);
+    }
+  }
   console.error(`│  tools:     ${tools.length}`);
   for (const t of tools.slice(0, 8)) {
     console.error(`│    • ${t.name} — ${t.description.slice(0, 60)}`);
@@ -177,7 +253,7 @@ function startHttp(ctx) {
   const srv = http.createServer(async (req, res) => {
     if (req.method === 'GET' && req.url === '/health') {
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ ok: true, tools: listTools(ctx.artifactsDir).length }));
+      res.end(JSON.stringify({ ok: true, tools: listTools(ctx).length }));
       return;
     }
     if (req.method !== 'POST' || req.url !== '/mcp') {
@@ -201,8 +277,8 @@ function startHttp(ctx) {
   });
 }
 
-export async function startMcpServer({ artifactsDir, http: useHttp = false, port = 8765 }) {
-  const ctx = { artifactsDir, http: useHttp, port };
+export async function startMcpServer({ artifactsDir, http: useHttp = false, port = 8765, projectCwd = null }) {
+  const ctx = { artifactsDir, http: useHttp, port, projectCwd: projectCwd || process.cwd() };
   if (useHttp) startHttp(ctx);
   else { printClientConfig(ctx); startStdio(ctx); }
 }

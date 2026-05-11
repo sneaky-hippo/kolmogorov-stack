@@ -1,21 +1,50 @@
 #!/usr/bin/env node
 // kolm - the private AI compiler.
 //
-// One CLI. Eight verbs. Compiles, runs, evals, scores, and serves
-// .kolm artifacts so frontier agents quietly call them via MCP.
+// One CLI. Verb-noun grammar. Compiles, runs, evals, scores, serves, evolves
+// .kolm artifacts so frontier agents quietly call them via MCP and so local
+// adapters get better every time they run.
 //
+// AUTHOR + SHIP
+//   kolm init                           scaffold kolm.yaml + .kolm/ at cwd
 //   kolm login                          auth -> ~/.kolm/config.json
-//   kolm compile "<task>" [--data dir]  cloud compile -> download .kolm
-//   kolm run <art.kolm> '<input-json>'  local artifact runner
-//   kolm eval <art.kolm>                re-run embedded evals, recompute K-score
-//   kolm benchmark <art.kolm>           emit reproducible artifact benchmark JSON
-//   kolm score <art.kolm>               show K-score
+//   kolm new <name> [--from tpl]        scaffold a spec.json
+//   kolm compile "<task>" | --spec      cloud OR offline build -> .kolm
+//
+// VERIFY + RUN
 //   kolm inspect <art.kolm>             manifest + recipes + signature
-//   kolm serve [--mcp] [--http]         expose ~/.kolm/artifacts/* as MCP tools
-//   kolm publish <art.kolm>             public gallery stub
+//   kolm run <art.kolm> '<input>'       execute against an input
+//   kolm eval <art.kolm>                re-run evals, recompute K-score
+//   kolm score <art.kolm>               print K-score only
+//   kolm bench <art.kolm>               reproducible benchmark JSON
+//
+// SERVE + WIRE
+//   kolm serve [--mcp] [--http]         expose ~/.kolm/artifacts as MCP tools
+//   kolm install <harness> [--apply]    wire kolm into Claude Code/Cursor/Continue/Cline
+//   kolm publish <art.kolm>             push to public gallery (Sprint 4)
+//
+// EVOLVE (skeleton LoRA -> living model)
+//   kolm tune init                      create skeleton adapter (PEFT format)
+//   kolm tune capture-on                start collecting (input,output) signals
+//   kolm tune step [--airgap]           run one SFT epoch on captures
+//   kolm tune eval [--rev vN]           score the new revision
+//   kolm tune promote --rev vN          K-score gated; flip HEAD
+//   kolm tune rollback                  restore prior head
+//   kolm tune watch                     daemon: auto-step + auto-promote
+//
+// LOOKUP (airgapped local RAG)
+//   kolm rag index <dir> [--name n]     build BM25 index over local files
+//   kolm rag query <name> "<question>"  top-k passages (no network)
+//   kolm rag attach <art> --index n     wire rag into a recipe's sandbox
+//
+// OBSERVE + DEBUG
+//   kolm capture/labels/distill         (data-loop verbs)
+//   kolm doctor                         sanity-check env
+//   kolm logs [--since 24h]             tail ~/.kolm/logs/runs.jsonl
 //
 // The whole point: humans run `kolm compile`; frontier models discover the
-// result via `kolm serve --mcp` and call it without being asked.
+// result via `kolm serve --mcp` and call it without being asked; the local
+// model evolves on every run it learns from.
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -100,6 +129,7 @@ USAGE
   kolm <command> --help            per-command help
 
 COMMANDS
+  init [--name <slug>]             scaffold kolm.yaml + .kolm/ at cwd (project bootstrap)
   login                            authenticate to a kolm cloud
   new <name> [--from <template>]   scaffold a spec.json you can compile
   compile "<task>" [opts]          cloud-compile a task into a .kolm artifact
@@ -115,6 +145,11 @@ COMMANDS
   capture status [--namespace <n>] pairs captured / pairs until distill
   labels [--namespace <n>] [--out] download the captured corpus as JSONL
   distill --namespace <n>          auto-distill the namespace into a local LoRA
+  install <harness> [--apply]      wire kolm MCP into Claude Code / Cursor / Continue / Cline
+  tune <sub>                       evolve a local adapter (init|capture-on|step|eval|promote|watch)
+  rag <sub>                        airgapped local lookup (index|query|attach|list)
+  doctor                           sanity-check env (config, cloud, docker, project)
+  logs [--limit n] [--artifact x]  tail local run history (~/.kolm/logs/runs.jsonl)
   config [base|api_key] [value]    inspect or set config
   version                          print version (CLI + server contract)
 
@@ -122,6 +157,25 @@ ENVIRONMENT
   KOLM_BASE        cloud endpoint (default: https://kolm.ai)
   KOLM_API_KEY     bearer token (overrides ~/.kolm/config.json)
   KOLM_DEBUG       set any non-empty to print stack traces on errors
+`,
+  init: `kolm init - scaffold a kolm.yaml at the current directory.
+
+USAGE
+  kolm init [--name <slug>] [--force]
+
+Writes:
+  ./kolm.yaml                        project manifest (artifacts, mcp, bench, hooks, skills_dir)
+  ./.kolm/                           local working dir (compiled artifacts, skills, receipts)
+  ./.gitignore                       appends .kolm/ if a gitignore is present or this is a git repo
+
+The project name defaults to a slugified version of the cwd folder name.
+Refuses to overwrite an existing kolm.yaml unless --force is passed.
+
+Once you have a kolm.yaml, frontier-agent harnesses (Claude Code, Cursor, Cline,
+Continue) can auto-attach the project's .kolm artifacts via 'kolm serve --mcp'.
+
+SCHEMA
+  https://kolm.ai/docs/kolm-yaml-v0.1.json
 `,
   login: `kolm login - paste your API key from the cloud dashboard.
 
@@ -146,6 +200,13 @@ OPTIONS (cloud)
 OPTIONS (spec)
   --spec <file|->              JSON spec describing recipes + evals + optional pack/index
   --out <file.kolm|dir>        output path (.kolm) or directory; default ~/.kolm/artifacts
+
+SKILL.md sidecar
+  By default, every successful compile also emits a SKILL.md next to the artifact
+  (or under skills_dir if a kolm.yaml is found in a parent directory). The
+  sidecar uses Claude Code's frontmatter format (name / description / allowed-tools
+  / disable-model-invocation) so Claude Code, Cursor, Cline and Continue can
+  index the skill without further config. Pass --no-skill to suppress.
 
 SPEC SHAPE (offline path — any human or AI agent can author this)
   {
@@ -332,6 +393,110 @@ USAGE
 
 USAGE
   kolm version
+`,
+  install: `kolm install - wire the kolm MCP server into a frontier-agent harness.
+
+USAGE
+  kolm install <claude-code|cursor|continue|cline> [--apply]
+
+By default the snippet is only printed. Pass --apply to merge it into the
+harness's config file. The snippet runs \`kolm serve --mcp\` from the project
+root, so artifacts declared under kolm.yaml's artifacts[] are auto-served.
+
+HARNESSES
+  claude-code    merges into ~/.claude/settings.json (mcpServers map)
+  cursor         writes ./.cursor/mcp.json
+  continue       appends to ~/.continue/config.yaml
+  cline          writes ./.clinerules/kolm.md (instructional rule)
+
+EXAMPLES
+  kolm install claude-code               # preview
+  kolm install claude-code --apply       # write
+  kolm install cursor --apply
+`,
+  doctor: `kolm doctor - sanity-check the environment.
+
+USAGE
+  kolm doctor
+
+CHECKS
+  config file, api key, cloud reachability, receipt secret, node >= 18,
+  docker (optional, for kolm bench --reproduce), ANTHROPIC_API_KEY (optional),
+  project config (kolm.yaml), project + global artifact counts.
+
+EXIT CODES
+  0    no blockers (warnings allowed)
+  1    one or more required checks failed
+`,
+  logs: `kolm logs - tail the local run-history log.
+
+USAGE
+  kolm logs [--limit n] [--artifact <name|path>] [--since 7d|24h|10m] [--json]
+
+Each row records: timestamp, command (run|bench|mcp), artifact, recipe, latency,
+K-score composite, success. The log is append-only at ~/.kolm/logs/runs.jsonl;
+no cloud egress, no PII in the body.
+
+EXAMPLES
+  kolm logs --limit 20
+  kolm logs --artifact redactor.kolm --since 24h
+  kolm logs --json | jq '.[] | select(.k_composite < 0.85)'
+`,
+
+  tune: `kolm tune - evolve an artifact's local adapter from a skeleton LoRA into a living model.
+
+USAGE
+  kolm tune init       --artifact <art.kolm> --base <model_path_or_id> [--rank 8] [--alpha 16]
+  kolm tune capture-on --artifact <art.kolm>
+  kolm tune capture-off --artifact <art.kolm>
+  kolm tune step       --artifact <art.kolm> [--epochs 1] [--airgap] [--batch-size 4] [--lr 2e-4]
+  kolm tune eval       --artifact <art.kolm> [--rev vN]
+  kolm tune promote    --artifact <art.kolm> --rev vN [--force]
+  kolm tune rollback   --artifact <art.kolm>
+  kolm tune watch      --artifact <art.kolm> [--interval 30000]
+  kolm tune status     --artifact <art.kolm>
+
+PIPELINE
+  init       -> v0 skeleton (PEFT config, zero weights). Required first step.
+  capture-on -> every \`kolm run\` writes (input, output) to captures.jsonl.
+  step       -> SFT on captures (Python: torch + peft + transformers). Writes vN+1.
+  eval       -> recompute K-score for the candidate.
+  promote    -> if K-score(vN) ≥ gate (default 0.85) AND ≥ current head, flip HEAD.
+  rollback   -> restore the prior HEAD revision from head.prev.
+  watch      -> daemon: when captures grow past threshold, auto-step → eval → promote.
+
+AIRGAP
+  --airgap sets TRANSFORMERS_OFFLINE=1, HF_DATASETS_OFFLINE=1, HF_HUB_OFFLINE=1
+  and refuses any base_model that is not a local path. Use after you've pre-staged
+  the weights on the box.
+
+DEPENDENCIES (only for \`tune step\`, not for the rest)
+  pip install 'torch>=2.2' 'transformers>=4.42' 'peft>=0.11' 'datasets>=2.18' 'accelerate>=0.30' 'trl>=0.9'
+`,
+
+  rag: `kolm rag - airgapped local retrieval (BM25, no embedder, no network).
+
+USAGE
+  kolm rag index <dir> [--name <slug>] [--ext txt,md,json] [--max-bytes 4194304]
+  kolm rag query <name> "<question>" [--top-k 5] [--json]
+  kolm rag attach <art.kolm> --index <name>
+  kolm rag list
+
+PURPOSE
+  Make local knowledge queryable from inside a kolm recipe sandbox without
+  any network access. The runtime exposes \`lib.rag.query(q, k)\` to recipes
+  that have been attached.
+
+EXAMPLES
+  kolm rag index ./docs --name internal-docs
+  kolm rag query internal-docs "how does the K-score gate work" --top-k 3
+  kolm rag attach ./artifacts/help-bot.kolm --index internal-docs
+
+  # inside a recipe:
+  #   function generate(input, lib) {
+  #     var hits = lib.rag ? lib.rag.query(input.q, 3).matches : [];
+  #     ...
+  #   }
 `,
 };
 
@@ -558,6 +723,208 @@ function slugify(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'artifact';
 }
 
+// Pretty-print hook results to stderr (quiet by default; verbose with KOLM_DEBUG).
+// Each line shows: event, exit code, and either a short stdout preview or the
+// stderr tail. Hooks are opt-in, so this is silent for projects without them.
+function printHookResult(r) {
+  if (!r || !r.results || r.results.length === 0) return;
+  for (const h of r.results) {
+    const tag = h.exitCode === 0 ? 'hook' : (h.exitCode === 2 ? 'hook BLOCK' : 'hook WARN');
+    const tail = (h.stderr || h.stdout || '').trim().split(/\r?\n/).pop() || '';
+    process.stderr.write(`${tag} [exit=${h.exitCode}] ${h.command}${tail ? '  | ' + tail.slice(0, 200) : ''}\n`);
+  }
+}
+
+// Walk up from startDir looking for a kolm.yaml. Returns { root, name, skills_dir }
+// or null. Hand-parses two fields so we don't need a yaml dep.
+function findProjectKolmYaml(startDir) {
+  let dir = path.resolve(startDir);
+  for (let depth = 0; depth < 12; depth++) {
+    const p = path.join(dir, 'kolm.yaml');
+    if (fs.existsSync(p)) {
+      try {
+        const text = fs.readFileSync(p, 'utf8');
+        const nameMatch = text.match(/^name:\s*(\S+)/m);
+        const skillsMatch = text.match(/^skills_dir:\s*(\S+)/m);
+        return {
+          root: dir,
+          name: nameMatch ? nameMatch[1].replace(/^["']|["']$/g, '') : path.basename(dir),
+          skills_dir: skillsMatch ? skillsMatch[1].replace(/^["']|["']$/g, '') : './.kolm/skills',
+        };
+      } catch { return null; }
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
+// SKILL.md sidecar for an emitted .kolm artifact. Mirrors Claude Code's
+// SKILL.md frontmatter (name, description, allowed-tools, disable-model-invocation)
+// so harnesses (Claude Code, Cursor, Cline, Continue) can auto-index the skill.
+// Writes to <projectRoot>/<skills_dir>/<name>.md when a kolm.yaml is present,
+// else next to the artifact.
+function writeSkillSidecar({ artifactPath, description, kScore }) {
+  const artifactName = path.basename(artifactPath, '.kolm');
+  const proj = findProjectKolmYaml(path.dirname(artifactPath));
+  let skillsDir;
+  let mcpToolName;
+  if (proj) {
+    const sd = proj.skills_dir.replace(/^\.\//, '');
+    skillsDir = path.resolve(proj.root, sd);
+    mcpToolName = `mcp__${proj.name}__${artifactName}`;
+  } else {
+    skillsDir = path.dirname(artifactPath);
+    mcpToolName = `mcp__kolm__${artifactName}`;
+  }
+  fs.mkdirSync(skillsDir, { recursive: true });
+  const outPath = path.join(skillsDir, `${artifactName}.md`);
+  const desc = String(description || `Artifact ${artifactName}.`).replace(/\n+/g, ' ').slice(0, 500);
+  const kLine = (kScore && typeof kScore.composite === 'number')
+    ? `K-score: ${kScore.composite.toFixed(3)} (composite). `
+    : '';
+  const body = [
+    '---',
+    `name: ${artifactName}`,
+    `description: ${desc}`,
+    `allowed-tools: []`,
+    `disable-model-invocation: false`,
+    '---',
+    '',
+    `# ${artifactName}`,
+    '',
+    desc,
+    '',
+    '## How to invoke',
+    '',
+    `Frontier agents call this skill via MCP after \`kolm serve --mcp\`:`,
+    '',
+    `- Tool name: \`${mcpToolName}\``,
+    `- Backing artifact: \`${path.relative(proj ? proj.root : path.dirname(artifactPath), artifactPath).replace(/\\/g, '/')}\``,
+    '- Transport: stdio (zero-port; no network exposure)',
+    '',
+    '## Guarantees',
+    '',
+    `${kLine}Runtime egress is patched at the process boundary — the artifact cannot reach the network during execution. The .kolm bundle is signed; signatures are verified before each call.`,
+    '',
+  ].join('\n');
+  fs.writeFileSync(outPath, body);
+  return outPath;
+}
+
+// kolm.yaml writer. Hand-rolls a minimal YAML so we don't pull a yaml dep
+// for one file. The schema lives at /docs/kolm-yaml-v0.1.json; this emitter
+// must round-trip against it. If you change the shape, update both.
+function emitKolmYaml({ name, description, version }) {
+  const safeDesc = (description || '').replace(/"/g, '\\"');
+  return [
+    `kolm_yaml_version: "0.1"`,
+    `name: ${name}`,
+    `version: ${version}`,
+    `description: "${safeDesc}"`,
+    ``,
+    `# .kolm artifacts this project owns. Each becomes one MCP tool.`,
+    `# The name field becomes the MCP tool name (mcp__${name}__<artifact-name>).`,
+    `# Use a glob for path to pick up everything under a directory.`,
+    `artifacts:`,
+    `  - path: ./.kolm/artifacts/*.kolm`,
+    `    name: ${name}`,
+    `    description: "Auto-discovered .kolm artifacts under ./.kolm/artifacts/"`,
+    `    # paths: ["src/**/*.ts"]       # auto-attach when editing these files`,
+    `    # allowed-tools: []             # MCP tools the sub-agent may call (default none)`,
+    `    # k_min: 0.85                   # refuse to serve below this K-score`,
+    ``,
+    `# MCP transport for 'kolm serve --mcp'. Default stdio (zero-port).`,
+    `mcp:`,
+    `  transport: stdio`,
+    `  host: 127.0.0.1`,
+    `  # port: 7800                       # only used by http / sse transports`,
+    ``,
+    `# Where 'kolm compile' writes SKILL.md sidecars. Indexed by Claude Code,`,
+    `# Cursor (.cursor/rules), Cline (.clinerules) and Continue (~/.continue).`,
+    `skills_dir: ./.kolm/skills`,
+    ``,
+    `# Optional: reproducer benchmark wiring for 'kolm bench --reproduce'.`,
+    `# bench:`,
+    `#   suite: swebench-lite-n150`,
+    `#   n: 150`,
+    `#   model: claude-opus-4-7-20251225`,
+    ``,
+    `# Optional: compile/run/bench hooks. Each script reads a JSON event on stdin`,
+    `# and exits 0 to allow or 2 to block. See /docs/HOOKS.md.`,
+    `# hooks:`,
+    `#   PreCompile:  ["./scripts/lint-spec.sh"]`,
+    `#   PostCompile: ["./scripts/emit-skill.sh"]`,
+    `#   PreRun:      []`,
+    `#   PostRun:     []`,
+    `#   PreBench:    []`,
+    `#   PostBench:   []`,
+    ``,
+  ].join('\n');
+}
+
+async function cmdInit(args) {
+  if (maybeHelp('init', args)) return;
+  const cwd = process.cwd();
+  const yamlPath = path.join(cwd, 'kolm.yaml');
+  const force = args.includes('--force');
+  if (fs.existsSync(yamlPath) && !force) {
+    console.error(`error: ${yamlPath} already exists. pass --force to overwrite.`);
+    process.exit(1);
+  }
+  const nameIdx = args.indexOf('--name');
+  const cwdSlug = slugify(path.basename(cwd));
+  const projectName = nameIdx >= 0 ? slugify(args[nameIdx + 1] || '') : cwdSlug;
+  if (!/^[a-z0-9][a-z0-9-_]*$/.test(projectName)) {
+    console.error(`error: name "${projectName}" must match ^[a-z0-9][a-z0-9-_]*$ (lowercase, no leading dash).`);
+    process.exit(1);
+  }
+  const descIdx = args.indexOf('--description');
+  const description = descIdx >= 0 ? (args[descIdx + 1] || '') : `Private AI compiler project: ${projectName}.`;
+
+  // Write kolm.yaml
+  const yaml = emitKolmYaml({ name: projectName, description, version: '0.1.0' });
+  fs.writeFileSync(yamlPath, yaml);
+  console.log(`wrote: ${path.relative(cwd, yamlPath) || 'kolm.yaml'}`);
+
+  // Local .kolm working dir (artifacts + skills).
+  const dotKolm = path.join(cwd, '.kolm');
+  const dotKolmArtifacts = path.join(dotKolm, 'artifacts');
+  const dotKolmSkills = path.join(dotKolm, 'skills');
+  fs.mkdirSync(dotKolmArtifacts, { recursive: true });
+  fs.mkdirSync(dotKolmSkills, { recursive: true });
+  console.log(`mkdir: .kolm/artifacts/  .kolm/skills/`);
+
+  // .gitignore — append if either a .gitignore or a .git/ exists. Don't create
+  // a gitignore in non-git directories; that would be presumptuous.
+  const gitIgnorePath = path.join(cwd, '.gitignore');
+  const isGit = fs.existsSync(path.join(cwd, '.git'));
+  const hasGitIgnore = fs.existsSync(gitIgnorePath);
+  if (hasGitIgnore || isGit) {
+    const existing = hasGitIgnore ? fs.readFileSync(gitIgnorePath, 'utf8') : '';
+    const lines = existing.split(/\r?\n/);
+    const have = (s) => lines.some(l => l.trim() === s);
+    const toAdd = [];
+    if (!have('.kolm/')) toAdd.push('.kolm/');
+    // Don't ignore kolm.yaml — it's project source, belongs in VCS.
+    if (toAdd.length) {
+      const sep = existing && !existing.endsWith('\n') ? '\n' : '';
+      const block = `${sep}# kolm local artifacts + skills (regenerated from kolm.yaml)\n${toAdd.join('\n')}\n`;
+      fs.appendFileSync(gitIgnorePath, block);
+      console.log(`updated: .gitignore (+ ${toAdd.join(', ')})`);
+    }
+  }
+
+  console.log('');
+  console.log('next:');
+  console.log('  kolm new my-skill --from classifier      # scaffold a spec');
+  console.log('  kolm compile --spec my-skill.spec.json   # build a .kolm into .kolm/artifacts/');
+  console.log('  kolm serve --mcp                         # expose project artifacts via MCP');
+  console.log('');
+  console.log('schema: https://kolm.ai/docs/kolm-yaml-v0.1.json');
+}
+
 async function cmdNew(args) {
   if (maybeHelp('new', args)) return;
   const positional = args.find(a => !a.startsWith('--'));
@@ -641,6 +1008,9 @@ async function cmdCompile(args) {
     const outDirL = outArg && outArg.endsWith('.kolm') ? path.dirname(outArg) : (outArg || ARTIFACTS_DIR);
     const outPath = outArg && outArg.endsWith('.kolm') ? path.resolve(outArg) : null;
     fs.mkdirSync(outDirL, { recursive: true });
+    const { dispatch } = await import('../src/hooks.js');
+    const preOk = await dispatch('PreCompile', { command: 'compile', cwd: process.cwd(), spec_job_id: spec.job_id, spec_task: spec.task }, { onResult: printHookResult });
+    if (!preOk) { console.error('PreCompile hook blocked compile (exit 2)'); process.exit(2); }
     const { compileSpec } = await import('../src/spec-compile.js');
     try {
       const r = await compileSpec(spec, { outDir: outDirL, outPath });
@@ -648,6 +1018,19 @@ async function cmdCompile(args) {
       console.log(`bytes: ${r.bytes}`);
       console.log(`sha256: ${r.sha256}`);
       if (r.k_score) console.log(`k_score: ${r.k_score.composite}`);
+      if (!args.includes('--no-skill')) {
+        try {
+          const skillPath = writeSkillSidecar({
+            artifactPath: r.outPath,
+            description: spec.task || `Spec-compiled artifact ${path.basename(r.outPath, '.kolm')}.`,
+            kScore: r.k_score,
+          });
+          console.log(`skill: ${skillPath}`);
+        } catch (e) {
+          if (process.env.KOLM_DEBUG) console.error('skill emit failed:', e.message);
+        }
+      }
+      await dispatch('PostCompile', { command: 'compile', cwd: process.cwd(), artifact: r.outPath, sha256: r.sha256, bytes: r.bytes, k_score: r.k_score }, { onResult: printHookResult });
       console.log(`\ntry it:  kolm run ${path.basename(r.outPath)} '<input-json>'`);
       console.log(`serve:   kolm serve --mcp     # frontier agents discover it`);
       return;
@@ -662,6 +1045,10 @@ async function cmdCompile(args) {
   // ---- Cloud-compile path (existing): synthesize from task + corpus + examples.
   const c = loadConfig();
   if (!c.api_key) { console.error('not logged in. run: kolm login\n(or use --spec <file.json> for offline spec-driven compile)'); process.exit(1); }
+  const { dispatch: dispatchCloud } = await import('../src/hooks.js');
+  const preCloudTask = args.find(a => !a.startsWith('--'));
+  const preCloudOk = await dispatchCloud('PreCompile', { command: 'compile', cwd: process.cwd(), task: preCloudTask, cloud: true }, { onResult: printHookResult });
+  if (!preCloudOk) { console.error('PreCompile hook blocked compile (exit 2)'); process.exit(2); }
 
   const task = args.find(a => !a.startsWith('--'));
   const dataIdx = args.indexOf('--data');
@@ -739,6 +1126,19 @@ async function cmdCompile(args) {
   console.log(`wrote ${outPath} (${fmtBytes(buf.length)})`);
   console.log('K-score:');
   console.log(fmtKScore(state.k_score));
+  if (!args.includes('--no-skill')) {
+    try {
+      const skillPath = writeSkillSidecar({
+        artifactPath: outPath,
+        description: task,
+        kScore: state.k_score,
+      });
+      console.log(`skill: ${skillPath}`);
+    } catch (e) {
+      if (process.env.KOLM_DEBUG) console.error('skill emit failed:', e.message);
+    }
+  }
+  await dispatchCloud('PostCompile', { command: 'compile', cwd: process.cwd(), artifact: outPath, k_score: state.k_score, bytes: buf.length, cloud: true }, { onResult: printHookResult });
   console.log(`\nrun:    kolm run ${path.basename(outPath)} '<input-json>'`);
   console.log(`serve:  kolm serve --mcp     # frontier agents will see this skill`);
 }
@@ -787,12 +1187,22 @@ async function cmdRun(args) {
     try { params = JSON.parse(raw); }
     catch (e) { console.error('error: --params must be JSON or @file.json:', e.message); process.exit(2); }
   }
+  const { dispatch: dispatchRun } = await import('../src/hooks.js');
+  const preRunOk = await dispatchRun('PreRun', { command: 'run', cwd: process.cwd(), artifact: ap, input }, { onResult: printHookResult });
+  if (!preRunOk) { console.error('PreRun hook blocked run (exit 2)'); process.exit(2); }
   await withRunner(async ({ runArtifact }) => {
     try {
       const r = await runArtifact(ap, input, { params });
       console.log(JSON.stringify({ output: r.output, recipe: r.recipe_name || r.recipe_id, latency_us: r.latency_us, k_score: r.k_score, receipt: r.receipt, audit: r.audit }, null, 2));
+      appendRunLog({ command: 'run', artifact: ap, recipe_id: r.recipe_id, recipe_name: r.recipe_name, latency_us: r.latency_us, k_composite: r.k_score?.composite, ok: r.audit?.ok !== false });
+      try {
+        const { appendCapture } = await import('../src/tune.js');
+        appendCapture(ap, { input, output: r.output, recipe: r.recipe_name || r.recipe_id, latency_us: r.latency_us });
+      } catch {}
+      await dispatchRun('PostRun', { command: 'run', cwd: process.cwd(), artifact: ap, latency_us: r.latency_us, k_score: r.k_score, recipe: r.recipe_name || r.recipe_id }, { onResult: printHookResult });
     } catch (e) {
       const code = e.code || 'KOLM_E_RUN_FAILED';
+      appendRunLog({ command: 'run', artifact: ap, ok: false, error: e.message, error_code: code });
       console.error(JSON.stringify({ error: e.message, code, tried: e.tried || null }, null, 2));
       process.exit(3);
     }
@@ -831,6 +1241,9 @@ async function cmdBenchmark(args) {
     catch { input = inputRaw; }
   }
 
+  const { dispatch: dispatchBench } = await import('../src/hooks.js');
+  const preBenchOk = await dispatchBench('PreBench', { command: 'bench', cwd: process.cwd(), artifact: ap, runs: Number(value('--runs') || 0) || undefined }, { onResult: printHookResult });
+  if (!preBenchOk) { console.error('PreBench hook blocked bench (exit 2)'); process.exit(2); }
   await withBenchmark(async ({ benchmarkArtifact }) => {
     const report = await benchmarkArtifact(ap, {
       runs: value('--runs'),
@@ -840,6 +1253,10 @@ async function cmdBenchmark(args) {
       outPath: value('--out'),
     });
     console.log(JSON.stringify(report, null, 2));
+    const k = report.k_score?.composite ?? report.summary?.k_score ?? null;
+    const lat = report.latency_us?.p50 ?? null;
+    appendRunLog({ command: 'bench', artifact: ap, runs: report.runs ?? null, k_composite: k, latency_us: lat, ok: true });
+    await dispatchBench('PostBench', { command: 'bench', cwd: process.cwd(), artifact: ap, runs: report.runs, summary: report.summary || null }, { onResult: printHookResult });
   });
 }
 
@@ -1025,7 +1442,7 @@ async function cmdServe(args) {
     process.exit(1);
   }
   const { startMcpServer } = await import('../services/mcp/server.js');
-  await startMcpServer({ artifactsDir: ARTIFACTS_DIR, http: useHttp, port });
+  await startMcpServer({ artifactsDir: ARTIFACTS_DIR, http: useHttp, port, projectCwd: process.cwd() });
 }
 
 function cmdPublish(args) {
@@ -1211,6 +1628,439 @@ function pickFlag(args, name) {
   return v;
 }
 
+// kolm install <harness> [--apply]
+//   Print the MCP wiring snippet for the given harness. Default is print-only;
+//   --apply writes/merges into the harness's config file. Supported harnesses:
+//     claude-code   ~/.claude/settings.json     (mcpServers map)
+//     cursor        ./.cursor/mcp.json          (mcpServers map)
+//     continue      ~/.continue/config.yaml     (mcpServers list)
+//     cline         ./.clinerules/kolm.md       (instructional rule pointing at SKILL.md)
+//   When in project mode (kolm.yaml present), the snippet runs `kolm serve --mcp`
+//   from the project root so artifacts[] resolves correctly.
+const HARNESS_SNIPPETS = {
+  'claude-code': {
+    target: () => path.join(HOME, '.claude', 'settings.json'),
+    kind: 'json-mcpServers',
+    label: 'Claude Code',
+  },
+  'cursor': {
+    target: () => path.join(process.cwd(), '.cursor', 'mcp.json'),
+    kind: 'json-mcpServers',
+    label: 'Cursor',
+  },
+  'continue': {
+    target: () => path.join(HOME, '.continue', 'config.yaml'),
+    kind: 'continue-yaml',
+    label: 'Continue',
+  },
+  'cline': {
+    target: () => path.join(process.cwd(), '.clinerules', 'kolm.md'),
+    kind: 'cline-md',
+    label: 'Cline',
+  },
+};
+
+async function cmdInstall(args) {
+  if (maybeHelp('install', args)) return;
+  const harness = args.find(a => !a.startsWith('--'));
+  if (!harness || !HARNESS_SNIPPETS[harness]) {
+    console.error('error: pick a harness:  kolm install <claude-code|cursor|continue|cline> [--apply]');
+    console.error('');
+    console.error('available:');
+    for (const [k, v] of Object.entries(HARNESS_SNIPPETS)) {
+      console.error(`  ${k.padEnd(12)} -> ${v.target()}  (${v.label})`);
+    }
+    process.exit(1);
+  }
+  const apply = args.includes('--apply');
+  const harnessCfg = HARNESS_SNIPPETS[harness];
+  const target = harnessCfg.target();
+  const proj = (await import('../src/project.js')).findProjectConfig(process.cwd());
+  const projectRoot = proj?.root || process.cwd();
+  const projectName = proj?.config?.name || null;
+
+  const snippet = renderHarnessSnippet(harnessCfg.kind, { projectRoot, projectName });
+
+  if (!apply) {
+    console.log(`# kolm install ${harness} — preview (pass --apply to write to ${target})`);
+    console.log('');
+    console.log(snippet.preview);
+    console.log('');
+    console.log(`target: ${target}`);
+    console.log(`apply:  kolm install ${harness} --apply`);
+    return;
+  }
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  let final;
+  if (snippet.kind === 'json-mcpServers') {
+    let existing = {};
+    if (fs.existsSync(target)) {
+      try { existing = JSON.parse(fs.readFileSync(target, 'utf8')) || {}; } catch { existing = {}; }
+    }
+    existing.mcpServers = existing.mcpServers || {};
+    existing.mcpServers.kolm = snippet.value;
+    final = JSON.stringify(existing, null, 2) + '\n';
+  } else if (snippet.kind === 'continue-yaml') {
+    let existing = '';
+    if (fs.existsSync(target)) existing = fs.readFileSync(target, 'utf8');
+    if (existing.includes('name: kolm')) {
+      console.error(`note: ${target} already contains a 'kolm' mcpServers entry; leaving file untouched.`);
+      return;
+    }
+    final = existing + (existing && !existing.endsWith('\n') ? '\n' : '') + snippet.value + '\n';
+  } else if (snippet.kind === 'cline-md') {
+    final = snippet.value;
+  }
+  fs.writeFileSync(target, final);
+  console.log(`wrote: ${target}`);
+  console.log('');
+  console.log('next:');
+  console.log(`  ${harness === 'claude-code' ? 'restart Claude Code (or run /mcp)' : harness === 'cursor' ? 'reload Cursor MCP (Cmd+Shift+P → "MCP: Reload")' : harness === 'continue' ? 'restart Continue extension' : 'open Cline and check skills index'}`);
+}
+
+function renderHarnessSnippet(kind, { projectRoot, projectName }) {
+  const cmd = {
+    command: 'kolm',
+    args: ['serve', '--mcp'],
+    cwd: projectRoot,
+    env: {},
+  };
+  if (kind === 'json-mcpServers') {
+    const value = { command: cmd.command, args: cmd.args };
+    if (projectName) value.cwd = projectRoot;
+    return { kind, value, preview: JSON.stringify({ mcpServers: { kolm: value } }, null, 2) };
+  }
+  if (kind === 'continue-yaml') {
+    const block = [
+      '# kolm MCP server — added by `kolm install continue --apply`',
+      'mcpServers:',
+      '  - name: kolm',
+      '    command: kolm',
+      '    args: [serve, --mcp]',
+      projectName ? `    cwd: ${projectRoot}` : '',
+    ].filter(Boolean).join('\n');
+    return { kind, value: block, preview: block };
+  }
+  if (kind === 'cline-md') {
+    const body = [
+      '# kolm skills (auto-indexed)',
+      '',
+      'This project compiles AI behavior into `.kolm` artifacts under `./.kolm/artifacts/`.',
+      'When working in this repo, prefer calling those skills over re-implementing.',
+      '',
+      '- Discover skills under `./.kolm/skills/*.md` (Claude Code SKILL.md format).',
+      '- Each `.kolm` is signed and runs locally (zero network egress).',
+      '- For MCP wiring, run `kolm serve --mcp` and configure your MCP client.',
+      '',
+      `> generated by \`kolm install cline\` at ${new Date().toISOString()}`,
+      '',
+    ].join('\n');
+    return { kind, value: body, preview: body };
+  }
+  return { kind, value: '', preview: '' };
+}
+
+// kolm doctor — diagnostic. Surfaces missing env vars, broken tools, project
+// config issues, K-score gate status. Exits 0 on clean, 1 if any issue is
+// "missing" (red), 0 if only "warn" (yellow) issues are present.
+async function cmdDoctor(args) {
+  if (maybeHelp('doctor', args)) return;
+  const checks = [];
+  const c = loadConfig();
+  // Config + auth
+  checks.push({ name: 'config file', status: fs.existsSync(CONFIG_PATH) ? 'ok' : 'warn', detail: CONFIG_PATH });
+  checks.push({ name: 'api key', status: c.api_key ? 'ok' : 'warn', detail: c.api_key ? c.api_key.slice(0, 8) + '...' : 'not set (run: kolm login or set KOLM_API_KEY)' });
+  // Cloud reachable
+  try {
+    const r = await fetch((c.base || 'https://kolm.ai').replace(/\/+$/, '') + '/health', { headers: authHeaders(c) });
+    checks.push({ name: 'cloud reachable', status: r.ok ? 'ok' : 'warn', detail: `${c.base} -> ${r.status}` });
+  } catch (e) {
+    checks.push({ name: 'cloud reachable', status: 'warn', detail: `${c.base} -> ${e.message}` });
+  }
+  // Local receipt secret
+  checks.push({ name: 'receipt secret', status: process.env.RECIPE_RECEIPT_SECRET ? 'ok' : 'warn', detail: process.env.RECIPE_RECEIPT_SECRET ? '(env or config)' : 'not set; offline compile will fall back to a per-user random secret' });
+  // Node version
+  const nodeMaj = Number((process.versions.node || '0').split('.')[0]);
+  checks.push({ name: 'node version', status: nodeMaj >= 18 ? 'ok' : 'missing', detail: 'v' + process.versions.node });
+  // Optional: docker (for bench --reproduce)
+  const docker = spawnSync('docker', ['--version'], { stdio: 'pipe' });
+  checks.push({ name: 'docker (optional)', status: docker.status === 0 ? 'ok' : 'warn', detail: docker.status === 0 ? docker.stdout.toString().trim() : 'not on PATH (needed for: kolm bench --reproduce)' });
+  // Optional: ANTHROPIC_API_KEY (for cloud compile + bench reproducer)
+  checks.push({ name: 'ANTHROPIC_API_KEY (optional)', status: process.env.ANTHROPIC_API_KEY ? 'ok' : 'warn', detail: process.env.ANTHROPIC_API_KEY ? 'set' : 'not set (needed for: kolm bench --reproduce)' });
+  // Project config
+  const proj = (await import('../src/project.js')).findProjectConfig(process.cwd());
+  if (proj) {
+    checks.push({ name: 'project config', status: 'ok', detail: `${proj.config.name} (${path.relative(process.cwd(), proj.path) || 'kolm.yaml'})` });
+    const localArtifactsDir = path.join(proj.root, '.kolm', 'artifacts');
+    const localCount = fs.existsSync(localArtifactsDir) ? fs.readdirSync(localArtifactsDir).filter(f => f.endsWith('.kolm')).length : 0;
+    checks.push({ name: 'project artifacts', status: localCount > 0 ? 'ok' : 'warn', detail: `${localCount} .kolm in ./.kolm/artifacts/` });
+  } else {
+    checks.push({ name: 'project config', status: 'warn', detail: 'no kolm.yaml in cwd or parents — run: kolm init' });
+  }
+  // Global artifacts
+  const globalCount = fs.existsSync(ARTIFACTS_DIR) ? fs.readdirSync(ARTIFACTS_DIR).filter(f => f.endsWith('.kolm')).length : 0;
+  checks.push({ name: 'global artifacts', status: 'ok', detail: `${globalCount} .kolm in ${ARTIFACTS_DIR}` });
+
+  // Render
+  const STATUS = { ok: '✓', warn: '!', missing: '✗' };
+  let red = 0, yellow = 0;
+  for (const ch of checks) {
+    if (ch.status === 'missing') red++;
+    else if (ch.status === 'warn') yellow++;
+    process.stdout.write(`${STATUS[ch.status] || '?'}  ${ch.name.padEnd(28)}  ${ch.detail || ''}\n`);
+  }
+  process.stdout.write('\n');
+  if (red > 0) {
+    process.stdout.write(`${red} blocker${red === 1 ? '' : 's'}, ${yellow} warning${yellow === 1 ? '' : 's'}. fix the ✗ rows above and re-run.\n`);
+    process.exit(1);
+  }
+  process.stdout.write(`all required checks pass (${yellow} warning${yellow === 1 ? '' : 's'}).\n`);
+}
+
+// kolm logs — tail the local run-history log. Each kolm run / kolm bench / mcp
+// tools/call appends a JSON line to ~/.kolm/logs/runs.jsonl. The format is
+// stable: {ts, command, artifact, recipe_id, latency_us, k_composite, ok}.
+async function cmdLogs(args) {
+  if (maybeHelp('logs', args)) return;
+  const logPath = path.join(KOLM_DIR, 'logs', 'runs.jsonl');
+  if (!fs.existsSync(logPath)) {
+    console.log('# no runs yet — log file does not exist yet:');
+    console.log('  ' + logPath);
+    console.log('');
+    console.log('runs are appended every time you call: kolm run, kolm bench, or an MCP tools/call.');
+    return;
+  }
+  const limit = Number(pickFlag(args, '--limit') || pickFlag(args, '-n') || 50);
+  const artifactFilter = pickFlag(args, '--artifact') || null;
+  const sinceArg = pickFlag(args, '--since') || null;
+  const sinceMs = sinceArg ? parseSince(sinceArg) : 0;
+  const json = args.includes('--json');
+
+  const text = fs.readFileSync(logPath, 'utf8');
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  const rows = [];
+  for (const line of lines) {
+    try {
+      const r = JSON.parse(line);
+      if (artifactFilter && !(r.artifact || '').includes(artifactFilter)) continue;
+      if (sinceMs && new Date(r.ts).getTime() < sinceMs) continue;
+      rows.push(r);
+    } catch {}
+  }
+  const tail = rows.slice(-limit);
+  if (json) {
+    for (const r of tail) process.stdout.write(JSON.stringify(r) + '\n');
+    return;
+  }
+  if (tail.length === 0) {
+    console.log('# no runs match those filters.');
+    return;
+  }
+  for (const r of tail) {
+    const k = (r.k_composite != null) ? r.k_composite.toFixed(3) : '?';
+    const lat = (r.latency_us != null) ? r.latency_us + 'us' : '?';
+    const ok = r.ok === false ? 'FAIL' : 'ok';
+    console.log(`${r.ts}  ${r.command.padEnd(7)} ${ok.padEnd(4)} k=${k.padEnd(5)} lat=${lat.padEnd(8)} ${path.basename(r.artifact || '')}`);
+  }
+}
+
+function parseSince(s) {
+  const m = String(s).match(/^(\d+)([smhd])$/);
+  if (!m) return 0;
+  const n = Number(m[1]);
+  const mul = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 }[m[2]] || 0;
+  return Date.now() - n * mul;
+}
+
+// Tiny helper called from run/bench/MCP-call paths. Best-effort: a failed
+// append never blocks the call. Caller passes the fields it has.
+export function appendRunLog(entry) {
+  try {
+    const dir = path.join(KOLM_DIR, 'logs');
+    fs.mkdirSync(dir, { recursive: true });
+    const row = { ts: new Date().toISOString(), ...entry };
+    fs.appendFileSync(path.join(dir, 'runs.jsonl'), JSON.stringify(row) + '\n');
+  } catch {}
+}
+
+// ---------- kolm tune (skeleton LoRA -> evolving adapter) ----------
+async function cmdTune(args) {
+  if (maybeHelp('tune', args)) return;
+  const sub = args[0];
+  if (!sub) { usage('tune'); process.exit(1); }
+  const tune = await import('../src/tune.js');
+  const artifactFlag = pickFlag(args, '--artifact') || pickFlag(args, '-a');
+  const requireArtifact = () => {
+    if (!artifactFlag) { console.error('--artifact <path.kolm> required'); process.exit(1); }
+    const p = path.isAbsolute(artifactFlag) ? artifactFlag :
+              (fs.existsSync(artifactFlag) ? path.resolve(artifactFlag) : path.join(ARTIFACTS_DIR, artifactFlag));
+    if (!fs.existsSync(p)) { console.error('no such artifact: ' + p); process.exit(1); }
+    return p;
+  };
+  switch (sub) {
+    case 'init': {
+      const ap = requireArtifact();
+      const base = pickFlag(args, '--base') || pickFlag(args, '--base-model');
+      if (!base) { console.error('--base <model_path_or_id> required'); process.exit(1); }
+      const rank = Number(pickFlag(args, '--rank') || 8);
+      const alpha = Number(pickFlag(args, '--alpha') || 16);
+      const dropout = Number(pickFlag(args, '--dropout') || 0.05);
+      const r = tune.initAdapter({ artifactPath: ap, baseModel: base, rank, alpha, dropout });
+      if (r.existed) console.log('already initialized at ' + r.tuneDir + ' (HEAD=' + r.revision + ')');
+      else {
+        console.log('ok  scaffolded skeleton adapter');
+        console.log('    dir:    ' + r.tuneDir);
+        console.log('    head:   v0 (skeleton, zero-init)');
+        console.log('    base:   ' + base);
+        console.log('    next:   kolm tune capture-on --artifact ' + path.basename(ap));
+      }
+      return;
+    }
+    case 'capture-on':
+    case 'capture-off': {
+      const ap = requireArtifact();
+      const on = sub === 'capture-on';
+      const cfg = tune.setCaptureFlag(ap, on);
+      console.log('captures ' + (on ? 'ON' : 'OFF') + '  artifact=' + cfg.artifact);
+      if (on) console.log('every kolm run will append a (input,output) row to captures.jsonl');
+      return;
+    }
+    case 'step': {
+      const ap = requireArtifact();
+      const airgap = args.includes('--airgap');
+      const epochs = Number(pickFlag(args, '--epochs') || 1);
+      const batchSize = Number(pickFlag(args, '--batch-size') || 4);
+      const lr = Number(pickFlag(args, '--lr') || 2e-4);
+      console.log('starting tune step (epochs=' + epochs + (airgap ? ', AIRGAP' : '') + ')…');
+      try {
+        const r = tune.runTuneStep({ artifactPath: ap, epochs, airgap, batchSize, lr });
+        console.log('ok  ' + r.revision + '  ' + JSON.stringify(r.stats));
+        console.log('    next: kolm tune eval --artifact ' + path.basename(ap) + ' --rev ' + r.revision);
+      } catch (e) {
+        console.error('tune step failed: ' + e.message);
+        process.exit(1);
+      }
+      return;
+    }
+    case 'eval': {
+      const ap = requireArtifact();
+      const rev = pickFlag(args, '--rev') || tune.headRevision(ap);
+      if (!rev) { console.error('no revisions yet'); process.exit(1); }
+      const e = await tune.evalRevision({ artifactPath: ap, revision: rev });
+      console.log('revision ' + rev);
+      console.log('  pass:     ' + e.pass + '/' + e.total + '  (' + (e.accuracy * 100).toFixed(1) + '% acc)');
+      if (e.p50_latency_us != null) console.log('  p50:      ' + e.p50_latency_us + 'us');
+      console.log('  K-score:  ' + e.k_score.composite + '  (gate=0.85)');
+      console.log('  ships:    ' + (e.k_score.ships ? 'YES' : 'NO'));
+      return;
+    }
+    case 'promote': {
+      const ap = requireArtifact();
+      const rev = pickFlag(args, '--rev');
+      if (!rev) { console.error('--rev vN required'); process.exit(1); }
+      const force = args.includes('--force');
+      try {
+        const r = await tune.promoteRevision({ artifactPath: ap, revision: rev, force });
+        console.log('ok  promoted ' + r.promoted + '  (prev=' + (r.previous || 'none') + ')');
+        console.log('    K-score: ' + r.k_score.composite);
+      } catch (e) {
+        console.error(e.message);
+        process.exit(e.code === 'K_GATE' ? 2 : 1);
+      }
+      return;
+    }
+    case 'rollback': {
+      const ap = requireArtifact();
+      const r = tune.rollbackHead(ap);
+      console.log('ok  rolled back to ' + r.rolled_back_to + ' (was ' + r.was + ')');
+      return;
+    }
+    case 'status': {
+      const ap = requireArtifact();
+      const s = tune.summary(ap);
+      console.log(JSON.stringify(s, null, 2));
+      return;
+    }
+    case 'watch': {
+      const ap = requireArtifact();
+      const interval = Number(pickFlag(args, '--interval') || 30000);
+      console.log('watching ' + path.basename(ap) + ' (interval=' + interval + 'ms). ^C to stop.');
+      await tune.watchAndEvolve({ artifactPath: ap, interval });
+      return;
+    }
+    default:
+      console.error('unknown tune subcommand: ' + sub);
+      usage('tune');
+      process.exit(1);
+  }
+}
+
+// ---------- kolm rag (airgapped local retrieval) ----------
+async function cmdRag(args) {
+  if (maybeHelp('rag', args)) return;
+  const sub = args[0];
+  if (!sub) { usage('rag'); process.exit(1); }
+  const rag = await import('../src/rag.js');
+  switch (sub) {
+    case 'index': {
+      const dir = args[1];
+      if (!dir) { console.error('rag index <dir> required'); process.exit(1); }
+      const name = pickFlag(args, '--name');
+      const exts = (pickFlag(args, '--ext') || 'txt,md,json,html').split(',').map(s => s.trim()).filter(Boolean);
+      const maxBytes = Number(pickFlag(args, '--max-bytes') || (4 * 1024 * 1024));
+      const m = rag.indexDir({ dir, name, exts, maxBytes });
+      console.log('ok  indexed ' + m.n_docs + ' doc' + (m.n_docs === 1 ? '' : 's'));
+      console.log('    name:    ' + m.name);
+      console.log('    root:    ' + m.root);
+      console.log('    avgdl:   ' + Math.round(m.avgdl) + ' tokens/doc');
+      console.log('    size:    ' + (m.size_bytes / 1024).toFixed(1) + ' KB');
+      console.log('    sha256:  ' + m.sha256.slice(0, 16) + '…');
+      console.log('    next:    kolm rag query ' + m.name + ' "<question>"');
+      return;
+    }
+    case 'query': {
+      const name = args[1];
+      const q = args[2];
+      if (!name || !q) { console.error('rag query <name> "<question>" required'); process.exit(1); }
+      const topK = Number(pickFlag(args, '--top-k') || 5);
+      const r = rag.queryIndex({ name, q, topK });
+      if (args.includes('--json')) { console.log(JSON.stringify(r, null, 2)); return; }
+      console.log('# query: ' + q);
+      console.log('# index: ' + name + ' (' + r.n_docs + ' docs)');
+      console.log('# tokens: ' + r.query_tokens.join(' '));
+      if (!r.matches.length) { console.log('(no matches)'); return; }
+      r.matches.forEach((m, i) => {
+        console.log('\n[' + (i + 1) + '] score=' + m.score + '  ' + m.path);
+        console.log('    ' + m.excerpt);
+      });
+      return;
+    }
+    case 'attach': {
+      const ap = args[1];
+      if (!ap) { console.error('rag attach <artifact.kolm> --index <name>'); process.exit(1); }
+      const indexName = pickFlag(args, '--index');
+      if (!indexName) { console.error('--index <name> required'); process.exit(1); }
+      const apResolved = path.isAbsolute(ap) ? ap : (fs.existsSync(ap) ? path.resolve(ap) : path.join(ARTIFACTS_DIR, ap));
+      const r = rag.attachIndexToArtifact({ artifactPath: apResolved, indexName });
+      console.log('ok  attached ' + r.index + ' to ' + r.artifact);
+      console.log('    sidecar: ' + r.sidecar);
+      return;
+    }
+    case 'list': {
+      const idxs = rag.listIndexes();
+      if (!idxs.length) { console.log('(no indexes — try: kolm rag index <dir>)'); return; }
+      for (const m of idxs) {
+        console.log(m.name.padEnd(24) + '  ' + m.n_docs + ' docs  ' + (m.size_bytes / 1024).toFixed(1) + 'KB  ' + m.root);
+      }
+      return;
+    }
+    default:
+      console.error('unknown rag subcommand: ' + sub);
+      usage('rag');
+      process.exit(1);
+  }
+}
+
 async function cmdVersion(args) {
   if (maybeHelp('version', args)) return;
   const c = loadConfig();
@@ -1254,6 +2104,7 @@ async function main() {
   const [, , cmd, ...rest] = process.argv;
   try {
     switch (cmd) {
+      case 'init':     await cmdInit(rest); break;
       case 'login':    await cmdLogin(rest); break;
       case 'new':      await cmdNew(rest); break;
       case 'compile':  await cmdCompile(rest); break;
@@ -1269,6 +2120,11 @@ async function main() {
       case 'labels':   await cmdLabels(rest); break;
       case 'distill':  await cmdDistill(rest); break;
       case 'config':   cmdConfig(rest); break;
+      case 'install':  await cmdInstall(rest); break;
+      case 'tune':     await cmdTune(rest); break;
+      case 'rag':      await cmdRag(rest); break;
+      case 'doctor':   await cmdDoctor(rest); break;
+      case 'logs':     await cmdLogs(rest); break;
       case 'version':
       case '--version':
       case '-v':       await cmdVersion(rest); break;

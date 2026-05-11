@@ -36,6 +36,7 @@
     <nav class="site-nav" aria-label="Primary">
       <a href="/compile">Compile</a>
       <a href="/serve">Serve</a>
+      <a href="/evolve">Evolve</a>
       <a href="/anatomy">.kolm</a>
       <a href="/k-score">K-score</a>
       <a href="/docs">Docs</a>
@@ -152,23 +153,30 @@ kolm login
 
   <section class="section">
     <div class="wrap">
-      <div class="eyebrow"><span class="num">06</span>serve</div>
-      <h2>Expose artifacts to agent tools.</h2>
-      <p class="sec-lede">Use <code>kolm serve --mcp</code> when your local agent stack should discover the artifact as a callable tool.</p>
+      <div class="eyebrow"><span class="num">06</span>wire it into your agent</div>
+      <h2>One command per harness. No JSON hand-editing.</h2>
+      <p class="sec-lede">Every compiled <code>.kolm</code> becomes an MCP tool the agent can call. <code>kolm install</code> writes the harness config in one shot; <code>kolm doctor</code> verifies the wiring.</p>
 
-<pre class="terminal"><span class="prompt">$</span> kolm serve --mcp --http --port 11455
+<pre class="terminal"><span class="prompt">$</span> kolm install claude-code --apply
+<span class="ok">wrote</span> ~/.claude/settings.json
+
+<span class="prompt">$</span> kolm install cursor --apply
+<span class="ok">wrote</span> .cursor/mcp.json
+
+<span class="prompt">$</span> kolm doctor
+<span class="ok">ok</span> node ≥18 · kolm.yaml · 3 artifacts · ~/.kolm/config.json · git
+
+<span class="comment"># prefer the long-running daemon? same artifacts, stdio or HTTP transport.</span>
+<span class="prompt">$</span> kolm serve --mcp --http --port 11455
 <span class="ok">ok</span> serving ~/.kolm/artifacts as local tools</pre>
 
       <div class="bottom-cta">
-        <h2>Next: build your own from scratch.</h2>
-        <p class="lead">The cloud compile path takes a task plus examples. The local spec path takes a JSON program any human or AI can write, compiles it offline, signs it under your local secret. Pick whichever fits the work.</p>
+        <h2>Next: build your own.</h2>
+        <p class="lead">You ran a compile. Now define your own task in a JSON spec, compile it offline under your local secret, and ship it.</p>
         <div class="actions">
-          <a href="/build-your-own" class="btn primary">build your own</a>
-          <a href="/anatomy" class="btn ghost">artifact anatomy</a>
-          <a href="/k-score" class="btn accent">K-score methodology</a>
+          <a href="/build-your-own" class="btn primary lg">Build your own &rarr;</a>
         </div>
       </div>
-      <p class="lead">See the full artifact structure on the <a href="/">homepage</a>.</p>
     </div>
   </section>
 </main>

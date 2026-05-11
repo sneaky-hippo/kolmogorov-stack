@@ -154,7 +154,7 @@ const ROUTE_ALIASES = {
   '/signin': 'signup',
   '/atlas': 'registry',
 };
-for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/atlas', '/signup', '/signin', '/why', '/pricing', '/status', '/account', '/how-it-works', '/device', '/compile', '/run', '/recall', '/cloud', '/k-score', '/benchmarks', '/compare', '/serve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/legal', '/edge', '/cookbook', '/defense', '/manifesto', '/faq', '/quickstart', '/changelog', '/trust', '/integrations', '/press', '/vs-ollama', '/vs-rag', '/vs-fine-tune', '/vs-predibase', '/vs-openpipe', '/vs-langsmith', '/vs-mem0', '/vs-hindsight', '/vs-openai-fine-tune', '/vs-together', '/why-now', '/threat-model', '/roi', '/api', '/whitepaper', '/customers', '/build-your-own']) {
+for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/atlas', '/signup', '/signin', '/why', '/pricing', '/status', '/account', '/how-it-works', '/device', '/compile', '/run', '/recall', '/cloud', '/k-score', '/benchmarks', '/compare', '/serve', '/evolve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/legal', '/edge', '/cookbook', '/defense', '/manifesto', '/faq', '/quickstart', '/changelog', '/trust', '/integrations', '/press', '/vs-ollama', '/vs-rag', '/vs-fine-tune', '/vs-predibase', '/vs-openpipe', '/vs-langsmith', '/vs-mem0', '/vs-hindsight', '/vs-openai-fine-tune', '/vs-together', '/why-now', '/threat-model', '/roi', '/api', '/whitepaper', '/customers', '/build-your-own']) {
   app.get(route, (_req, res) => {
     const name = route === '/' ? 'index' : (ROUTE_ALIASES[route] || route.slice(1));
     const file = path.join(__dirname, 'public', name + '.html');
@@ -260,6 +260,19 @@ if (process.argv[1] && process.argv[1].endsWith('server.js')) {
   const { added, skipped } = await bootSeedDemoConcepts(demo.name);
   if (added > 0 || skipped > 0) console.log(`  seed: +${added} added, ${skipped} skipped`);
 
+  // Stripe configuration sanity check. Counts how many of the 5 payment links
+  // are wired so a misconfigured deploy logs a single line at boot rather than
+  // surfacing as a 503 the first time a customer clicks Upgrade. Webhook secret
+  // is required for paid plans to flip; surface the gap explicitly.
+  const stripeLinks = [
+    'STRIPE_PAYMENT_LINK_STARTER', 'STRIPE_PAYMENT_LINK_PRO',
+    'STRIPE_PAYMENT_LINK_TEAMS', 'STRIPE_PAYMENT_LINK_BUSINESS',
+    'STRIPE_PAYMENT_LINK_ENT',
+  ];
+  const stripePresent = stripeLinks.filter(v => !!process.env[v]).length;
+  const webhookOk = !!process.env.STRIPE_WEBHOOK_SECRET;
+  const stripeStatus = stripePresent === 5 && webhookOk ? 'wired' : `degraded (${stripePresent}/5 links, webhook ${webhookOk ? 'ok' : 'missing'})`;
+
   app.listen(PORT, () => {
     console.log('\nkolm server');
     console.log(`  home:       http://localhost:${PORT}`);
@@ -269,6 +282,7 @@ if (process.argv[1] && process.argv[1].endsWith('server.js')) {
     console.log(`  demo key:   ${!!demo.api_key ? 'configured' : 'missing'}`);
     console.log(`  admin key:  ${!!process.env.ADMIN_KEY ? 'configured' : 'not set'}`);
     console.log(`  synthesis:  ${process.env.ANTHROPIC_API_KEY ? 'Claude (' + (process.env.ANTHROPIC_MODEL || 'claude-opus-4-7') + ') + Pattern' : 'Pattern (no API key set)'}`);
+    console.log(`  stripe:     ${stripeStatus}`);
     console.log('');
   });
 }

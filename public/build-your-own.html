@@ -38,6 +38,7 @@
     <nav class="site-nav" aria-label="Primary">
       <a href="/compile">Compile</a>
       <a href="/serve">Serve</a>
+      <a href="/evolve">Evolve</a>
       <a href="/anatomy">.kolm</a>
       <a href="/k-score">K-score</a>
       <a href="/docs">Docs</a>
@@ -89,7 +90,44 @@
 
   <section class="section">
     <div class="wrap">
-      <div class="eyebrow"><span class="num">02</span>templates</div>
+      <div class="eyebrow"><span class="num">02</span>graduate to a project</div>
+      <h2>One <code>kolm.yaml</code> turns the script into a project.</h2>
+      <p class="sec-lede">Optional. Useful when you want one MCP namespace per repo, K-score gates that refuse to serve below a floor, paths globs that auto-attach artifacts when the agent is editing matching files, and a place for compile/run/bench hooks. The schema is published at <a href="/docs/kolm-yaml-v0.1.json" style="color:var(--accent);text-decoration:none">kolm.ai/docs/kolm-yaml-v0.1.json</a>.</p>
+
+<pre class="terminal"><span class="prompt">$</span> kolm init
+<span class="ok">wrote</span> kolm.yaml
+<span class="ok">mkdir</span> .kolm/artifacts/  .kolm/skills/
+<span class="ok">updated</span> .gitignore (+ .kolm/)
+
+<span class="prompt">$</span> kolm compile --spec my-redactor.spec.json --out .kolm/artifacts/my-redactor.kolm
+<span class="ok">built</span> .kolm/artifacts/my-redactor.kolm
+<span class="ok">skill</span> .kolm/skills/my-redactor.md   <span class="comment"># Claude Code / Cursor / Cline / Continue index this</span></pre>
+
+      <p class="sec-lede" style="margin-top:18px">Every <code>kolm compile</code> now emits a <code>SKILL.md</code> sidecar next to the artifact. The frontmatter follows Claude Code's format (<code>name</code>, <code>description</code>, <code>allowed-tools</code>, <code>disable-model-invocation</code>) so frontier-agent harnesses index it without manual wiring. The MCP tool name resolves to <code>mcp__&lt;project&gt;__&lt;artifact&gt;</code>.</p>
+
+<pre class="terminal" style="margin-top:18px"><span class="comment"># one command per harness. --apply writes; omit to dry-run.</span>
+<span class="prompt">$</span> kolm install claude-code --apply
+<span class="ok">wrote</span> ~/.claude/settings.json
+
+<span class="prompt">$</span> kolm install cursor --apply
+<span class="ok">wrote</span> .cursor/mcp.json
+
+<span class="prompt">$</span> kolm install continue --apply
+<span class="ok">wrote</span> ~/.continue/config.yaml
+
+<span class="prompt">$</span> kolm install cline --apply
+<span class="ok">wrote</span> .clinerules/kolm.md
+
+<span class="prompt">$</span> kolm doctor
+<span class="ok">ok</span> node ≥18 · kolm.yaml · 3 artifacts · ~/.kolm/config.json · git</pre>
+
+      <p class="sec-lede" style="margin-top:18px">One command per harness. <code>kolm doctor</code> verifies the wiring; <code>kolm logs --since 24h</code> tails the run-history JSONL at <code>~/.kolm/logs/runs.jsonl</code>. No daemons, no dashboards, no telemetry leaving the box.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">03</span>templates</div>
       <h2>Four shapes that cover most of the work.</h2>
       <p class="sec-lede">Each template scaffolds a complete spec: recipes, evals, working pack, index. If none fit, start <code>--from blank</code> — the sandbox is JavaScript with a curated <code>lib</code>.</p>
 
@@ -127,7 +165,7 @@
 
   <section class="section">
     <div class="wrap">
-      <div class="eyebrow"><span class="num">03</span>spec is the program</div>
+      <div class="eyebrow"><span class="num">04</span>spec is the program</div>
       <h2>Forty lines of JSON, one signed binary.</h2>
       <p class="sec-lede">Deterministic over the spec: same spec, same content-hash (zip wrapper varies; signed manifest does not). Each recipe is <code>function generate(input, lib)</code> in a <code>node:vm</code> sandbox, 1&nbsp;MiB input cap, 1&nbsp;000&nbsp;ms timeout.</p>
 
@@ -167,7 +205,7 @@
 
   <section class="section">
     <div class="wrap">
-      <div class="eyebrow"><span class="num">04</span>AI-friendly authoring</div>
+      <div class="eyebrow"><span class="num">05</span>AI-friendly authoring</div>
       <h2>Hand a model the spec; pipe the spec to <code>kolm compile</code>.</h2>
       <p class="sec-lede">An agent that writes JSON ships a signed artifact. Validation is strict; every recipe type-checks, every eval case runs before sealing. Drop this prompt in, pipe out to <code>kolm compile --spec -</code>.</p>
 
@@ -205,7 +243,7 @@ Task: <describe the task in one paragraph>
 
   <section class="section">
     <div class="wrap">
-      <div class="eyebrow"><span class="num">05</span>sensitive verticals</div>
+      <div class="eyebrow"><span class="num">06</span>sensitive verticals</div>
       <h2>What kolm <span class="tone">does</span> and <span class="tone">does not</span> promise.</h2>
       <p class="sec-lede">We ship the runtime substrate: signed rules, zero-egress sandbox, receipt chain, audit log. We do not ship compliance attestation, recipe correctness, or input-handling guarantees outside the runtime.</p>
 
@@ -261,7 +299,7 @@ Task: <describe the task in one paragraph>
 
   <section class="section">
     <div class="wrap">
-      <div class="eyebrow"><span class="num">06</span>tenant params don't re-sign</div>
+      <div class="eyebrow"><span class="num">07</span>tenant params don't re-sign</div>
       <h2>One artifact, many tenants, no resigning.</h2>
       <p class="sec-lede">One signed <code>.kolm</code>; buyers configure per call; signature unchanged; audit log records each tenant's params. A healthcare vendor's redactor: 200 clinics customize MRN formats without touching the binary.</p>
 
@@ -282,7 +320,7 @@ Task: <describe the task in one paragraph>
 
   <section class="section">
     <div class="wrap">
-      <div class="eyebrow"><span class="num">07</span>buy instead of rent <span style="display:inline-block;margin-left:10px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;color:#ffb86b;">Sprint 3 roadmap</span></div>
+      <div class="eyebrow"><span class="num">08</span>buy instead of rent <span style="display:inline-block;margin-left:10px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;color:#ffb86b;">Sprint 3 roadmap</span></div>
       <h2>Compound your frontier-API spend into a local artifact.</h2>
       <div class="roadmap-banner" style="padding:14px 16px;border:1px solid rgba(255,184,107,0.32);border-radius:10px;background:rgba(255,184,107,0.06);color:#ffb86b;font-size:13px;line-height:1.55;margin:14px 0 22px;font-family:var(--mono);">
         <b style="font-weight:540;">Sprint 3 roadmap, not yet shipped.</b> The capture &rarr; aggregate &rarr; distill loop is coming. Subscribe at <a href="/signup" style="color:#ffb86b;text-decoration:underline;">/signup</a>.

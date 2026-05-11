@@ -189,6 +189,7 @@
       <nav>
         <a href="/compile">Compile</a>
         <a href="/serve">Serve</a>
+        <a href="/evolve">Evolve</a>
         <a href="/anatomy">.kolm</a>
         <a href="/k-score">K-score</a>
         <a href="/docs">Docs</a>
@@ -306,7 +307,75 @@
 
 <section>
   <div class="wrap">
-    <div class="eyebrow"><span class="num">04</span><span>Compliance posture</span></div>
+    <div class="eyebrow"><span class="num">04</span><span>Reference artifacts</span></div>
+    <h2>Three signed <span class="tone">.kolm</span> starting points.</h2>
+    <p class="sec-lede">Pre-built example artifacts you can fork, recompile against your own gold set, and ship. Each is a signed file with a public K-score and a matching cookbook recipe.</p>
+    <div class="compl-row">
+      <div class="item">
+        <div class="nm" style="font-family:var(--mono)">hipaa-summarizer.kolm</div>
+        <div class="v acc">K-score 0.86 &middot; 84&thinsp;MB</div>
+        <p>Drafts SOAP summaries from de-identified clinical notes. Verifier penalizes any token that looks like a phone, MRN, or DOB. <a href="/cookbook/hipaa-summarizer" style="color:var(--accent)">Recipe &rarr;</a></p>
+      </div>
+      <div class="item">
+        <div class="nm" style="font-family:var(--mono)">intake-triage.kolm</div>
+        <div class="v acc">K-score 0.82 &middot; 91&thinsp;MB</div>
+        <p>Routes intake forms by urgency band. Compiled against held-out triage outcomes. Runs offline on the front-desk tablet. <a href="/cookbook/intake-triage" style="color:var(--accent)">Recipe &rarr;</a></p>
+      </div>
+      <div class="item">
+        <div class="nm" style="font-family:var(--mono)">drug-name-redact.kolm</div>
+        <div class="v acc">K-score 0.91 &middot; 38&thinsp;MB</div>
+        <p>Strips proprietary drug names from patient-facing copy while preserving generic equivalents. Local-only. <a href="/cookbook/drug-name-redact" style="color:var(--accent)">Recipe &rarr;</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">05</span><span>Payer use-cases</span></div>
+    <h2>Production patterns for<br><span class="tone">health insurance.</span></h2>
+    <p class="sec-lede">Each workflow below is a signed <code>.kolm</code> artifact that runs inside your VPC or on the workstation. PHI, claims data, and benefit-plan docs stay inside the auditor's boundary. Every output ships with a receipt that ties the model version, the input hash, and the K-score to the determination.</p>
+
+    <div class="triplets" style="margin-top:8px">
+      <div class="trip">
+        <div class="icn">-</div>
+        <h3>Prior authorization triage.</h3>
+        <p>Inbound PA requests are classified against benefit-plan policy and InterQual/MCG criteria. The artifact drafts a determination letter with policy citations and routes edge cases to a nurse reviewer. <b>Receipt names the policy version it cited.</b></p>
+      </div>
+      <div class="trip">
+        <div class="icn">-</div>
+        <h3>Claims adjudication assist.</h3>
+        <p>Extracts structured fields from CMS-1500 / UB-04, checks against the plan's benefit grid and coding edits, flags adjudication blockers before they hit pend queue. <b>Member ID and claim line never leave the boundary.</b></p>
+      </div>
+      <div class="trip">
+        <div class="icn">-</div>
+        <h3>Appeals &amp; grievances drafts.</h3>
+        <p>Drafts member-facing appeal responses against your medical policy library, cites the plan section and the CMS or state rule, and emits a defensible audit trail for the regulator. <b>Same artifact your appeals analyst signs off on.</b></p>
+      </div>
+      <div class="trip">
+        <div class="icn">-</div>
+        <h3>Member services AI.</h3>
+        <p>Answers benefit questions from your SBC/EOC documents on the rep's workstation. Never sends member PHI to a frontier API. K-score gate enforces a deflection-rate floor before the artifact reaches a member-facing channel.</p>
+      </div>
+      <div class="trip">
+        <div class="icn">-</div>
+        <h3>Utilization management review.</h3>
+        <p>Summarizes medical-necessity packets for the UM reviewer: relevant chart sections, prior denials, applicable criteria, and the policy delta. <b>The reviewer signs; kolm logs which artifact version produced the summary.</b></p>
+      </div>
+      <div class="trip">
+        <div class="icn">-</div>
+        <h3>FWA pattern detection.</h3>
+        <p>Flags suspicious claim patterns (upcoded E/M visits, duplicate-day services, ineligible provider) against the plan's edit set. Every trigger is a signed receipt that an SIU investigator can re-run byte-identically against the same claim record.</p>
+      </div>
+    </div>
+
+    <p class="sec-lede" style="margin-top:28px;font-size:14px">Designed for payer teams running on TPAs, MA / D-SNP plans, ACOs, and risk-bearing entities. Each pattern is a starting artifact, recompiled against your formulary, your policy library, and your eligibility feed. <a href="/signup?plan=enterprise" style="color:var(--accent);text-decoration:none">Provision Enterprise &rarr;</a></p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">06</span><span>Compliance posture</span></div>
     <h2>What's shipped.<br><span class="tone">What's tracking.</span></h2>
     <p class="sec-lede">Same compliance posture as the rest of the product. Cross-referenced on <a href="/security" style="color:var(--accent);text-decoration:none;">/security</a>.</p>
 

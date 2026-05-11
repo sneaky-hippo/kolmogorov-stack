@@ -114,32 +114,46 @@ function canonicalJson(v) {
 }
 
 // Compute the K-score — the visible scoreboard for "smallest artifact that
-// still passes the tests wins." We surface the five raw axes plus a single
-// composite number so a UI can sort artifacts.
+// still passes the tests wins." Implements the documented formula at
+// /k-score: K = 0.40·A + 0.15·S + 0.15·L + 0.15·C + 0.15·V, on [0..1].
+// Ship gate is 0.85; below that, kolm compile fails closed.
 //
-//   accuracy:        verifier pass-rate on the training positives [0..1]
-//   coverage:        fraction of declared task surface the artifact handles [0..1]
-//   p50_latency_us:  median run-time per call (recipe-mode = compiled fn; verified-mode = api round-trip)
-//   cost_usd_per_call: marginal $ at run-time (0 for pure-recipe; >0 when routed through wrap/verified)
-//   size_bytes:      total .kolm zip on disk
+// Raw axes (kept on the manifest for downstream tooling):
+//   accuracy:          verifier pass-rate on the training positives [0..1]
+//   coverage:          fraction of declared task surface handled [0..1]
+//   p50_latency_us:    median run-time per call
+//   cost_usd_per_call: marginal $ at run-time (0 for pure-recipe)
+//   size_bytes:        total .kolm zip on disk
 //
-// composite is intentionally simple — bigger is better, smaller artifacts
-// with higher accuracy/coverage win:
-//   composite = (accuracy * coverage * 1000) / log2(size_kb + 2)
-// A 5KB artifact at 100% accuracy/coverage scores ~588; a 50MB one scores ~62.
+// Each non-fractional axis (S, L, C) is normalized to [0..1] via a smooth
+// curve calibrated so that typical recipe-mode artifacts (~10KB, ~100us, $0)
+// score near 1, and pathological cases asymptote toward 0:
+//   S = max(0, 1 - log2(max(size_kb, 1)) / 30)   // 10KB->0.89, 1MB->0.67, 1GB->0.33
+//   L = 1 / (1 + p50_us / 100000)                // 100us->1.0, 100ms->0.50
+//   C = 1 / (1 + cost_per_call * 1000)           // $0->1.0, $0.001->0.50
+// A and V are already on [0..1].
 export function computeKScore({ size_bytes, accuracy, coverage, p50_latency_us, cost_usd_per_call }) {
   const acc = Math.max(0, Math.min(1, accuracy ?? 0));
   const cov = Math.max(0, Math.min(1, coverage ?? 0));
-  const size_kb = (size_bytes || 0) / 1024;
-  const denom = Math.log2(size_kb + 2);
-  const composite = denom > 0 ? Number(((acc * cov * 1000) / denom).toFixed(2)) : 0;
+  const size_kb = Math.max(1, (size_bytes || 0) / 1024);
+  const lat_us = p50_latency_us == null ? 100 : Math.max(0, p50_latency_us);
+  const cost = Math.max(0, cost_usd_per_call ?? 0);
+  const sNorm = Math.max(0, Math.min(1, 1 - Math.log2(size_kb) / 30));
+  const lNorm = 1 / (1 + lat_us / 100000);
+  const cNorm = 1 / (1 + cost * 1000);
+  const composite = Number((0.40 * acc + 0.15 * sNorm + 0.15 * lNorm + 0.15 * cNorm + 0.15 * cov).toFixed(4));
   return {
     accuracy: Number(acc.toFixed(4)),
     coverage: Number(cov.toFixed(4)),
     p50_latency_us: p50_latency_us ?? null,
     cost_usd_per_call: cost_usd_per_call ?? 0,
     size_bytes: size_bytes || 0,
+    size_score: Number(sNorm.toFixed(4)),
+    latency_score: Number(lNorm.toFixed(4)),
+    cost_score: Number(cNorm.toFixed(4)),
     composite,
+    ships: composite >= 0.85,
+    gate: 0.85,
     spec: 'k-score-1',
   };
 }

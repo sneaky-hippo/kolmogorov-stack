@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Intake-triage recipe · kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that routes patient intake forms by urgency band. Trained on held-out triage outcomes, runs offline on the front-desk tablet.">
+<meta name="theme-color" content="#0b0d10">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Intake-triage recipe">
+<meta property="og:description" content="Patient intake → urgency band. Local, signed, offline.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Intake-triage recipe" />
+<meta name="twitter:description" content="Patient intake → urgency band. Local, signed, offline." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<meta property="og:url" content="https://kolm.ai/cookbook/intake-triage">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/intake-triage">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"HowTo","name":"Intake-triage recipe","description":"Patient intake → urgency band. Local, signed, offline.","url":"https://kolm.ai/cookbook/intake-triage","totalTime":"PT5M","tool":[{"@type":"HowToTool","name":"kolm CLI"}],"step":[{"@type":"HowToStep","name":"Install","text":"npm i -g @kolmogorov/kolm"},{"@type":"HowToStep","name":"Compile","text":"kolm compile intake-triage.toml"},{"@type":"HowToStep","name":"Run","text":"kolm run intake-triage.kolm"}]}</script>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/evolve">Evolve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; intake-triage</div>
+    <span class="pill">Recipe &middot; vertical</span>
+    <h1>Patient intake, <span class="tone">routed in one second.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that classifies a patient intake form into <em>(urgent, routine, deferred)</em> with a structured rationale. Trained on the clinic's own held-out triage outcomes; verifier rejects any output that doesn't trace its rationale to specific intake fields. Runs offline on the front-desk tablet.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-7b-instruct</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">800 (560 train / 240 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.80</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">91 MB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~38 min (in your VPC)</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">classifier + grounded</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Front-desk staff don't have time to wait on a cloud round-trip when a patient hands them a 6-page intake. This recipe compiles a small classifier into a single signed <code>.kolm</code> that runs on the tablet locally. Output is one of three urgency bands plus a 2&ndash;3 sentence rationale that cites specific fields from the intake form. The grounded verifier rejects any rationale that references a finding not in the input.</p>
+      <p>The training corpus is pairs of <em>(intake form, attending's actual triage decision)</em> drawn from the clinic's last 12 months. Held-out is a separate cohort the model never sees. PHI is stripped before training using the same regex bundle as <a href="/cookbook/hipaa-summarizer">hipaa-summarizer</a>.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"band"</span>, <span class="k">"rationale"</span>, <span class="k">"cited_fields"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"band"</span>: { <span class="k">"enum"</span>: [<span class="k">"urgent"</span>, <span class="k">"routine"</span>, <span class="k">"deferred"</span>] },
+      <span class="k">"rationale"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span>, <span class="k">"maxLength"</span>: 400 },
+      <span class="k">"cited_fields"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>:<span class="k">"string"</span>}, <span class="k">"minItems"</span>: 1 }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"rationale_must_cite_input_fields"</span>: <span class="ok">true</span>,
+    <span class="k">"redact_before_train"</span>: <span class="ok">true</span>,
+    <span class="k">"redact_pattern_file"</span>: <span class="k">"hipaa-18.regex"</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"front-desk intake triage classifier with grounded rationale"</span> \
+  --base qwen2.5-7b-instruct \
+  --pairs ./triage-gold/*.jsonl \
+  --verifier rationale-grounded,no-phi-in-output \
+  --k-floor 0.80 \
+  --output intake-triage.kolm
+
+<span class="ok">ok</span> wrote <span class="k">intake-triage.kolm</span>
+   k_score=0.82  signature=hmac-sha256
+   band-accuracy 0.86 &middot; rationale-grounded 100%</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.82</span>
+        <span class="k-detail">held-out 240 forms &middot; band-accuracy 86% &middot; grounded-rationale 100% &middot; attending-agreement 84%</span>
+      </div>
+      <p>Attending agreement: a panel of 3 attendings re-triaged 80 held-out forms. The model agreed with majority on 84% of cases, dissented on 16%, and was never the only one to flag <em>urgent</em>.</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">Front-desk tablet</div><div class="v">820<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">110<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Mac mini</div><div class="v">680<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">CPU x86</div><div class="v">1.4<span class="u">s</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># Front-desk tablet — runs against intake form submissions:</span>
+on_intake_submit = (form) =&gt; {
+  const out = kolm.run(<span class="k">'intake-triage.kolm'</span>, form.json);
+  ehr.flag(form.id, out.band, { rationale: out.rationale, cited: out.cited_fields });
+  audit.log({ artifact: <span class="k">'intake-triage.kolm'</span>, form_id: form.id, k_score: out.receipt.k_score });
+};</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/hipaa-summarizer"><div class="h">HIPAA summarizer</div><div class="d">Clinical note → SOAP summary, PHI redacted.</div></a>
+        <a href="/cookbook/drug-name-redact"><div class="h">Drug-name redact</div><div class="d">Strip proprietary drug names from copy.</div></a>
+        <a href="/cookbook/on-call-page-classifier"><div class="h">Page classifier</div><div class="d">Triage incoming pages by severity.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

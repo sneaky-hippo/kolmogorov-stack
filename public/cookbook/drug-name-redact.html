@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Drug-name redact recipe · kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that strips proprietary drug names from patient-facing copy while preserving generic equivalents. Local-only, no upstream calls.">
+<meta name="theme-color" content="#0b0d10">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Drug-name redact recipe">
+<meta property="og:description" content="Strip proprietary drug names, keep generic equivalents. Local, signed, offline.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Drug-name redact recipe" />
+<meta name="twitter:description" content="Strip proprietary drug names, keep generic equivalents. Local, signed, offline." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<meta property="og:url" content="https://kolm.ai/cookbook/drug-name-redact">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/drug-name-redact">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"HowTo","name":"Drug-name redact recipe","description":"Strip proprietary drug names from patient-facing copy. Local, signed, offline.","url":"https://kolm.ai/cookbook/drug-name-redact","totalTime":"PT5M","tool":[{"@type":"HowToTool","name":"kolm CLI"}],"step":[{"@type":"HowToStep","name":"Install","text":"npm i -g @kolmogorov/kolm"},{"@type":"HowToStep","name":"Compile","text":"kolm compile drug-name-redact.toml"},{"@type":"HowToStep","name":"Run","text":"kolm run drug-name-redact.kolm"}]}</script>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/compile">Compile</a>
+        <a href="/serve">Serve</a>
+        <a href="/evolve">Evolve</a>
+        <a href="/anatomy">.kolm</a>
+        <a href="/k-score">K-score</a>
+        <a href="/docs">Docs</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; drug-name-redact</div>
+    <span class="pill">Recipe &middot; vertical</span>
+    <h1>Proprietary drug names out, <span class="tone">generics in.</span></h1>
+    <p class="lede">A local <code>.kolm</code> that rewrites patient-facing copy to strip brand drug names and replace them with their generic equivalents. Backed by a frozen RxNorm snapshot bundled into the artifact &mdash; no upstream calls, no per-deploy drift.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-3b-instruct</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">450 (315 train / 135 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.88</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">38 MB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~22 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">redactor + lookup</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Patient education copy, discharge summaries, and pharma marketing material often need to reference medications without endorsing one brand over another. This recipe compiles a small rewriter that detects proprietary drug names (Lipitor, Zoloft, Adderall, etc.), looks up the active ingredient in a frozen RxNorm snapshot bundled with the artifact, and substitutes the generic.</p>
+      <p>The verifier rejects any output that re-introduces a brand name. The lookup table is frozen at compile time so the artifact's behavior never drifts in deployment.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"text"</span>,
+  <span class="k">"verifier"</span>: {
+    <span class="k">"banned_token_regex"</span>: <span class="k">"./rxnorm-brands.regex"</span>,
+    <span class="k">"must_preserve_generic_for_each_redacted_brand"</span>: <span class="ok">true</span>,
+    <span class="k">"max_edit_distance"</span>: 0.4
+  },
+  <span class="k">"recall"</span>: {
+    <span class="k">"frozen_snapshot"</span>: <span class="k">"rxnorm-2026-01.kolm-recall"</span>
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"strip proprietary drug names, preserve generic equivalents"</span> \
+  --base qwen2.5-3b-instruct \
+  --pairs ./drug-redact-gold/*.jsonl \
+  --recall ./rxnorm-2026-01/ \
+  --verifier no-brand-names,generic-preserved \
+  --k-floor 0.88 \
+  --output drug-name-redact.kolm
+
+<span class="ok">ok</span> wrote <span class="k">drug-name-redact.kolm</span>
+   k_score=0.91  signature=hmac-sha256
+   0/135 held-out outputs contained a brand name</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.91</span>
+        <span class="k-detail">held-out 135 inputs &middot; brand-leak 0% &middot; generic-preserved 99% &middot; semantic-faithful 96%</span>
+      </div>
+      <p>Brand-leak metric is exact: any output containing a token from the bundled brand-name regex breaks the chain and is rejected.</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">CMS server</div><div class="v">340<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">62<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Mac mini</div><div class="v">280<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">CPU x86</div><div class="v">540<span class="u">ms</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># CMS pre-publish hook — strip brands before patient-facing pages go live:</span>
+on_publish = (page) =&gt; {
+  const safe = kolm.run(<span class="k">'drug-name-redact.kolm'</span>, page.body);
+  page.body = safe.text;
+  audit.log({ artifact: <span class="k">'drug-name-redact.kolm'</span>, page_id: page.id, k_score: safe.receipt.k_score });
+};</pre>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/hipaa-summarizer"><div class="h">HIPAA summarizer</div><div class="d">Clinical note → SOAP summary.</div></a>
+        <a href="/cookbook/intake-triage"><div class="h">Intake triage</div><div class="d">Patient intake → urgency band.</div></a>
+        <a href="/cookbook/finance-disclosure-redact"><div class="h">Disclosure redact</div><div class="d">Strip MNPI from financial copy.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap-wide row">
+    <span>kolm cookbook &middot; <a href="/cookbook">all recipes</a></span>
+    <span><a href="/manifesto">Manifesto</a> &middot; <a href="/security">Security</a> &middot; <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>
