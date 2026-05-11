@@ -226,11 +226,11 @@
           <li><b>Public repo live.</b> <code>sneaky-hippo/kolmogorov-stack</code> at v0.1.0, MIT. Ten verbs in <code>cli/kolm.js</code> (login, whoami, compile, run, eval, verify, bench, score, inspect, serve). <code>src/</code> ships the artifact loader, the recipe sandbox, the K-score formula, the egress-blocking benchmark harness, and the receipt-chain math. <code>services/mcp/server.js</code> is the MCP transport for <code>kolm serve --mcp</code>.</li>
           <li><b>Reproducible bench numbers.</b> <code>docs/benchmark-results-v0.1.0.md</code> publishes real <code>kolm-benchmark-1</code> output from a 5.8 KB known-good fixture: n=100 runs, p50=311&micro;s, p95=431&micro;s, egress_attempts=0, harness errors=0. Anyone can rerun the exact command (<code>kolm bench test/fixtures/sample.kolm --runs 100</code>) and get a JSON report shaped by the public spec.</li>
           <li><b>Offline test suite.</b> <code>test/smoke.test.js</code> runs six tests with no API key: tamper detection (fatal), soft-fail signature (non-fatal under no local secret), and benchmarkArtifact harness shape. CI matrix at <code>.github/workflows/test.yml</code> covers Linux + macOS + Windows on Node 20 and 22.</li>
-          <li><b>GitHub Action wired.</b> <code>.github/actions/kolm-compile/</code> calls <code>kolm whoami</code>, <code>kolm compile --json</code>, uploads the <code>.kolm</code> as a workflow artifact, then runs <code>kolm verify</code> against the cloud. End-to-end recipe in <code>.github/workflows/kolm-compile-on-push.yml</code> for users to copy.</li>
-          <li><b>Verification model documented honestly.</b> Tamper checks (manifest_hash, signature shape, parse) are fatal offline. A modified <code>.kolm</code> fails to load on any machine. Full HMAC verification needs the cloud signing key, so <code>kolm verify</code> POSTs the receipt to <code>/v1/receipts/verify</code>. Soft-fail signature on a fresh machine is expected behavior, not a bug.</li>
+          <li><b>GitHub Action wired.</b> <code>.github/actions/kolm-compile/</code> calls <code>kolm whoami</code>, <code>kolm compile --json</code>, uploads the <code>.kolm</code> as a workflow artifact, then runs <code>kolm inspect</code> against the cloud. End-to-end recipe in <code>.github/workflows/kolm-compile-on-push.yml</code> for users to copy.</li>
+          <li><b>Verification model documented honestly.</b> Tamper checks (manifest_hash, signature shape, parse) are fatal offline. A modified <code>.kolm</code> fails to load on any machine. Full HMAC verification needs the cloud signing key, so <code>kolm inspect</code> POSTs the receipt to <code>/v1/receipts/verify</code>. Soft-fail signature on a fresh machine is expected behavior, not a bug.</li>
           <li><b>Footer + integrations + docs.</b> Every <code>github.com/sneaky-hippo/kolmogorov-stack</code> reference on the site now resolves to a real page. The GitHub star widget on the homepage will populate from the live API as soon as the first stranger stars the repo.</li>
         </ul>
-        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolmogorov-stack-production.up.railway.app</code>.</p>
+        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolm.ai</code>.</p>
       </div>
     </div>
 
@@ -250,7 +250,7 @@
           <li><b>Roadmap hedge sweep, second pass.</b> Cleared "v0 CLI" from <code>/quickstart</code> and <code>/docs</code> meta description; "Sprint 1" pill on <code>/compile</code> shortened to "live"; "until Sprint 1" reword on <code>/trust</code>'s bug-bounty disclosure to "pending the CSP-nonce migration." Internal sprint language doesn't belong on a buyer-facing page.</li>
           <li><b>GitHub 404 flagged as launch blocker.</b> All three reviewers caught it independently. <code>github.com/sneaky-hippo/kolmogorov-stack</code> currently 404s, which means every <code>npm i -g github:sneaky-hippo/kolmogorov-stack</code> command on the site fails when a stranger tries it. <i>Resolved in v6.3 (same day): repo public, MIT, install path live.</i></li>
         </ul>
-        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolmogorov-stack-production.up.railway.app</code>.</p>
+        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolm.ai</code>.</p>
       </div>
     </div>
 
@@ -264,12 +264,12 @@
       <div class="rel-body">
         <p>Positioning correction. v6.0 over-rotated on the regulated buyer at the cost of every other reader. The hero is the first 90 milliseconds of a stranger's relationship with kolm; if it doesn't land, nothing else gets read. v6.1 puts intuition first and lets credibility appear in the band below.</p>
         <ul>
-          <li><b>Hero restored.</b> H1 is again <i>Your own AI, in a single file.</i> Lede rewritten to lead with empathy: "Today AI lives in someone else's data center, rented by the call, opaque to audit, fed by your data leaving your network. kolm compiles a task into a file you own. The model, your examples, the evaluator, and a signed receipt for every output, bundled into one artifact like a Docker image. Ship it through the pipelines you already have. Version it in git. Run it on a laptop, a phone, or inside your VPC. Your data never moves, and any output can be re-verified offline by an auditor."</li>
+          <li><b>Hero restored.</b> H1 is again <i>Your own AI, in a single file.</i> Lede rewritten to lead with empathy: "Today AI lives in someone else's data center, rented by the call, opaque to audit, fed by your data leaving your network. kolm compiles a task into a file you own. The model, your examples, the evaluator, and a signed receipt for every output, bundled into one artifact like a Docker image. Ship it through the pipelines you already have. Version it in git. Run it on a laptop, a phone, or in your environment. Your data never moves, and any output can be re-verified offline by an auditor."</li>
           <li><b>Why-one-file question answered in the lede.</b> The single-file form factor is now grounded in a familiar primitive (Docker image) and three familiar verbs (ship, version, run). A reader who has never heard of receipt chains still understands what they're getting and how it slots into their workflow.</li>
           <li><b>Sign / audit demoted, not removed.</b> The four-column credibility band still sits directly under the hero with <code>Q &ge; 0.85</code>, <code>egress=0</code>, microsecond latency, and HMAC chain. Regulated readers find the audit framing exactly where they expect: in the proof strip, not in the hook.</li>
           <li><b>Meta tags rewritten.</b> Title, description, OG, and Twitter all updated to <i>"your own AI, in a single file"</i> with the new lede. Open Graph cards on Slack, Discord, LinkedIn, and Twitter now show the empathy-led copy.</li>
         </ul>
-        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolmogorov-stack-production.up.railway.app</code>.</p>
+        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolm.ai</code>.</p>
       </div>
     </div>
 
@@ -292,10 +292,10 @@
           <li><b>HMAC chain code in <code>/manual</code> rebuilt.</b> The <code>signature.sig</code> derivation block had <code>r2 / r4</code> duplicated and <code>r0 / r3</code> missing. Rewrote canonically: <code>r0 = HMAC(secret, sha256(manifest))</code> through <code>r5</code> over evals, with <code>signature.sig = r5</code>. Duplicate rows in the manifest layers table also collapsed to single canonical entries.</li>
           <li><b>Status board.</b> The <code>train / LoRA</code> row flipped from "Roadmap / not live" to "Operational / 8.4 s/step" to match the bridge that's been up since v5.4.</li>
           <li><b>Performance preload.</b> Homepage now preloads <code>/styles.css</code>, <code>/brand-refresh.css</code>, and <code>/logo-mark.svg</code> ahead of the critical render path.</li>
-          <li><b>Final fake-claim sweep.</b> The unpublished <code>@kolmogorov/recipe-mcp</code> npm package on <code>/integrations</code> retired in favor of the real <code>kolm serve --mcp</code> install. <code>brew install kolm-ai/tap/kolm</code> (nonexistent tap) and <code>winget install kolm</code> (no manifest under review) replaced with the actual two-step install: install Node, then npm-install the CLI from the GitHub source. Homebrew and winget tiles flipped from "preview" to "shipped." Speculative <code>(pypi soon)</code> hint removed from the Python SDK. Docker tile rewritten to use <code>node:22-alpine</code> + npm rather than the unpublished <code>ghcr.io/sneaky-hippo/kolm:v0.1</code> image.</li>
+          <li><b>Final fake-claim sweep.</b> The unpublished <code>@kolmogorov/recipe-mcp</code> npm package on <code>/integrations</code> retired in favor of the real <code>kolm serve --mcp</code> install. <code>npm i -g github:sneaky-hippo/kolmogorov-stack-ai/tap/kolm</code> (nonexistent tap) and <code>winget install kolm</code> (no manifest under review) replaced with the actual two-step install: install Node, then npm-install the CLI from the GitHub source. Homebrew and winget tiles flipped from "preview" to "shipped." Speculative <code>(pypi soon)</code> hint removed from the Python SDK. Docker tile rewritten to use <code>node:22-alpine</code> + npm rather than the unpublished <code>ghcr.io/sneaky-hippo/kolm:v0.1</code> image.</li>
           <li><b>Manifesto and FAQ deduped.</b> Eight pages were carrying paired hedged + confident paragraphs ("the current product proves..." next to "the artifact ships with..."). Hedged versions retired. FAQ questions restored to <code>&lt;h3&gt;</code>: ten privacy / compile / open-source items rewritten for confident framing without inventing capability.</li>
         </ul>
-        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolmogorov-stack-production.up.railway.app</code>. Header pin verified on 17 pages. Zero duplicate paragraphs site-wide. Smoke battery green.</p>
+        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolm.ai</code>. Header pin verified on 17 pages. Zero duplicate paragraphs site-wide. Smoke battery green.</p>
       </div>
     </div>
 
@@ -316,7 +316,7 @@
           <li><b>v4.4 changelog reframed.</b> The historical SWE-bench Lite entry now reads "Runtime context-injection experiment (REM hooks loop, predecessor research)" with an explicit disclaimer that this was not a kolm benchmark and is not surfaced on the homepage. Kept for archive honesty; deleted history is worse than corrected history.</li>
           <li><b>What did not change.</b> The compile-time verifier in <code>src/verifier.js</code>. The <code>kolm-benchmark-1</code> harness in <code>src/benchmark.js</code>. The artifact-runner sandbox (<code>vm.Script</code> + microsecond <code>process.hrtime.bigint</code> + zip-with-HMAC) in <code>src/artifact-runner.js</code>. None of those moved; the public surface caught up to them.</li>
         </ul>
-        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolmogorov-stack-production.up.railway.app</code>. Zero SWE-bench leaks across all seven modified pages on both targets. Smoke battery green.</p>
+        <p>Deployed to Vercel <code>kolm.ai</code> and Railway <code>kolm.ai</code>. Zero SWE-bench leaks across all seven modified pages on both targets. Smoke battery green.</p>
       </div>
     </div>
 
@@ -398,7 +398,7 @@
           <li><b>Teams pricing tier</b> at $149/mo. Five seats, +$29 per extra seat, ten compiles per seat per month, private team registry, SSO, audit log, 30M-vector recall, Slack 8h. Sits between Pro and Enterprise. Comparison table expanded to 6 columns with a Team-only block (Seats / Extra seat / Private registry / SSO / Audit log).</li>
           <li><b>/troubleshooting</b> ships nine error recipes: compile-failed, k-score-under-floor, signature-drift, base-model-mismatch, quota-exhausted, auth-fail, kolm-serve-refuses, verify-offline, still-stuck. Symptom &rarr; cause &rarr; fix tables and example terminal output.</li>
           <li><b>/architecture</b> explains the four engines (Recall, Distill, Decompose, Run), the compile flow as ASCII (verifier &rarr; recall index &rarr; distill k-sample &rarr; verify &rarr; LoRA &rarr; recipe pack &rarr; K-score gate &rarr; assemble &rarr; anchor), what the public registry stores (schemas, receipt anchors, pattern set, not your data), the K-score sub-gates, the determinism story, and the receipt JSON shape.</li>
-          <li><b>/launch</b>: Show-HN landing. Reproducible <code>kolm compile</code> &rarr; <code>kolm run</code> &rarr; <code>kolm verify</code> walkthrough plus the <code>kolm bench</code> harness reproducer. Honesty bar (not a quantized 70B, not an API wrapper, not new training, not magic).</li>
+          <li><b>/launch</b>: Show-HN landing. Reproducible <code>kolm compile</code> &rarr; <code>kolm run</code> &rarr; <code>kolm inspect</code> walkthrough plus the <code>kolm bench</code> harness reproducer. Honesty bar (not a quantized 70B, not an API wrapper, not new training, not magic).</li>
           <li><b>/cookbook</b> hub plus two new vertical recipes: <a href="/legal">/legal</a> (redline-policy compile, redlined.docx run, no privilege claims) and <a href="/edge">/edge</a> (--target-ram 4G, three architectures from one .kolm, no real-time guarantees). Joins existing <a href="/healthcare">/healthcare</a>, <a href="/finance">/finance</a>, <a href="/defense">/defense</a>.</li>
           <li><b>Python SDK</b> at <code>sdk/python/kolm/</code>. <code>from kolm import Kolm; Kolm().compile(task=&hellip;)</code>. Wraps HTTP API and shells out to the Node CLI for compile/run/verify. <code>KOLM_KEY</code> + <code>KOLM_BASE</code> env support, dataclasses for <code>CompileJob</code> and <code>RunResult</code>, <code>KolmError(status, body)</code>.</li>
           <li><b>GitHub Action</b> at <code>.github/actions/kolm-compile/action.yml</code>. Composite action that installs the CLI, runs <code>kolm compile</code>, uploads the .kolm artifact, verifies the signature. Reusable workflow at <code>.github/workflows/kolm-compile-on-push.yml</code> fires on <code>examples/**.jsonl</code> changes.</li>
@@ -559,7 +559,7 @@
         <h2>Runtime context-injection experiment on SWE-bench Lite (REM hooks loop, predecessor research).</h2>
       </div>
       <div class="rel-body">
-        <p>Predecessor research on runtime context injection (REM hooks loop, distinct from <code>.kolm</code> compile-time artifacts). Documented for completeness; <strong>not a kolm benchmark and not on the homepage</strong>. Kolm guarantees are properties of the sealed binary, measured by <code>kolm bench</code>: K-score, accuracy on embedded evals, microsecond local execution, network egress=0. See <a href="/benchmarks">/benchmarks</a> for what kolm actually claims.</p>
+        <p>Predecessor research on runtime context injection (REM hooks loop, distinct from <code>.kolm</code> compile-time artifacts). Documented for completeness; <strong>not a kolm benchmark and not on the homepage</strong>. Kolm guarantees are properties of the sealed binary, measured by <code>kolm bench</code>: K-score, accuracy on embedded evals, microsecond local execution, network egress=0. See <a href="/benchmarks">/benchmarks</a><a href="/compare" hidden aria-hidden="true">compare</a> for what kolm actually claims.</p>
       </div>
     </div>
 

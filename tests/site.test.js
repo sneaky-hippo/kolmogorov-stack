@@ -280,15 +280,18 @@ test('static text assets have clean encoding and current brand tokens', () => {
   assert.deepEqual(failures, []);
 });
 
-test('signup exposes only wired API-key auth', () => {
+test('signup wires API-key auth and OAuth surfaces', () => {
   const signup = fs.readFileSync(path.join('public', 'signup.html'), 'utf8');
 
   assert.match(signup, /\/v1\/signup/);
   assert.match(signup, /\/v1\/signin/);
   assert.match(signup, /kolm_api_key/);
   assert.match(signup, /recipeApiKey/);
-  assert.doesNotMatch(signup, /Sign in with (Google|GitHub)/i);
-  assert.doesNotMatch(signup, /Continue with (Google|GitHub)/i);
+  assert.match(signup, /Continue with Google/);
+  assert.match(signup, /Continue with GitHub/);
+  assert.match(signup, /\/v1\/oauth\//);
+  assert.match(signup, /tryOAuth\(['"]google['"]\)/);
+  assert.match(signup, /tryOAuth\(['"]github['"]\)/);
 });
 
 test('server and source text assets have clean encoding', () => {

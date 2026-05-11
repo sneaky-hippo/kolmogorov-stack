@@ -15,7 +15,7 @@ four verbs:
 ```
 kolm compile <task> · produce a signed .kolm artifact from a task + examples
 kolm run <file> <input> · execute a .kolm artifact locally
-kolm recall <query> · query the multimodal index inside an artifact
+kolm query <query> · query the multimodal index inside an artifact
 kolm verify <output> · verify an output's HMAC receipt against an artifact
 ```
 

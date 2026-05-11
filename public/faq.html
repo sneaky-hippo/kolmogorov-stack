@@ -83,7 +83,7 @@
   footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 </style>
 <link rel="stylesheet" href="/brand-refresh.css">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is kolm, in one sentence?","acceptedAnswer":{"@type":"Answer","text":"kolm is the build system for private AI. kolm compile takes a task description, your data, and a frontier model API key, and produces a single signed .kolm file that runs on-device or behind your VPC with no runtime egress."}},{"@type":"Question","name":"Isn't this just llama.cpp / MLC.ai / ExecuTorch?","acceptedAnswer":{"@type":"Answer","text":"Those are runtimes. kolm is the compile step above the runtime. The artifact kolm produces runs on top of any of them. Runtimes give you a way to execute open-weight models locally; kolm gives you the way to teach a small model your task, ground it in your data, gate it on a quality score, and seal it as one portable file."}},{"@type":"Question","name":"What's a Specialist?","acceptedAnswer":{"@type":"Answer","text":"A Specialist is the artifact that comes out of kolm compile. It's a single signed zip with the base model, a personal LoRA, a recipe pack, a recall index, the verifier, the manifest, and the signature chain."}},{"@type":"Question","name":"What is the K-score?","acceptedAnswer":{"@type":"Answer","text":"A weighted scalar over five components measured at compile time: K = 0.40·A + 0.15·S + 0.15·L + 0.15·C + 0.15·V (accuracy, size, latency, cost, coverage). One number on the cover, five you can defend. Default ship gate is 0.85; safety-critical recipes require 0.95; prototypes can ship at 0.70."}},{"@type":"Question","name":"What does the compile pipeline actually do?","acceptedAnswer":{"@type":"Answer","text":"You bring the frontier teacher (Anthropic, OpenAI, Google, your own). kolm runs k-sample inference, deterministically verifies, and uses the winning labels to distill. The student base is open-weight: Qwen 2.5, Llama 3.1, Phi-3, Hermes-3, Mistral. You pick. The artifact ships with the student baked in."}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is kolm, in one sentence?","acceptedAnswer":{"@type":"Answer","text":"kolm is the build system for private AI. kolm compile takes a task description, your data, and a frontier model API key, and produces a single signed .kolm file: a recipe-tier artifact with a signed manifest, recipes, evals, and an HMAC receipt chain. Customer-controlled deployment is required for in-environment runtimes."}},{"@type":"Question","name":"Isn't this just llama.cpp / MLC.ai / ExecuTorch?","acceptedAnswer":{"@type":"Answer","text":"Those are runtimes. kolm is the compile step above the runtime. v0 .kolm artifacts carry recipes, evals, and a signed model pointer; the wrapper composes against a runtime of your choice. Runtimes give you a way to execute open-weight models locally; kolm gives you the way to teach a small model your task, ground it in your data, gate it on a quality score, and seal it as one portable file."}},{"@type":"Question","name":"What's a Specialist?","acceptedAnswer":{"@type":"Answer","text":"A Specialist is the artifact that comes out of kolm compile. v0 ships as a recipe-tier zip with the signed manifest, recipes, evals, optional pack (KOLMPACK) and optional index (KOLMIDX) slots, the verifier, and the HMAC receipt chain. Adapter/LoRA packaging is a roadmap tier."}},{"@type":"Question","name":"What is the K-score?","acceptedAnswer":{"@type":"Answer","text":"A weighted scalar over five components measured at compile time: K = 0.40·A + 0.15·S + 0.15·L + 0.15·C + 0.15·V (accuracy, size, latency, cost, coverage). One number on the cover, five you can defend. Default ship gate is 0.85; safety-critical recipes require 0.95; prototypes can ship at 0.70."}},{"@type":"Question","name":"What does the compile pipeline actually do?","acceptedAnswer":{"@type":"Answer","text":"You bring the frontier teacher (Anthropic, OpenAI, Google, your own). kolm runs k-sample inference, deterministically verifies, and uses the winning labels to author recipes. The student base is open-weight: Qwen 2.5, Llama 3.1, Phi-3, Hermes-3, Mistral. The artifact ships with a signed model-pointer record; adapter packaging is a roadmap tier."}}]}</script>
 </head>
 <body>
 
@@ -130,7 +130,7 @@
       <h2>Product</h2>
       <div class="qa">
         <h3>What is kolm, in one sentence?</h3>
-        <p>kolm is the build system for private AI. <code>kolm compile</code> takes a task description, your data, and a frontier model API key, and produces a single signed <code>.kolm</code> file that runs on-device or behind your VPC with no runtime egress.</p>
+        <p>kolm is the build system for private AI. <code>kolm compile</code> takes a task description, your data, and a frontier model API key, and produces a single signed <code>.kolm</code> file: a recipe-tier artifact with a signed manifest, recipes, evals, and an HMAC receipt chain. Customer-controlled deployment is required for in-environment runtimes.</p>
       </div>
       <div class="qa">
         <h3>Isn't this just llama.cpp / MLC.ai / ExecuTorch?</h3>
@@ -138,7 +138,7 @@
       </div>
       <div class="qa">
         <h3>What's a Specialist?</h3>
-        <p>A Specialist is the artifact that comes out of <code>kolm compile</code>. It's a single signed zip with the base model, a personal LoRA, a recipe pack, a recall index, the verifier, the manifest, and the signature chain. <a href="/anatomy">/anatomy</a> shows the structure.</p>
+        <p>A Specialist is the artifact that comes out of <code>kolm compile</code>. v0 ships as a recipe-tier zip with the signed manifest, recipes, evals, optional pack and index slots, the verifier, and the HMAC receipt chain. Adapter/LoRA packaging is a roadmap tier. <a href="/anatomy">/anatomy</a> shows the structure.</p>
       </div>
       <div class="qa">
         <h3>What is the K-score?</h3>
@@ -150,7 +150,7 @@
       <h2>Compile</h2>
       <div class="qa">
         <h3>What does the compile pipeline actually do?</h3>
-        <p>You bring the frontier teacher (Anthropic, OpenAI, Google, your own). kolm runs k-sample inference, deterministically verifies, and uses the winning labels to distill. The student base is open-weight: Qwen 2.5, Llama 3.1, Phi-3, Hermes-3, Mistral. You pick. The artifact ships with the student baked in.</p>
+        <p>You bring the frontier teacher (Anthropic, OpenAI, Google, your own). kolm runs k-sample inference, deterministically verifies, and uses the winning labels to author recipes. The student base is open-weight: Qwen 2.5, Llama 3.1, Phi-3, Hermes-3, Mistral. You pick. The artifact ships with a signed model-pointer record in v0; adapter packaging is a roadmap tier.</p>
       </div>
       <div class="qa">
         <h3>What happens if my K-score is below the gate?</h3>
@@ -202,7 +202,7 @@
       <h2>Privacy &amp; data</h2>
       <div class="qa">
         <h3>Where does my data go during compile?</h3>
-        <p>On the hosted Pro tier, task specs, examples, and evals stay inside the kolm compile pipeline and are purged on a 24-hour window. On Enterprise, the compile bridge runs inside your VPC and raw data never leaves the boundary.</p>
+        <p>On the hosted Pro tier, task specs, examples, and evals stay inside the kolm compile pipeline and are purged on a 24-hour window. On Enterprise, the compile bridge runs in your environment and raw data never leaves the boundary.</p>
       </div>
       <div class="qa">
         <h3>Do you train on my compile inputs?</h3>

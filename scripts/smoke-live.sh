@@ -1377,7 +1377,7 @@ check "/k-score eyebrow 04 renumbered"   has "$KSCORE" '<span class="num">04</sp
 echo ""
 echo "=== 48. /anatomy text-only walker prose (post-widget-removal) ==="
 check "/anatomy walker hmac-sha256"      has "$ANATOMY" 'HMAC-SHA256'
-check "/anatomy verify cmd in prose"     has "$ANATOMY" 'kolm verify'
+check "/anatomy verify cmd in prose"     has "$ANATOMY" 'kolm inspect'
 check "/anatomy no walker plate"         hashno "$ANATOMY" 'data-walker'
 
 echo ""
@@ -1396,7 +1396,7 @@ PRICING=$(curl -s "$URL/pricing")
 check "/pricing aria no mobile leak"       hashno "$PRICING" 'free, mobile, pro, team, business'
 check "/pricing 28x cheaper not 27-"       has "$PRICING" '<b>28&times; cheaper</b>'
 check "/pricing no orphan 27- multiplier"  hashno "$PRICING" '27- cheaper'
-check "/pricing h4 question marks"         test "$(echo "$PRICING" | grep -c '?</h4>')" -ge 4
+check "/pricing FAQ question marks"        test "$(echo "$PRICING" | grep -cE '\?</h[34]>')" -ge 4
 check "/pricing no stale -</h4>"           test "$(echo "$PRICING" | grep -c -- '-</h4>')" -eq 0
 
 echo ""

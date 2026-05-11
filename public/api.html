@@ -330,7 +330,7 @@ Authorization: Bearer ks_&lt;your-key&gt;</pre>
 
         <section class="api-section">
           <h2>Compile</h2>
-          <p class="lede">The orchestrator: synthesize a verifier, k-sample the frontier, fit a LoRA, observe deterministic patterns, sign, bundle. Returns a job id; polls become <code>.kolm</code> files.</p>
+          <p class="lede">The orchestrator: synthesize a verifier, k-sample the frontier, observe deterministic patterns, sign, bundle. Returns a job id; polls become <code>.kolm</code> files. Adapter/LoRA fit is a roadmap tier; v0 emits recipe-tier artifacts with signed model-pointer records.</p>
 
           <div class="endpoint" id="compile-create">
             <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/compile</span><span class="auth-pill bearer">bearer</span></div>
@@ -507,7 +507,7 @@ Authorization: Bearer ks_&lt;your-key&gt;</pre>
 
         <section class="api-section">
           <h2>Capture &amp; distill</h2>
-          <p class="lede">Drop-in proxy endpoints that mirror upstream Anthropic and OpenAI shapes. Every call you forward through us is recorded as an <code>(input, output)</code> pair under a tenant namespace. At 1,000 pairs the namespace is eligible for <code>auto-distill</code> &middot; we train a LoRA on the captured corpus and ship you a signed <code>.kolm</code> you keep forever. Your frontier API key never touches our store; we forward it via <code>x-upstream-api-key</code> and strip it before logging.</p>
+          <p class="lede">Drop-in proxy endpoints that mirror upstream Anthropic and OpenAI shapes. Every call you forward through us is recorded as an <code>(input, output)</code> pair under a tenant namespace. At 1,000 pairs the namespace is eligible for <code>auto-distill</code> (preview) &middot; we hand off to a training bridge and ship you a signed <code>.kolm</code> you keep forever; LoRA packaging requires the bridge and may return 503 in v0. Your frontier API key never touches our store; we forward it via <code>x-upstream-api-key</code> and strip it before logging.</p>
 
           <div class="endpoint" id="capture-anthropic">
             <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/capture/anthropic</span><span class="auth-pill bearer">bearer</span></div>
@@ -589,9 +589,9 @@ count_only  bool     "1" | "true"</pre>
           </div>
 
           <div class="endpoint" id="auto-distill">
-            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/specialists/auto-distill</span><span class="auth-pill bearer">bearer</span></div>
+            <div class="ep-head"><span class="method post">POST</span><span class="path">/v1/specialists/auto-distill</span><span class="auth-pill bearer">bearer</span><span class="auth-pill" style="background:rgba(236,231,220,0.06);border:1px solid var(--line);color:var(--ink-mute);">preview</span></div>
             <div class="ep-body">
-              <p>Kick off a LoRA training run against a namespace's captured corpus. Locked under 1,000 pairs (returns 400 with a count). Once eligible, we hand off to the training bridge and return a job id you can poll. The resulting <code>.kolm</code> is signed and downloadable through <code>/v1/compile/:id/.kolm</code>.</p>
+              <p><b>Preview.</b> Kick off an adapter training run against a namespace's captured corpus. Locked under 1,000 pairs (returns 400 with a count). When the training bridge is unavailable the route returns 503; integration is roadmap. Once eligible and bridged, returns a job id you can poll. The resulting <code>.kolm</code> is signed and downloadable through <code>/v1/compile/:id/.kolm</code>.</p>
               <h5>Request</h5>
               <pre class="req">{
   "namespace":   "support-classifier",

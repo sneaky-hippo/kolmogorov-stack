@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Verifiable on-chain AI · kolm</title>
-<meta name="description" content="HMAC-chained receipts anchor to Sigstore / Rekor, optionally Arweave / OP_RETURN. Outputs you can prove came from a specific artifact.">
+<meta name="description" content="HMAC-chained receipts anchor to Sigstore / Rekor, optionally future content-anchor service / OP_RETURN. Outputs you can prove came from a specific artifact.">
 <meta name="theme-color" content="#0b0d10">
 <meta name="color-scheme" content="dark light">
 <script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 
 <meta property="og:title" content="kolm · verifiable on-chain AI">
-<meta property="og:description" content="Every .kolm output carries an HMAC-chained receipt. Anchor it to Sigstore, Rekor, Arweave, or OP_RETURN, and prove that this exact model produced this exact output.">
+<meta property="og:description" content="Every .kolm output carries an HMAC-chained receipt. Anchor it to Sigstore, Rekor, future content-anchor service, or OP_RETURN, and prove that this exact model produced this exact output.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kolm.ai/use-cases/web3-verifiable">
 <link rel="canonical" href="https://kolm.ai/use-cases/web3-verifiable">
@@ -19,7 +19,7 @@
 <meta property="twitter:image" content="https://kolm.ai/img/brand-og.png">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"TechArticle","headline":"Verifiable on-chain AI","description":"Every .kolm output carries an HMAC-chained receipt. Anchor it to Sigstore, Rekor, Arweave, or OP_RETURN, and prove that this exact model produced this exact output. Outputs you can verify forever, without trusting the runner.","author":{"@type":"Organization","name":"Kolmogorov","url":"https://kolm.ai"},"publisher":{"@type":"Organization","name":"Kolmogorov","logo":{"@type":"ImageObject","url":"https://kolm.ai/favicon.svg"}},"datePublished":"2026-05-08","dateModified":"2026-05-09","mainEntityOfPage":{"@type":"WebPage","@id":"https://kolm.ai/use-cases/web3-verifiable"},"image":"https://kolm.ai/og-card.svg","keywords":"verifiable AI, on-chain inference, Sigstore, Rekor, Arweave, OP_RETURN, HMAC receipt","articleSection":"Use case"}
+{"@context":"https://schema.org","@type":"TechArticle","headline":"Verifiable on-chain AI","description":"Every .kolm output carries an HMAC-chained receipt. Anchor it to Sigstore, Rekor, future content-anchor service, or OP_RETURN, and prove that this exact model produced this exact output. Outputs you can verify forever, without trusting the runner.","author":{"@type":"Organization","name":"Kolmogorov","url":"https://kolm.ai"},"publisher":{"@type":"Organization","name":"Kolmogorov","logo":{"@type":"ImageObject","url":"https://kolm.ai/favicon.svg"}},"datePublished":"2026-05-08","dateModified":"2026-05-09","mainEntityOfPage":{"@type":"WebPage","@id":"https://kolm.ai/use-cases/web3-verifiable"},"image":"https://kolm.ai/og-card.svg","keywords":"verifiable AI, on-chain inference, Sigstore, Rekor, future content-anchor service, OP_RETURN, HMAC receipt","articleSection":"Use case"}
 </script>
 <style>
   :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#faf2e1;--accent-soft:rgba(236,231,220, 0.10);--good:#7ef0d2;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
@@ -150,7 +150,7 @@
       <span class="here">UC-05 &middot; verifiable AI</span>
     </div>
     <h1>Outputs you can prove came from a <span class="tone">specific artifact.</span></h1>
-    <p class="lede">Every <code>.kolm</code> output ships with an HMAC-SHA256 receipt chained to the artifact&rsquo;s manifest hash and your tenant key. Anchor that receipt to <b>Sigstore, Rekor, Arweave, or Bitcoin OP_RETURN</b> and any third party (an auditor, a counter-party, a judge) can verify offline that this exact model produced this exact output.</p>
+    <p class="lede">Every <code>.kolm</code> output ships with an HMAC-SHA256 receipt chained to the artifact&rsquo;s manifest hash and your tenant key. Anchor that receipt to <b>Sigstore, Rekor, future content-anchor service, or future on-chain transaction</b> and any third party (an auditor, a counter-party, a judge) can verify offline that this exact model produced this exact output.</p>
     <div class="cta-row">
       <a href="/signup?plan=pro" class="btn-primary">Start Pro &rarr;</a>
       <a href="/whitepaper#receipts" class="btn-link">Receipt format spec <span aria-hidden="true">&rarr;</span></a>
@@ -167,7 +167,7 @@
       <div class="pain-card">
         <div class="lab">Ring 1 &middot; artifact</div>
         <div class="big">SHA-256<span class="u">&nbsp;manifest</span></div>
-        <p>Signs the manifest, base model GGUF, LoRA, recipes, recall index. <b>Tampering breaks the chain.</b> Verify with <code>kolm verify &lt;artifact&gt;</code>.</p>
+        <p>Signs the manifest, base model GGUF, LoRA, recipes, recall index. <b>Tampering breaks the chain.</b> Verify with <code>kolm inspect &lt;artifact&gt;</code>.</p>
       </div>
       <div class="pain-card">
         <div class="lab">Ring 2 &middot; call</div>
@@ -177,7 +177,7 @@
       <div class="pain-card">
         <div class="lab">Ring 3 &middot; anchor</div>
         <div class="big">Rekor<span class="u">&nbsp;or chain</span></div>
-        <p>Optional: anchor the chain head to <b>Sigstore Rekor (default)</b>, Arweave (permanent), or Bitcoin OP_RETURN (timestamped). Public, tamper-evident, decade-durable.</p>
+        <p>Optional: anchor the chain head to <b>Sigstore Rekor (default)</b>, future content-anchor service (permanent), or future on-chain transaction (timestamped). Public, tamper-evident, decade-durable.</p>
       </div>
     </div>
   </div>
@@ -197,13 +197,13 @@
       </div>
       <div class="anchor">
         <div class="lab">permanent &middot; cheap</div>
-        <h3>Arweave.</h3>
+        <h3>future content-anchor service.</h3>
         <p>Permanent storage with a one-time fee. <b>Useful for receipts that must outlive the company.</b> 200-year storage commitment from the protocol.</p>
         <div class="meta"><span>~$0.0002 / kb</span><span>~30s confirm</span><span>permanent</span></div>
       </div>
       <div class="anchor">
         <div class="lab">timestamp-only</div>
-        <h3>Bitcoin OP_RETURN.</h3>
+        <h3>future on-chain transaction.</h3>
         <p>32-byte chain head into the most-attacked timestamp service in the world. <b>Pure existence proof.</b> Useful when your audit story needs the strongest available timestamp anchor.</p>
         <div class="meta"><span>~$1-3 / receipt</span><span>~10 min confirm</span><span>OP_RETURN</span></div>
       </div>
@@ -225,7 +225,7 @@
     <div class="term" style="max-width:880px">
       <div class="hd"><span class="dot"></span><span>auditor laptop &middot; 2030</span></div>
       <pre><span class="cm"># given: a .kolm artifact and a receipt claim</span>
-<span class="pmt">$</span> kolm verify \
+<span class="pmt">$</span> kolm inspect \
     --artifact ./contract-clauses-1.2.kolm \
     --receipt ./output-2026-05-08.receipt \
     --anchor rekor
