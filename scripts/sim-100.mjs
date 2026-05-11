@@ -103,7 +103,7 @@ async function runPersona(p, idx) {
   // 2. Read the most relevant vertical/landing page.
   const verticalMap = {
     health_cio: '/healthcare',
-    defense_pm: '/edge',
+    defense_pm: '/defense',
     hedge_quant: '/finance',
     law_it: '/legal',
     robotics: '/edge',
@@ -114,6 +114,13 @@ async function runPersona(p, idx) {
     data_sci: '/api',
   };
   events.push(await timed('vertical:' + verticalMap[p.id], () => req(verticalMap[p.id], {}, 'text')));
+
+  // 2b. Enterprise-flavored personas check /enterprise + /baa for procurement-path artifacts.
+  const enterprisePersonas = new Set(['health_cio', 'defense_pm', 'law_it', 'compliance', 'hedge_quant']);
+  if (enterprisePersonas.has(p.id)) {
+    events.push(await timed('enterprise', () => req('/enterprise', {}, 'text')));
+    events.push(await timed('baa', () => req('/baa', {}, 'text')));
+  }
 
   // 3. Read /spec or /how-it-works.
   events.push(await timed('how-it-works', () => req('/how-it-works', {}, 'text')));

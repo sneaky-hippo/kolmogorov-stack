@@ -639,9 +639,9 @@ check "sitemap has /vs-together"       has "$SM2" '/vs-together'
 AI=$(curl -s "$URL/articles")
 check "/articles advertises RSS"       has "$AI" 'application/rss+xml'
 
-# Homepage anti-incumbent + GitHub star + ICP doors
+# Homepage hero thesis + GitHub star + ICP doors
 H2=$(curl -s "$URL/")
-check "homepage anti-incumbent"        has "$H2" 'Stop renting'
+check "homepage thesis (compounding LoRA)" has "$H2" 'local LoRA you keep forever'
 check "homepage GitHub star button"    has "$H2" 'gh-star-count'
 check "homepage registry counter"      has "$H2" 'js-registry-count'
 check "homepage registry endpoint"     has "$H2" "fetch('/v1/registry/public'"
@@ -773,7 +773,7 @@ check "quickstart CTA links /build-your-own"       has "$B32_QS" 'href="/build-y
 B32_COOK=$(curl -s "$URL/cookbook")
 check "cookbook CTA links /build-your-own"         has "$B32_COOK" 'href="/build-your-own"'
 B32_DOCS=$(curl -s "$URL/docs")
-check "docs CTA links /build-your-own"             has "$B32_DOCS" 'href="/build-your-own"'
+check "docs is tempo-style hub"                    has "$B32_DOCS" 'docs-rail\|Quickstart in 60 seconds\|tabbed examples\|live from kolm.ai'
 check "benchmarks page lists 4 fixtures"           has "$B31_BENCH" 'redactor.kolm'
 check "benchmarks page lists extractor"            has "$B31_BENCH" 'extractor.kolm'
 check "benchmarks page lists classifier"           has "$B31_BENCH" 'classifier.kolm'
@@ -1320,7 +1320,8 @@ check "/ design-partner apply link"    has "$HOME" 'href="/pricing#enterprise"'
 check "/ no kolm-benchmark-1 in hero"  hashno "$HOME" 'spec &middot; kolm-benchmark-1'
 check "/ no K-score formula in hero"   hashno "$HOME" 'K = 0.40&middot;A'
 check "/ no design-partner wall"       hashno "$HOME" 'Five reserved, five open'
-check "/ no defense reg-card link"     hashno "$HOME" 'href="/defense"'
+check "/ defense reg-card link"        has "$HOME" 'href="/defense"'
+check "/ enterprise overview link"     has "$HOME" 'href="/enterprise"'
 check "/ legal reg-card present"       has "$HOME" '<a href="/legal" class="reg-card">'
 check "/ registry-count dual class"    has "$HOME" 'id="registry-count" class="js-registry-count"'
 check "/ no fabricated +10pp claim"    hashno "$HOME" '\+10\.67pp'

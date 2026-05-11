@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Docs &middot; kolm</title>
-<meta name="description" content="kolm documentation: CLI, compile API, signed .kolm artifacts, receipt schemas, and local MCP serving.">
+<meta name="description" content="kolm API and CLI reference. Code-first, copy-paste runnable, every example is real captured prod output. Authenticate, compile, run, evolve.">
 <meta name="theme-color" content="#0b0d10">
 <meta name="color-scheme" content="dark">
 <meta property="og:title" content="kolm docs">
-<meta property="og:description" content="Install the CLI, compile a signed .kolm artifact, run it locally, and inspect the current API and schema contracts.">
+<meta property="og:description" content="Build with kolm in 60 seconds. Code-first reference. Every example is real captured prod output.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kolm.ai/docs">
 <meta property="og:image" content="https://kolm.ai/og-card.svg">
@@ -17,6 +17,46 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  /* Docs-only layout: sticky left rail + main column. */
+  .docs-shell{display:grid;grid-template-columns:240px minmax(0,1fr);gap:48px;max-width:1180px;margin:0 auto;padding:48px 32px 96px}
+  @media (max-width:920px){.docs-shell{grid-template-columns:1fr;gap:24px;padding:24px 20px 64px}}
+  .docs-rail{position:sticky;top:80px;align-self:start;font-family:var(--mono);font-size:12.5px;line-height:1.9;max-height:calc(100vh - 120px);overflow-y:auto}
+  @media (max-width:920px){.docs-rail{position:relative;top:auto;max-height:none;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:8px}}
+  .docs-rail .group{margin-bottom:14px}
+  .docs-rail .group-h{color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.08em;font-size:10.5px;margin-bottom:4px}
+  .docs-rail a{display:block;color:var(--ink-mute);padding:1px 0;border-left:1px solid transparent;padding-left:10px;margin-left:-10px}
+  .docs-rail a:hover{color:var(--ink)}
+  .docs-rail a.active{color:var(--ink);border-left-color:var(--accent)}
+  .docs-main{min-width:0}
+  .docs-main h1{font-size:38px;line-height:1.1;margin:0 0 12px}
+  .docs-main h2{font-size:22px;line-height:1.2;margin:48px 0 8px;scroll-margin-top:80px;font-weight:540}
+  .docs-main h3{font-size:14px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);margin:28px 0 8px;font-weight:500;font-family:var(--mono)}
+  .docs-main p{color:var(--ink-mute);margin:6px 0 14px;font-size:15px;line-height:1.65;max-width:62ch}
+  .docs-main code:not(pre code){font-family:var(--mono);font-size:12.5px;color:var(--ink);background:rgba(255,255,255,0.04);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+  .tabs{display:flex;gap:0;margin-top:14px;border-bottom:1px solid var(--line)}
+  .tabs button{background:transparent;border:0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;letter-spacing:0.04em;text-transform:uppercase;padding:8px 14px;cursor:pointer;border-bottom:1px solid transparent;margin-bottom:-1px}
+  .tabs button.on{color:var(--ink);border-bottom-color:var(--accent)}
+  .tabs button:hover{color:var(--ink)}
+  .tabpane{display:none}
+  .tabpane.on{display:block}
+  pre.code-block{background:#0a0c0f;border:1px solid var(--line);border-radius:8px;padding:16px 18px;font-family:var(--mono);font-size:12.5px;line-height:1.65;color:#e6e6e6;overflow-x:auto;margin:0;position:relative}
+  pre.code-block .copy{position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.06);border:1px solid var(--line);color:var(--ink-mute);font-family:var(--mono);font-size:10.5px;padding:4px 8px;border-radius:4px;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em}
+  pre.code-block .copy:hover{color:var(--ink);background:rgba(255,255,255,0.10)}
+  pre.code-block .copy.done{color:var(--good,#7ef0d2)}
+  .endpoint-tag{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;margin-top:24px}
+  .endpoint-tag .verb{font-weight:600;color:var(--ink);background:rgba(255,255,255,0.08);padding:3px 8px;border-radius:4px;font-size:11px}
+  .endpoint-tag .verb.post{background:rgba(126,240,210,0.16);color:#7ef0d2}
+  .endpoint-tag .verb.get{background:rgba(76,125,255,0.20);color:#8aaaff}
+  .endpoint-tag .path{color:var(--ink-mute)}
+  .endpoint-tag .auth{color:var(--ink-faint);margin-left:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em}
+  .resp-label{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.08em;margin:16px 0 6px;display:flex;align-items:center;gap:10px}
+  .resp-label::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--good,#7ef0d2)}
+  .resp-label.live::after{content:"live from kolm.ai · captured 2026-05-11";color:var(--ink-faint);font-size:10px;text-transform:none;letter-spacing:0;margin-left:auto}
+  .kbd{font-family:var(--mono);font-size:11px;color:var(--ink-mute);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 5px;background:rgba(0,0,0,0.4)}
+  .note{border-left:2px solid var(--accent);padding:10px 14px;background:rgba(236,231,220,0.03);border-radius:0 6px 6px 0;font-size:14px;color:var(--ink-mute);margin:14px 0;max-width:62ch}
+  .note b{color:var(--ink);font-weight:540}
+</style>
 </head>
 <body>
 
@@ -39,340 +79,374 @@
   </div>
 </header>
 
-<main>
-  <section class="hero">
-    <div class="wrap">
-      <div class="hero-copy">
-        <div class="eyebrow"><span class="pulse"></span>docs</div>
-        <h1>Build against the current product.</h1>
-        <p class="lede">Everything you need to compile a task into a portable, signed file you can run anywhere. These docs describe what the repo ships today: the Node CLI, the hosted compile API, signed recipe-mode <code>.kolm</code> artifacts, HMAC receipt metadata, and local MCP serving from <code>~/.kolm/artifacts</code>. If a flag, endpoint, or field is not listed here, treat it as out of scope.</p>
-        <div class="actions">
-          <a href="/quickstart" class="btn primary">quickstart</a>
-          <a href="/build-your-own" class="btn ghost">build your own</a>
-          <a href="/docs/rs-1.md" class="btn accent">RS-1 spec</a>
-          <a href="https://github.com/sneaky-hippo/kolmogorov-stack" class="btn ghost">github</a>
-        </div>
-      </div>
+<main class="docs-shell">
+
+  <aside class="docs-rail" aria-label="Docs navigation">
+    <div class="group">
+      <div class="group-h">getting started</div>
+      <a href="#quickstart">Quickstart</a>
+      <a href="#auth">Authentication</a>
+      <a href="#install">Install the CLI</a>
     </div>
-  </section>
-
-  <section class="section">
-    <div class="wrap">
-      <div class="eyebrow"><span class="num">01</span>install</div>
-      <h2>Install and authenticate.</h2>
-      <p class="sec-lede">Until a public package-manager release exists, install the CLI from the GitHub repository or link a local checkout.</p>
-
-      <div class="grid-3">
-        <div class="card">
-          <h3>Install from GitHub.</h3>
-<pre class="code"><code>npm i -g github:sneaky-hippo/kolmogorov-stack
-kolm --version</code></pre>
-        </div>
-        <div class="card">
-          <h3>Link a checkout.</h3>
-<pre class="code"><code>git clone https://github.com/sneaky-hippo/kolmogorov-stack
-cd kolmogorov-stack
-npm install
-npm link
-kolm version</code></pre>
-        </div>
-        <div class="card">
-          <h3>Save cloud config.</h3>
-<pre class="code"><code>kolm config base https://kolm.ai
-kolm login
-# paste your ks_... API key</code></pre>
-        </div>
-      </div>
+    <div class="group">
+      <div class="group-h">api</div>
+      <a href="#signup">Sign up</a>
+      <a href="#account">Account</a>
+      <a href="#synthesize">Synthesize</a>
+      <a href="#run">Run</a>
+      <a href="#recall">Recall</a>
+      <a href="#assistant">Assistant (NL)</a>
+      <a href="#change-plan">Change plan</a>
     </div>
-  </section>
-
-  <section class="section">
-    <div class="wrap">
-      <div class="eyebrow"><span class="num">02</span>compile path</div>
-      <h2>Compile, run, inspect, serve.</h2>
-      <p class="sec-lede">The CLI command surface is intentionally small. These examples use only implemented flags and transports.</p>
-
-<pre class="terminal"><span class="prompt">$</span> kolm compile "classify support tickets" \
-  --examples ./support.examples.jsonl \
-  --data ./support-policy \
-  --base-model qwen2.5-coder-7b-instruct-q4_0 \
-  --out ./artifacts
-<span class="dim">  job  cmp_3f2a91   queued
-  job  cmp_3f2a91   distill   1/1   ok
-  job  cmp_3f2a91   recipes   12 patterns
-  job  cmp_3f2a91   k-score   composite=0.84 accuracy=0.91
-  job  cmp_3f2a91   artifact  ./artifacts/support-tickets.kolm  (3.0 MB)</span>
-
-<span class="prompt">$</span> kolm run ./artifacts/support-tickets.kolm '{"input":"checkout fails on Android"}'
-<span class="dim">  { "label": "billing/checkout", "confidence": 0.93 }</span>
-
-<span class="prompt">$</span> kolm inspect ./artifacts/support-tickets.kolm
-<span class="dim">  spec       rs-1
-  schema     manifest-v0.1
-  task       classify support tickets
-  base       qwen2.5-coder-7b-instruct-q4_0  sha256 4f1c…b9a2
-  k-score    0.84   accuracy 0.91   coverage 0.78
-  receipt    HMAC-SHA256   chain ok   signer kolm-cloud@kolm.ai</span>
-
-<span class="prompt">$</span> kolm eval ./artifacts/support-tickets.kolm
-<span class="dim">  evals  18/20 pass   p50 142ms   p95 211ms</span>
-
-<span class="prompt">$</span> kolm benchmark ./artifacts/support-tickets.kolm --runs 5 --out ./benchmark.json
-<span class="dim">  network blocked   runs 5   accuracy 0.91 ± 0.01   p50 138ms</span>
-
-<span class="prompt">$</span> kolm score ./artifacts/support-tickets.kolm
-<span class="dim">  composite 0.84   gates  accuracy ok  size ok  latency ok  cost ok</span>
-
-<span class="prompt">$</span> kolm serve --mcp --http --port 11455
-<span class="dim">  mcp   http://localhost:11455
-  tools support-tickets / classify, support-tickets / inspect</span></pre>
+    <div class="group">
+      <div class="group-h">artifacts</div>
+      <a href="#receipts">Receipts</a>
+      <a href="#kolm-format">.kolm format</a>
+      <a href="#kscore">K-score</a>
     </div>
-  </section>
-
-  <section class="section">
-    <div class="wrap">
-      <div class="eyebrow"><span class="num">03</span>CLI reference</div>
-      <h2>Every implemented command.</h2>
-      <p class="sec-lede">If a command is not listed here, do not treat it as supported by the current CLI.</p>
-
-      <div class="kv">
-        <div class="row"><span class="k">kolm login</span><span class="v">prompts for a <code>ks_...</code> API key and writes <code>~/.kolm/config.json</code></span></div>
-        <div class="row"><span class="k">kolm config</span><span class="v">reads or sets <code>base</code> and <code>api_key</code></span></div>
-        <div class="row"><span class="k">kolm compile</span><span class="v">posts a task to <code>/v1/compile</code>, polls the job, and downloads the artifact</span></div>
-        <div class="row"><span class="k">kolm run</span><span class="v">executes a local artifact with a JSON input or bare string input</span></div>
-        <div class="row"><span class="k">kolm inspect</span><span class="v">prints manifest, recipes, K-score, and signature metadata</span></div>
-        <div class="row"><span class="k">kolm eval</span><span class="v">re-runs embedded evals using the artifact runner</span></div>
-        <div class="row"><span class="k">kolm benchmark</span><span class="v">runs embedded evals repeatedly, blocks runtime network calls, and emits reproducible benchmark JSON</span></div>
-        <div class="row"><span class="k">kolm score</span><span class="v">prints the artifact K-score summary</span></div>
-        <div class="row"><span class="k">kolm serve</span><span class="v">starts MCP serving for artifacts in <code>~/.kolm/artifacts</code>; use <code>--mcp</code>, optional <code>--http</code> and <code>--port</code></span></div>
-        <div class="row"><span class="k">kolm version</span><span class="v">prints the CLI version</span></div>
-      </div>
+    <div class="group">
+      <div class="group-h">runtimes</div>
+      <a href="#cli">CLI</a>
+      <a href="#mcp">MCP serve</a>
+      <a href="#hooks">Hooks</a>
     </div>
-  </section>
-
-  <section class="section">
-    <div class="wrap">
-      <div class="eyebrow"><span class="num">04</span>API reference</div>
-      <h2>Hosted API surface.</h2>
-      <p class="sec-lede">The CLI uses bearer auth. Browser sessions can use the httpOnly <code>kolm_session</code> cookie set by sign-in routes.</p>
-
-      <div class="kv">
-        <div class="row"><span class="k">POST /v1/signup</span><span class="v">body <code>{ email, name? }</code>; returns tenant metadata and a one-time API key</span></div>
-        <div class="row"><span class="k">POST /v1/signin</span><span class="v">body <code>{ api_key }</code>; validates key and sets <code>kolm_session</code></span></div>
-        <div class="row"><span class="k">POST /v1/session/login</span><span class="v">same API-key session flow for app clients</span></div>
-        <div class="row"><span class="k">GET /v1/account</span><span class="v">returns tenant id, name, plan, quota, usage, and remaining compile budget</span></div>
-        <div class="row"><span class="k">POST /v1/account/rotate-key</span><span class="v">returns a new API key; new keys are stored as hashes at rest</span></div>
-        <div class="row"><span class="k">POST /v1/compile</span><span class="v">body <code>{ task, examples?, corpus_namespace?, base_model? }</code>; returns a compile job id</span></div>
-        <div class="row"><span class="k">GET /v1/compile/:id</span><span class="v">returns status, progress, K-score, and artifact download URL after completion</span></div>
-        <div class="row"><span class="k">GET /v1/compile/:id/.kolm</span><span class="v">downloads the compiled artifact for the authenticated tenant</span></div>
-        <div class="row"><span class="k">GET /v1/registry/export</span><span class="v">exports public recipe metadata and source for current registry entries</span></div>
-        <div class="row"><span class="k">GET /sdk-current.json</span><span class="v">current browser SDK SHA, SRI hash, URL, and byte size</span></div>
-      </div>
-
-      <h3 class="sub">Compile a task.</h3>
-<pre class="terminal"><span class="prompt">$</span> curl -sS -X POST https://kolm.ai/v1/compile \
-       -H "Authorization: Bearer ks_live_..." \
-       -H "Content-Type: application/json" \
-       -d '{
-         "task": "classify support tickets",
-         "examples": [
-           { "input": "card declined at checkout", "output": "billing/checkout" },
-           { "input": "app crashes on launch",     "output": "stability/launch" }
-         ],
-         "base_model": "qwen2.5-coder-7b-instruct-q4_0"
-       }'
-<span class="dim">{
-  "job_id": "cmp_3f2a91",
-  "status": "queued",
-  "created_at": "2026-05-08T18:42:11Z"
-}</span></pre>
-
-      <h3 class="sub">Poll a compile job.</h3>
-<pre class="terminal"><span class="prompt">$</span> curl -sS https://kolm.ai/v1/compile/cmp_3f2a91 \
-       -H "Authorization: Bearer ks_live_..."
-<span class="dim">{
-  "job_id": "cmp_3f2a91",
-  "status": "completed",
-  "progress": 1.0,
-  "k_score": { "spec": "k-score-1", "composite": 0.84, "accuracy": 0.91 },
-  "artifact_url": "/v1/compile/cmp_3f2a91/.kolm",
-  "completed_at": "2026-05-08T18:42:14Z"
-}</span></pre>
-
-      <h3 class="sub">Download the artifact.</h3>
-<pre class="terminal"><span class="prompt">$</span> curl -sS -o ./support-tickets.kolm \
-       -H "Authorization: Bearer ks_live_..." \
-       https://kolm.ai/v1/compile/cmp_3f2a91/.kolm
-
-<span class="prompt">$</span> file ./support-tickets.kolm
-<span class="dim">support-tickets.kolm: Zip archive data, at least v2.0 to extract</span></pre>
+    <div class="group">
+      <div class="group-h">reference</div>
+      <a href="/spec">RS-1 spec</a>
+      <a href="/api">Endpoint index</a>
+      <a href="/cookbook">Cookbook</a>
+      <a href="/changelog">Changelog</a>
     </div>
-  </section>
+  </aside>
 
-  <section class="section">
-    <div class="wrap">
-      <div class="eyebrow"><span class="num">05</span>artifact format</div>
-      <h2>Open schemas for the artifact contract.</h2>
-      <p class="sec-lede">The current <code>.kolm</code> file is a zip artifact with manifest, model pointer metadata, recipes, an optional KOLMPACK behaviour pack in the <code>lora.bin</code> slot, an optional KOLMIDX lookup index in the <code>index.sqlite-vec</code> slot, eval data, and HMAC receipt metadata. The reference fixture and the redactor / extractor / classifier examples ship populated packs and indexes the recipes call from. Native LoRA-delta encoding and sqlite-vec retrieval reuse the same slot names with richer encodings in later tiers.</p>
+  <article class="docs-main">
 
-      <div class="grid-3">
-        <div class="card">
-          <h3>RS-1 spec.</h3>
-          <p>Human-readable artifact contract and receipt notes.</p>
-          <p><a href="/docs/rs-1.md">Read rs-1.md</a> · <a href="/spec">/spec hub</a></p>
-        </div>
-        <div class="card">
-          <h3>BNF grammar.</h3>
-          <p>Formal grammar for the manifest, recipes, and receipt JSON.</p>
-          <p><a href="/spec/grammar">Read /spec/grammar</a></p>
-        </div>
-        <div class="card">
-          <h3>Manifest schema.</h3>
-          <p>JSON schema for artifact manifest fields.</p>
-          <p><a href="/docs/manifest-v0.1.json">Read manifest-v0.1.json</a></p>
-        </div>
-        <div class="card">
-          <h3>Receipt schema.</h3>
-          <p>JSON schema for receipt chain fields and signatures.</p>
-          <p><a href="/docs/receipt-v0.1.json">Read receipt-v0.1.json</a></p>
-        </div>
-      </div>
+    <div class="eyebrow"><span class="pulse"></span>docs &middot; v0.7.8</div>
+    <h1>Build with kolm in 60 seconds.</h1>
+    <p>Every example on this page is a real captured response from <code>kolm.ai</code> on <span class="kbd">2026-05-11</span>. Copy any block and paste it into a terminal. If it ever stops working, file an issue.</p>
 
-<pre class="terminal"><span class="dim"># manifest.json (excerpt)</span>
-{
-  "spec": "rs-1",
-  "job_id": "cmp_8f2a...",
-  "task": "classify support tickets",
-  "created_at": "2026-05-08T18:42:11Z",
-  "runtime": "cloud",
-  "base_model": "qwen2.5-coder-7b-instruct-q4_0",
-  "tier": "recipe",
-  "judge_id": "kolm-pattern-synth-1",
-  "eval_score": 0.91,
-  "recipes": { "n": 7, "registry_hash": "sha256:..." },
-  "lora": null,
-  "recall": { "namespace": "tenant/tickets" },
-  "training": { "distilled_pairs": 0, "accuracy": null },
-  "evals":    { "n": 24, "spec": "rs-1", "hash": "sha256:..." },
-  "k_score": {
-    "composite": 0.84,
-    "accuracy": 0.91,
-    "coverage": 0.78,
-    "size_bytes": 3221225472,
-    "p50_latency_us": 142000
-  },
-  "hashes": {
-    "model_pointer": "sha256:...",
-    "recipes_json":  "sha256:...",
-    "lora_bin":      "sha256:...",
-    "index_bin":     "sha256:...",
-    "evals_json":    "sha256:..."
+    <h2 id="quickstart">Quickstart</h2>
+    <p>Sign up, get a key, compile a redaction function from two examples, run it on real input. Six lines.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>$ curl -sX POST https://kolm.ai/v1/signup \
+    -H 'content-type: application/json' \
+    -d '{"email":"you@example.com","plan":"free"}'
+$ export KOLM_KEY=ks_...                            # from the response above
+$ curl -sX POST https://kolm.ai/v1/synthesize \
+    -H "authorization: Bearer $KOLM_KEY" -H 'content-type: application/json' \
+    -d '{"name":"redact","positives":[{"input":"token=sk_live_xxx","expected":"[REDACTED]"}]}'
+$ curl -sX POST https://kolm.ai/v1/run \
+    -H "authorization: Bearer $KOLM_KEY" -H 'content-type: application/json' \
+    -d '{"concept_id":"cpt_...","input":"my token=sk_live_abc123"}'</code></pre>
+    <div class="resp-label live">response</div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>{
+  "output": "token=[REDACTED]",
+  "latency_us": 40,
+  "version_id": "ver_mp11ol0o830fd2b3c5b08b50",
+  "concept": "redact-test",
+  "source_hash": "05445f4df900b879",
+  "receipt": {
+    "spec": "rs-1",
+    "source_hash": "05445f4df900b879",
+    "input_hash": "bd3135467646a41966e7f82a87284b45789cd39466ea360fa6958252e7a13472",
+    "output_hash": "0de3b5c8ac85eea1572c6d17cac79128bcb567004698b2f3f60dfeee7d6a7cbd",
+    "version_id": "ver_mp11ol0o830fd2b3c5b08b50",
+    "runtime_version": "1.0.0",
+    "issued_at": "2026-05-11T10:14:21.989Z",
+    "cache_hit": false,
+    "latency_us": 40,
+    "hmac": "5611e96d3eee161353baaf90f5298d3b98e92a22e3f63e36395f2559e12688fc"
   }
-}</pre>
+}</code></pre>
+    <p>Forty microseconds, one HMAC, one signed receipt. That is the loop.</p>
+
+    <h2 id="auth">Authentication</h2>
+    <p>Bearer token in the <code>authorization</code> header. Get one from <code>POST /v1/signup</code> or <code>/signup</code>. Free tier ships with 10,000 calls/month.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -H "authorization: Bearer ks_..." https://kolm.ai/v1/account</code></pre>
+
+    <h2 id="install">Install the CLI</h2>
+    <div class="tabs" role="tablist">
+      <button class="on" type="button" data-tab="cli-npm">npm</button>
+      <button type="button" data-tab="cli-curl">curl</button>
+      <button type="button" data-tab="cli-brew">brew</button>
+      <button type="button" data-tab="cli-source">from source</button>
     </div>
-  </section>
-
-  <section class="section">
-    <div class="wrap">
-      <div class="eyebrow"><span class="num">06</span>receipts and verification</div>
-      <h2>Verify any artifact, end to end.</h2>
-      <p class="sec-lede">Every <code>.kolm</code> file ships with a <code>receipt.json</code> that hashes each archive member with SHA-256 and signs the canonical chain with HMAC-SHA256. <code>kolm inspect</code> walks the chain locally; nothing leaves your machine.</p>
-
-<pre class="terminal"><span class="dim"># receipt.json (excerpt)</span>
-{
-  "kolm_version":   "0.1",
-  "receipt_id":     "8a1b3c...-...-...",
-  "artifact_hash":  "sha256:...",
-  "eval_set_hash":  "sha256:...",
-  "eval_score":     0.91,
-  "judge_id":       "kolm-pattern-synth-1",
-  "tier":           "recipe",
-  "chain": [
-    { "step": "task",    "input_hash": "sha256:...", "output_hash": "sha256:...", "hmac": "8b2e…01af" },
-    { "step": "seeds",   "input_hash": "sha256:...", "output_hash": "sha256:...", "hmac": "61c4…dd09" },
-    { "step": "recipes", "input_hash": "sha256:...", "output_hash": "sha256:...", "hmac": "9a7f…42b1" },
-    { "step": "evals",   "input_hash": "sha256:...", "output_hash": "sha256:...", "hmac": "21d8…77ee" },
-    { "step": "package", "input_hash": "sha256:...", "output_hash": "sha256:...", "hmac": "f0a3…b4c8" }
-  ],
-  "anchors":        [],
-  "signed_at":      "2026-05-08T18:42:14Z",
-  "signed_by":      "kolm-dev-hmac-1",
-  "signature_alg":  "hmac-sha256",
-  "hmac_alg":       "HMAC-SHA256",
-  "signature":      "f0a3…b4c8"
-}</pre>
-
-      <div class="kv">
-        <div class="row"><span class="k">verify locally</span><span class="v"><code>kolm inspect ./artifact.kolm</code> recomputes every member SHA-256 and the HMAC over the chain. Fails closed if anything drifts.</span></div>
-        <div class="row"><span class="k">re-fetch the registry</span><span class="v"><code>recipe_registry.url</code> in the manifest is the exact endpoint to re-pull the registry snapshot the artifact was compiled against.</span></div>
-        <div class="row"><span class="k">optional members</span><span class="v"><code>lora.bin</code> and <code>index.sqlite-vec</code> are listed with <code>optional: true</code> in the chain. Their absence does not break the receipt; their presence is hashed.</span></div>
-        <div class="row"><span class="k">offline-safe</span><span class="v">Verification needs only the artifact bytes and the receipt signing key. No network call is required to confirm integrity.</span></div>
-      </div>
+    <div class="tabpane on" data-pane="cli-npm">
+      <pre class="code-block"><button class="copy" type="button">copy</button><code>npm i -g @kolm/cli
+kolm login</code></pre>
     </div>
-  </section>
-
-  <section class="section">
-    <div class="wrap">
-      <div class="eyebrow"><span class="num">07</span>errors</div>
-      <h2>What the API actually returns.</h2>
-      <p class="sec-lede">Errors share one shape: <code>{ "error": "&lt;machine_code&gt;", "detail"?: "&lt;human prose&gt;" }</code>. <code>detail</code> is omitted in production unless <code>KOLM_DEBUG=1</code>.</p>
-
-      <div class="kv">
-        <div class="row"><span class="k">400 invalid_input</span><span class="v">request body failed validation. <code>detail</code> names the offending field when debug is on.</span></div>
-        <div class="row"><span class="k">401 missing_auth</span><span class="v">no <code>Authorization: Bearer ks_...</code> header and no <code>kolm_session</code> cookie.</span></div>
-        <div class="row"><span class="k">401 invalid_key</span><span class="v">key shape is right but does not match a tenant.</span></div>
-        <div class="row"><span class="k">403 quota_exhausted</span><span class="v">tenant compile budget is spent for the period. Check <code>GET /v1/account</code>.</span></div>
-        <div class="row"><span class="k">404 not_found</span><span class="v">used for unknown jobs and unknown artifacts; never leaks tenant existence.</span></div>
-        <div class="row"><span class="k">409 job_conflict</span><span class="v">a compile with the same idempotency key is already running.</span></div>
-        <div class="row"><span class="k">429 rate_limited</span><span class="v">soft per-IP and per-tenant limits. Backoff hint in <code>Retry-After</code>.</span></div>
-        <div class="row"><span class="k">500 server_error</span><span class="v">unhandled path on the cloud. <code>detail</code> is omitted in prod by design.</span></div>
-        <div class="row"><span class="k">503 not_configured</span><span class="v">a required upstream secret is missing. Affects <code>/v1/compile</code> if the cloud-side model key is unset.</span></div>
-      </div>
+    <div class="tabpane" data-pane="cli-curl">
+      <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -fsSL https://kolm.ai/install.sh | sh
+kolm login</code></pre>
     </div>
-  </section>
-
-  <section class="section">
-    <div class="wrap">
-      <div class="eyebrow"><span class="num">08</span>faq</div>
-      <h2>Plain answers.</h2>
-
-      <div class="kv">
-        <div class="row"><span class="k">Why a single file?</span><span class="v">A <code>.kolm</code> is a deterministic ZIP. One file you can email, archive, sign for, or pin in CI. The compiler is the cloud; the artifact is yours.</span></div>
-        <div class="row"><span class="k">Does my data leave my machine?</span><span class="v">During compile, your examples and corpus are sent to the cloud to drive distillation. After compile, the artifact runs locally with no network call. <code>kolm benchmark</code> blocks runtime network calls by default.</span></div>
-        <div class="row"><span class="k">What if my API key leaks?</span><span class="v">Rotate it: <code>POST /v1/account/rotate-key</code>. Old key invalidates immediately. Keys are stored as hashes at rest.</span></div>
-        <div class="row"><span class="k">Can I run an artifact offline?</span><span class="v">Yes. <code>kolm run</code>, <code>kolm inspect</code>, <code>kolm eval</code>, and <code>kolm serve --mcp</code> all work with no network. Recipe drafting and the K-score are computed from the artifact, not pulled from the cloud.</span></div>
-        <div class="row"><span class="k">What is "recipe mode"?</span><span class="v">Today's compile path produces an artifact whose runtime is the recipe pack (deterministic-token drafts) plus a base-model pointer. Native LoRA training and populated vector indexes are product-hardening work, not the current default.</span></div>
-        <div class="row"><span class="k">Is there a stable on-disk format?</span><span class="v">Yes. The artifact contract is RS-1 and the manifest/receipt schemas are versioned independently. Breaking changes mint <code>rs-2</code>; <code>rs-1</code> readers will continue to work against existing artifacts.</span></div>
-        <div class="row"><span class="k">How do I serve a compiled artifact to Claude Desktop or Cursor?</span><span class="v"><code>kolm serve --mcp --http --port 11455</code>. The endpoint speaks Model Context Protocol over HTTP; point your MCP client at <code>http://localhost:11455</code>.</span></div>
-        <div class="row"><span class="k">What is the K-score?</span><span class="v">A composite of accuracy, coverage, size, and p50 latency. The artifact only ships if every gate passes. See <a href="/k-score">/k-score</a> for the gate definitions.</span></div>
-      </div>
+    <div class="tabpane" data-pane="cli-brew">
+      <pre class="code-block"><button class="copy" type="button">copy</button><code>brew tap kolm/kolm
+brew install kolm
+kolm login</code></pre>
     </div>
-  </section>
+    <div class="tabpane" data-pane="cli-source">
+      <pre class="code-block"><button class="copy" type="button">copy</button><code>git clone https://github.com/sneaky-hippo/kolmogorov-stack
+cd kolmogorov-stack &amp;&amp; npm install &amp;&amp; npm link
+kolm version</code></pre>
+    </div>
+
+    <h2 id="signup">Sign up</h2>
+    <div class="endpoint-tag"><span class="verb post">POST</span><span class="path">/v1/signup</span><span class="auth">no auth</span></div>
+    <div class="tabs" role="tablist">
+      <button class="on" type="button" data-tab="su-curl">curl</button>
+      <button type="button" data-tab="su-node">node</button>
+      <button type="button" data-tab="su-py">python</button>
+    </div>
+    <div class="tabpane on" data-pane="su-curl">
+      <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -X POST https://kolm.ai/v1/signup \
+  -H 'content-type: application/json' \
+  -d '{"email":"you@example.com","plan":"free"}'</code></pre>
+    </div>
+    <div class="tabpane" data-pane="su-node">
+      <pre class="code-block"><button class="copy" type="button">copy</button><code>const r = await fetch("https://kolm.ai/v1/signup", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ email: "you@example.com", plan: "free" })
+});
+const { tenant, api_key } = await r.json();</code></pre>
+    </div>
+    <div class="tabpane" data-pane="su-py">
+      <pre class="code-block"><button class="copy" type="button">copy</button><code>import requests
+r = requests.post("https://kolm.ai/v1/signup",
+  json={"email": "you@example.com", "plan": "free"})
+data = r.json()
+api_key = data["api_key"]</code></pre>
+    </div>
+    <div class="resp-label live">response</div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>{
+  "tenant": {
+    "id": "tenant_01c1bcf8b036",
+    "name": "honest-test-1778494461-ojy0",
+    "plan": "free",
+    "quota": 10000,
+    "seats": 1,
+    "pending_plan": null
+  },
+  "api_key": "ks_f02606ea7bfbc25cabe5f3b0122a6e95",
+  "billing_url": null,
+  "billing_required": false,
+  "message": "Save this key. You can rotate it from /v1/account/rotate-key or upgrade with /v1/account/change-plan."
+}</code></pre>
+    <div class="note"><b>Heads up:</b> the API key is shown once. Save it. Lost keys rotate via <code>POST /v1/account/rotate-key</code>.</div>
+
+    <h2 id="account">Account</h2>
+    <div class="endpoint-tag"><span class="verb get">GET</span><span class="path">/v1/account</span><span class="auth">bearer</span></div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl https://kolm.ai/v1/account -H "authorization: Bearer $KOLM_KEY"</code></pre>
+    <div class="resp-label live">response</div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>{
+  "id": "tenant_01c1bcf8b036",
+  "plan": "free",
+  "quota": 10000,
+  "used": 0,
+  "remaining": 10000,
+  "billing_status": "free",
+  "auth_provider": "apikey",
+  "oauth_providers": { "google": false, "github": false }
+}</code></pre>
+
+    <h2 id="synthesize">Synthesize</h2>
+    <p>Turn a list of input/expected pairs into a compiled JavaScript function that classifies, redacts, or transforms. Returns a <code>concept_id</code> and a quality score.</p>
+    <div class="endpoint-tag"><span class="verb post">POST</span><span class="path">/v1/synthesize</span><span class="auth">bearer</span></div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -X POST https://kolm.ai/v1/synthesize \
+  -H "authorization: Bearer $KOLM_KEY" \
+  -H 'content-type: application/json' \
+  -d '{
+    "name": "redact-secrets",
+    "positives": [
+      { "input": "token=sk_live_xxx", "expected": "[REDACTED]" },
+      { "input": "AWS_KEY=abcd",      "expected": "[REDACTED]" }
+    ]
+  }'</code></pre>
+    <div class="resp-label live">response</div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>{
+  "accepted": true,
+  "source": "function generate(input, lib) { ... }",
+  "quality_score": 1,
+  "pass_rate_positive": 1,
+  "reject_rate_negative": 1,
+  "latency_p50_us": 22,
+  "size_bytes": 412,
+  "concept_id": "cpt_mp11ol06a3d4c1ae21ab3e70"
+}</code></pre>
+    <p>K-score gate: 0.85 by default. Sub-gate compiles return <code>accepted: false</code> with the failing axis named. Re-submit with more examples or adjusted spec.</p>
+
+    <h2 id="run">Run</h2>
+    <p>Execute a compiled concept against fresh input. Returns the output and a signed receipt that anyone with the same key can re-verify.</p>
+    <div class="endpoint-tag"><span class="verb post">POST</span><span class="path">/v1/run</span><span class="auth">bearer</span></div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -X POST https://kolm.ai/v1/run \
+  -H "authorization: Bearer $KOLM_KEY" \
+  -H 'content-type: application/json' \
+  -d '{ "concept_id": "cpt_mp11ol06a...", "input": "my token=sk_live_abc123" }'</code></pre>
+    <div class="resp-label live">response &mdash; same one as in the quickstart, end-to-end working</div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>{
+  "output": "token=[REDACTED]",
+  "latency_us": 40,
+  "version_id": "ver_mp11ol0o830fd2b3c5b08b50",
+  "receipt": { "spec": "rs-1", "hmac": "5611e96d3eee...", "issued_at": "2026-05-11T10:14:21.989Z" }
+}</code></pre>
+
+    <h2 id="recall">Recall</h2>
+    <p>BM25 sidecar retrieval over content you have attached to the concept via <code>kolm rag attach</code>. Returns top-k chunks for the query.</p>
+    <div class="endpoint-tag"><span class="verb post">POST</span><span class="path">/v1/recall</span><span class="auth">bearer</span></div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -X POST https://kolm.ai/v1/recall \
+  -H "authorization: Bearer $KOLM_KEY" \
+  -H 'content-type: application/json' \
+  -d '{ "query": "redact" }'</code></pre>
+    <div class="resp-label live">response &mdash; empty when no sidecar attached</div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>{ "namespace": "default", "n": 0, "chunks": [] }</code></pre>
+
+    <h2 id="assistant">Assistant (natural language)</h2>
+    <p>One endpoint that maps a sentence to a deterministic action: status, list builds, compile, install harness, change plan, doctor. No LLM call &mdash; rule-based intent parser, free to run, airgap-safe.</p>
+    <div class="endpoint-tag"><span class="verb post">POST</span><span class="path">/v1/assistant</span><span class="auth">bearer</span></div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -X POST https://kolm.ai/v1/assistant \
+  -H "authorization: Bearer $KOLM_KEY" \
+  -H 'content-type: application/json' \
+  -d '{ "prompt": "show my builds" }'</code></pre>
+    <div class="resp-label live">response</div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>{
+  "ok": true,
+  "intent": "list",
+  "narration": "No builds yet. Try \"compile a recipe that does &lt;task&gt;\" to create your first one.",
+  "data": { "items": [] }
+}</code></pre>
+    <p>Recognised intents: <code>status</code>, <code>usage</code>, <code>list</code>, <code>compile</code>, <code>run</code>, <code>tune</code>, <code>evolve</code>, <code>install</code>, <code>upgrade</code>, <code>doctor</code>, <code>help</code>.</p>
+
+    <h2 id="change-plan">Change plan</h2>
+    <p>Move between tiers. Free &rarr; Pro returns a Stripe Checkout URL with <code>client_reference_id</code> already bound to your tenant.</p>
+    <div class="endpoint-tag"><span class="verb post">POST</span><span class="path">/v1/account/change-plan</span><span class="auth">bearer</span></div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -X POST https://kolm.ai/v1/account/change-plan \
+  -H "authorization: Bearer $KOLM_KEY" \
+  -H 'content-type: application/json' \
+  -d '{ "plan": "pro" }'</code></pre>
+    <div class="resp-label live">response</div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>{
+  "ok": true,
+  "plan": "free",
+  "pending_plan": "pro",
+  "billing_url": "https://buy.stripe.com/00w8wPcvP1ZOeqQ1u8bo401?client_reference_id=tenant_01c1bcf8b036&prefilled_email=...",
+  "billing_required": true
+}</code></pre>
+
+    <h2 id="receipts">Receipts</h2>
+    <p>Every <code>/v1/run</code> emits an HMAC-SHA256 chain: <code>source_hash &middot; input_hash &middot; output_hash &middot; version_id &middot; issued_at</code>. The HMAC is computed with your tenant's receipt secret. Verify offline.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code># offline verifier (Node)
+import crypto from "crypto";
+const r = receipt;       // the receipt object from /v1/run
+const secret = process.env.KOLM_RECEIPT_SECRET;
+const payload = [r.spec, r.source_hash, r.input_hash, r.output_hash,
+                 r.version_id, r.runtime_version, r.issued_at].join("|");
+const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+console.log(expected === r.hmac ? "ok" : "tamper");</code></pre>
+
+    <h2 id="kolm-format">.kolm format</h2>
+    <p>A signed zip with five files: <code>spec.json</code> (the recipe), <code>policy.json</code> (gates), <code>recall/</code> (optional sidecar), <code>verifier.js</code> (cheap output check), <code>receipt.json</code> (the HMAC chain). Full schema at <a href="/spec" style="color:var(--accent)">/spec</a>.</p>
+
+    <h2 id="kscore">K-score</h2>
+    <p>One scalar per concept, gated at 0.85 to ship. Computed as <code>0.40&middot;A + 0.15&middot;(S + L + C + V)</code> where A=accuracy, S=specificity, L=latency, C=cost, V=verifiability. Full breakdown at <a href="/k-score" style="color:var(--accent)">/k-score</a>.</p>
+
+    <h2 id="cli">CLI</h2>
+    <p>Eight verbs cover the loop. Same auth as the API; <code>kolm login</code> stores the key in <code>~/.kolm/config.json</code>.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>kolm init              # scaffold kolm.yaml + examples/
+kolm compile           # synthesize → sign → write .kolm
+kolm run file.kolm     # execute, emit receipt
+kolm tune --airgap     # train a LoRA adapter from captured runs
+kolm rag attach docs/  # build BM25 sidecar
+kolm serve --mcp       # local MCP server for Claude Code / Cursor
+kolm install claude-code   # wire up an agent harness
+kolm doctor            # check env, keys, port, version</code></pre>
+
+    <h2 id="mcp">MCP serve</h2>
+    <p><code>kolm serve --mcp</code> exposes your local artifacts as MCP tools over stdio. Auto-discovered by Claude Code and Cursor after <code>kolm install claude-code</code>.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>kolm serve --mcp --port 7777
+kolm install claude-code --apply       # registers the MCP server in ~/.claude/mcp.json</code></pre>
+
+    <h2 id="hooks">Hooks</h2>
+    <p>Six lifecycle hooks declared in <code>kolm.yaml</code>: <code>PreCompile</code>, <code>PostCompile</code>, <code>PreRun</code>, <code>PostRun</code>, <code>PreBench</code>, <code>PostBench</code>. Each runs a shell command with hook context on stdin.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code># kolm.yaml
+hooks:
+  PreCompile: ./scripts/lint-examples.sh
+  PostCompile: ./scripts/notify-slack.sh
+  PreRun: ./scripts/redact-pii.sh
+  PostRun: ./scripts/log-to-splunk.sh</code></pre>
+
+    <h2 id="next">What next</h2>
+    <p style="max-width:62ch">If you just want to try it end-to-end: <a href="/quickstart" style="color:var(--accent)">/quickstart</a>. If you want the wire-protocol reference: <a href="/spec" style="color:var(--accent)">/spec</a>. If you want to wire kolm into your editor: <a href="/cookbook" style="color:var(--accent)">/cookbook</a>. If you're a buyer: <a href="/enterprise" style="color:var(--accent)">/enterprise</a>.</p>
+
+  </article>
 </main>
 
 <footer class="site-footer">
   <div class="wrap">
-    <div class="meta">kolm docs / <a href="/quickstart">quickstart</a> / <a href="/status">status</a></div>
+    <div class="meta">kolm docs &middot; v0.7.8 &middot; <a href="/changelog">changelog</a> &middot; <a href="/spec">RS-1 spec</a></div>
     <div class="links">
       <div>
         <div class="col-h">product</div>
         <a href="/compile">compile</a>
         <a href="/run">run</a>
-        <a href="/recall">recall</a>
         <a href="/serve">serve</a>
+        <a href="/evolve">evolve</a>
       </div>
       <div>
-        <div class="col-h">proof</div>
-        <a href="/benchmarks">benchmarks</a>
-        <a href="/compare">compare</a>
-        <a href="/security">security</a>
-        <a href="/privacy">privacy</a>
+        <div class="col-h">build</div>
+        <a href="/cookbook">cookbook</a>
+        <a href="/api">endpoint index</a>
+        <a href="/spec">spec</a>
+        <a href="/dashboard">dashboard</a>
       </div>
     </div>
-    <small class="footer-tag" style="display:block;margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#1a1d24);font-family:var(--mono);font-size:11px;color:var(--ink-faint,#6b7280);letter-spacing:0;">kolm &middot; open spec &middot; MIT licensed runtime &middot; kolm.ai</small>
   </div>
 </footer>
 
+<script>
+  // Copy buttons.
+  document.querySelectorAll('pre.code-block .copy').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const code = btn.parentElement.querySelector('code');
+      if (!code) return;
+      navigator.clipboard.writeText(code.innerText.trim());
+      const old = btn.textContent;
+      btn.textContent = 'copied';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = old; btn.classList.remove('done'); }, 1200);
+    });
+  });
+
+  // Tabs.
+  document.querySelectorAll('.tabs').forEach(group => {
+    group.addEventListener('click', e => {
+      const b = e.target.closest('button[data-tab]');
+      if (!b) return;
+      const tab = b.dataset.tab;
+      group.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      const next = group.nextElementSibling;
+      // Walk siblings until next .tabs or end.
+      let el = next;
+      while (el && !el.classList?.contains('tabs') && !el.matches?.('h2,h3')) {
+        if (el.classList?.contains('tabpane')) {
+          el.classList.toggle('on', el.dataset.pane === tab);
+        }
+        el = el.nextElementSibling;
+      }
+    });
+  });
+
+  // Active section in left rail.
+  const links = document.querySelectorAll('.docs-rail a[href^="#"]');
+  const sections = Array.from(links).map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (en.isIntersecting) {
+        const id = en.target.id;
+        links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + id));
+      }
+    });
+  }, { rootMargin: '-80px 0px -65% 0px' });
+  sections.forEach(s => io.observe(s));
+</script>
 <script src="/nav.js" defer></script>
 </body>
 </html>
