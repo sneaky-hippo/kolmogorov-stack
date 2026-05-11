@@ -4,6 +4,7 @@ import express from 'express';
 import crypto from 'node:crypto';
 import rateLimit from 'express-rate-limit';
 import { synthesize, synthesizeStream } from './synthesis.js';
+import { handleAssistant } from './assistant.js';
 import { effectiveReceiptSecret, isProductionRuntime, runtimeReadiness } from './env.js';
 import * as registry from './registry.js';
 import * as runtime from './runtime.js';
@@ -37,10 +38,15 @@ import path from 'node:path';
 // limiter can read X-Forwarded-For — Railway's edge sets it.
 const signupLimiter = rateLimit({
   windowMs: 24 * 60 * 60 * 1000,    // 24 hours
-  max: 10,                          // 10 signups per IP per day
+  max: parseInt(process.env.SIGNUP_LIMIT_PER_DAY || '40'), // shared-NAT friendly; defaults env-overridable.
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'too many signups from this IP — try again tomorrow' },
+  message: {
+    error: 'rate_limited',
+    detail: 'too many signups from this network in the last 24h',
+    hint: 'behind a shared network or VPN? mail founders@kolm.ai for a direct invite',
+    contact: 'founders@kolm.ai',
+  },
   validate: { trustProxy: false },
 });
 
@@ -1047,6 +1053,50 @@ export function buildRouter() {
     if (!fs.existsSync(sidecar)) return res.status(404).json({ error: 'sidecar not found' });
     const text = fs.readFileSync(sidecar, 'utf-8');
     res.json({ id, sidecar, length: text.length, preview: text.slice(0, 4096) });
+  });
+
+  // ---------- Natural-language assistant ----------
+  // POST /v1/assistant { prompt } returns a parsed-intent action + result.
+  // Scoped to req.tenant_record; never calls an external LLM; deterministic.
+  r.post('/v1/assistant', async (req, res) => {
+    if (!req.tenant_record) return res.status(401).json({ ok: false, error: 'auth_required' });
+    try {
+      const deps = {
+        // compile is "tell me how", not auto-do — the assistant returns the
+        // exact CLI / curl the user can run. Real compile flows through
+        // /v1/synthesize where positives/negatives can be curated.
+        synthesize: async ({ task }) => ({
+          guidance: 'open /compile with this task pre-filled, or POST /v1/synthesize',
+          curl: `curl -s -X POST ${process.env.PUBLIC_URL || 'https://kolm.ai'}/v1/synthesize \\\n  -H "authorization: Bearer $KOLM_KEY" \\\n  -H "content-type: application/json" \\\n  -d '{"name":"my-recipe","positives":[{"input":"x","expected":"y"}]}'`,
+          compile_link: '/compile?task=' + encodeURIComponent(String(task || '').slice(0, 200)),
+          task,
+        }),
+        run: async ({ tenant, concept_id, input }) => {
+          try {
+            return await runtime.runConcept({ concept_id, input, tenant });
+          } catch (e) {
+            return { error: String(e.message || e) };
+          }
+        },
+        changePlan: async ({ tenant, target }) => {
+          const meta = PLAN_CATALOG[target];
+          if (!meta) return { error: 'invalid_plan' };
+          if (meta.price_usd_month === 0) {
+            update('tenants', x => x.id === tenant.id, { plan: 'free', quota: PLAN_CATALOG.free.quota, pending_plan: null });
+            return { ok: true, plan: 'free' };
+          }
+          const url = billingLinkFor(target, { tenantId: tenant.id, email: tenant.email });
+          if (!url) return { error: 'billing_not_configured' };
+          update('tenants', x => x.id === tenant.id, { pending_plan: target });
+          return { ok: true, plan: tenant.plan, pending_plan: target, billing_url: url, billing_required: true };
+        },
+      };
+      const out = await handleAssistant(req, res, deps);
+      res.json(out);
+    } catch (e) {
+      console.error('[assistant]', e && e.message);
+      res.status(500).json({ ok: false, error: 'assistant_failed', message: String(e && e.message || e) });
+    }
   });
 
   // ---------- Account ----------

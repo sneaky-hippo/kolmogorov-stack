@@ -66,6 +66,28 @@
     <div class="job-list" id="job-list"></div>
   </section>
 
+  <section class="dashboard-panel" id="assistant-panel" style="margin-top:24px" aria-label="Natural-language assistant">
+    <div class="section-head">
+      <h2>Ask kolm</h2>
+      <span style="font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)">Natural-language control. Auth-scoped. Local-first.</span>
+    </div>
+    <div id="asst-log" style="display:flex;flex-direction:column;gap:10px;margin:14px 0;max-height:340px;overflow-y:auto;font-size:14px;line-height:1.6"></div>
+    <form id="asst-form" autocomplete="off" style="display:flex;gap:8px;align-items:stretch">
+      <input id="asst-input" type="text" placeholder='Try: "show my builds" or "compile a recipe that classifies tickets"' style="flex:1;background:transparent;border:1px solid var(--ink-faint);border-radius:6px;padding:10px 12px;color:var(--ink);font-family:var(--mono);font-size:13px" />
+      <button class="btn primary" type="submit">Send</button>
+    </form>
+    <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px" id="asst-chips">
+      <button type="button" class="btn ghost" data-prompt="show my status">status</button>
+      <button type="button" class="btn ghost" data-prompt="show my builds">builds</button>
+      <button type="button" class="btn ghost" data-prompt="how much have i used">usage</button>
+      <button type="button" class="btn ghost" data-prompt="compile a recipe that redacts secrets">compile</button>
+      <button type="button" class="btn ghost" data-prompt="install claude-code">install</button>
+      <button type="button" class="btn ghost" data-prompt="start tune loop">tune</button>
+      <button type="button" class="btn ghost" data-prompt="upgrade to pro">upgrade</button>
+      <button type="button" class="btn ghost" data-prompt="doctor">doctor</button>
+    </div>
+  </section>
+
   <section class="metric-grid" style="margin-top:24px" aria-label="Workflow shortcuts">
     <a class="metric-card" href="/captures" style="display:block;text-decoration:none;color:inherit"><div class="label">Captures</div><div class="value" style="font-size:22px">Inbox &rarr;</div><p>Triage every upstream inference. Keep, discard, promote.</p></a>
     <a class="metric-card" href="/audit-log" style="display:block;text-decoration:none;color:inherit"><div class="label">Audit log</div><div class="value" style="font-size:22px">Log &rarr;</div><p>Per-tenant operation trail. Signed, exportable, beta.</p></a>
@@ -250,6 +272,90 @@
     KS.clearApiKey();
     location.href = '/';
   });
+
+  // -------- assistant panel --------
+  var asstLog = $('asst-log');
+  var asstForm = $('asst-form');
+  var asstInput = $('asst-input');
+  var asstChips = $('asst-chips');
+
+  function bubble(role, text) {
+    var div = document.createElement('div');
+    div.style.cssText = 'background:' + (role === 'user' ? 'rgba(127,222,255,0.06)' : 'rgba(255,255,255,0.03)') +
+      ';border:1px solid ' + (role === 'user' ? 'rgba(127,222,255,0.18)' : 'rgba(255,255,255,0.08)') +
+      ';border-radius:6px;padding:10px 12px;white-space:pre-wrap;word-wrap:break-word';
+    var label = document.createElement('div');
+    label.style.cssText = 'font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);margin-bottom:4px;letter-spacing:0.04em;text-transform:uppercase';
+    label.textContent = role;
+    div.appendChild(label);
+    var body = document.createElement('div');
+    body.textContent = text;
+    div.appendChild(body);
+    asstLog.appendChild(div);
+    asstLog.scrollTop = asstLog.scrollHeight;
+    return div;
+  }
+
+  function renderData(parent, data, intent) {
+    if (!data) return;
+    if (intent === 'list' && Array.isArray(data.items)) {
+      if (data.items.length === 0) return;
+      var ul = document.createElement('div');
+      ul.style.cssText = 'margin-top:8px;display:grid;grid-template-columns:1fr;gap:4px;font-family:var(--mono);font-size:12px;color:var(--ink-faint)';
+      data.items.slice(0, 10).forEach(function (it) {
+        var row = document.createElement('div');
+        row.textContent = (it.name || it.id) + '  ' + (it.k_score != null ? 'K=' + it.k_score.toFixed(2) : '') + '  ' + (it.latency_p50_us != null ? 'p50=' + it.latency_p50_us + 'us' : '');
+        ul.appendChild(row);
+      });
+      parent.appendChild(ul);
+    }
+    if (intent === 'upgrade' && data.billing_url) {
+      var a = document.createElement('a');
+      a.href = data.billing_url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = 'open billing →';
+      a.style.cssText = 'display:inline-block;margin-top:8px;color:var(--accent);font-family:var(--mono);font-size:12px';
+      parent.appendChild(a);
+    }
+    if (intent === 'compile' && data.compile_link) {
+      var b = document.createElement('a');
+      b.href = data.compile_link;
+      b.textContent = 'open /compile (prefilled) →';
+      b.style.cssText = 'display:inline-block;margin-top:8px;color:var(--accent);font-family:var(--mono);font-size:12px';
+      parent.appendChild(b);
+    }
+  }
+
+  async function asstSend(prompt) {
+    if (!prompt) return;
+    bubble('you', prompt);
+    asstInput.value = '';
+    var pending = bubble('kolm', '…');
+    try {
+      var r = await fetch('/v1/assistant', {
+        method: 'POST',
+        headers: { 'authorization': 'Bearer ' + KS.apiKey(), 'content-type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt }),
+      });
+      var body = await r.json();
+      pending.lastChild.textContent = body.narration || (body.error ? ('error: ' + body.error) : '(no response)');
+      renderData(pending, body.data, body.intent);
+    } catch (e) {
+      pending.lastChild.textContent = 'request failed';
+    }
+  }
+
+  asstForm.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    asstSend(asstInput.value.trim());
+  });
+  asstChips.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('button[data-prompt]');
+    if (btn) asstSend(btn.getAttribute('data-prompt'));
+  });
+  // First-load welcome.
+  bubble('kolm', 'Hi. I can manage your builds, status, usage, and plan from here. Try a chip below or type a question.');
 
   loadAccount();
   loadJobs();
