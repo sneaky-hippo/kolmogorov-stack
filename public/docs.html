@@ -6,7 +6,9 @@
 <title>Docs &middot; kolm</title>
 <meta name="description" content="kolm API and CLI reference. Code-first, copy-paste runnable, every example is real captured prod output. Authenticate, compile, run, evolve.">
 <meta name="theme-color" content="#0b0d10">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
+
 <meta property="og:title" content="kolm docs">
 <meta property="og:description" content="Build with kolm in 60 seconds. Code-first reference. Every example is real captured prod output.">
 <meta property="og:type" content="website">
@@ -56,6 +58,16 @@
   .kbd{font-family:var(--mono);font-size:11px;color:var(--ink-mute);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 5px;background:rgba(0,0,0,0.4)}
   .note{border-left:2px solid var(--accent);padding:10px 14px;background:rgba(236,231,220,0.03);border-radius:0 6px 6px 0;font-size:14px;color:var(--ink-mute);margin:14px 0;max-width:62ch}
   .note b{color:var(--ink);font-weight:540}
+  .docs-next{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:56px 0 0;max-width:62ch}
+  @media (max-width:640px){.docs-next{grid-template-columns:1fr}}
+  .docs-next a{display:block;border:1px solid var(--line);border-radius:8px;padding:14px 16px;text-decoration:none;transition:border-color .15s,background .15s;background:rgba(255,255,255,0.01)}
+  .docs-next a:hover{border-color:var(--accent);background:rgba(236,231,220,0.04)}
+  .docs-next .lbl{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px}
+  .docs-next .ttl{color:var(--ink);font-size:15px;font-weight:540}
+  .docs-next .sub{color:var(--ink-mute);font-size:12.5px;margin-top:3px}
+  .next-hint{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin:22px 0 -8px;letter-spacing:0.04em}
+  .next-hint a{color:var(--ink-mute);border-bottom:1px solid var(--line)}
+  .next-hint a:hover{color:var(--accent);border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -64,15 +76,12 @@
   <div class="wrap">
     <a href="/" class="brand"><span>kolm</span></a>
     <nav class="site-nav" aria-label="Primary">
-      <a href="/compile">Compile</a>
-      <a href="/serve">Serve</a>
-      <a href="/evolve">Evolve</a>
-      <a href="/anatomy">.kolm</a>
-      <a href="/k-score">K-score</a>
-      <a href="/docs" class="active">Docs</a>
+      <a href="/use-cases">Solutions</a>
+      <a href="/docs">Developers</a>
       <a href="/pricing">Pricing</a>
     </nav>
     <div class="site-actions">
+      <button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
       <a href="/signin">sign in</a>
       <a href="/signup" class="cta">Get API key &rarr;</a>
     </div>
@@ -158,10 +167,12 @@ $ curl -sX POST https://kolm.ai/v1/run \
   }
 }</code></pre>
     <p>Forty microseconds, one HMAC, one signed receipt. That is the loop.</p>
+    <div class="next-hint">next: <a href="#auth">Authentication</a> &rarr;</div>
 
     <h2 id="auth">Authentication</h2>
     <p>Bearer token in the <code>authorization</code> header. Get one from <code>POST /v1/signup</code> or <code>/signup</code>. Free tier ships with 10,000 calls/month.</p>
     <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -H "authorization: Bearer ks_..." https://kolm.ai/v1/account</code></pre>
+    <div class="next-hint">next: <a href="#install">Install the CLI</a> &rarr;</div>
 
     <h2 id="install">Install the CLI</h2>
     <div class="tabs" role="tablist">
@@ -188,6 +199,7 @@ kolm login</code></pre>
 cd kolmogorov-stack &amp;&amp; npm install &amp;&amp; npm link
 kolm version</code></pre>
     </div>
+    <div class="next-hint">next: <a href="#signup">API &mdash; Sign up</a> &rarr;</div>
 
     <h2 id="signup">Sign up</h2>
     <div class="endpoint-tag"><span class="verb post">POST</span><span class="path">/v1/signup</span><span class="auth">no auth</span></div>
@@ -373,8 +385,30 @@ hooks:
   PreRun: ./scripts/redact-pii.sh
   PostRun: ./scripts/log-to-splunk.sh</code></pre>
 
-    <h2 id="next">What next</h2>
-    <p style="max-width:62ch">If you just want to try it end-to-end: <a href="/quickstart" style="color:var(--accent)">/quickstart</a>. If you want the wire-protocol reference: <a href="/spec" style="color:var(--accent)">/spec</a>. If you want to wire kolm into your editor: <a href="/cookbook" style="color:var(--accent)">/cookbook</a>. If you're a buyer: <a href="/enterprise" style="color:var(--accent)">/enterprise</a>.</p>
+    <h2 id="next">Next</h2>
+    <p style="max-width:62ch">Read one. Build one. You're done with the reference — pick the next bite.</p>
+    <div class="docs-next">
+      <a href="/quickstart">
+        <div class="lbl">continue &rarr;</div>
+        <div class="ttl">Quickstart</div>
+        <div class="sub">Compile your first .kolm end to end in 60 seconds.</div>
+      </a>
+      <a href="/spec">
+        <div class="lbl">reference &rarr;</div>
+        <div class="ttl">RS-1 wire spec</div>
+        <div class="sub">Every byte of the protocol. Signed, versioned, public.</div>
+      </a>
+      <a href="/cookbook">
+        <div class="lbl">recipes &rarr;</div>
+        <div class="ttl">Cookbook</div>
+        <div class="sub">22 working examples. Copy, swap your data, ship.</div>
+      </a>
+      <a href="/evolve">
+        <div class="lbl">tune &rarr;</div>
+        <div class="ttl">Evolve</div>
+        <div class="sub">Specialize and re-bench. Compounding by construction.</div>
+      </a>
+    </div>
 
   </article>
 </main>

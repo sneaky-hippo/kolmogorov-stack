@@ -28,8 +28,18 @@ Important implementation note: v0 `.kolm` files are cloud-runtime artifacts. The
 
 ## Local Setup
 
+Works on macOS, Linux, and Windows. Requires Node.js 20+ on PATH.
+
 ```bash
+# macOS / Linux
 cp .env.example .env
+npm install
+npm start
+```
+
+```powershell
+# Windows (PowerShell)
+Copy-Item .env.example .env
 npm install
 npm start
 ```
@@ -40,6 +50,15 @@ Open:
 - `http://localhost:8787/docs`
 - `http://localhost:8787/benchmarks`
 - `http://localhost:8787/security`
+
+### CLI install (any OS)
+
+```bash
+npm i -g github:sneaky-hippo/kolmogorov-stack
+kolm version
+```
+
+`kolm` reads/writes `~/.kolm/` on macOS/Linux and `%USERPROFILE%\.kolm\` on Windows (via Node's `os.homedir()`). All shell-out hooks branch on `process.platform` to use `/bin/sh -c` on POSIX and `cmd /c` on Windows.
 
 Run tests:
 

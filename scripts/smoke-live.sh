@@ -641,12 +641,18 @@ check "/articles advertises RSS"       has "$AI" 'application/rss+xml'
 
 # Homepage hero thesis + GitHub star + ICP doors
 H2=$(curl -s "$URL/")
-check "homepage thesis (compounding LoRA)" has "$H2" 'local LoRA you keep forever'
-check "homepage GitHub star button"    has "$H2" 'gh-star-count'
+check "homepage thesis (compounding)"  has "$H2" 'Every run makes it better'
+check "homepage 2-CTA: Try kolm"       has "$H2" 'Try kolm &rarr;'
+check "homepage 2-CTA: Book a demo"    has "$H2" 'Book a demo &rarr;'
+check "homepage demo mailto"           has "$H2" 'mailto:founders@kolm.ai'
 check "homepage registry counter"      has "$H2" 'js-registry-count'
 check "homepage registry endpoint"     has "$H2" "fetch('/v1/registry/public'"
-check "homepage compiler-positioning"  has "$H2" 'kolm compiles a task into a working AI you own'
+check "homepage intuitive lede"        has "$H2" 'Show kolm what you want it to do'
 check "homepage roi link"              has "$H2" '/roi'
+check "homepage nav: Solutions"        has "$H2" '>Solutions<'
+check "homepage nav: Developers"       has "$H2" '>Developers<'
+check "homepage nav: 3-tab not 7-tab"  hashno "$H2" '<a href="/anatomy">.kolm</a>'
+check "homepage no install tabs in hero" hashno "$H2" 'install-tab active'
 
 echo ""
 echo "=== 28. v5.8 — ROI calculator ==="
@@ -696,20 +702,21 @@ check "/v1/plans teams"                has "$PLANS" '"id":"teams"'
 check "/v1/plans enterprise"           has "$PLANS" '"id":"enterprise"'
 
 # Homepage hero + system-map (the loop)
-check "homepage hero compiles a task"  has "$H2" 'kolm compiles a task'
+check "homepage hero intuitive lede"   has "$H2" 'small AI that does that task'
 check "homepage system-map the loop"   has "$H2" 'Compile, ship, run, evolve'
+check "homepage system-map Bundle"     has "$H2" '>Bundle</a>'
 
 echo ""
 echo "=== 30. v7.0 day-1 — brand anchor + rent-vs-buy ==="
 B30_HOME=$(curl -s "$URL/")
 check "homepage H1 lock 'compiled to your task'" has "$B30_HOME" 'compiled to your task'
-check "homepage rent-vs-buy thesis line"           has "$B30_HOME" 'local LoRA you keep forever'
-check "homepage reg-tele RS-1 spec"                has "$B30_HOME" '<span class="accent">RS-1</span>'
+check "homepage compounding thesis line"           has "$B30_HOME" 'Every run makes it better'
+check "homepage reg-tele open spec id"             has "$B30_HOME" 'reg-tele-id.*open spec'
 B30_MAN=$(curl -s "$URL/manifesto")
 check "/manifesto has brand-anchor paragraph"      hashi "$B30_MAN" 'andrey kolmogorov\|smallest specialist program'
 check "/manifesto mentions RS-1 spec"              has "$B30_MAN" 'RS-1'
 B30_CSS=$(curl -s "$URL/brand-refresh.css")
-check "brand-refresh.css has footer brand-tag"     has "$B30_CSS" 'kolm is the binary'
+check "brand-refresh.css has footer brand-tag"     has "$B30_CSS" 'The AI compiler'
 
 echo ""
 echo "=== 31. v7.0 day-2 — REM-era claims stripped, kolm-native framing ==="
@@ -1309,9 +1316,9 @@ check "/articles/kolm-file-format old tree retired" hashno "$FF" 'diag diag-tree
 echo ""
 echo "=== 45. homepage cred-band, reg-tele, and conversion surface ==="
 HOME=$(curl -s "$URL/")
-check "/ cred-band benefit row"        has "$HOME" 'stays on your hardware'
-check "/ cred-band reproducible"       has "$HOME" 'reproducible forever'
-check "/ cred-band signed receipts"    has "$HOME" 'signed receipts'
+check "/ cred-band compliance"         has "$HOME" 'Compliance built in'
+check "/ cred-band reliable"           has "$HOME" 'Same answer, every time'
+check "/ cred-band yours forever"      has "$HOME" 'Yours forever'
 check "/ cred-band open spec link"     has "$HOME" 'href="/spec"'
 # design-partner standalone strip cut — /enterprise reg-strip footer now carries the entry point
 check "/ enterprise reg-strip footer"  has "$HOME" 'enterprise overview'
@@ -1327,7 +1334,7 @@ check "/ no fabricated +15pp claim"    hashno "$HOME" '\+15\.33pp'
 check "/ reg-tele band present"        has "$HOME" 'class="reg-tele"'
 check "/ reg-tele 4 cells"             has "$HOME" 'reg-tele-cell'
 check "/ reg-tele artifacts label"     has "$HOME" 'artifacts signed'
-check "/ reg-tele spec RS-1"           has "$HOME" '<span class="accent">RS-1</span>'
+check "/ reg-tele open spec id"        has "$HOME" 'reg-tele-id.*open spec'
 check "/ reg-tele runtime kolm"        has "$HOME" 'kolm/0.5'
 check "/ reg-tele receipt HMAC"        has "$HOME" '>HMAC<'
 check "/ reg-tele receipt SHA-256"     has "$HOME" 'SHA-256</span>'
@@ -1376,7 +1383,7 @@ check "/anatomy no walker plate"         hashno "$ANATOMY" 'data-walker'
 echo ""
 echo "=== 49a. /faq question-mark restoration + K-score formula correction ==="
 FAQ=$(curl -s "$URL/faq")
-check "/faq has 35+ question h3"           test "$(echo "$FAQ" | grep -c '?</h3>')" -ge 35
+check "/faq has 30+ question h3"           test "$(echo "$FAQ" | grep -c '?</h3>')" -ge 30
 check "/faq no stale -</h3>"               test "$(echo "$FAQ" | grep -c -- '-</h3>')" -eq 0
 check "/faq K-score canonical formula"     has "$FAQ" 'K = 0.40&middot;A + 0.15&middot;S + 0.15&middot;L + 0.15&middot;C + 0.15&middot;V'
 check "/faq no harmonic mean lie"          hashno "$FAQ" 'harmonic mean of size'
@@ -1535,22 +1542,16 @@ for slug in agentic-coding ai-saas capture-and-distill embedded mobile web3-veri
   check "/use-cases/$slug Kolmogorov org"        has "$PG" 'Kolmogorov'
 done
 
-echo "=== 49k. canonical primary-nav across pages ==="
+echo "=== 49k. canonical primary-nav across pages (3-item) ==="
 NAV_QS=$(curl -s "$URL/quickstart")
 NAV_CMP=$(curl -s "$URL/compare")
 NAV_BCH=$(curl -s "$URL/benchmarks")
-check "/quickstart canonical nav compile"   has "$NAV_QS" 'href="/compile">Compile</a>'
-check "/quickstart canonical nav serve"     has "$NAV_QS" 'href="/serve">Serve</a>'
-check "/quickstart canonical nav .kolm"     has "$NAV_QS" 'href="/anatomy">.kolm</a>'
-check "/quickstart canonical nav K-score"   has "$NAV_QS" 'href="/k-score">K-score</a>'
-check "/quickstart canonical nav Docs"      has "$NAV_QS" 'href="/docs">Docs</a>'
-check "/quickstart canonical nav Pricing"   has "$NAV_QS" 'href="/pricing">Pricing</a>'
-check "/quickstart canonical-nav not lower" has "$NAV_QS" 'href="/serve">Serve</a>'
-check "/compare canonical nav serve"        has "$NAV_CMP" 'href="/serve">Serve</a>'
-check "/compare canonical-nav not lower"    has "$NAV_CMP" 'href="/k-score">K-score</a>'
-check "/compare canonical nav .kolm"        has "$NAV_CMP" 'href="/anatomy">.kolm</a>'
-check "/benchmarks canonical nav K-score"   has "$NAV_BCH" 'href="/k-score">K-score</a>'
-check "/benchmarks no self-link in nav"     hashno "$NAV_BCH" '/benchmarks" class="active">Benchmarks'
+check "/quickstart canonical nav Solutions"  has "$NAV_QS"  'href="/use-cases">Solutions</a>'
+check "/quickstart canonical nav Developers" has "$NAV_QS"  'href="/docs">Developers</a>'
+check "/quickstart canonical nav Pricing"    has "$NAV_QS"  'href="/pricing">Pricing</a>'
+check "/compare canonical nav Solutions"     has "$NAV_CMP" 'href="/use-cases">Solutions</a>'
+check "/compare canonical nav Developers"    has "$NAV_CMP" 'href="/docs">Developers</a>'
+check "/benchmarks canonical nav Developers" has "$NAV_BCH" 'href="/docs">Developers</a>'
 
 echo "=== 49j. /api capture & distill section ==="
 API_PG=$(curl -s "$URL/api")

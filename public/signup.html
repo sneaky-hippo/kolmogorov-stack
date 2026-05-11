@@ -4,12 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Sign in · kolm</title>
-<meta name="description" content="Sign in to kolm with an API key, or create an account on any plan in under a minute. Fully self-serve, including Enterprise.">
+<meta name="description" content="Sign in to kolm with Google or GitHub. Or create an account on any plan in under a minute. Fully self-serve, including Enterprise.">
 <meta name="theme-color" content="#0b0d10">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
+
 <link rel="canonical" href="https://kolm.ai/signin">
 <meta property="og:title" content="Sign in · kolm" />
-<meta property="og:description" content="Sign in with an API key, or create an account on any plan in under a minute." />
+<meta property="og:description" content="Sign in with Google or GitHub. Or create an account on any plan in under a minute." />
 <meta property="og:image" content="https://kolm.ai/og-card.svg" />
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary_large_image" />
@@ -26,8 +28,19 @@
   .plan-banner .plan-switch a{color:var(--ink-faint);text-decoration:none}
   .plan-banner .plan-switch a:hover{color:var(--ink)}
   .oauth-row{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
-  .oauth-row .oauth-btn{display:flex;align-items:center;justify-content:center;gap:10px}
-  .oauth-row .oauth-divider{text-align:center;color:var(--ink-faint);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin:4px 0}
+  .oauth-row .oauth-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 16px;font-size:14px;font-weight:540;background:var(--bg-2,#0e1014) !important;background-image:none !important;color:var(--ink,#faf2e1) !important;border:1px solid var(--line-2,rgba(236,231,220,0.22)) !important;border-radius:10px;cursor:pointer;transition:border-color 140ms,background 140ms,transform 140ms}
+  .oauth-row .oauth-btn:hover{border-color:var(--accent,#7ef0d2) !important;transform:translateY(-1px)}
+  [data-theme="light"] .oauth-row .oauth-btn{background:#ffffff !important;color:#0c0e10 !important;border-color:rgba(12,14,16,0.18) !important}
+  [data-theme="light"] .oauth-row .oauth-btn:hover{border-color:rgba(10,136,98,0.40) !important}
+  .oauth-row .oauth-divider{text-align:center;color:var(--ink-faint);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin:8px 0;position:relative}
+  .oauth-row .oauth-divider::before,.oauth-row .oauth-divider::after{content:'';position:absolute;top:50%;width:35%;height:1px;background:var(--line)}
+  .oauth-row .oauth-divider::before{left:0}
+  .oauth-row .oauth-divider::after{right:0}
+  .advanced-toggle{display:block;text-align:center;margin:14px 0 0;color:var(--ink-faint);font-size:12px;text-decoration:none;cursor:pointer;background:none;border:0;width:100%;padding:6px}
+  .advanced-toggle:hover{color:var(--ink)}
+  .advanced-panel{margin-top:12px;padding-top:14px;border-top:1px solid var(--line)}
+  .advanced-panel[hidden]{display:none !important}
+  .auth-tabs[hidden]{display:none !important}
 </style>
 </head>
 <body>
@@ -35,12 +48,8 @@
   <div class="wrap">
     <a href="/" class="brand"><span>kolm</span></a>
     <nav class="site-nav" aria-label="Primary">
-      <a href="/compile">Compile</a>
-      <a href="/serve">Serve</a>
-      <a href="/evolve">Evolve</a>
-      <a href="/anatomy">.kolm</a>
-      <a href="/k-score">K-score</a>
-      <a href="/docs">Docs</a>
+      <a href="/use-cases">Solutions</a>
+      <a href="/docs">Developers</a>
       <a href="/pricing">Pricing</a>
     </nav>
     <div class="site-actions"><a href="/">home</a></div>
@@ -51,45 +60,31 @@
   <section class="auth-card" aria-labelledby="auth-title">
     <div class="eyebrow"><span class="pulse"></span>account</div>
     <h1 id="auth-title">Sign in to kolm.</h1>
-    <p class="lede" id="auth-sub">Paste your API key. Every plan, including Enterprise, is fully self-serve.</p>
-
-    <div id="oauth-row" class="oauth-row" hidden>
-      <button id="oauth-google" class="btn primary oauth-btn" type="button" hidden>
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.227c0-.673-.06-1.32-.173-1.946H12v3.68h5.385c-.232 1.244-.937 2.298-1.997 3.005v2.498h3.232c1.892-1.741 2.98-4.305 2.98-7.237z"/><path fill="#34A853" d="M12 22c2.7 0 4.965-.894 6.62-2.422l-3.232-2.498c-.894.6-2.04.954-3.388.954-2.604 0-4.81-1.755-5.598-4.116H3.07v2.582A9.997 9.997 0 0 0 12 22z"/><path fill="#FBBC04" d="M6.402 13.918a5.998 5.998 0 0 1 0-3.836V7.5H3.07a9.998 9.998 0 0 0 0 9l3.332-2.582z"/><path fill="#EA4335" d="M12 5.882c1.468 0 2.787.504 3.823 1.495l2.866-2.866C16.96 2.99 14.696 2 12 2A9.997 9.997 0 0 0 3.07 7.5l3.332 2.582C7.19 7.637 9.396 5.882 12 5.882z"/></svg>
-        Continue with Google
-      </button>
-      <button id="oauth-github" class="btn primary oauth-btn" type="button" hidden>
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.46-1.11-1.46-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg>
-        Continue with GitHub
-      </button>
-      <div id="oauth-divider" class="oauth-divider">or with email / API key</div>
-    </div>
-
-    <div class="auth-tabs" role="tablist" aria-label="Account mode">
-      <button id="tab-in" class="active" type="button" role="tab" aria-selected="true">Sign in</button>
-      <button id="tab-up" type="button" role="tab" aria-selected="false">Create account</button>
-    </div>
-
-    <div id="msg" class="auth-msg" role="status" aria-live="polite"></div>
+    <p class="lede" id="auth-sub">One click with Google or GitHub. Every plan, including Enterprise, is fully self-serve.</p>
 
     <div id="plan-banner" class="plan-banner" hidden>
       <div>
         <div><span class="plan-name" id="plan-name">Developer</span> &middot; <span class="plan-price" id="plan-price">$0</span></div>
-        <div class="plan-meta" id="plan-meta">No card. No email approval. Your key works the second this form returns.</div>
+        <div class="plan-meta" id="plan-meta">No card. No email approval. Your account works the second sign-in returns.</div>
       </div>
       <div class="plan-switch"><a href="/pricing">change plan</a></div>
     </div>
 
-    <form id="form-in" autocomplete="on" novalidate>
-      <label class="field">
-        <span class="lbl">API key</span>
-        <input id="api_key" name="api_key" type="text" autocomplete="off" required placeholder="ks_..." spellcheck="false">
-      </label>
-      <button id="submit-in" class="btn ghost" type="submit">Sign in with API key</button>
-      <p class="auth-note">Use the API key from your /v1/signup response. The dashboard, the CLI, and the SDK all accept the same key.</p>
-    </form>
+    <div id="oauth-row" class="oauth-row">
+      <button id="oauth-google" class="btn primary oauth-btn" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.227c0-.673-.06-1.32-.173-1.946H12v3.68h5.385c-.232 1.244-.937 2.298-1.997 3.005v2.498h3.232c1.892-1.741 2.98-4.305 2.98-7.237z"/><path fill="#34A853" d="M12 22c2.7 0 4.965-.894 6.62-2.422l-3.232-2.498c-.894.6-2.04.954-3.388.954-2.604 0-4.81-1.755-5.598-4.116H3.07v2.582A9.997 9.997 0 0 0 12 22z"/><path fill="#FBBC04" d="M6.402 13.918a5.998 5.998 0 0 1 0-3.836V7.5H3.07a9.998 9.998 0 0 0 0 9l3.332-2.582z"/><path fill="#EA4335" d="M12 5.882c1.468 0 2.787.504 3.823 1.495l2.866-2.866C16.96 2.99 14.696 2 12 2A9.997 9.997 0 0 0 3.07 7.5l3.332 2.582C7.19 7.637 9.396 5.882 12 5.882z"/></svg>
+        Continue with Google
+      </button>
+      <button id="oauth-github" class="btn primary oauth-btn" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.46-1.11-1.46-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.53 2.34 1.09 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg>
+        Continue with GitHub
+      </button>
+      <div id="oauth-divider" class="oauth-divider">or</div>
+    </div>
 
-    <form id="form-up" autocomplete="on" novalidate hidden>
+    <div id="msg" class="auth-msg" role="status" aria-live="polite"></div>
+
+    <form id="form-up" autocomplete="on" novalidate>
       <label class="field">
         <span class="lbl">Email</span>
         <input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
@@ -99,7 +94,22 @@
         <input id="name" name="name" type="text" autocomplete="name" placeholder="Your name">
       </label>
       <input id="plan-input" type="hidden" name="plan" value="free">
-      <button id="submit-up" class="btn primary" type="submit">Create account</button>
+      <button id="submit-up" class="btn ghost" type="submit">Sign up with email</button>
+      <p class="auth-note">Free tiers activate instantly. Paid tiers return a Stripe payment link in the same response.</p>
+    </form>
+
+    <button id="advanced-toggle" class="advanced-toggle" type="button" aria-expanded="false">Already have an API key? &rarr;</button>
+
+    <div id="advanced-panel" class="advanced-panel" hidden>
+      <form id="form-in" autocomplete="on" novalidate>
+        <label class="field">
+          <span class="lbl">API key</span>
+          <input id="api_key" name="api_key" type="text" autocomplete="off" placeholder="ks_..." spellcheck="false">
+        </label>
+        <button id="submit-in" class="btn ghost" type="submit">Sign in with API key</button>
+        <p class="auth-note">Use the API key from a previous /v1/signup response. Or, if you're new here, pick Google / GitHub / email above.</p>
+      </form>
+    </div>
       <p class="auth-note">Free tiers activate instantly. Paid tiers return a Stripe payment link in the same response. Click through, complete billing, your key is already live.</p>
     </form>
 
@@ -134,7 +144,7 @@
     starter:    { label: 'Starter',    price: '$9 / month',          meta: 'Provisioned instantly. Stripe payment link returned in the same response. Complete billing within 30 days to stay on Starter.' },
     pro:        { label: 'Pro',        price: '$49 / month',         meta: 'Provisioned instantly. Stripe payment link returned in the same response. Complete billing within 30 days to stay on Pro.' },
     teams:      { label: 'Teams',      price: '$149 / month',        meta: 'Provisioned instantly with 5 seats. Stripe payment link returned in the same response. Complete billing within 30 days to stay on Teams.' },
-    enterprise: { label: 'Enterprise', price: '$2,999 / month',      meta: 'Provisioned instantly. SSO/SCIM/BAA paths via /trust. Stripe payment link returned in the same response. SOC 2 Type I (Q4 2026) and DPA available without contacting sales.' },
+    enterprise: { label: 'Enterprise', price: '$2,999 / month',      meta: 'Provisioned instantly. SSO/SCIM/BAA paths via /trust. Stripe payment link returned in the same response. DPA available without contacting sales.' },
   };
   function $(id){ return document.getElementById(id); }
   function saveKey(key){
@@ -161,27 +171,27 @@
     $('plan-input').value = planId;
     $('plan-banner').hidden = false;
   }
-  function mode(next){
-    var signin = next === 'in';
-    $('tab-in').classList.toggle('active', signin);
-    $('tab-up').classList.toggle('active', !signin);
-    $('tab-in').setAttribute('aria-selected', signin ? 'true' : 'false');
-    $('tab-up').setAttribute('aria-selected', signin ? 'false' : 'true');
-    $('form-in').hidden = !signin;
-    $('form-up').hidden = signin;
-    $('key-display').hidden = true;
-    $('auth-title').textContent = signin ? 'Sign in to kolm.' : 'Create your kolm account.';
-    $('auth-sub').textContent = signin
-      ? 'Paste your API key. Every plan, including Enterprise, is fully self-serve.'
-      : 'Choose a plan, drop your email, get a key. Paid plans return a Stripe link in the same response.';
-    $('msg').className = 'auth-msg';
-    $('msg').textContent = '';
-    $('plan-banner').hidden = signin || !getQueryPlan();
-  }
-  $('tab-in').addEventListener('click', function(){ mode('in'); });
-  $('tab-up').addEventListener('click', function(){ mode('up'); });
   applyPlanBanner();
-  if (location.hash === '#up' || location.search.indexOf('plan=') !== -1) mode('up');
+
+  // Advanced toggle: reveal API-key sign-in only on demand. SSO + email is the
+  // default surface; api-key sign-in lives behind a small text link below.
+  $('advanced-toggle').addEventListener('click', function(){
+    var panel = $('advanced-panel');
+    var expanded = !panel.hidden;
+    panel.hidden = expanded;
+    $('advanced-toggle').setAttribute('aria-expanded', expanded ? 'false' : 'true');
+    $('advanced-toggle').textContent = expanded
+      ? 'Already have an API key? →'
+      : 'Hide API-key sign-in';
+    if (!expanded) {
+      try { $('api_key').focus(); } catch (_) {}
+    }
+  });
+  if (location.hash === '#apikey') {
+    $('advanced-panel').hidden = false;
+    $('advanced-toggle').textContent = 'Hide API-key sign-in';
+    $('advanced-toggle').setAttribute('aria-expanded', 'true');
+  }
 
   // Surface OAuth provider availability and errors. Hide the row entirely if
   // neither provider is configured so we don't show a dead UI.
@@ -194,19 +204,27 @@
       if (planParam && planParam !== 'free') qp += '&plan=' + encodeURIComponent(planParam);
       location.href = '/v1/oauth/' + provider + '/start' + qp;
     }
+    // Always wire the click handlers. If a provider isn't configured server-side,
+    // the /v1/oauth/<provider>/start endpoint returns 503 + oauth_not_configured;
+    // surface a friendly message rather than redirecting to a JSON error page.
+    function tryOAuth(provider){
+      fetch('/v1/oauth/' + provider + '/start', { method: 'HEAD', redirect: 'manual' })
+        .then(function(r){
+          if (r.status === 503) {
+            show('err', provider + ' sign-in is being set up. Use email signup below.');
+          } else {
+            gotoOAuth(provider);
+          }
+        }).catch(function(){ gotoOAuth(provider); });
+    }
+    $('oauth-google').addEventListener('click', function(){ tryOAuth('google'); });
+    $('oauth-github').addEventListener('click', function(){ tryOAuth('github'); });
     fetch('/v1/oauth/providers').then(function(r){ return r.json(); }).then(function(p){
-      var anyConfigured = false;
-      if (p.google) {
-        $('oauth-google').hidden = false;
-        $('oauth-google').addEventListener('click', function(){ gotoOAuth('google'); });
-        anyConfigured = true;
-      }
-      if (p.github) {
-        $('oauth-github').hidden = false;
-        $('oauth-github').addEventListener('click', function(){ gotoOAuth('github'); });
-        anyConfigured = true;
-      }
-      $('oauth-row').hidden = !anyConfigured;
+      // If a provider IS configured we just leave the button enabled. If we get
+      // a clean providers map and BOTH are off, dim the buttons but keep them
+      // clickable so the friendly fallback message fires.
+      if (p && p.google === false) $('oauth-google').style.opacity = '0.55';
+      if (p && p.github === false) $('oauth-github').style.opacity = '0.55';
     }).catch(function(){});
 
     var err = (location.search.match(/[?&]oauth_error=([^&]+)/) || [])[1];

@@ -378,24 +378,38 @@ nav.top .nav-links a {
   letter-spacing: 0 !important;
   color: var(--ink-mute, #b5bdb1) !important;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif !important;
-  transition: color 120ms ease;
+  /* Reserve the underline track on every nav link so the row never shifts
+   * when an active link gains its accent line. Same metric on both nav
+   * variants kills the cross-page jump. */
+  padding-bottom: 3px !important;
+  border-bottom: 1px solid transparent !important;
+  transition: color 120ms ease, border-color 120ms ease;
 }
 header.site nav a:hover,
-header.site nav a.active,
 .site-header .site-nav a:hover,
-.site-header .site-nav a.active,
 nav.top .site-nav a:hover,
-nav.top .site-nav a.active {
+nav.top .nav-links a:hover {
   color: var(--ink, #faf2e1) !important;
 }
+header.site nav a.active,
+.site-header .site-nav a.active,
+nav.top .site-nav a.active,
+nav.top .nav-links a.active {
+  color: var(--ink, #faf2e1) !important;
+  border-bottom-color: var(--accent, #7a8cff) !important;
+}
 
-/* Right-side actions — sign-in + CTA tighter and consistently sized. */
+/* Right-side actions — sign-in + CTA tighter and consistently sized.
+ * margin-left:auto pins the actions to the right edge of the header row,
+ * independent of how wide the left group renders on any given page. This
+ * is what stops "Sign in / Get API key" from moving between tabs. */
 header.site .right,
 .site-header .site-actions,
 .site-actions {
   display: flex !important;
   align-items: center !important;
   gap: 12px !important;
+  margin-left: auto !important;
 }
 header.site .right .ghost,
 header.site .right a:not(.cta),
@@ -681,10 +695,10 @@ img, svg, video, iframe, canvas, picture {
 
 /* Site-wide brand tagline injected above every footer. CSS content can't
  * render <code>, so the line uses plain monospace + middot separators.
- * Anchors the brand stack: company → binary → file → spec. */
+ * Plain English; technical depth lives on /spec. */
 footer.site::before,
 footer.modern::before {
-  content: "Kolmogorov \00B7  The AI compiler \00B7  kolm is the binary \00B7  .kolm is the file format \00B7  RS-1 is the spec, MIT-licensed";
+  content: "Kolmogorov \00B7  The AI compiler \00B7  Open standard, MIT-licensed";
   display: block;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 11px;
@@ -991,3 +1005,633 @@ footer.modern::before {
   background: rgba(126,240,210,0.06) !important;
 }
 
+/* ============================================================
+ * THEME — LIGHT MODE (enterprise-friendly, SOTA paper-on-ink)
+ * Dark stays default (dev-friendly). Light flips on [data-theme="light"].
+ * Same emerald accent #109973 (darker for AA contrast on paper).
+ * ============================================================ */
+:root[data-theme="light"] {
+  --bg: #fafafa !important;
+  --bg-2: #ffffff !important;
+  --bg-3: #f1f2f4 !important;
+  --bg-card: #ffffff !important;
+  --bg-elev: #f4f5f7 !important;
+  --surface: #ffffff !important;
+  --surface-2: #f4f5f7 !important;
+  --line: rgba(12,14,16,0.10) !important;
+  --line-2: rgba(12,14,16,0.20) !important;
+  --line-3: rgba(12,14,16,0.36) !important;
+  --line-strong: rgba(12,14,16,0.22) !important;
+  --line-stronger: rgba(12,14,16,0.34) !important;
+  --fg: #0c0e10 !important;
+  --fg-2: #1f2429 !important;
+  --fg-3: #3d4347 !important;
+  --muted: #4b5158 !important;
+  --dim: #6b7280 !important;
+  --violet: #0c0e10 !important;
+  --violet-2: #0c0e10 !important;
+  --accent: #0c0e10 !important;
+  --accent-2: #0c0e10 !important;
+  --accent-strong: #0c0e10 !important;
+  --periwinkle: #0c0e10 !important;
+  --cyan: #0a8862 !important;
+  --emerald: #0a8862 !important;
+  --amber: #a04d00 !important;
+  --good: #0a8862 !important;
+  --good-soft: rgba(10,136,98,0.14) !important;
+  --good-faint: rgba(10,136,98,0.06) !important;
+  --bad: #c81e3a !important;
+  --ink: #0c0e10 !important;
+  --ink-mute: #1f2429 !important;
+  --ink-faint: #4b5158 !important;
+}
+[data-theme="light"] .auth-card {
+  background: #ffffff !important;
+  border-color: rgba(12,14,16,0.10) !important;
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .auth-card h1,
+[data-theme="light"] .auth-card .lede { color: #0c0e10 !important; }
+[data-theme="light"] .auth-card .auth-note { color: #4b5158 !important; }
+[data-theme="light"] .auth-tabs { background: rgba(12,14,16,0.10) !important; border-color: rgba(12,14,16,0.10) !important; }
+[data-theme="light"] .auth-tabs button { background: #ffffff !important; color: #4b5158 !important; }
+[data-theme="light"] .auth-tabs button.active { background: rgba(12,14,16,0.06) !important; color: #0c0e10 !important; }
+[data-theme="light"] .key-display { background: #f4f5f7 !important; border-color: rgba(12,14,16,0.22) !important; }
+[data-theme="light"] .plan-banner { background: #f4f5f7 !important; border-color: rgba(12,14,16,0.22) !important; }
+[data-theme="light"] .plan-banner .plan-name { color: #0c0e10 !important; }
+[data-theme="light"] .plan-banner .plan-meta { color: #4b5158 !important; }
+[data-theme="light"] .plan-banner .plan-switch a { color: #4b5158 !important; }
+[data-theme="light"] .advanced-toggle { color: #4b5158 !important; }
+[data-theme="light"] .advanced-toggle:hover { color: #0c0e10 !important; }
+[data-theme="light"] .advanced-panel { border-color: rgba(12,14,16,0.10) !important; }
+[data-theme="light"] .auth-card input[type="text"],
+[data-theme="light"] .auth-card input[type="email"],
+[data-theme="light"] .auth-card input { background: #ffffff !important; color: #0c0e10 !important; border-color: rgba(12,14,16,0.20) !important; }
+[data-theme="light"] .auth-card .lbl { color: #1f2429 !important; }
+[data-theme="light"] .oauth-row .oauth-divider { color: #4b5158 !important; }
+[data-theme="light"] .oauth-row .oauth-divider::before,
+[data-theme="light"] .oauth-row .oauth-divider::after { background: rgba(12,14,16,0.12) !important; }
+[data-theme="light"] body {
+  background: #fafafa !important;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(12,14,16,0.045) 1px, transparent 0) !important;
+  background-size: 40px 40px !important;
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .bg-stage::after {
+  background:
+    linear-gradient(180deg, rgba(250,250,250,0) 0%, rgba(250,250,250,.6) 70%, rgba(250,250,250,.9) 100%) !important;
+}
+[data-theme="light"] header.site,
+[data-theme="light"] .site-header,
+[data-theme="light"] nav.top {
+  background: rgba(250,250,250,0.92) !important;
+  border-bottom: 1px solid rgba(12,14,16,0.10) !important;
+}
+@media (max-width: 720px) {
+  [data-theme="light"] header.site,
+  [data-theme="light"] .site-header,
+  [data-theme="light"] nav.top {
+    background: #fafafa !important;
+  }
+}
+[data-theme="light"] .site-header .brand,
+[data-theme="light"] header.site .brand,
+[data-theme="light"] .site-header .site-nav a,
+[data-theme="light"] header.site nav a,
+[data-theme="light"] .site-header .site-actions a:not(.cta),
+[data-theme="light"] header.site .right a:not(.cta) {
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .site-header .site-actions a.cta,
+[data-theme="light"] header.site .right a.cta {
+  background: #0c0e10 !important;
+  color: #fafafa !important;
+  border-color: #0c0e10 !important;
+}
+[data-theme="light"] .site-header .site-actions a.cta:hover,
+[data-theme="light"] header.site .right a.cta:hover {
+  background: #0a8862 !important;
+  border-color: #0a8862 !important;
+}
+
+/* Light-mode cred-band — invert paper ground; keep emerald accents */
+[data-theme="light"] .cred-band {
+  background: rgba(12,14,16,0.03) !important;
+  border-color: rgba(12,14,16,0.10) !important;
+}
+[data-theme="light"] .cred-band .num,
+[data-theme="light"] .cred-band .lab {
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .cred-band .lab { color: #1f2429 !important; }
+[data-theme="light"] .cred-band .cred-arrow { color: #0a8862 !important; }
+
+/* Generic light-mode surface scope. Re-target a few well-known classes. */
+[data-theme="light"] .lab-terminal,
+[data-theme="light"] .artifact-lab,
+[data-theme="light"] .map-column,
+[data-theme="light"] .vr-card,
+[data-theme="light"] .reg-card,
+[data-theme="light"] .uc-card {
+  background: #ffffff !important;
+  border-color: rgba(12,14,16,0.10) !important;
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .lab-terminal { background: #f4f5f7 !important; }
+[data-theme="light"] .lab-terminal pre,
+[data-theme="light"] .lab-terminal code { color: #0c0e10 !important; }
+
+/* Footer + buttons */
+[data-theme="light"] .btn.primary,
+[data-theme="light"] .btn-primary,
+[data-theme="light"] a.btn-primary,
+[data-theme="light"] button.primary,
+[data-theme="light"] .site-actions .cta {
+  background: #0c0e10 !important;
+  background-image: none !important;
+  color: #fafafa !important;
+  border-color: #0c0e10 !important;
+}
+[data-theme="light"] .btn.primary:hover,
+[data-theme="light"] .btn-primary:hover,
+[data-theme="light"] a.btn-primary:hover,
+[data-theme="light"] button.primary:hover,
+[data-theme="light"] .site-actions .cta:hover {
+  background: #0a8862 !important;
+  background-image: none !important;
+  border-color: #0a8862 !important;
+  color: #fafafa !important;
+}
+[data-theme="light"] .btn.ghost,
+[data-theme="light"] .btn-ghost,
+[data-theme="light"] .btn-secondary,
+[data-theme="light"] a.btn-link {
+  background: transparent !important;
+  color: #0c0e10 !important;
+  border-color: rgba(12,14,16,0.36) !important;
+}
+[data-theme="light"] .btn.ghost:hover,
+[data-theme="light"] .btn-ghost:hover,
+[data-theme="light"] .btn-secondary:hover,
+[data-theme="light"] a.btn-link:hover {
+  border-color: #0a8862 !important;
+  color: #0a8862 !important;
+}
+
+/* Form inputs (ROI calc) */
+[data-theme="light"] input[type="number"],
+[data-theme="light"] input[type="text"],
+[data-theme="light"] input[type="email"],
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background: #ffffff !important;
+  color: #0c0e10 !important;
+  border-color: rgba(12,14,16,0.18) !important;
+}
+
+/* ============================================================
+ * THEME TOGGLE BUTTON (in .site-actions, before sign-in)
+ * 32x32, monochrome icon, no shift on click.
+ * ============================================================ */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  border: 1px solid rgba(236,231,220,0.18);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 4px;
+  color: var(--ink-mute);
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+  flex: 0 0 34px;
+}
+.theme-toggle:hover {
+  color: #7ef0d2;
+  border-color: rgba(126,240,210,0.32);
+}
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.theme-toggle .sun { display: none; }
+.theme-toggle .moon { display: block; }
+[data-theme="light"] .theme-toggle {
+  border-color: rgba(12,14,16,0.18);
+  color: #353a3f;
+}
+[data-theme="light"] .theme-toggle:hover {
+  color: #109973;
+  border-color: rgba(16,153,115,0.40);
+}
+[data-theme="light"] .theme-toggle .sun { display: block; }
+[data-theme="light"] .theme-toggle .moon { display: none; }
+@media (max-width: 640px) {
+  .theme-toggle { width: 32px; height: 32px; flex: 0 0 32px; }
+}
+
+/* ============================================================
+ * LIGHT THEME — second pass. Inversion of cards, inline code,
+ * pricing tiers, spec doc cards, hero compiler lab interior.
+ * Terminal-styled <pre> blocks intentionally stay dark — they
+ * imitate a terminal and should read as one in both themes.
+ * ============================================================ */
+
+/* Inline <code> tags in body prose */
+[data-theme="light"] p code,
+[data-theme="light"] li code,
+[data-theme="light"] td code,
+[data-theme="light"] dd code,
+[data-theme="light"] h1 code,
+[data-theme="light"] h2 code,
+[data-theme="light"] h3 code,
+[data-theme="light"] h4 code,
+[data-theme="light"] .lede code,
+[data-theme="light"] .sec-lede code,
+[data-theme="light"] .desc code {
+  background: rgba(16,153,115,0.08) !important;
+  color: #0a6347 !important;
+  border: 1px solid rgba(16,153,115,0.22) !important;
+  border-radius: 4px !important;
+  padding: 1px 5px !important;
+}
+
+/* Pricing tier cards */
+[data-theme="light"] .tier,
+[data-theme="light"] .tier.featured {
+  background: #ffffff !important;
+  border-color: rgba(12,14,16,0.12) !important;
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .tier.featured { border-color: rgba(16,153,115,0.40) !important; }
+[data-theme="light"] .tier h3,
+[data-theme="light"] .tier .price,
+[data-theme="light"] .tier .price-num { color: #0c0e10 !important; }
+[data-theme="light"] .tier .tag,
+[data-theme="light"] .tier .badge,
+[data-theme="light"] .tier .eyebrow,
+[data-theme="light"] .tier small { color: #4b5158 !important; }
+[data-theme="light"] .tier li,
+[data-theme="light"] .tier ul li { color: #1f2429 !important; }
+
+/* Monthly/Annual toggle pill */
+[data-theme="light"] .billing-toggle,
+[data-theme="light"] .price-toggle,
+[data-theme="light"] .toggle-group {
+  background: rgba(12,14,16,0.06) !important;
+  border-color: rgba(12,14,16,0.12) !important;
+}
+[data-theme="light"] .billing-toggle .opt,
+[data-theme="light"] .price-toggle .opt,
+[data-theme="light"] .toggle-group button { color: #4b5158 !important; }
+[data-theme="light"] .billing-toggle .opt.active,
+[data-theme="light"] .billing-toggle .opt[aria-pressed="true"],
+[data-theme="light"] .price-toggle .opt.active,
+[data-theme="light"] .toggle-group .opt.active,
+[data-theme="light"] .toggle-group button[aria-pressed="true"] {
+  background: #0c0e10 !important;
+  color: #fafafa !important;
+}
+
+/* Spec document cards (.card a) — used on /spec, /docs landing, /compare */
+[data-theme="light"] a.card,
+[data-theme="light"] .doc-grid .card,
+[data-theme="light"] .grid .card,
+[data-theme="light"] section .card {
+  background: #ffffff !important;
+  border-color: rgba(12,14,16,0.10) !important;
+  color: #0c0e10 !important;
+}
+[data-theme="light"] a.card:hover,
+[data-theme="light"] .doc-grid .card:hover {
+  border-color: rgba(16,153,115,0.35) !important;
+}
+[data-theme="light"] .card .name,
+[data-theme="light"] .card h3,
+[data-theme="light"] .card h4 { color: #0c0e10 !important; }
+[data-theme="light"] .card .desc,
+[data-theme="light"] .card p { color: #1f2429 !important; }
+[data-theme="light"] .card .tag {
+  background: rgba(16,153,115,0.10) !important;
+  color: #0a6347 !important;
+  border-color: rgba(16,153,115,0.30) !important;
+}
+
+/* Hero compiler lab — interior panels invert; core ring stays accent */
+[data-theme="light"] .artifact-lab {
+  background: #ffffff !important;
+}
+[data-theme="light"] .lab-head,
+[data-theme="light"] .lab-grid { color: #0c0e10 !important; }
+[data-theme="light"] .proof-title,
+[data-theme="light"] .proof-status { color: #1f2429 !important; }
+[data-theme="light"] .lab-panel,
+[data-theme="light"] .artifact-card-mini {
+  background: #f4f5f7 !important;
+  border-color: rgba(12,14,16,0.10) !important;
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .lab-panel strong,
+[data-theme="light"] .artifact-card-mini strong { color: #0c0e10 !important; }
+[data-theme="light"] .lab-panel small,
+[data-theme="light"] .artifact-card-mini small,
+[data-theme="light"] .panel-label { color: #4b5158 !important; }
+[data-theme="light"] .compile-core { color: #0c0e10 !important; }
+[data-theme="light"] .compile-core .core-ring {
+  border-color: rgba(16,153,115,0.40) !important;
+}
+[data-theme="light"] .compile-core .core-mark rect[fill="#faf2e1"] { fill: #0c0e10 !important; }
+
+/* Brand anchor (.kolm badge in H1s) */
+[data-theme="light"] .brand-anchor-inner {
+  background: #ffffff !important;
+  border-color: rgba(12,14,16,0.12) !important;
+}
+[data-theme="light"] .brand-anchor .ba-tag { color: #4b5158 !important; }
+[data-theme="light"] .brand-anchor .ba-text { color: #1f2429 !important; }
+[data-theme="light"] .brand-anchor .ba-text b { color: #0c0e10 !important; }
+[data-theme="light"] .brand-anchor .ba-text code {
+  background: rgba(16,153,115,0.08) !important;
+  color: #0a6347 !important;
+  border-color: rgba(16,153,115,0.22) !important;
+}
+
+/* H1 inline .kolm pill (spec / compile pages) */
+[data-theme="light"] h1 .tone,
+[data-theme="light"] h1 code.k-mark,
+[data-theme="light"] h1 .kolm-badge {
+  background: rgba(16,153,115,0.10) !important;
+  color: #0a6347 !important;
+  border-color: rgba(16,153,115,0.28) !important;
+}
+
+/* Generic section "card" containers used on /api, /docs, /architecture */
+[data-theme="light"] .section .panel,
+[data-theme="light"] .endpoint,
+[data-theme="light"] .endpoint-card,
+[data-theme="light"] .api-card,
+[data-theme="light"] .compl-card,
+[data-theme="light"] .article-card,
+[data-theme="light"] .changelog-entry,
+[data-theme="light"] .faq-item,
+[data-theme="light"] details {
+  background: #ffffff !important;
+  border-color: rgba(12,14,16,0.10) !important;
+  color: #0c0e10 !important;
+}
+
+/* Footnotes / muted captions */
+[data-theme="light"] .footnote,
+[data-theme="light"] .caption,
+[data-theme="light"] .small,
+[data-theme="light"] .meta,
+[data-theme="light"] .dim,
+[data-theme="light"] small { color: #4b5158 !important; }
+
+/* Strong-emphasis links in prose */
+[data-theme="light"] p a,
+[data-theme="light"] li a:not(.btn):not(.cta):not(.tag),
+[data-theme="light"] .lede a,
+[data-theme="light"] .sec-lede a {
+  color: #0a6347 !important;
+  text-decoration-color: rgba(16,153,115,0.45) !important;
+}
+[data-theme="light"] p a:hover,
+[data-theme="light"] li a:not(.btn):hover { color: #0c0e10 !important; }
+
+/* Sidebar nav (docs, api) */
+[data-theme="light"] .side-nav,
+[data-theme="light"] .docs-side,
+[data-theme="light"] .api-side {
+  background: transparent !important;
+}
+[data-theme="light"] .side-nav a,
+[data-theme="light"] .docs-side a,
+[data-theme="light"] .api-side a { color: #1f2429 !important; }
+[data-theme="light"] .side-nav a:hover,
+[data-theme="light"] .docs-side a:hover,
+[data-theme="light"] .api-side a:hover { color: #0c0e10 !important; }
+[data-theme="light"] .side-nav .group,
+[data-theme="light"] .side-nav h4,
+[data-theme="light"] .docs-side h4 { color: #4b5158 !important; }
+
+/* Tables (pricing comparison) */
+[data-theme="light"] table { color: #0c0e10 !important; }
+[data-theme="light"] table th { color: #0c0e10 !important; border-color: rgba(12,14,16,0.18) !important; }
+[data-theme="light"] table td { color: #1f2429 !important; border-color: rgba(12,14,16,0.10) !important; }
+[data-theme="light"] table tr:nth-child(even) td { background: rgba(12,14,16,0.02) !important; }
+
+/* Eyebrow line decorations */
+[data-theme="light"] .eyebrow,
+[data-theme="light"] .reg-head,
+[data-theme="light"] .uc-head,
+[data-theme="light"] .vr-eyebrow { color: #4b5158 !important; }
+[data-theme="light"] .eyebrow .num { color: #109973 !important; }
+
+/* Header brand mark — swap SVG fill from ivory (#faf2e1) to ink (#0c0e10) in light mode */
+[data-theme="light"] nav.top .brand::before,
+[data-theme="light"] header.site .brand::before,
+[data-theme="light"] .site-header .brand::before,
+[data-theme="light"] .brand::before {
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'%3E%3Crect x='4' y='6' width='4.5' height='20' rx='0.4' fill='%230c0e10'/%3E%3Crect x='13' y='9' width='4.5' height='14' rx='0.4' fill='%230c0e10'/%3E%3Crect x='22' y='12' width='4.5' height='8' rx='0.4' fill='%23109973'/%3E%3C/svg%3E") !important;
+}
+
+/* Fix homepage hero "highlighted" h1 line — the .tone background-clip:text falls back to a
+   highlight box on browsers that don't reliably paint clipped gradients on light bg. */
+[data-theme="light"] h1 .tone,
+[data-theme="light"] h2 .tone {
+  background: transparent !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  color: #0a6347 !important;
+  -webkit-text-fill-color: #0a6347 !important;
+}
+
+/* ============================================================
+   Hardcoded near-black backgrounds — invert in light mode.
+   Many older inline-styled pages use #050607, #0b0f10, #0a0c10, etc.
+   These don't pick up CSS vars and bleed dark cards into paper layout.
+   ============================================================ */
+[data-theme="light"] .plate,
+[data-theme="light"] .kcalc,
+[data-theme="light"] .preview,
+[data-theme="light"] .pipeline,
+[data-theme="light"] .reg-tele-cell,
+[data-theme="light"] .bytemap-frame,
+[data-theme="light"] .sizes .row,
+[data-theme="light"] .backends .be code {
+  background: #ffffff !important;
+  background-image: none !important;
+  border-color: rgba(12,14,16,0.10) !important;
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .reg-tele-cell { background: #f4f5f7 !important; }
+[data-theme="light"] .plate { box-shadow: 0 1px 0 rgba(12,14,16,0.04), 0 12px 30px -22px rgba(12,14,16,0.18) !important; }
+[data-theme="light"] .plate .lab-head,
+[data-theme="light"] .plate .compile-core,
+[data-theme="light"] .plate .artifact-card-mini,
+[data-theme="light"] .plate .lab-panel { color: #0c0e10 !important; }
+[data-theme="light"] .plate text,
+[data-theme="light"] .plate tspan { fill: #0c0e10 !important; }
+
+/* <pre> blocks (code samples) — keep terminal look but on light paper */
+[data-theme="light"] pre,
+[data-theme="light"] pre.code-block,
+[data-theme="light"] code.block {
+  background: #f4f5f7 !important;
+  color: #0c0e10 !important;
+  border-color: rgba(12,14,16,0.10) !important;
+}
+[data-theme="light"] pre code,
+[data-theme="light"] pre.code-block code { color: inherit !important; }
+
+/* Pre-baked dark terminal styling on lab-terminal/demo-stage stays as a brand element */
+[data-theme="light"] .lab-terminal pre,
+[data-theme="light"] .lab-terminal code,
+[data-theme="light"] .demo-stage pre,
+[data-theme="light"] .terminal pre { background: transparent !important; color: inherit !important; }
+
+/* Hero-demo terminal / receipt panes — explicit white card */
+[data-theme="light"] .rp-term,
+[data-theme="light"] .three-box .tb-cell,
+[data-theme="light"] .tb-cell,
+[data-theme="light"] .ent-inner,
+[data-theme="light"] .dp-inner,
+[data-theme="light"] .pain-anchor,
+[data-theme="light"] .icp-card,
+[data-theme="light"] .triple-grid,
+[data-theme="light"] .ls-panel,
+[data-theme="light"] .vs-card,
+[data-theme="light"] .fmt-cmp .tbl-wrap,
+[data-theme="light"] .rp-aside {
+  background: #ffffff !important;
+  border-color: rgba(12,14,16,0.10) !important;
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .rp-term { background: #0c0e10 !important; color: #faf2e1 !important; }
+[data-theme="light"] .rp-term code { color: #faf2e1 !important; }
+
+/* Tighten secondary text on hardcoded-color cards */
+[data-theme="light"] .icp-card,
+[data-theme="light"] .icp-card p,
+[data-theme="light"] .ls-panel,
+[data-theme="light"] .vs-card,
+[data-theme="light"] .reg-card,
+[data-theme="light"] .uc-card,
+[data-theme="light"] .vr-card { color: #1f2429 !important; }
+
+/* SVG icon strokes/fills that hardcoded ivory ink need to invert */
+[data-theme="light"] svg[stroke="#faf2e1"],
+[data-theme="light"] svg [stroke="#faf2e1"] { stroke: #0c0e10 !important; }
+[data-theme="light"] svg [fill="#faf2e1"] { fill: #0c0e10 !important; }
+[data-theme="light"] svg [fill="#7ef0d2"] { fill: #0a8862 !important; }
+[data-theme="light"] svg [stroke="#7ef0d2"] { stroke: #0a8862 !important; }
+
+/* Inline <code> on /healthcare, /finance, etc — many use color:#e2e8f0; on light bg = bleed */
+[data-theme="light"] code { color: #0c0e10 !important; }
+
+/* Spec/docs side strips that use --bg-3 or hardcoded dark — paper them */
+[data-theme="light"] .panel,
+[data-theme="light"] .docs-rail,
+[data-theme="light"] .toc,
+[data-theme="light"] .feature-card,
+[data-theme="light"] .tile,
+[data-theme="light"] .step {
+  background: #ffffff !important;
+  border-color: rgba(12,14,16,0.10) !important;
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .docs-rail a,
+[data-theme="light"] .docs-rail .group-h { color: #1f2429 !important; }
+[data-theme="light"] .docs-rail .group-h { color: #4b5158 !important; }
+
+/* Subtle paper texture for light mode background — adds richness without warmth */
+[data-theme="light"] body {
+  background:
+    radial-gradient(1200px 600px at 12% -8%, rgba(10,136,98,0.05), transparent 60%),
+    radial-gradient(900px 500px at 110% 0%, rgba(12,14,16,0.04), transparent 70%),
+    radial-gradient(circle at 1px 1px, rgba(12,14,16,0.04) 1px, transparent 0) !important;
+  background-color: #fafafa !important;
+  background-size: auto, auto, 36px 36px !important;
+  background-attachment: fixed, fixed, fixed !important;
+}
+
+/* Fade gradient on bg-stage in light mode to taper into the paper */
+[data-theme="light"] .bg-stage::after {
+  background:
+    radial-gradient(1100px 540px at 80% -6%, rgba(10,136,98,0.06), transparent 70%),
+    linear-gradient(180deg, rgba(250,250,250,0) 0%, rgba(250,250,250,.7) 70%, rgba(250,250,250,.95) 100%) !important;
+}
+
+/* ============================================================
+   Mobile nav toggle — hidden on desktop, visible <=920px.
+   Lives here (not styles.css) because brand-refresh.css loads on every page;
+   styles.css only loads on home/docs/signup, which let the hamburger leak
+   onto desktop everywhere else as a mystery "thin button" before this rule.
+   ============================================================ */
+.nav-toggle {
+  display: none !important;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+.nav-toggle:hover { border-color: rgba(126,240,210,0.30); }
+.nav-toggle span {
+  display: block;
+  width: 16px;
+  height: 1.5px;
+  background: var(--ink, #faf2e1);
+  position: absolute;
+  left: 11px;
+  transition: transform 200ms, opacity 200ms;
+}
+.nav-toggle span:nth-child(1) { top: 13px; }
+.nav-toggle span:nth-child(2) { top: 18px; }
+.nav-toggle span:nth-child(3) { top: 23px; }
+.nav-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(5px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.nav-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-5px) rotate(-45deg); }
+[data-theme="light"] .nav-toggle { border-color: rgba(12,14,16,0.18); }
+[data-theme="light"] .nav-toggle span { background: #0c0e10; }
+@media (max-width: 920px) {
+  .site-nav { display: none !important; }
+  .nav-toggle { display: inline-flex !important; }
+  .site-nav.is-open {
+    display: flex !important;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--line);
+    flex-direction: column;
+    padding: 12px 24px 16px;
+    gap: 0;
+    z-index: 50;
+  }
+  .site-nav.is-open a {
+    font-size: 14px;
+    padding: 12px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--ink, #faf2e1);
+  }
+  .site-nav.is-open a:last-child { border-bottom: 0; }
+  [data-theme="light"] .site-nav.is-open a {
+    border-bottom-color: rgba(12,14,16,0.06);
+    color: #0c0e10;
+  }
+}
+body.nav-open { overflow: hidden; }
