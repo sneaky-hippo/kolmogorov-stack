@@ -195,8 +195,8 @@
     </div>
 
     <h2 id="problem">The problem with renting forever.</h2>
-    <p>If you ship anything that calls a frontier model in production, the bill grows linearly with usage. Every prompt is a network round trip and a row in someone else's log. The model is deprecated on a fourteen-day notice. The data leaves your perimeter on every call. Latency floor is two hundred to eight hundred milliseconds even on the best path. None of these are bugs in your stack &mdash; they are properties of a rental architecture.</p>
-    <p>The line item that this creates on a finance team's monthly close is unique: <b>spend goes up, no asset accumulates.</b> Every other large recurring line in a software company &mdash; cloud hosting, observability, payments &mdash; either is fungible commodity or accrues real switching cost in the form of integration. Frontier API spend accrues neither. Cancel today and you have nothing to show for it but log entries.</p>
+    <p>If you ship anything that calls a frontier model in production, the bill grows linearly with usage. Every prompt is a network round trip and a row in someone else's log. The model is deprecated on a fourteen-day notice. The data leaves your perimeter on every call. Latency floor is two hundred to eight hundred milliseconds even on the best path. None of these are bugs in your stack. They are properties of a rental architecture.</p>
+    <p>The line item that this creates on a finance team's monthly close is unique: <b>spend goes up, no asset accumulates.</b> Every other large recurring line in a software company (cloud hosting, observability, payments) is either fungible commodity or accrues real switching cost in the form of integration. Frontier API spend accrues neither. Cancel today and you have nothing to show for it but log entries.</p>
     <p>This is the wrong shape for spend that is forecast to keep doubling. The rational move is to convert it.</p>
 
     <blockquote>
@@ -213,10 +213,10 @@
     <p>Two endpoints, <code>POST /v1/capture/anthropic</code> and <code>POST /v1/capture/openai</code>, accept the same body shape as the upstream provider. You send your customer's API key in a header that we strip before forwarding. The upstream call is unmodified. The response is unmodified. Before returning, we record a tuple of <code>(input, output, model, latency_us, namespace, tenant)</code> to your tenant's <code>observations</code> table. Surface area for the caller is one base-URL change in their codebase.</p>
 
     <h3>2. The verifier sample.</h3>
-    <p>By default a configurable fraction of captures are run through k-sample verification &mdash; the same primitive that powers <a href="/articles/k-sample-verified-inference">verified inference</a> on the compile path &mdash; to attach a confidence score to each label. Captures that fail verification are still recorded but tagged so the distiller can quarantine them. The verifier is the brake that stops you from training on outputs the frontier model itself was uncertain about.</p>
+    <p>By default a configurable fraction of captures are run through k-sample verification (the same primitive that powers <a href="/articles/k-sample-verified-inference">verified inference</a> on the compile path) to attach a confidence score to each label. Captures that fail verification are still recorded but tagged so the distiller can quarantine them. The verifier is the brake that stops you from training on outputs the frontier model itself was uncertain about.</p>
 
     <h3>3. The label endpoint.</h3>
-    <p><code>GET /v1/labels/synthesize-corpus?namespace=<n>&format=jsonl</code> returns the captured pairs as JSONL or parquet, ready to feed to any training framework. Tenant-scoped. Filtered by namespace, optional date range, and optional minimum verifier confidence. This is the format used by the next stage, but the export path lets you take the data anywhere &mdash; you are not locked into our trainer.</p>
+    <p><code>GET /v1/labels/synthesize-corpus?namespace=<n>&format=jsonl</code> returns the captured pairs as JSONL or parquet, ready to feed to any training framework. Tenant-scoped. Filtered by namespace, optional date range, and optional minimum verifier confidence. This is the format used by the next stage, but the export path lets you take the data anywhere. You are not locked into our trainer.</p>
 
     <h3>4. The distill bridge.</h3>
     <p><code>POST /v1/specialists/auto-distill</code> takes a namespace, a base model, and a target footprint. At a configurable threshold (default one thousand verified pairs) the bridge fires a LoRA training job, runs the K-score gate on a held-out evaluation slice, and ships back a signed <code>.kolm</code> artifact when the gate passes. From the operator's view it is a single CLI call and a download.</p>
@@ -249,7 +249,7 @@ kolm inspect ~/.kolm/artifacts/<span class="arg">prod-tickets.kolm</span></pre>
       <tr><td>Month 12</td><td class="v">~12,000</td><td class="v">~12,000</td><td class="v">~10k</td><td class="good">85% local steady-state. Tail is novel cases &amp; escalations.</td><td class="good">$1,800</td></tr>
     </table>
 
-    <p>The interesting line is month two. After two months of capture and one distill cycle, this team has a local Phi-3-mini-LoRA that scores K=0.86 on a held-out two-hundred-and-forty-pair eval &mdash; a signed gate that says, in plain numbers, <b>"this artifact replicates seventy-eight percent of Opus's behavior on this team's prompts."</b> The artifact runs on a single 5090 at sixty milliseconds per call. The marginal cost per call is electricity.</p>
+    <p>The interesting line is month two. After two months of capture and one distill cycle, this team has a local Phi-3-mini-LoRA that scores K=0.86 on a held-out two-hundred-and-forty-pair eval. A signed gate that says, in plain numbers, <b>"this artifact replicates seventy-eight percent of Opus's behavior on this team's prompts."</b> The artifact runs on a single 5090 at sixty milliseconds per call. The marginal cost per call is electricity.</p>
 
     <p>From month three onward the proxy routes the easy slice of traffic to the local artifact and only escalates the tail to Opus. The frontier bill compresses to the slice that the local model cannot yet handle. The team keeps capturing on that escalated slice, retrains the LoRA on a quarterly cadence, and the local-served fraction grows.</p>
 
@@ -313,7 +313,7 @@ kolm login
 <span class="com"># 30 seconds in:</span>
 kolm capture --provider anthropic --as <span class="arg">first-run</span></pre>
 
-    <p>The capture endpoint is what makes the rest possible. Once your existing traffic is flowing through it, every other piece &mdash; the labels endpoint, the distill bridge, the receipt, the K-score &mdash; is one CLI call away. <b>The first call you proxy through the capture is the first dollar that goes from rent to deposit.</b></p>
+    <p>The capture endpoint is what makes the rest possible. Once your existing traffic is flowing through it, every other piece (the labels endpoint, the distill bridge, the receipt, the K-score) is one CLI call away. <b>The first call you proxy through the capture is the first dollar that goes from rent to deposit.</b></p>
 
     <div class="signpost">
       <a href="/use-cases/capture-and-distill">

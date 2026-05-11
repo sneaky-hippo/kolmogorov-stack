@@ -1,4 +1,4 @@
-# RS-1 — the .kolm artifact contract
+# RS-1 · the .kolm artifact contract
 
 **Status:** v0.1 (draft, MIT-licensed). Stable enough to build against; small enough to read in one sitting.
 
@@ -16,7 +16,7 @@ A `.kolm` is a deterministic ZIP archive. No compression timestamps. Members app
 |---|--------|----------|-------------|
 | 1 | `manifest.json` | yes | The artifact's identity card. See §2. |
 | 2 | `recipes.json` | yes | The deterministic-token draft pack. May be empty `{}`. |
-| 3 | `evals.jsonl` | yes | Embedded evals — one JSON object per line. May be empty. |
+| 3 | `evals.jsonl` | yes | Embedded evals · one JSON object per line. May be empty. |
 | 4 | `receipt.json` | yes | The signature chain. See §4. |
 | 5 | `model.ptr` | yes | Pointer to the base model (sha256 + URL). The model bytes are NOT in the artifact. |
 | 6 | `lora.bin` | optional | LoRA delta. Absent = base model only. |
@@ -129,10 +129,10 @@ A runtime that claims RS-1 conformance MUST:
 
 ## 7. License
 
-RS-1 is published under MIT. The intent is that any runtime — ours, a competitor's, an academic project — can implement RS-1 without asking permission. The receipt anchor (the registry public key) is the only externally-mutable input; everything else is self-describing.
+RS-1 is published under MIT. The intent is that any runtime · ours, a competitor's, an academic project · can implement RS-1 without asking permission. The receipt anchor (the registry public key) is the only externally-mutable input; everything else is self-describing.
 
 ## 8. Versioning
 
 `spec` strings are immutable. A breaking change creates `rs-2`. Non-breaking additions get new optional members and bump only the `schema` field on the affected document.
 
-— see also: [manifest-v0.1.json](/docs/manifest-v0.1.json), [receipt-v0.1.json](/docs/receipt-v0.1.json).
+ ·  see also: [manifest-v0.1.json](/docs/manifest-v0.1.json), [receipt-v0.1.json](/docs/receipt-v0.1.json).

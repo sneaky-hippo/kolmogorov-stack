@@ -127,7 +127,7 @@ class Recipe {
       this.recipes.clear();
       // We DO NOT compile recipe source on the main thread. Source is held
       // in `meta.source` and only ever compiled inside the recipe-worker
-      // sandbox at run-time. unsafeMode opts back into in-page compile —
+      // sandbox at run-time. unsafeMode opts back into in-page compile · 
       // do NOT use this with a registry that contains untrusted recipes.
       for (const r of env.recipes || []) {
         const entry = { meta: r, fn: null };
@@ -208,7 +208,7 @@ class Recipe {
     return results;
   }
 
-  // Lane 2 — Verified Inference. Server samples k frontier candidates,
+  // Lane 2 · Verified Inference. Server samples k frontier candidates,
   // verifies them against your test_cases, returns the chosen + receipt.
   async verified(opts) {
     const r = await fetch(this.base + '/v1/verified-inference', {
@@ -221,8 +221,8 @@ class Recipe {
     return data;
   }
 
-  // Lane 3 — Passthrough. We forward the call to the named provider unchanged.
-  // (Hosted only — requires an API key against your provider on the server.)
+  // Lane 3 · Passthrough. We forward the call to the named provider unchanged.
+  // (Hosted only · requires an API key against your provider on the server.)
   async passthrough(provider, payload, headers = {}) {
     const r = await fetch(this.base + '/v1/passthrough/' + encodeURIComponent(provider), {
       method: 'POST',
@@ -238,14 +238,14 @@ class Recipe {
   //
   // If you pass `{ verified: { k, test_cases } }` (or `{ verified: {
   // judge_recipe_id, expected } }`), `client.messages.create({...})`
-  // is intercepted and routed to /v1/wrap/verified — the server samples
+  // is intercepted and routed to /v1/wrap/verified · the server samples
   // k candidates, runs them through the verifier, and returns the winner
   // shaped exactly like a messages.create response, with a `_kolm` block
   // carrying the receipt and candidate stats.
   //
   // If you also pass `{ corpus_namespace: 'notes' }`, the server pulls
   // the top-k chunks from your qmd index and prepends them to the
-  // system message — every k-sample is grounded in your corpus.
+  // system message · every k-sample is grounded in your corpus.
   //
   // Without `verified`, the wrap is a transparent telemetry passthrough:
   // your call goes to the upstream provider unchanged and we just record

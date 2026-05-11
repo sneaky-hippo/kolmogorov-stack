@@ -1,12 +1,12 @@
 // Recipe execution sandbox.
 //
 // The browser SDK at /sdk.js used to compile registry recipe source via
-// `new Function(source)` directly on the main page — meaning any recipe
+// `new Function(source)` directly on the main page · meaning any recipe
 // could touch window, localStorage, fetch, document, the user's keys.
 // This worker compiles the same code in a context that has none of those:
 // no DOM, no localStorage, no document.cookie, no parent globals. Only
 // the recipe and its argument come in over postMessage; only the result
-// goes back. If a recipe tries to fetch home, it can't — the worker has
+// goes back. If a recipe tries to fetch home, it can't · the worker has
 // no access to the page's session and we can revoke `fetch` per-call.
 //
 // Protocol (over MessageChannel):
@@ -37,7 +37,7 @@ function compile(source) {
 }
 
 function runWithTimeout(fn, input, timeoutMs) {
-  // Workers can't actually preempt — but if the recipe runs synchronously
+  // Workers can't actually preempt · but if the recipe runs synchronously
   // (which the registry contract requires), we can at least bound the
   // wall-clock the *outer* code sees by racing a timer outside.
   // Inside the worker we just call it directly. The timeout race lives

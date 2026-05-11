@@ -27,11 +27,11 @@
 
 - [x] **C1.** Six AI-generated kolm-*.svg deleted; replaced by interactive components on /anatomy, /compile, /serve, /run, /k-score, /integrations. (Workstream C.)
 
-## D. Stripe webhook (5 boxes — founder-blocked)
+## D. Stripe webhook (5 boxes · founder-blocked)
 
 - [ ] **D1.** **(founder)** Real Stripe payment links provisioned in test mode for Pro / Team / Business / Enterprise tiers.
 - [ ] **D2.** **(founder)** `STRIPE_PAYMENT_LINK_*` and `STRIPE_WEBHOOK_SECRET` set on Vercel env.
-- [x] **D3.** `POST /v1/stripe/webhook` verifies signature with `STRIPE_WEBHOOK_SECRET`, idempotency via `stripe_events` table, dispatches `checkout.session.completed` / `customer.subscription.updated` / `customer.subscription.deleted`. Code at `src/router.js:1105-1199` + `src/stripe.js`. Returns 503 (not 500) when secret unset — honest gap until D2.
+- [x] **D3.** `POST /v1/stripe/webhook` verifies signature with `STRIPE_WEBHOOK_SECRET`, idempotency via `stripe_events` table, dispatches `checkout.session.completed` / `customer.subscription.updated` / `customer.subscription.deleted`. Code at `src/router.js:1105-1199` + `src/stripe.js`. Returns 503 (not 500) when secret unset · honest gap until D2.
 - [x] **D4.** `/v1/account/change-plan` returns billing redirect URL for paid tiers (no plan flip server-side without webhook); immediate flip only when target is `free`. Code at `src/router.js:1042-1094`. Returns 503 with `billing_not_configured` until D1+D2 land env vars.
 - [x] **D5.** Webhook coverage: 5 live-smoke tests around `/v1/stripe/webhook` and `/v1/account/change-plan` (route-shape, free downgrade, paid never auto-flips, 503-without-secret, plan=free at provision) + 10 unit tests in `tests/stripe.test.js` (valid sig, tampered body, stale timestamp, malformed header, missing inputs, idempotent digest, plan-cents mapping, checkout param stitching). Run `node --test tests/stripe.test.js`.
 
@@ -63,7 +63,7 @@
 
 ## Founder-only items
 
-Stripe (live keys + webhook secret + payment links), Resend (domain + API key), and Railway storage env are already provisioned on Vercel — verified live by /v1/stripe/webhook returning 400 on missing signature (endpoint live, signing active) and /ready returning all-green. The two remaining founder items are OAuth credentials (Google + GitHub developer-console apps) and the kolm trainer bridge:
+Stripe (live keys + webhook secret + payment links), Resend (domain + API key), and Railway storage env are already provisioned on Vercel · verified live by /v1/stripe/webhook returning 400 on missing signature (endpoint live, signing active) and /ready returning all-green. The two remaining founder items are OAuth credentials (Google + GitHub developer-console apps) and the kolm trainer bridge:
 
 | # | Item | Owner | Blocking | How to unblock |
 |---|---|---|---|---|
@@ -71,7 +71,7 @@ Stripe (live keys + webhook secret + payment links), Resend (domain + API key), 
 | OAuth-2 | GitHub OAuth app | Founder | `/v1/oauth/providers` returns `{github:false}` → buttons hidden on /signin | github.com/settings/developers → New OAuth App → callback `https://kolm.ai/v1/oauth/github/callback` → set `GITHUB_OAUTH_CLIENT_ID` + `GITHUB_OAUTH_CLIENT_SECRET` on Vercel |
 | Trainer-bridge | Kolm trainer URL + token for `/v1/specialists/auto-distill` to mint real `.kolm` artifacts (currently returns honest "not enough captures" stub) | Founder | E3-E5 close | Set `KOLM_TRAINER_BRIDGE_URL` + `KOLM_TRAINER_BRIDGE_TOKEN` on Vercel once the trainer endpoint is up |
 
-When all three are done, the box count moves to 30/30 and the OAuth row auto-renders on /signin (the UI is wired — it auto-shows the button as soon as `/v1/oauth/providers` returns true for that provider).
+When all three are done, the box count moves to 30/30 and the OAuth row auto-renders on /signin (the UI is wired · it auto-shows the button as soon as `/v1/oauth/providers` returns true for that provider).
 
 ---
 
@@ -101,11 +101,11 @@ The launch is **the rent-vs-buy thesis paired with the reproducible-bench number
 ### Show HN draft
 
 ```
-Show HN: kolm — every API call you proxy through us trains a local LoRA you keep forever
+Show HN: kolm · every API call you proxy through us trains a local LoRA you keep forever
 
 Hi HN. I'm shipping kolm.ai, an AI compiler that turns your existing Anthropic / OpenAI traffic into a signed local model.
 
-The shape: drop-in proxy for the OpenAI / Anthropic API. Every call records the verified (input, output) pair to your tenant. At threshold (default 1k pairs) the captured corpus compiles into a .kolm — a LoRA on an open base that you run on your own hardware.
+The shape: drop-in proxy for the OpenAI / Anthropic API. Every call records the verified (input, output) pair to your tenant. At threshold (default 1k pairs) the captured corpus compiles into a .kolm · a LoRA on an open base that you run on your own hardware.
 
 The math: a 50-engineer team running 80k Opus calls/month at ~$12k/mo. After two months and one distill cycle, a Phi-3-mini-LoRA hits 78% of Opus quality on their tasks at 4% the latency, electricity-only marginal cost. The frontier bill compresses to the long tail.
 
@@ -173,7 +173,7 @@ Read the worked example: https://kolm.ai/articles/rent-vs-buy-compute
 2.
 The benchmark number on the homepage of every AI startup is a feeling unless it ships with a reproducer.
 
-We picked one number — SWE-bench Lite +10.67pp — re-ran it at n=150 with seed=42 against the official swebench 4.1.0 evaluator, and shipped a CLI that anyone can run on their own machine in 90 minutes for under $30.
+We picked one number · SWE-bench Lite +10.67pp · re-ran it at n=150 with seed=42 against the official swebench 4.1.0 evaluator, and shipped a CLI that anyone can run on their own machine in 90 minutes for under $30.
 
 If your reproduce attempt lands more than ±2pp away from ours, the methodology page has a diagnosis flowchart for what likely went wrong.
 
@@ -205,7 +205,7 @@ Tuesday 8am PT (historically best landing for dev-tool launches; PH algo favors 
 
 ### Hacker News submission
 
-Tuesday 8am PT *or* Wed 8am PT (depending on PH performance). Title: **"Show HN: kolm — every API call you proxy through us trains a local LoRA you keep forever."** Body: see "Show HN draft" above.
+Tuesday 8am PT *or* Wed 8am PT (depending on PH performance). Title: **"Show HN: kolm · every API call you proxy through us trains a local LoRA you keep forever."** Body: see "Show HN draft" above.
 
 ---
 

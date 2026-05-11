@@ -127,7 +127,7 @@ class Recipe {
       this.recipes.clear();
       // We DO NOT compile recipe source on the main thread. Source is held
       // in `meta.source` and only ever compiled inside the recipe-worker
-      // sandbox at run-time. unsafeMode opts back into in-page compile —
+      // sandbox at run-time. unsafeMode opts back into in-page compile · 
       // do NOT use this with a registry that contains untrusted recipes.
       for (const r of env.recipes || []) {
         const entry = { meta: r, fn: null };
@@ -208,7 +208,7 @@ class Recipe {
     return results;
   }
 
-  // Lane 2 — Verified Inference. Server samples k frontier candidates,
+  // Lane 2 · Verified Inference. Server samples k frontier candidates,
   // verifies them against your test_cases, returns the chosen + receipt.
   async verified(opts) {
     const r = await fetch(this.base + '/v1/verified-inference', {
@@ -221,8 +221,8 @@ class Recipe {
     return data;
   }
 
-  // Lane 3 — Passthrough. We forward the call to the named provider unchanged.
-  // (Hosted only — requires an API key against your provider on the server.)
+  // Lane 3 · Passthrough. We forward the call to the named provider unchanged.
+  // (Hosted only · requires an API key against your provider on the server.)
   async passthrough(provider, payload, headers = {}) {
     const r = await fetch(this.base + '/v1/passthrough/' + encodeURIComponent(provider), {
       method: 'POST',
@@ -237,15 +237,15 @@ class Recipe {
   // wrap(client, opts-) returns a proxy over your existing AI SDK client.
   // For now (sandbox-mode) it's a transparent passthrough that records
   // every call into `recipe.runs` so you can see what the wrap *would*
-  // route. Real auto-routing — Lane 1 deterministic recipes, Lane 2
-  // verified inference, Lane 3 raw passthrough — ships when /v1/wrap/verified
+  // route. Real auto-routing · Lane 1 deterministic recipes, Lane 2
+  // verified inference, Lane 3 raw passthrough · ships when /v1/wrap/verified
   // lands in Sprint 1. The import you write today is the import you'll
-  // ship with — only behavior changes.
+  // ship with · only behavior changes.
   //
   // If you pass `{verified: {test_cases: [...]}}` we will route
   // messages.create / chat.completions.create calls through
   // /v1/wrap/verified as soon as the server endpoint is live. Today this
-  // option is recorded but not yet active — your call still goes to the
+  // option is recorded but not yet active · your call still goes to the
   // upstream provider unchanged.
   wrap(client, opts = {}) {
     const self = this;

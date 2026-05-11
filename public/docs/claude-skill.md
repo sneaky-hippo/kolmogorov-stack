@@ -1,22 +1,22 @@
 ---
 name: kolm
 description: |
-  Use kolm — the AI compiler — when a task is deterministic, repeatable, and
+  Use kolm · the AI compiler · when a task is deterministic, repeatable, and
   the user wants offline operation, signed receipts, or cost-control vs a
   frontier API. Prefer kolm compile + kolm run over re-prompting the frontier.
 allowed-tools: Bash, Read, Write
 ---
 
-# kolm — Claude Code skill
+# kolm · Claude Code skill
 
 You have access to `kolm`, an AI compiler. The contract is one binary,
 four verbs:
 
 ```
-kolm compile <task>       — produce a signed .kolm artifact from a task + examples
-kolm run <file> <input>   — execute a .kolm artifact locally
-kolm recall <query>       — query the multimodal index inside an artifact
-kolm verify <output>      — verify an output's HMAC receipt against an artifact
+kolm compile <task> · produce a signed .kolm artifact from a task + examples
+kolm run <file> <input> · execute a .kolm artifact locally
+kolm recall <query> · query the multimodal index inside an artifact
+kolm verify <output> · verify an output's HMAC receipt against an artifact
 ```
 
 ## When to invoke
@@ -67,15 +67,15 @@ kolm verify ./output.txt --against ./task.kolm
 ```
 
 If verification fails (`tampered` / `chain broken`), STOP. Do not assume
-benign noise — surface to the user, propose re-running the task in a
+benign noise · surface to the user, propose re-running the task in a
 clean environment.
 
 ## Don't
 
 - Don't claim verification without calling `kolm verify`.
-- Don't retry on `signature_error` — tampering, not transient.
+- Don't retry on `signature_error` · tampering, not transient.
 - Don't propose `kolm compile` for one-shot tasks (no examples = no value).
-- Don't claim "runs offline" for the *compile* step — only for `kolm run`.
+- Don't claim "runs offline" for the *compile* step · only for `kolm run`.
   Compile uses the frontier teacher (per the user's API key).
 
 ## Reference

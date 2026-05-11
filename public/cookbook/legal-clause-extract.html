@@ -48,7 +48,7 @@
   <div class="wrap">
     <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; legal-clause-extract</div>
     <span class="pill">Recipe &middot; vertical</span>
-    <h1>Contracts in, <span class="tone">labeled clauses out — with spans.</span></h1>
+    <h1>Contracts in, <span class="tone">labeled clauses out, with spans.</span></h1>
     <p class="lede">A local <code>.kolm</code> file that takes a contract (PDF or DOCX) and returns every clause labeled with type, parties, governing law, monetary thresholds, and the exact character span. Verifier rejects any clause label whose span doesn't byte-match a substring of the input. Trained on 1,000 paired contracts/markups from your firm.</p>
 
     <div class="meta-row">
@@ -68,7 +68,7 @@
     <div class="group">
       <h2>What this recipe does</h2>
       <p>The "ChatGPT, summarize this contract" workflow has the failure mode you'd expect: a number that isn't in the contract appears in the summary. This recipe makes that mode unreachable. Every label points to a byte-exact span in the input. If the model hallucinates a "liability cap of $5M" that isn't in the contract, the verifier rejects it before the artifact returns.</p>
-      <p>The output schema is closed-vocab on clause type (32 categories from your firm's playbook) and free-text on span. Atypical clauses get bucketed to <code>"other"</code> with a span and a free-text label — these are the rows your associates should look at first.</p>
+      <p>The output schema is closed-vocab on clause type (32 categories from your firm's playbook) and free-text on span. Atypical clauses get bucketed to <code>"other"</code> with a span and a free-text label · these are the rows your associates should look at first.</p>
     </div>
 
     <div class="group">
@@ -136,12 +136,12 @@
 
     <div class="group">
       <h2>Deploy</h2>
-      <pre class="code"><span class="c"># DMS hook — every contract uploaded gets a clause-list as a sidecar:</span>
+      <pre class="code"><span class="c"># DMS hook · every contract uploaded gets a clause-list as a sidecar:</span>
 on_contract_upload = (file) =&gt; {
   const x = kolm.run(<span class="k">'legal-clause-extract.kolm'</span>, pdf.text(file));
   dms.attach(file.id, <span class="k">'clause-list.json'</span>, x);
   if (x.clauses.some(c =&gt; c.type === <span class="k">'liability_cap'</span> &amp;&amp; c.monetary_thresholds.length === 0)) {
-    review.queue(file.id, <span class="k">'liability cap clause has no number — review'</span>);
+    review.queue(file.id, <span class="k">'liability cap clause has no number · review'</span>);
   }
 };</pre>
     </div>

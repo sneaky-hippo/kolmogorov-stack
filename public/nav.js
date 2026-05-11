@@ -4,7 +4,7 @@
   //   older: <header class="site"> with .left>nav + .right
   // nav.js handles both: applies the active class on whichever pre-baked
   // 3-item nav already lives in the HTML, then wires mobile toggle clicks.
-  // It does NOT rewrite innerHTML — that caused visible layout shift on
+  // It does NOT rewrite innerHTML · that caused visible layout shift on
   // every navigation as the DOM mutated mid-paint.
   var header = document.querySelector('header.site-header, header.site');
   if (!header) return;
@@ -36,13 +36,13 @@
     }
   }
 
-  // Strip github star button — keep right side compact (theme + sign in + CTA).
+  // Strip github star button · keep right side compact (theme + sign in + CTA).
   var gh = actions.querySelector('#gh-star, .gh-star');
   if (gh && gh.parentNode) gh.parentNode.removeChild(gh);
 
   // Auth-aware status pill. Reads kolm_api_key (and aliases) from localStorage
   // and renders a tiny "signed in" indicator next to the actions so the user
-  // never feels like a navigation dropped them. Idempotent — re-runs replace
+  // never feels like a navigation dropped them. Idempotent · re-runs replace
   // the existing pill rather than stacking.
   var KEY_NAMES = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
   function readKey() {
@@ -55,7 +55,7 @@
     var pill = document.createElement('a');
     pill.href = '/dashboard';
     pill.className = 'kolm-auth-pill kolm-auth-pill--in';
-    pill.setAttribute('aria-label', 'Signed in — open dashboard');
+    pill.setAttribute('aria-label', 'Signed in · open dashboard');
     pill.innerHTML = '<span class="dot"></span><span class="lbl">signed in</span>';
     actions.insertBefore(pill, actions.firstChild);
   }
@@ -73,7 +73,7 @@
   }
 
   // Mobile nav-toggle is pre-baked. Wire its handler. (Only create if a page
-  // didn't get the pre-bake — covers legacy templates we haven't touched.)
+  // didn't get the pre-bake · covers legacy templates we haven't touched.)
   var btn = header.querySelector('.nav-toggle');
   if (!btn) {
     btn = document.createElement('button');

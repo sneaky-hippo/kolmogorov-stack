@@ -1,5 +1,5 @@
 // HTML escaping helpers. Use these whenever you build markup from values
-// that came from the network — recipe names, descriptions, tags, account
+// that came from the network · recipe names, descriptions, tags, account
 // fields, anything stored in the registry. Never interpolate raw `${x}`
 // inside an `innerHTML` string.
 //

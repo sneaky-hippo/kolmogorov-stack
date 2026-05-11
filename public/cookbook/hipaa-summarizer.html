@@ -48,7 +48,7 @@
   <div class="wrap">
     <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; hipaa-summarizer</div>
     <span class="pill">Recipe &middot; vertical</span>
-    <h1>Clinical notes, <span class="tone">summarized — without the PHI ever leaving.</span></h1>
+    <h1>Clinical notes, <span class="tone">summarized without the PHI ever leaving.</span></h1>
     <p class="lede">A local <code>.kolm</code> file that summarizes a clinical note into <em>(chief_complaint, history, assessment, plan)</em>. PHI (HIPAA's 18 identifiers) is redacted before training and the verifier rejects any output that contains an HIPAA identifier or hallucinates a finding not supported by the input. Compiled in your VPC; the artifact runs on the EHR host.</p>
 
     <div class="meta-row">
@@ -68,7 +68,7 @@
     <div class="group">
       <h2>What this recipe does</h2>
       <p>Most "AI summary" of clinical notes is impossible at most hospitals because the data can't leave the network. This recipe compiles inside your VPC: the gold corpus is never seen by us, the base weights are pulled from a signed mirror, the artifact is delivered to the EHR host. PHI handling is enforced both at training (regex+NER redactor strips the 18 identifiers from gold pairs) and at run time (output is blocked if a regex match fires on any HIPAA pattern).</p>
-      <p>The "grounded" verifier rejects any clinical claim that doesn't trace to text in the input. The model can summarize, condense, and structure — it cannot invent.</p>
+      <p>The "grounded" verifier rejects any clinical claim that doesn't trace to text in the input. The model can summarize, condense, and structure · it cannot invent.</p>
     </div>
 
     <div class="group">
@@ -131,13 +131,13 @@
 
     <div class="group">
       <h2>Deploy</h2>
-      <pre class="code"><span class="c"># EHR background job — summarize new notes for the chart-prep pane:</span>
+      <pre class="code"><span class="c"># EHR background job · summarize new notes for the chart-prep pane:</span>
 on_note_signed = (note) =&gt; {
   const sum = kolm.run(<span class="k">'hipaa-summarizer.kolm'</span>, note.text);
   ehr.attach(note.id, <span class="k">'ai-summary'</span>, sum);
   audit.log({ artifact: <span class="k">'hipaa-summarizer.kolm'</span>, note_id: note.id, k_score: sum.receipt.k_score });
 };</pre>
-      <p>Audit log includes the artifact's signed receipt — every summary is traceable to the exact compiled model that produced it.</p>
+      <p>Audit log includes the artifact's signed receipt · every summary is traceable to the exact compiled model that produced it.</p>
     </div>
 
     <div class="group">

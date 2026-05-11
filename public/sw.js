@@ -1,4 +1,4 @@
-// Recipe service worker — keeps the registry available offline.
+// Recipe service worker · keeps the registry available offline.
 const CACHE = 'kolm-v6-2026-05-08-14-monolith-fold';
 const PRECACHE = [
   '/device',
