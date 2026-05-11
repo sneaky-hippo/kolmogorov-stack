@@ -31,7 +31,7 @@
     </nav>
     <div class="site-actions">
       <a href="/account">account</a>
-      <a class="cta" href="/compile">New compile &rarr;</a>
+      <a class="cta" href="#dash-compile">New compile &rarr;</a>
     </div>
   </div>
 </header>
@@ -45,8 +45,46 @@
     </div>
     <div class="page-actions">
       <a class="btn ghost" href="/benchmarks">View benchmarks</a>
-      <a class="btn primary" href="/compile">Start compile</a>
+      <a class="btn primary" href="#dash-compile">Start compile</a>
     </div>
+  </section>
+
+  <section class="dashboard-panel" id="dash-compile" aria-labelledby="dash-compile-h2" style="margin-top:8px">
+    <div class="section-head">
+      <h2 id="dash-compile-h2">Compile a recipe</h2>
+      <span style="font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)">In-app · uses your key</span>
+    </div>
+    <form id="dc-form" autocomplete="off" style="display:flex;flex-direction:column;gap:14px;margin-top:14px">
+      <label style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.04em">Task</span>
+        <textarea id="dc-task" rows="3" required placeholder="answer support tickets in our voice, never send unless the customer asked" style="background:var(--bg-elev);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;padding:11px 13px;font-family:var(--mono);font-size:13.5px;line-height:1.55;resize:vertical"></textarea>
+      </label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <label style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.04em">Base model</span>
+          <select id="dc-base" style="background:var(--bg-elev);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;padding:10px 13px;font-family:var(--mono);font-size:13.5px">
+            <option value="qwen2.5-3b">qwen2.5-3b — fast, default</option>
+            <option value="qwen2.5-7b">qwen2.5-7b — balanced</option>
+            <option value="llama-3.1-8b">llama-3.1-8b — strong</option>
+            <option value="mistral-7b">mistral-7b — light</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.04em">Corpus namespace <em style="font-style:normal;color:var(--ink-faint);font-weight:400;text-transform:none;letter-spacing:0">optional</em></span>
+          <input id="dc-corpus" type="text" placeholder="tickets-2026" style="background:var(--bg-elev);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;padding:11px 13px;font-family:var(--mono);font-size:13.5px">
+        </label>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.04em">Deploy webhook <em style="font-style:normal;color:var(--ink-faint);font-weight:400;text-transform:none;letter-spacing:0">optional · https only · Vercel Deploy Hook or any webhook</em></span>
+        <input id="dc-hook" type="url" pattern="https://.*" placeholder="https://api.vercel.com/v1/integrations/deploy/prj_…/…" style="background:var(--bg-elev);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;padding:11px 13px;font-family:var(--mono);font-size:12.5px">
+      </label>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <button type="submit" class="btn primary" id="dc-submit">Compile &rarr;</button>
+        <a class="btn ghost" href="/compile">Open manual page</a>
+        <span id="dc-status" aria-live="polite" style="font-family:var(--mono);font-size:12px;color:var(--ink-mute)"></span>
+      </div>
+    </form>
+    <div id="dc-result" hidden style="margin-top:14px;padding:14px 16px;border-radius:8px;background:var(--bg-card);border:1px solid var(--line-strong);font-family:var(--mono);font-size:13px;line-height:1.6"></div>
   </section>
 
   <section class="metric-grid" aria-label="Dashboard metrics">
@@ -357,6 +395,72 @@
 
   loadAccount();
   loadJobs();
+
+  // In-app compile form. Posts to /v1/compile via the shared KS.api helper,
+  // then polls status until the job completes. On success it refreshes the
+  // Recent compiles panel so the new artifact shows up without a reload.
+  var dcForm   = document.getElementById('dc-form');
+  var dcStatus = document.getElementById('dc-status');
+  var dcSubmit = document.getElementById('dc-submit');
+  var dcResult = document.getElementById('dc-result');
+  function dcEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function dcSetStatus(text, kind) { dcStatus.textContent = text; dcStatus.style.color = kind === 'ok' ? 'var(--good)' : kind === 'err' ? 'var(--bad)' : 'var(--ink-mute)'; }
+  function dcRender(snap) {
+    dcResult.hidden = false;
+    var deployLine = '';
+    if (snap.deploy_hook_set && snap.deploy_status && snap.deploy_status !== 'skipped') {
+      var dcolor = snap.deploy_status === 'sent' ? 'var(--good)' : snap.deploy_status === 'pending' ? 'var(--ink-mute)' : 'var(--bad)';
+      var dlabel = snap.deploy_status === 'sent'
+        ? ('deploy webhook · sent (' + (snap.deploy_response_code || '200') + ')')
+        : snap.deploy_status === 'pending' ? 'deploy webhook · pending'
+        : ('deploy webhook · failed' + (snap.deploy_response_code ? ' (' + snap.deploy_response_code + ')' : ''));
+      deployLine = '<div style="color:' + dcolor + '">' + dcEsc(dlabel) + '</div>';
+    }
+    dcResult.innerHTML =
+      '<div>job: <code>' + dcEsc(snap.id) + '</code></div>' +
+      '<div>status: <code>' + dcEsc(snap.status) + '</code></div>' +
+      (snap.k_score != null ? '<div>K-score: <code>' + dcEsc(snap.k_score) + '</code></div>' : '') +
+      (snap.artifact_url ? '<div>artifact: <a href="' + dcEsc(snap.artifact_url) + '" download><code>' + dcEsc(snap.artifact_url) + '</code></a></div>' : '') +
+      deployLine;
+  }
+  async function dcPoll(jobId) {
+    for (var i = 0; i < 120; i++) {
+      try {
+        var snap = await KS.api('/v1/compile/' + encodeURIComponent(jobId));
+        dcRender(snap);
+        if (snap.status === 'completed' || snap.status === 'failed') { loadJobs(); return; }
+      } catch (e) { dcSetStatus('poll failed', 'err'); return; }
+      await new Promise(function (r) { setTimeout(r, 4000); });
+    }
+  }
+  if (dcForm) {
+    dcForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var task = document.getElementById('dc-task').value.trim();
+      if (!task) { dcSetStatus('task is required', 'err'); return; }
+      var base = document.getElementById('dc-base').value;
+      var corpus = document.getElementById('dc-corpus').value.trim();
+      var hook = (document.getElementById('dc-hook') || {}).value || '';
+      hook = hook.trim();
+      if (hook && !/^https:\/\//i.test(hook)) { dcSetStatus('deploy webhook must be https://', 'err'); return; }
+      dcSubmit.disabled = true;
+      dcSetStatus('starting compile…');
+      try {
+        var body = { task: task, base_model: base };
+        if (corpus) body.corpus_namespace = corpus;
+        if (hook) body.deploy_hook = hook;
+        var resp = await KS.api('/v1/compile', { method: 'POST', body: JSON.stringify(body) });
+        if (!resp.job_id) throw new Error('missing job_id');
+        dcSetStatus('queued · job ' + resp.job_id, 'ok');
+        dcRender({ id: resp.job_id, status: resp.status || 'queued' });
+        await dcPoll(resp.job_id);
+      } catch (err) {
+        dcSetStatus('compile failed: ' + (err.body && err.body.error || err.message || 'unknown'), 'err');
+      } finally {
+        dcSubmit.disabled = false;
+      }
+    });
+  }
 })();
 </script>
 <script src="/nav.js" defer></script>

@@ -832,13 +832,16 @@ export function buildRouter() {
   // GET  /v1/compile/:id/.kolm → download the artifact
   // GET  /v1/compile           → list this tenant's jobs
   r.post('/v1/compile', async (req, res) => {
-    const { task, examples = [], corpus_namespace, base_model } = req.body || {};
+    const { task, examples = [], corpus_namespace, base_model, deploy_hook } = req.body || {};
     if (!task || typeof task !== 'string') return res.status(400).json({ error: 'task (string) required' });
     if (task.length > 4000) return res.status(400).json({ error: 'task description too long (>4000 chars)' });
     if (examples && (!Array.isArray(examples) || examples.length > 200)) {
       return res.status(400).json({ error: 'examples must be an array with ≤200 entries' });
     }
-    const job = createJob({ task, examples, corpus_namespace, base_model, tenant: req.tenant });
+    if (deploy_hook && (typeof deploy_hook !== 'string' || !/^https:\/\//i.test(deploy_hook) || deploy_hook.length > 2048)) {
+      return res.status(400).json({ error: 'deploy_hook must be an https URL (≤2048 chars)' });
+    }
+    const job = createJob({ task, examples, corpus_namespace, base_model, tenant: req.tenant, deploy_hook });
     const ctx = {
       synthesize,
       publicRecipes: () => {
@@ -887,8 +890,14 @@ export function buildRouter() {
   r.get('/v1/compile/:id', (req, res) => {
     const j = getJob(req.params.id, req.is_admin ? null : req.tenant);
     if (!j) return res.status(404).json({ error: 'job not found' });
-    const { artifact_path, ...safe } = j;  // never leak local path
-    res.json({ ...safe, artifact_url: j.status === 'completed' ? `/v1/compile/${j.id}/.kolm` : null });
+    // Strip artifact_path (local path leak) and deploy_hook (caller's webhook,
+    // not meant to round-trip back to the client).
+    const { artifact_path, deploy_hook, ...safe } = j;
+    res.json({
+      ...safe,
+      artifact_url: j.status === 'completed' ? `/v1/compile/${j.id}/.kolm` : null,
+      deploy_hook_set: !!deploy_hook,
+    });
   });
 
   r.get('/v1/compile/:id/.kolm', (req, res) => {

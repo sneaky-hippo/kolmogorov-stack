@@ -196,6 +196,10 @@ OPTIONS (cloud)
   --base-model <name>          base model (default: qwen2.5-coder-7b-instruct-q4_0)
   --examples <file.jsonl>      seed examples for the verifier
   --out <dir|file.kolm>        where to drop the artifact (default ~/.kolm/artifacts)
+  --deploy-hook <https-url>    POST {job_id,artifact_url,k_score,...} to this webhook
+                               after a successful compile. Use for Vercel Deploy
+                               Hooks, GitHub repository_dispatch, or any webhook.
+                               Falls back to $KOLM_DEPLOY_HOOK_URL.
 
 OPTIONS (spec)
   --spec <file|->              JSON spec describing recipes + evals + optional pack/index
@@ -1055,11 +1059,16 @@ async function cmdCompile(args) {
   const baseIdx = args.indexOf('--base-model');
   const exIdx = args.indexOf('--examples');
   const outIdx = args.indexOf('--out');
+  const hookIdx = args.indexOf('--deploy-hook');
 
   const dataDir = dataIdx >= 0 ? args[dataIdx + 1] : null;
   const baseModel = baseIdx >= 0 ? args[baseIdx + 1] : null;
   const examplesPath = exIdx >= 0 ? args[exIdx + 1] : null;
   const outDir = outIdx >= 0 ? args[outIdx + 1] : ARTIFACTS_DIR;
+  // --deploy-hook https://… > $KOLM_DEPLOY_HOOK_URL env. Fires after a
+  // successful compile so downstream automation (Vercel Deploy Hook,
+  // GitHub repository_dispatch, generic webhook) can publish the artifact.
+  const deployHook = hookIdx >= 0 ? args[hookIdx + 1] : (process.env.KOLM_DEPLOY_HOOK_URL || null);
 
   if (!task) { console.error('error: compile needs a task. e.g. kolm compile "triage support tickets"\n(or kolm compile --spec <file.json> for offline spec-driven compile)'); process.exit(1); }
 
@@ -1092,12 +1101,17 @@ async function cmdCompile(args) {
   }
 
   console.log(`POST /v1/compile`);
-  const job = await api(c, 'POST', '/v1/compile', {
+  const compileBody = {
     task,
     examples,
     corpus_namespace,
     base_model: baseModel,
-  });
+  };
+  if (deployHook && /^https:\/\//i.test(deployHook)) {
+    compileBody.deploy_hook = deployHook;
+    console.log(`  deploy_hook=${deployHook.replace(/(\/[^\/]{6})[^\/]+(\/[^\/]+)$/, '$1…$2')}`);
+  }
+  const job = await api(c, 'POST', '/v1/compile', compileBody);
   console.log(`  job_id=${job.job_id} status=${job.status}`);
 
   // Poll
@@ -1139,6 +1153,15 @@ async function cmdCompile(args) {
     }
   }
   await dispatchCloud('PostCompile', { command: 'compile', cwd: process.cwd(), artifact: outPath, k_score: state.k_score, bytes: buf.length, cloud: true }, { onResult: printHookResult });
+  if (state.deploy_hook_set) {
+    if (state.deploy_status === 'sent') {
+      console.log(`deploy: webhook sent ok (${state.deploy_response_code || '200'})`);
+    } else if (state.deploy_status === 'pending') {
+      console.log(`deploy: webhook pending — re-poll job for outcome`);
+    } else if (state.deploy_status === 'failed') {
+      console.log(`deploy: webhook FAILED${state.deploy_response_code ? ' (' + state.deploy_response_code + ')' : ''}`);
+    }
+  }
   console.log(`\nrun:    kolm run ${path.basename(outPath)} '<input-json>'`);
   console.log(`serve:  kolm serve --mcp     # frontier agents will see this skill`);
 }

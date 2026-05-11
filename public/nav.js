@@ -40,6 +40,26 @@
   var gh = actions.querySelector('#gh-star, .gh-star');
   if (gh && gh.parentNode) gh.parentNode.removeChild(gh);
 
+  // Auth-aware status pill. Reads kolm_api_key (and aliases) from localStorage
+  // and renders a tiny "signed in" indicator next to the actions so the user
+  // never feels like a navigation dropped them. Idempotent — re-runs replace
+  // the existing pill rather than stacking.
+  var KEY_NAMES = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
+  function readKey() {
+    try { for (var i = 0; i < KEY_NAMES.length; i++) { var v = localStorage.getItem(KEY_NAMES[i]); if (v) return v; } } catch (e) {}
+    return '';
+  }
+  var existingPill = actions.querySelector('.kolm-auth-pill');
+  if (existingPill && existingPill.parentNode) existingPill.parentNode.removeChild(existingPill);
+  if (readKey()) {
+    var pill = document.createElement('a');
+    pill.href = '/dashboard';
+    pill.className = 'kolm-auth-pill kolm-auth-pill--in';
+    pill.setAttribute('aria-label', 'Signed in — open dashboard');
+    pill.innerHTML = '<span class="dot"></span><span class="lbl">signed in</span>';
+    actions.insertBefore(pill, actions.firstChild);
+  }
+
   // Theme toggle is pre-baked. Wire the click handler.
   var tt = actions.querySelector('.theme-toggle');
   if (tt && !tt.__kolm_wired) {

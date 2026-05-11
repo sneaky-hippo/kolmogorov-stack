@@ -334,6 +334,35 @@
     .plate .cap .meta { text-align: left; font-size: 10.5px; }
     .plate .stamp { top: 14px; left: 14px; font-size: 9.5px; padding: 5px 10px; }
   }
+
+  /* Light-mode overrides — page was authored with hardcoded dark-mode tokens.
+     Without these the body, terminal, code blocks, headings, and io-cards all
+     render cream-on-cream and become unreadable. Flip every token. */
+  [data-theme="light"] {
+    --bg: #fafafa !important;
+    --bg-elev: #ffffff !important;
+    --bg-card: #ffffff !important;
+    --line: rgba(12,14,16,0.08) !important;
+    --line-strong: rgba(12,14,16,0.14) !important;
+    --line-stronger: rgba(12,14,16,0.22) !important;
+    --ink: #0c0e10 !important;
+    --ink-mute: #4b5158 !important;
+    --ink-faint: #6f7681 !important;
+    --accent: #0a8862 !important;
+    --accent-soft: rgba(10,136,98,0.10) !important;
+    --accent-strong: #047a55 !important;
+    --good: #0a8862 !important;
+    --bad: #c9293f !important;
+  }
+  [data-theme="light"] body { background: #fafafa !important; color: #0c0e10 !important; }
+  [data-theme="light"] header.site { background: rgba(250,250,250,0.92) !important; }
+  [data-theme="light"] .term { box-shadow: 0 14px 38px -18px rgba(12,14,16,0.18), 0 0 0 1px rgba(12,14,16,0.06) !important; }
+  [data-theme="light"] .term .head { background: rgba(12,14,16,0.04) !important; }
+  [data-theme="light"] .term .head .ctl { background: rgba(12,14,16,0.18) !important; }
+  [data-theme="light"] .term .body { color: #0c0e10 !important; }
+  [data-theme="light"] .io-card.out { background: linear-gradient(180deg, rgba(10,136,98,0.04), #ffffff) !important; border-color: rgba(10,136,98,0.22) !important; }
+  [data-theme="light"] p.lede code,
+  [data-theme="light"] code { background: rgba(12,14,16,0.05) !important; border-color: rgba(12,14,16,0.10) !important; color: #0c0e10 !important; }
 </style>
 <link rel="stylesheet" href="/brand-refresh.css">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"kolm","operatingSystem":"macOS, Linux, Windows, iOS, Android","applicationCategory":"DeveloperApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
@@ -397,6 +426,95 @@
 
   </div>
 </section>
+
+<!-- Interactive compile pane. Auth-gated: visible only when an API key exists
+     in localStorage. Manual form parallel to the CLI's `kolm compile`. -->
+<section id="go" class="manual-compile" hidden aria-labelledby="manual-h2">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">go</span><span>Manual compile</span></div>
+    <h2 id="manual-h2">Compile from this browser.<br><span class="tone">No CLI, no install.</span></h2>
+    <p class="sec-lede">Your API key is already in this browser. Describe the task, pick a base, hit Compile. The job runs on kolm infrastructure and the signed <code>.kolm</code> file lands in your dashboard.</p>
+    <form id="manual-compile-form" class="mc-form" autocomplete="off">
+      <label class="mc-field">
+        <span class="mc-lbl">Task <em>required</em></span>
+        <textarea id="mc-task" name="task" required rows="3" placeholder="answer support tickets in our voice, never send unless the customer asked"></textarea>
+      </label>
+      <div class="mc-row">
+        <label class="mc-field">
+          <span class="mc-lbl">Base model</span>
+          <select id="mc-base" name="base_model">
+            <option value="qwen2.5-3b">qwen2.5-3b — fast, default</option>
+            <option value="qwen2.5-7b">qwen2.5-7b — balanced</option>
+            <option value="llama-3.1-8b">llama-3.1-8b — strong</option>
+            <option value="mistral-7b">mistral-7b — light</option>
+          </select>
+        </label>
+        <label class="mc-field">
+          <span class="mc-lbl">Corpus namespace <em>optional</em></span>
+          <input id="mc-corpus" name="corpus_namespace" type="text" placeholder="tickets-2026">
+        </label>
+      </div>
+      <label class="mc-field">
+        <span class="mc-lbl">Deploy webhook <em>optional · https only · Vercel Deploy Hook or any webhook</em></span>
+        <input id="mc-hook" name="deploy_hook" type="url" pattern="https://.*" placeholder="https://api.vercel.com/v1/integrations/deploy/prj_…/…">
+      </label>
+      <div class="mc-actions">
+        <button type="submit" class="btn-primary" id="mc-submit">Compile &rarr;</button>
+        <a class="btn-link" href="/dashboard">View dashboard</a>
+        <span class="mc-status" id="mc-status" aria-live="polite"></span>
+      </div>
+    </form>
+    <div id="mc-result" class="mc-result" hidden></div>
+  </div>
+</section>
+
+<!-- Logged-out CTA shown when no key is present. -->
+<section id="go-out" class="manual-compile-out" aria-labelledby="manual-out-h2">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">go</span><span>Compile from the browser</span></div>
+    <h2 id="manual-out-h2">Sign in to compile here.<br><span class="tone">Or use the CLI.</span></h2>
+    <p class="sec-lede">A free account unlocks one-click compile from this page and a dashboard with every artifact you've shipped. Or stay in the terminal and use <code>kolm compile</code>.</p>
+    <div class="cta-row">
+      <a class="btn-primary" href="/signup">Create free account &rarr;</a>
+      <a class="btn-link" href="/quickstart">Use the CLI instead</a>
+    </div>
+  </div>
+</section>
+
+<style>
+.manual-compile, .manual-compile-out { padding: 64px 0; }
+.manual-compile .mc-form { margin-top: 24px; display: flex; flex-direction: column; gap: 18px; max-width: 720px; }
+.manual-compile .mc-field { display: flex; flex-direction: column; gap: 8px; }
+.manual-compile .mc-lbl { font-family: var(--mono); font-size: 12px; color: var(--ink-mute); letter-spacing: 0.02em; text-transform: uppercase; }
+.manual-compile .mc-lbl em { font-style: normal; color: var(--ink-faint); font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 6px; }
+.manual-compile textarea, .manual-compile input[type=text], .manual-compile select {
+  background: var(--bg-elev, #0b0f10); color: var(--ink); border: 1px solid var(--line-strong, rgba(255,255,255,0.12));
+  border-radius: 8px; padding: 11px 13px; font-family: var(--mono); font-size: 13.5px; line-height: 1.55;
+  resize: vertical; transition: border-color 140ms, box-shadow 140ms;
+}
+.manual-compile textarea:focus, .manual-compile input[type=text]:focus, .manual-compile select:focus {
+  outline: none; border-color: var(--accent, #7ef0d2); box-shadow: 0 0 0 3px rgba(126,240,210,0.18);
+}
+.manual-compile .mc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .manual-compile .mc-row { grid-template-columns: 1fr; } }
+.manual-compile .mc-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.manual-compile .mc-status { font-family: var(--mono); font-size: 12px; color: var(--ink-mute); }
+.manual-compile .mc-status.ok { color: var(--good, #7ef0d2); }
+.manual-compile .mc-status.err { color: var(--bad, #ff6b91); }
+.manual-compile .mc-result {
+  margin-top: 22px; padding: 18px 20px; border-radius: 10px;
+  background: var(--bg-card, #101514); border: 1px solid var(--line-strong, rgba(255,255,255,0.12));
+  font-family: var(--mono); font-size: 13px; line-height: 1.6;
+}
+.manual-compile .mc-result code { background: rgba(126,240,210,0.10); padding: 1px 6px; border-radius: 4px; color: var(--accent, #7ef0d2); }
+[data-theme="light"] .manual-compile textarea,
+[data-theme="light"] .manual-compile input[type=text],
+[data-theme="light"] .manual-compile select { background: #ffffff !important; color: #0c0e10 !important; border-color: rgba(12,14,16,0.18) !important; }
+[data-theme="light"] .manual-compile textarea:focus,
+[data-theme="light"] .manual-compile input[type=text]:focus,
+[data-theme="light"] .manual-compile select:focus { border-color: #0a8862 !important; box-shadow: 0 0 0 3px rgba(10,136,98,0.15) !important; }
+[data-theme="light"] .manual-compile .mc-result { background: #fafafa !important; border-color: rgba(12,14,16,0.10) !important; }
+</style>
 
 <section>
   <div class="wrap">
@@ -579,6 +697,105 @@
   </div>
 </footer>
 
+<script src="/app.js"></script>
 <script src="/nav.js" defer></script>
+<script>
+(function () {
+  // Manual compile form on /compile. Auth-gated: hidden unless an API key
+  // exists in localStorage. Posts to /v1/compile and polls until done.
+  var KEY_NAMES = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
+  function apiKey() {
+    try { for (var i = 0; i < KEY_NAMES.length; i++) { var v = localStorage.getItem(KEY_NAMES[i]); if (v) return v; } } catch (e) {}
+    return '';
+  }
+  var go    = document.getElementById('go');
+  var goOut = document.getElementById('go-out');
+  var key   = apiKey();
+  if (go && goOut) {
+    if (key) { go.hidden = false; goOut.hidden = true; }
+    else     { go.hidden = true;  goOut.hidden = false; }
+  }
+
+  var form   = document.getElementById('manual-compile-form');
+  var status = document.getElementById('mc-status');
+  var submit = document.getElementById('mc-submit');
+  var result = document.getElementById('mc-result');
+  if (!form || !key) return;
+
+  function setStatus(text, cls) { status.textContent = text; status.className = 'mc-status' + (cls ? ' ' + cls : ''); }
+  function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+
+  async function call(path, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key, 'X-API-Key': key }, opts.headers || {});
+    var res = await fetch(path, opts);
+    var text = await res.text();
+    var body; try { body = JSON.parse(text); } catch (e) { body = { _raw: text }; }
+    if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { body: body, status: res.status });
+    return body;
+  }
+
+  async function pollJob(jobId) {
+    for (var i = 0; i < 120; i++) { // up to ~10 min
+      try {
+        var snap = await call('/v1/compile/' + encodeURIComponent(jobId));
+        renderResult(snap);
+        if (snap.status === 'completed' || snap.status === 'failed') return snap;
+      } catch (e) { setStatus('poll failed: ' + (e.message || 'error'), 'err'); return null; }
+      await new Promise(function (r) { setTimeout(r, 5000); });
+    }
+    setStatus('still running — view in dashboard', 'ok');
+    return null;
+  }
+
+  function renderResult(snap) {
+    var artifactRow = snap.artifact_url
+      ? '<div>artifact: <a href="' + escHtml(snap.artifact_url) + '" download><code>' + escHtml(snap.artifact_url) + '</code></a></div>'
+      : '';
+    var kScore = (snap.k_score != null) ? '<div>K-score: <code>' + escHtml(snap.k_score) + '</code></div>' : '';
+    var deployRow = '';
+    if (snap.deploy_hook_set && snap.deploy_status && snap.deploy_status !== 'skipped') {
+      var dlabel = snap.deploy_status === 'sent'
+        ? ('deploy webhook · sent (' + (snap.deploy_response_code || '200') + ')')
+        : snap.deploy_status === 'pending' ? 'deploy webhook · pending'
+        : ('deploy webhook · failed' + (snap.deploy_response_code ? ' (' + snap.deploy_response_code + ')' : ''));
+      deployRow = '<div>' + escHtml(dlabel) + '</div>';
+    }
+    result.hidden = false;
+    result.innerHTML =
+      '<div>job: <code>' + escHtml(snap.id) + '</code></div>' +
+      '<div>status: <code>' + escHtml(snap.status) + '</code></div>' +
+      kScore + artifactRow + deployRow +
+      (snap.status === 'completed' ? '<div style="margin-top:10px"><a href="/dashboard" class="btn-link">View in dashboard &rarr;</a></div>' : '');
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var task = document.getElementById('mc-task').value.trim();
+    if (!task) { setStatus('task is required', 'err'); return; }
+    var base = document.getElementById('mc-base').value;
+    var corpus = document.getElementById('mc-corpus').value.trim();
+    var hook = (document.getElementById('mc-hook') || {}).value || '';
+    hook = hook.trim();
+    if (hook && !/^https:\/\//i.test(hook)) { setStatus('deploy webhook must be https://', 'err'); return; }
+    submit.disabled = true;
+    setStatus('starting compile…');
+    try {
+      var body = { task: task, base_model: base };
+      if (corpus) body.corpus_namespace = corpus;
+      if (hook) body.deploy_hook = hook;
+      var resp = await call('/v1/compile', { method: 'POST', body: JSON.stringify(body) });
+      if (!resp.job_id) throw new Error('missing job_id');
+      setStatus('queued · job ' + resp.job_id, 'ok');
+      renderResult({ id: resp.job_id, status: resp.status || 'queued' });
+      await pollJob(resp.job_id);
+    } catch (err) {
+      setStatus('compile failed: ' + (err.body && err.body.error || err.message || 'unknown'), 'err');
+    } finally {
+      submit.disabled = false;
+    }
+  });
+})();
+</script>
 </body>
 </html>

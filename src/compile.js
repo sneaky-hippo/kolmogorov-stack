@@ -23,9 +23,13 @@ function ensureJobsTable() {
   }
 }
 
-export function createJob({ task, examples, corpus_namespace, base_model, tenant }) {
+export function createJob({ task, examples, corpus_namespace, base_model, tenant, deploy_hook }) {
   ensureJobsTable();
   const id = 'job_' + crypto.randomBytes(6).toString('hex');
+  // Per-job deploy_hook beats env-var default. Both must be https to dodge SSRF.
+  const envHook = process.env.KOLM_DEPLOY_HOOK_URL || '';
+  const rawHook = typeof deploy_hook === 'string' && deploy_hook ? deploy_hook : envHook;
+  const hook = /^https:\/\//i.test(rawHook) ? rawHook : null;
   const job = {
     id,
     tenant,
@@ -33,6 +37,10 @@ export function createJob({ task, examples, corpus_namespace, base_model, tenant
     examples_n: Array.isArray(examples) ? examples.length : 0,
     corpus_namespace: corpus_namespace || null,
     base_model: base_model || 'qwen2.5-coder-7b-instruct-q4_0',
+    deploy_hook: hook,
+    deploy_status: hook ? 'pending' : 'skipped',
+    deploy_attempted_at: null,
+    deploy_response_code: null,
     status: 'queued',
     progress: 0,
     stages: [],
@@ -192,6 +200,39 @@ export async function runJob(job, ctx) {
       k_score: built.k_score,
       completed_at: new Date().toISOString(),
     });
+
+    // Machine self-serve: if the job has a deploy_hook (Vercel Deploy Hook,
+    // GitHub repository_dispatch URL, generic webhook), POST a small payload
+    // so downstream automation can publish the artifact. Fire-and-forget;
+    // failure here never fails the compile.
+    if (job.deploy_hook) {
+      const payload = JSON.stringify({
+        job_id: job.id,
+        artifact_url: `/v1/compile/${job.id}/.kolm`,
+        artifact_hash: built.artifact_hash || null,
+        k_score: built.k_score || null,
+        base_model: job.base_model,
+        completed_at: job.completed_at,
+      });
+      try {
+        const r = await fetch(job.deploy_hook, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'user-agent': 'kolm-compile/1' },
+          body: payload,
+        });
+        update('compile_jobs', x => x.id === job.id, {
+          deploy_status: r.ok ? 'sent' : 'failed',
+          deploy_response_code: r.status,
+          deploy_attempted_at: new Date().toISOString(),
+        });
+      } catch (e) {
+        update('compile_jobs', x => x.id === job.id, {
+          deploy_status: 'failed',
+          deploy_response_code: null,
+          deploy_attempted_at: new Date().toISOString(),
+        });
+      }
+    }
   } catch (e) {
     setStatus(job, 'failed', {
       error: String(e.message || e),
