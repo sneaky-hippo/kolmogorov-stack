@@ -641,7 +641,7 @@ check "/articles advertises RSS"       has "$AI" 'application/rss+xml'
 
 # Homepage hero thesis + GitHub star + ICP doors
 H2=$(curl -s "$URL/")
-check "homepage compile-anatomy thesis" has "$H2" 'Sentence to signed file. Four steps'
+check "homepage compile-anatomy thesis" has "$H2" 'Idea to application'
 check "homepage 2-CTA: Try kolm"       has "$H2" 'Try kolm &rarr;'
 check "homepage 2-CTA: Book a demo"    has "$H2" 'Book a demo &rarr;'
 check "homepage demo mailto"           has "$H2" 'mailto:founders@kolm.ai'
@@ -711,7 +711,8 @@ echo "=== 30. v7.0 day-1 — brand anchor + rent-vs-buy ==="
 B30_HOME=$(curl -s "$URL/")
 check "homepage H1 lock 'Compile your own AI.'" has "$B30_HOME" 'Compile your own AI.'
 check "homepage compile-anatomy yours-forever"     has "$B30_HOME" 'Yours forever'
-check "homepage trust-line open source"            has "$B30_HOME" 'Open source'
+# v7.11.4: trust-line removed; open-source posture now in footer only
+check "homepage footer github link"                has "$B30_HOME" 'github.com/sneaky-hippo/kolmogorov-stack'
 B30_MAN=$(curl -s "$URL/manifesto")
 check "/manifesto has brand-anchor paragraph"      hashi "$B30_MAN" 'andrey kolmogorov\|smallest specialist program'
 check "/manifesto mentions RS-1 spec"              has "$B30_MAN" 'RS-1'
@@ -1144,7 +1145,7 @@ ART_IDX=$(curl -s "$URL/articles")
 check "/articles index lists rent-vs-buy"       has "$ART_IDX" "/articles/rent-vs-buy-compute"
 UC_IDX=$(curl -s "$URL/use-cases")
 check "/use-cases index lists capture+distill"  has "$UC_IDX" "/use-cases/capture-and-distill"
-check "/use-cases index three audiences"        has "$UC_IDX" "Three audiences, nine workflows\|Which kolm are you"
+check "/use-cases index three audiences"        has "$UC_IDX" "Built for three kinds of teams\|Three audiences"
 
 # Sitemap entries for both new URLs.
 WE_SM=$(curl -s "$URL/sitemap.xml")
@@ -1318,7 +1319,7 @@ echo "=== 45. homepage v7.9.5 consolidated surface ==="
 HOME=$(curl -s "$URL/")
 # v7.9.5: reg-strip, cred-band, vr 3-card grid, reg-tele all deleted as duplicates/clutter.
 # Consolidated to: hero · video · compile-anatomy · ROI-calc · uc-strip (4 cards incl. regulated) · trust-line · CTA
-check "/ compile-anatomy thesis"        has "$HOME" 'Sentence to signed file. Four steps'
+check "/ compile-anatomy thesis"        has "$HOME" 'Idea to application'
 check "/ compile-anatomy step read"     has "$HOME" 'Read your task'
 check "/ compile-anatomy step train"    has "$HOME" 'Train a small model'
 check "/ compile-anatomy step sign"     has "$HOME" 'Score and sign'
@@ -1334,11 +1335,19 @@ check "/ uc-covers hc link"             has "$HOME" 'href="/healthcare">healthca
 check "/ uc-covers fi link"             has "$HOME" 'href="/finance">finance'
 check "/ uc-covers lg link"             has "$HOME" 'href="/legal">legal'
 check "/ uc-covers edge link"           has "$HOME" 'href="/edge">edge / on-device'
-check "/ trust-line band"               has "$HOME" 'class="trust-line"'
-check "/ trust-line soc2"               has "$HOME" 'Security audit'
-check "/ trust-line baa"                has "$HOME" 'Healthcare ready'
-check "/ trust-line sdk"                has "$HOME" 'Open source'
-check "/ trust-line rs1"                has "$HOME" 'Signed outputs'
+# v7.11.4: trust-line removed from homepage (excessive; covered by hero chips + footer + dedicated pages)
+check "/ ROI calc interleaved between anatomy and after-compile" has "$HOME" 'class="vr vr-calc-only"'
+check "/ no trust-line on homepage"     hashno "$HOME" 'class="trust-line"'
+check "/ no excessive trust boxes"      hashno "$HOME" 'SOC 2 Type I &middot; in progress Q4 2026'
+PRICING114=$(curl -s "$URL/pricing")
+check "/pricing H1 v7.11.4 new copy"    has "$PRICING114" 'Compile once'
+check "/pricing H1 second line"         has "$PRICING114" 'Run it forever'
+check "/pricing no old cache H1"        hashno "$PRICING114" 'You pay for the cache'
+USECASES114=$(curl -s "$URL/use-cases")
+check "/use-cases H1 v7.11.4"           has "$USECASES114" 'Built for three kinds of teams'
+check "/use-cases no old riddle H1"     hashno "$USECASES114" 'Which kolm are you'
+check "/brand-refresh.css has shadow tokens"   has "$(curl -s $URL/brand-refresh.css)" '\-\-shadow-2'
+check "/brand-refresh.css emerald on tab"      has "$(curl -s $URL/brand-refresh.css)" '.uc-strip .uc-tab.is-on'
 check "/ hero spec link"                has "$HOME" 'href="/spec"'
 check "/ enterprise link via uc"        has "$HOME" 'href="/enterprise"'
 check "/ no kolm-benchmark-1 in hero"   hashno "$HOME" 'spec &middot; kolm-benchmark-1'

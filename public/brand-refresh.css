@@ -2480,3 +2480,286 @@ main > section:last-of-type { margin-bottom: 56px !important; }
 main > section:first-of-type:not(.hero):not(.compile-anatomy):not(.uc-strip):not(.vr):not(.trust-line):not(.bottom-cta) {
   padding-top: 56px !important;
 }
+
+/* ============================================================
+ * v7.11.4 — Canonical elevation tokens + emerald polish +
+ * sitewide light-mode catch-all + auth/dashboard color fixes.
+ *
+ * Founder pushback after v7.11.3: shadows inconsistent across
+ * tabs; light mode bleeds on /use-cases and others; need more
+ * green in both views; auth/console must match marketing chrome.
+ *
+ * Token system:
+ *   --shadow-1  → quiet (buttons, input focus, chips)
+ *   --shadow-2  → standard cards / panels
+ *   --shadow-3  → hero panel / featured tier / floating modals
+ *
+ * Dark uses black with subtle inset rim light (without rim, black
+ * shadow on black bg is invisible). Light uses slate (#0c0e10) at
+ * low alpha — paper feel, no muddy gray. ============================================================ */
+:root {
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  --shadow-2: 0 1px 2px rgba(0,0,0,0.40), 0 8px 20px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  --shadow-3: 0 1px 2px rgba(0,0,0,0.40), 0 8px 20px rgba(0,0,0,0.32), 0 32px 60px -20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+}
+:root[data-theme="light"] {
+  --shadow-1: 0 1px 2px rgba(12,14,16,0.06) !important;
+  --shadow-2: 0 1px 2px rgba(12,14,16,0.05), 0 8px 20px rgba(12,14,16,0.07) !important;
+  --shadow-3: 0 1px 2px rgba(12,14,16,0.05), 0 8px 20px rgba(12,14,16,0.07), 0 32px 60px -20px rgba(12,14,16,0.11) !important;
+}
+
+/* Apply shadow-2 to the canonical card classes sitewide so cards
+ * read consistently across every page — even ones with their own
+ * inline <style> blocks. We use the token (not raw rgba) so a
+ * theme switch automatically restyles every surface. */
+.card,
+.uc-card,
+.ac-card,
+.ca-step,
+.reg-card,
+.vr-card,
+.tier,
+.doc-grid .card,
+.cookbook-card,
+.recipe-card,
+.case-card,
+.feature-card {
+  box-shadow: var(--shadow-2) !important;
+}
+
+/* Hero panel / featured pricing tier / signed-in auth card sit
+ * on a higher elevation — drop them on the page with shadow-3. */
+.hero-demo-panel,
+.hero-video-panel,
+.tier.featured,
+.auth-card {
+  box-shadow: var(--shadow-3) !important;
+}
+
+/* Buttons, inputs, chips get the subtle shadow-1 (defines surface
+ * without a heavy lift). Skip nav cta because the nav already has
+ * its own carefully-tuned hover scheme. */
+.btn.primary,
+a.btn-primary,
+button.primary,
+.nl-try form,
+.bill-toggle,
+.toggle-group {
+  box-shadow: var(--shadow-1) !important;
+}
+
+/* ============================================================
+ * MORE EMERALD — restraint version. Adds presence without
+ * cluttering. Targets eyebrow letters, card hover h3, section
+ * accent rule, active tab underline.
+ * ============================================================ */
+.eyebrow .pulse,
+.ca-eyebrow .pulse,
+.ac-eyebrow .pulse,
+.hf-eyebrow .pulse {
+  background: #7ef0d2 !important;
+  box-shadow: 0 0 8px rgba(126,240,210,0.65) !important;
+}
+[data-theme="light"] .eyebrow .pulse,
+[data-theme="light"] .ca-eyebrow .pulse,
+[data-theme="light"] .ac-eyebrow .pulse,
+[data-theme="light"] .hf-eyebrow .pulse {
+  background: #0a8862 !important;
+  box-shadow: 0 0 6px rgba(10,136,98,0.5) !important;
+}
+
+/* Card hover: H3 picks up emerald tint — invites the click. */
+.card:hover h3,
+.uc-card:hover h3,
+.ac-card:hover h3,
+.ca-step:hover h3 {
+  color: #7ef0d2 !important;
+  transition: color 160ms;
+}
+[data-theme="light"] .card:hover h3,
+[data-theme="light"] .uc-card:hover h3,
+[data-theme="light"] .ac-card:hover h3,
+[data-theme="light"] .ca-step:hover h3 {
+  color: #0a8862 !important;
+}
+
+/* Active tab in switchable strips (uc-tab.is-on) — emerald
+ * underline rule already existed but was too quiet. Boost. */
+.uc-strip .uc-tab.is-on {
+  color: #7ef0d2 !important;
+  border-bottom-color: #7ef0d2 !important;
+}
+[data-theme="light"] .uc-strip .uc-tab.is-on {
+  color: #0a8862 !important;
+  border-bottom-color: #0a8862 !important;
+}
+
+/* Light-mode section eyebrows pick up emerald letter color when
+ * they previously read as gray — group .gtag on /use-cases was
+ * already emerald via inline, but cover the rest sitewide. */
+[data-theme="light"] .ca-eyebrow,
+[data-theme="light"] .ac-eyebrow,
+[data-theme="light"] .vr-eyebrow,
+[data-theme="light"] .hf-eyebrow,
+[data-theme="light"] .uc-head,
+[data-theme="light"] .group .gtag,
+[data-theme="light"] .section-eyebrow {
+  color: #0a8862 !important;
+}
+
+/* ============================================================
+ * SITEWIDE LIGHT-MODE BLEED CATCH-ALL
+ *
+ * Pages with inline <style> blocks define their own dark palette
+ * (cream text on near-black bg). When data-theme=light flips, the
+ * top-level body/header overrides work but nested card/code/footer
+ * classes that re-declare colors don't get re-painted.
+ *
+ * This block re-paints the common offenders by attribute selector
+ * so it runs on every page that uses brand-refresh.css. ============================================================ */
+[data-theme="light"] code,
+[data-theme="light"] pre code,
+[data-theme="light"] .mono,
+[data-theme="light"] .kbd {
+  color: #0c0e10 !important;
+}
+[data-theme="light"] pre,
+[data-theme="light"] .codeblock {
+  background: #0c0e10 !important;
+  color: #faf2e1 !important;
+}
+[data-theme="light"] footer,
+[data-theme="light"] footer.site,
+[data-theme="light"] footer .legal,
+[data-theme="light"] footer ul a,
+[data-theme="light"] footer .col h4 {
+  color: #4b5158 !important;
+}
+[data-theme="light"] footer.site {
+  background: #fafafa !important;
+  border-top: 1px solid rgba(12,14,16,0.10) !important;
+}
+[data-theme="light"] footer ul a:hover,
+[data-theme="light"] footer .col h4 {
+  color: #0c0e10 !important;
+}
+
+/* Common card patterns that pages declare locally — re-paint. */
+[data-theme="light"] .card,
+[data-theme="light"] .doc-grid .card,
+[data-theme="light"] .cookbook-card,
+[data-theme="light"] .recipe-card,
+[data-theme="light"] .case-card,
+[data-theme="light"] .feature-card,
+[data-theme="light"] .group .card {
+  background: #ffffff !important;
+  border-color: rgba(12,14,16,0.10) !important;
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .card h3,
+[data-theme="light"] .card h4,
+[data-theme="light"] .card .title {
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .card p,
+[data-theme="light"] .card .desc,
+[data-theme="light"] .card .sub {
+  color: #4b5158 !important;
+}
+[data-theme="light"] .card p b,
+[data-theme="light"] .card .desc b {
+  color: #0c0e10 !important;
+}
+
+/* ============================================================
+ * DASHBOARD / SIGNIN / SIGNUP / ACCOUNT — light-mode polish.
+ *
+ * These pages live behind auth and have their own .auth-card,
+ * .dash-shell, .console rules. Re-paint the missed surfaces. ============================================================ */
+[data-theme="light"] .dash-shell,
+[data-theme="light"] .console-shell,
+[data-theme="light"] .account-shell,
+[data-theme="light"] main.dash,
+[data-theme="light"] main.console {
+  background: #fafafa !important;
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .dash-card,
+[data-theme="light"] .console-card,
+[data-theme="light"] .account-card,
+[data-theme="light"] .stat-card,
+[data-theme="light"] .key-card,
+[data-theme="light"] .compile-card {
+  background: #ffffff !important;
+  border-color: rgba(12,14,16,0.10) !important;
+  color: #0c0e10 !important;
+  box-shadow: var(--shadow-2) !important;
+}
+[data-theme="light"] .dash-card h3,
+[data-theme="light"] .console-card h3,
+[data-theme="light"] .stat-card .label,
+[data-theme="light"] .stat-card .num,
+[data-theme="light"] .key-card .label {
+  color: #0c0e10 !important;
+}
+[data-theme="light"] .dash-card p,
+[data-theme="light"] .console-card p,
+[data-theme="light"] .stat-card .sub,
+[data-theme="light"] .account-card .meta {
+  color: #4b5158 !important;
+}
+[data-theme="light"] .dash-rail,
+[data-theme="light"] .console-rail {
+  background: #ffffff !important;
+  border-right: 1px solid rgba(12,14,16,0.10) !important;
+}
+[data-theme="light"] .dash-rail a,
+[data-theme="light"] .console-rail a {
+  color: #4b5158 !important;
+}
+[data-theme="light"] .dash-rail a.active,
+[data-theme="light"] .console-rail a.active,
+[data-theme="light"] .dash-rail a:hover,
+[data-theme="light"] .console-rail a:hover {
+  color: #0a8862 !important;
+  background: rgba(10,136,98,0.06) !important;
+}
+
+/* Signin / signup pages also pick up shadow-3 elevation on the
+ * card — pairs with brand-refresh.css auth-card rules above. */
+.auth-card { box-shadow: var(--shadow-3) !important; }
+
+/* ============================================================
+ * GENERIC ELEMENT-LEVEL LIGHT CATCH-ALL
+ *
+ * Last-resort cleanup for anything else that leaks dark. Body
+ * text that wasn't repainted by other rules gets cleaned here. ============================================================ */
+[data-theme="light"] section h2,
+[data-theme="light"] section h3,
+[data-theme="light"] section h4 {
+  color: #0c0e10;
+}
+[data-theme="light"] section p {
+  color: #1f2429;
+}
+[data-theme="light"] section .lede,
+[data-theme="light"] section .sub,
+[data-theme="light"] section .gsub {
+  color: #4b5158;
+}
+[data-theme="light"] section .eyebrow {
+  color: #4b5158;
+}
+[data-theme="light"] section .eyebrow b,
+[data-theme="light"] section .eyebrow .pulse-text {
+  color: #0a8862;
+}
+
+/* Border / divider sweep — anything currently using cream alpha
+ * needs to be slate alpha in light. Two passes: 0.08 and 0.16. */
+[data-theme="light"] hr,
+[data-theme="light"] .divider,
+[data-theme="light"] .rule {
+  background: rgba(12,14,16,0.10) !important;
+  border-color: rgba(12,14,16,0.10) !important;
+}

@@ -10,14 +10,40 @@ const URL = process.env.URL || 'https://kolm.ai';
 const OUT = path.resolve('tmp/aesthetic-audit');
 fs.mkdirSync(OUT, { recursive: true });
 
+// v7.11.4 — full surface audit. Founder asked for "every tab" + auth/console.
 const ROUTES = [
-  ['/',           'home'],
-  ['/pricing',    'pricing'],
-  ['/quickstart', 'quickstart'],
-  ['/anatomy',    'anatomy'],
-  ['/api',        'api'],
-  ['/docs',       'docs'],
-  ['/dashboard',  'dashboard'],
+  ['/',                  'home'],
+  ['/use-cases',         'use-cases'],
+  ['/pricing',           'pricing'],
+  ['/docs',              'docs'],
+  ['/quickstart',        'quickstart'],
+  ['/anatomy',           'anatomy'],
+  ['/api',               'api'],
+  ['/spec',              'spec'],
+  ['/security',          'security'],
+  ['/trust',             'trust'],
+  ['/manifesto',         'manifesto'],
+  ['/healthcare',        'healthcare'],
+  ['/finance',           'finance'],
+  ['/legal',             'legal'],
+  ['/edge',              'edge'],
+  ['/enterprise',        'enterprise'],
+  ['/faq',               'faq'],
+  ['/benchmarks',        'benchmarks'],
+  ['/roi',               'roi'],
+  ['/how-it-works',      'how-it-works'],
+  ['/k-score',           'k-score'],
+  ['/evolve',            'evolve'],
+  ['/compile',           'compile'],
+  ['/baa',               'baa'],
+  ['/changelog',         'changelog'],
+  ['/customers',         'customers'],
+  ['/privacy',           'privacy'],
+  ['/terms',             'terms'],
+  ['/signin',            'signin'],
+  ['/signup',            'signup'],
+  ['/dashboard',         'dashboard'],
+  ['/account',           'account'],
 ];
 
 const THEMES = ['dark', 'light'];
