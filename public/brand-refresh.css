@@ -2103,28 +2103,20 @@ a:focus-visible {
    colour. Footer added because col-h + meta inherited cream.
    =========================================================== */
 
-/* Hero demo panel + video chrome */
-[data-theme="light"] .hero-demo-panel,
-[data-theme="light"] .hero-video-panel,
-[data-theme="light"] .hero-video-panel-wide {
-  background: linear-gradient(180deg, #ffffff, #f4f5f7) !important;
-  border-color: rgba(12,14,16,0.10) !important;
-  box-shadow: 0 18px 60px rgba(12,14,16,0.08) !important;
-}
-[data-theme="light"] .hero-demo-head,
-[data-theme="light"] .hero-video-foot {
-  background: #f4f5f7 !important;
-  color: #4b5158 !important;
-  border-color: rgba(12,14,16,0.10) !important;
-}
+/* Hero demo panel + video chrome
+ *
+ * v7.11.6: The previous v7.11.4 !important block here was forcing
+ * .hero-video-panel to a white/gray gradient background + heavy
+ * shadow, which clobbered the polaroid cream-frame definition in
+ * index.html. That's exactly the "light mode shadow bleed into the
+ * video" regression. The page-level CSS in index.html handles light
+ * theme for the polaroid correctly — let it win. Below we keep only
+ * .hero-video-foot/.scenes color overrides which DO need !important
+ * to win against legacy styles.css color rules.
+ */
 [data-theme="light"] .hero-video-foot .scenes span { color: #6b7280 !important; }
 [data-theme="light"] .hero-video-foot .scenes b { color: #0c0e10 !important; }
 [data-theme="light"] .hero-video-foot a { color: #0a8862 !important; }
-[data-theme="light"] .hero-video-wrap,
-[data-theme="light"] .hero-video-wrap video { background: #ffffff !important; }
-[data-theme="light"] .hero-video-wrap::after {
-  box-shadow: inset 0 0 0 1px rgba(12,14,16,0.06), inset 0 -80px 60px -40px rgba(244,245,247,0.55) !important;
-}
 [data-theme="light"] .hero-demo-head .live-pulse { color: #0a8862 !important; }
 [data-theme="light"] .hero-demo-head .live-pulse::before {
   background: #0a8862 !important;
@@ -2527,12 +2519,14 @@ main > section:first-of-type:not(.hero):not(.compile-anatomy):not(.uc-strip):not
   box-shadow: var(--shadow-2) !important;
 }
 
-/* Hero panel / featured pricing tier / signed-in auth card sit
- * on a higher elevation — drop them on the page with shadow-3. */
-.hero-demo-panel,
-.hero-video-panel,
-.tier.featured,
-.auth-card {
+/* Featured pricing tier + signed-in auth card sit on a higher
+ * elevation — drop them on the page with shadow-3.
+ *
+ * v7.11.6: REMOVED .hero-demo-panel + .hero-video-panel from this
+ * list. Those carry the polaroid cream-frame on light theme and
+ * need the softer --shadow-polaroid token defined below. Forcing
+ * shadow-3 here was clobbering the polaroid look. */
+.tier.featured {
   box-shadow: var(--shadow-3) !important;
 }
 
@@ -2762,4 +2756,299 @@ button.primary,
 [data-theme="light"] .rule {
   background: rgba(12,14,16,0.10) !important;
   border-color: rgba(12,14,16,0.10) !important;
+}
+
+/*
+ * v7.11.5 - Spacing + shadow + mobile + OS-coverage hardening
+ *
+ * Founder pushback after v7.11.4:
+ *   "fix all spacing, fix all shadows, fix mobile, ensure output for
+ *    our product can be Mac or Linux too."
+ *
+ * v7.11.4 added canonical tokens but inline page styles still bled
+ * through on .term, .plate, .preview, .pipeline-shell, .kcalc, etc.
+ * v7.11.5 forces those laggards onto the tokens, tightens section
+ * rhythm and mobile padding sitewide, and makes the OS chip row
+ * legible across themes.
+ */
+
+/* ---- Shadow laggards forced onto canonical tokens -------------
+ *
+ * Surface vocabulary (locked):
+ *   --shadow-1 → buttons, inputs, small chips, focus glow
+ *   --shadow-2 → card surfaces (anatomy, after-compile, uc, vr, tier)
+ *   --shadow-3 → cinematic hero terminal, install panel, dashboard shell
+ *   --shadow-polaroid → cream-frame video container ONLY (custom soft)
+ *
+ * IMPORTANT: hero-video-panel + hero-demo-panel are intentionally NOT
+ * in this list. They carry the polaroid frame and own their custom
+ * shadow definition (set per-page where the polaroid lives).
+ */
+
+.term,
+.term-box,
+.fold-spec,
+.kcalc,
+.preview,
+.pipeline-shell,
+.plate,
+.artifact-plate,
+.proof-shell,
+.artifact-lab,
+.install,
+.demo-stage,
+.cookbook-shell,
+.docs-shell,
+.dash-shell,
+.console-shell,
+.account-shell {
+  box-shadow: var(--shadow-3) !important;
+}
+
+.auth-card,
+.signup-card,
+.signin-card,
+.cassette-frame,
+.demo-panel {
+  box-shadow: var(--shadow-2) !important;
+}
+
+/* Polaroid: cream-frame video panel needs a SOFT custom shadow, not
+   the heavy --shadow-3. Without this exclusion, the light-mode
+   polaroid loses its placed-on-page feel and feels bolted to the
+   surface. This is the "light mode shadow bleed into the video"
+   regression founder kept catching. */
+:root {
+  --shadow-polaroid:
+    0 1px 2px rgba(0,0,0,0.32),
+    0 12px 28px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.04) !important;
+}
+:root[data-theme="light"] {
+  --shadow-polaroid:
+    0 1px 2px rgba(12,14,16,0.04),
+    0 8px 20px rgba(12,14,16,0.06),
+    0 32px 60px -20px rgba(12,14,16,0.10) !important;
+}
+
+.hero-demo-panel,
+.hero-video-panel {
+  box-shadow: var(--shadow-polaroid) !important;
+}
+
+/* ---- Section rhythm tokens + sitewide padding harmonized ----- */
+:root {
+  --sp-section: 88px;
+  --sp-section-tight: 56px;
+  --sp-section-mob: 56px;
+  --sp-section-mob-tight: 36px;
+}
+
+section.compile-anatomy,
+section.after-compile,
+section.vr,
+section.uc-strip,
+section.home-faq,
+section.bottom-cta,
+section.hero-demo {
+  padding-top: var(--sp-section) !important;
+  padding-bottom: var(--sp-section) !important;
+}
+
+section.vr-calc-only { padding-top: var(--sp-section-tight) !important; padding-bottom: var(--sp-section-tight) !important; }
+
+@media (max-width: 720px) {
+  section.compile-anatomy,
+  section.after-compile,
+  section.vr,
+  section.uc-strip,
+  section.home-faq,
+  section.bottom-cta,
+  section.hero-demo {
+    padding-top: var(--sp-section-mob) !important;
+    padding-bottom: var(--sp-section-mob) !important;
+  }
+  section.vr-calc-only { padding-top: var(--sp-section-mob-tight) !important; padding-bottom: var(--sp-section-mob-tight) !important; }
+}
+
+/* Tighten home hero on mobile - the compounding margins were leaking */
+@media (max-width: 720px) {
+  .home-hero-stacked { padding-bottom: 28px !important; }
+  .home-hero-stacked .hero-copy > h1 { margin: 0 0 18px !important; font-size: clamp(36px, 9vw, 56px) !important; line-height: 1.04 !important; }
+  .home-hero-stacked .lede { margin: 0 0 22px !important; font-size: 17px !important; line-height: 1.45 !important; }
+  .home-hero-stacked .actions { margin: 0 0 22px !important; gap: 10px !important; }
+  .home-hero-stacked .actions .btn { width: 100% !important; justify-content: center !important; padding: 14px 20px !important; }
+  .home-hero-stacked .nl-try { margin: 0 0 24px !important; }
+  .home-hero-stacked .hero-chips { padding: 18px 0 0 !important; gap: 8px 14px !important; }
+}
+
+/* ---- Mobile tap target + input minimums ---------------------- */
+@media (max-width: 720px) {
+  .btn, .btn-secondary, button[type="submit"], a.btn { min-height: 44px; }
+  input[type=text], input[type=email], input[type=password], input[type=number], input[type=tel], input[type=url], textarea, select { font-size: 16px !important; }
+}
+
+/* ---- OS chip strip legibility (compile-anatomy + after-compile) */
+.compile-anatomy .ca-foot .ca-os {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(126,240,210,0.04);
+}
+
+[data-theme="light"] .compile-anatomy .ca-foot .ca-os {
+  background: rgba(10,136,98,0.05) !important;
+  border-color: rgba(10,136,98,0.18) !important;
+  color: #1f2429 !important;
+}
+
+[data-theme="light"] .compile-anatomy .ca-foot .ca-os b {
+  color: #0a8862 !important;
+}
+
+/* OS chip row in after-compile "Run it anywhere" card */
+.after-compile .ac-where span {
+  box-shadow: var(--shadow-1) !important;
+}
+
+[data-theme="light"] .after-compile .ac-where span {
+  box-shadow: var(--shadow-1) !important;
+}
+
+/* ---- Mobile card padding + grid gap harmony ------------------ */
+@media (max-width: 720px) {
+  .compile-anatomy .ca-steps,
+  .after-compile .ac-cards,
+  .uc-strip .uc-cards,
+  .vr .vr-cards {
+    gap: 14px !important;
+  }
+  .ca-step, .ac-card, .uc-card, .vr-card, .reg-card { padding: 22px 20px !important; }
+  .ca-step h3, .ac-card h3, .uc-card h3 { font-size: 19px !important; }
+}
+
+/* ---- Mobile: scrollable uc-tabs strip ------------------------ */
+@media (max-width: 720px) {
+  .uc-strip .uc-tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .uc-strip .uc-tabs::-webkit-scrollbar { display: none; }
+  .uc-strip .uc-tab { white-space: nowrap; flex-shrink: 0; }
+}
+
+/*
+ * v7.11.6 — Polaroid regression fix + visual variety + within-section
+ *           spacing rhythm + alternating section tone.
+ *
+ * Founder pushback: "still have major inconsistency in shadows, light
+ * mode shadow bleed into the video, plenty of spacing issues, maybe
+ * use different graphics elements or organization." This block adds:
+ *   1. Within-section spacing tokens (head → grid gap, h2 → sub gap).
+ *   2. Alternating section tone (anatomy default / after-compile slight
+ *      bg-alt tint) to break the boxy "card-grid → card-grid" feel.
+ *   3. Per-card accent on after-compile so each of the 3 cards reads
+ *      with its own identity.
+ *   4. Connector flow line on anatomy 4-step grid (visual story arc).
+ */
+
+/* Within-section rhythm tokens */
+:root {
+  --sp-eyebrow-to-h: 12px;
+  --sp-h-to-sub: 16px;
+  --sp-sub-to-grid: 44px;
+  --sp-grid-gap: 18px;
+  --sp-card-pad: 26px;
+}
+
+/* Anatomy + after-compile head-to-grid breathing room */
+.compile-anatomy .ca-head { margin-bottom: var(--sp-sub-to-grid) !important; }
+.compile-anatomy .ca-eyebrow { margin-bottom: var(--sp-eyebrow-to-h) !important; }
+.compile-anatomy .ca-h { margin-bottom: var(--sp-h-to-sub) !important; }
+.compile-anatomy .ca-sub { margin-bottom: 0 !important; }
+.compile-anatomy .ca-steps { gap: var(--sp-grid-gap) !important; }
+.compile-anatomy .ca-step { padding: var(--sp-card-pad) !important; }
+
+.after-compile .ac-head { margin-bottom: var(--sp-sub-to-grid) !important; }
+.after-compile .ac-h { margin-bottom: var(--sp-h-to-sub) !important; }
+.after-compile .ac-cards { gap: var(--sp-grid-gap) !important; }
+.after-compile .ac-card { padding: var(--sp-card-pad) !important; }
+
+/* Alternating section tint - subtle, breaks the boxy uniformity */
+section.after-compile {
+  background:
+    linear-gradient(180deg, rgba(126,240,210,0.012), rgba(126,240,210,0.022)),
+    var(--bg, transparent);
+}
+
+[data-theme="light"] section.after-compile {
+  background:
+    linear-gradient(180deg, rgba(10,136,98,0.018), rgba(10,136,98,0.028)),
+    #fafafa !important;
+}
+
+section.vr-calc-only {
+  background: rgba(255,255,255,0.012);
+}
+
+[data-theme="light"] section.vr-calc-only {
+  background: linear-gradient(180deg, #f8f9fa, #ffffff) !important;
+}
+
+/* Per-card accent on after-compile - each card reads with identity */
+.after-compile .ac-card:nth-child(1) { border-color: rgba(126,240,210,0.14); }
+.after-compile .ac-card:nth-child(2) { border-color: rgba(126,240,210,0.20); background: linear-gradient(180deg, rgba(126,240,210,0.025), transparent); }
+.after-compile .ac-card:nth-child(3) { border-color: rgba(255,200,120,0.14); }
+
+[data-theme="light"] .after-compile .ac-card:nth-child(1) { border-color: rgba(10,136,98,0.10) !important; }
+[data-theme="light"] .after-compile .ac-card:nth-child(2) { border-color: rgba(10,136,98,0.22) !important; background: linear-gradient(180deg, rgba(10,136,98,0.035), #ffffff) !important; }
+[data-theme="light"] .after-compile .ac-card:nth-child(3) { border-color: rgba(180,130,40,0.14) !important; }
+
+/* Anatomy connector flow line - visual story arc between 01→02→03→04 */
+@media (min-width: 1024px) {
+  .compile-anatomy .ca-steps { position: relative; }
+  .compile-anatomy .ca-steps::before {
+    content: "";
+    position: absolute;
+    top: 48px;
+    left: calc(12.5% + 24px);
+    right: calc(12.5% + 24px);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(126,240,210,0.18) 12%, rgba(126,240,210,0.18) 88%, transparent);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .compile-anatomy .ca-step { position: relative; z-index: 1; }
+  [data-theme="light"] .compile-anatomy .ca-steps::before {
+    background: linear-gradient(90deg, transparent, rgba(10,136,98,0.22) 12%, rgba(10,136,98,0.22) 88%, transparent) !important;
+  }
+}
+
+/* ROI calc: hero the multiplier number prominently */
+.vr-calc-solo .vc-result-x {
+  font-size: clamp(48px, 7vw, 84px) !important;
+  font-weight: 580 !important;
+  letter-spacing: -0.04em !important;
+  line-height: 1 !important;
+  color: #7ef0d2 !important;
+}
+
+[data-theme="light"] .vr-calc-solo .vc-result-x {
+  color: #0a8862 !important;
+}
+
+/* Hero subtle breathing: ensure desktop hero has 56px below NL widget
+   and before chips, NOT compounding margins. */
+@media (min-width: 721px) {
+  .home-hero-stacked { padding-bottom: 64px !important; }
+  .home-hero-stacked .nl-try { margin: 0 auto 32px !important; }
+  .home-hero-stacked .hero-chips { padding: 28px 0 0 !important; margin: 0 !important; }
+}
+
+/* Section-divider hairlines: subtle inter-section accent that doesn't
+   require a separate <hr>. */
+section.compile-anatomy { border-top: 1px solid rgba(126,240,210,0.06); }
+[data-theme="light"] section.compile-anatomy { border-top-color: rgba(10,136,98,0.08) !important; }
+
+/* Mobile: kill the connector line (only renders ≥1024) and ensure
+   anatomy + after-compile pad scale properly. */
+@media (max-width: 1023px) {
+  .compile-anatomy .ca-steps::before { display: none !important; }
 }
