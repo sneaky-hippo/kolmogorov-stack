@@ -179,12 +179,11 @@ Authorization: Bearer ks_&lt;your-key&gt;</pre>
             <code style="color:var(--ink,#faf2e1)">3xx</code><span>Redirect or not-modified.</span>
             <code style="color:#ff6b91">400</code><span>Bad request: malformed body, missing fields, invalid types.</span>
             <code style="color:#ff6b91">401</code><span>Missing or invalid bearer / session.</span>
-            <code style="color:#ff6b91">402</code><span>Quota exhausted on current plan. <a href="/pricing" style="color:var(--violet,#faf2e1)">Upgrade</a> or wait for reset.</span>
             <code style="color:#ff6b91">403</code><span>Authenticated but not authorized (wrong tenant, signup disabled).</span>
             <code style="color:#ff6b91">404</code><span>Not found.</span>
             <code style="color:#ff6b91">409</code><span>Conflict: duplicate id, signature mismatch, version skew.</span>
             <code style="color:#ff6b91">422</code><span>Semantically wrong: k-score below floor, verifier rejects.</span>
-            <code style="color:#ff6b91">429</code><span>Rate-limited. <code>Retry-After</code> header indicates when.</span>
+            <code style="color:#ff6b91">429</code><span>Rate-limited <i>or</i> quota exhausted on current plan; <a href="/pricing" style="color:var(--violet,#faf2e1)">upgrade</a> or wait for reset. <code>Retry-After</code> header indicates when.</span>
             <code style="color:#ff6b91">500</code><span>Server error. File <a href="https://github.com/sneaky-hippo/kolmogorov-stack/issues" style="color:var(--violet,#faf2e1)">an issue</a> with the request path, payload shape, and timestamp; correlated <code>request_id</code> headers are target architecture.</span>
             <code style="color:#ff6b91">503</code><span>Upstream dependency unavailable (frontier API down, secret unset).</span>
           </div>
@@ -210,8 +209,8 @@ Authorization: Bearer ks_&lt;your-key&gt;</pre>
     "id": "...",
     "name": "your-org-x4f8",
     "plan": "pro",
-    "quota": 100000,
-    "seats": 3,
+    "quota": 200000,
+    "seats": 1,
     "trial_ends_at": "2026-06-08T00:00:00Z"
   },
   "api_key": "ks_...",
@@ -251,8 +250,8 @@ Authorization: Bearer ks_&lt;your-key&gt;</pre>
   "id": "...",
   "name": "your-org",
   "plan": "pro",
-  "quota": 100000,
-  "seats": 3,
+  "quota": 200000,
+  "seats": 1,
   "usage": { "compiles_30d": 12, "calls_30d": 8421 },
   "trial_ends_at": null,
   "created_at": "2026-05-01T00:00:00Z"
@@ -266,12 +265,16 @@ Authorization: Bearer ks_&lt;your-key&gt;</pre>
               <p>Self-serve upgrade or downgrade. Returns the new Stripe Payment Link if the plan requires one. Free is always free.</p>
               <h5>Request</h5>
               <pre class="req">{ "plan": "teams" }</pre>
-              <h5>Response</h5>
+              <h5>Response (paid target, pending checkout)</h5>
               <pre class="res">{
-  "tenant": { "id": "...", "plan": "teams", "quota": 1000000, "seats": 5 },
+  "ok": true,
+  "plan": "pro",
+  "pending_plan": "teams",
   "billing_url": "https://buy.stripe.com/...",
-  "billing_required": true
+  "billing_required": true,
+  "message": "Complete payment at <billing_url> to activate the Teams tier."
 }</pre>
+              <p style="margin-top:6px;color:var(--ink-faint);font-size:13px">Switching to free downgrades immediately and returns <code>{ok, plan: "free", quota, seats, billing_url: null, billing_required: false}</code>. Paid targets return the shape above; the tenant flip happens when the Stripe webhook confirms payment.</p>
               <h5>Errors</h5>
               <div class="errors">
                 <span class="code">400</span><span class="desc">unknown plan</span>
@@ -320,7 +323,7 @@ Authorization: Bearer ks_&lt;your-key&gt;</pre>
     { "id": "starter",    "label": "Starter",    "price_usd_month": 9,    "quota": 50000,    "seats": 1,  "self_serve": true, "billing_link_configured": true },
     { "id": "pro",        "label": "Pro",        "price_usd_month": 49,   "quota": 200000,   "seats": 1,  "self_serve": true, "billing_link_configured": true },
     { "id": "teams",      "label": "Teams",      "price_usd_month": 149,  "quota": 1000000,  "seats": 5,  "self_serve": true, "billing_link_configured": true },
-    { "id": "business",   "label": "Business",   "price_usd_month": 1499, "quota": 5000000,  "seats": 15, "self_serve": true, "billing_link_configured": true },
+    { "id": "business",   "label": "Business",   "price_usd_month": 1499, "quota": 5000000,  "seats": 25, "self_serve": true, "billing_link_configured": true },
     { "id": "enterprise", "label": "Enterprise", "price_usd_month": 2999, "quota": 10000000, "seats": 25, "self_serve": true, "billing_link_configured": true }
   ]
 }</pre>
@@ -350,8 +353,8 @@ Authorization: Bearer ks_&lt;your-key&gt;</pre>
               <h5>Errors</h5>
               <div class="errors">
                 <span class="code">400</span><span class="desc">invalid task / examples / base_model</span>
-                <span class="code">402</span><span class="desc">compile quota exhausted on current plan</span>
                 <span class="code">422</span><span class="desc">k_score below floor - artifact gated, not signed</span>
+                <span class="code">429</span><span class="desc">quota exhausted on current plan (or rate-limited)</span>
               </div>
             </div>
           </div>

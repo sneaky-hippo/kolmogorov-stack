@@ -457,10 +457,10 @@
   });
 
   $('plan-cancel').addEventListener('click', async function () {
-    if (!confirm('Cancel paid plan and drop to free at period end? Existing artifacts continue to work; quotas drop to free limits at period end.')) return;
+    if (!confirm('Cancel paid plan and drop to free immediately? Existing artifacts continue to work; the Stripe subscription is cancelled now and quotas drop to free limits in the same request (no proration today).')) return;
     try {
       await KS.api('/v1/account/cancel', { method: 'POST' });
-      setPlanStatus('Cancellation scheduled. You drop to free at the end of the paid period.');
+      setPlanStatus('Plan cancelled. You are on the Developer (free) tier; existing artifacts continue to verify.');
       setTimeout(loadAccount, 800);
     } catch (e) {
       setPlanStatus('Cancel failed. Try again or contact support.');
