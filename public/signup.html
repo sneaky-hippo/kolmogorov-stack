@@ -182,6 +182,24 @@
   }
   applyPlanBanner();
 
+  // URL-aware H1. /signup invites account creation; /signin invites return.
+  // Both URLs serve this HTML; the canonical points to /signin so SEO stays
+  // consolidated, but the on-page heading should match user intent.
+  (function applyAuthTitle(){
+    var isSignup = /\/signup(\/|$)/.test(location.pathname);
+    var t = $('auth-title');
+    var s = $('auth-sub');
+    if (isSignup) {
+      if (t) t.textContent = 'Create your account.';
+      if (s) s.textContent = 'One click with Google or GitHub. Every plan, including Enterprise, is fully self-serve.';
+      try { document.title = 'Sign up · kolm'; } catch (_) {}
+    } else {
+      if (t) t.textContent = 'Sign in to kolm.';
+      if (s) s.textContent = 'Welcome back. One click with Google or GitHub, or paste your API key.';
+      try { document.title = 'Sign in · kolm'; } catch (_) {}
+    }
+  })();
+
   // Advanced toggle: reveal API-key sign-in only on demand. SSO + email is the
   // default surface; api-key sign-in lives behind a small text link below.
   $('advanced-toggle').addEventListener('click', function(){

@@ -36,12 +36,12 @@
       out += strings[i];
       if (i < vals.length) {
         const v = vals[i];
-        out += (v && typeof v === 'object' && v.__raw) - v.value : esc(v);
+        out += (v && typeof v === 'object' && v.__raw) ? v.value : esc(v);
       }
     }
     return out;
   }
-  function raw(s) { return { __raw: true, value: String(s == null - '' : s) }; }
+  function raw(s) { return { __raw: true, value: String(s == null ? '' : s) }; }
 
   if (typeof window !== 'undefined') {
     window.KSesc = { esc, escAttr, html, raw };
