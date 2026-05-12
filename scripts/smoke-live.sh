@@ -1521,7 +1521,7 @@ check "/pricing no pill dash leak"          hashno "$TIT_PRC" 'BYO frontier key 
 check "/compile pill middot"                has "$TIT_CMP" 'kolm compile &middot; live'
 check "/compile no pill dash leak"          hashno "$TIT_CMP" 'kolm compile - live'
 check "/finance pill middot"                has "$TIT_FIN" 'Banks &middot; brokers &middot; asset managers'
-check "/security pill middot"               has "$TIT_SEC" 'RS-1-receipts &middot; MIT &middot; verifiable offline'
+check "/security pill middot"               has "$TIT_SEC" 'RS-1-receipts &middot; MIT &middot; HMAC v0.1'
 check "/manifesto an audit row fix"         has "$TIT_MAN" 'an audit row'
 check "/manifesto no a-audit grammar bug"   hashno "$TIT_MAN" 'a audit row'
 check "/ og:title middot subtitle"          has "$TIT_HM" 'kolm &middot; your own AI, compiled to your task'

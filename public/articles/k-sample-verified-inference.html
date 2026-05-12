@@ -255,7 +255,7 @@ function verified(client, prompt, k = 8, verifier) {
     <p>Three properties make this work.</p>
     <p><b>Determinism.</b> The verifier is pure. Same input, same output, every time. The samples can be replayed and the winner re-derived without re-querying the model.</p>
     <p><b>Diversity.</b> k samples, different seeds (or different temperatures, or both). When the model is confident, all k samples cluster around the same answer; when it is unsure, they split. The verifier resolves the split.</p>
-    <p><b>Anchoring.</b> The receipt is HMAC-chained against the previous receipt. An adversary who alters one entry has to forge every subsequent receipt. The Enterprise tier extends the chain into Sigstore / Rekor for cross-organization audit; the default Pro chain is verifiable offline against the artifact bytes alone.</p>
+    <p><b>Anchoring.</b> The receipt is HMAC-chained against the previous receipt. An adversary who alters one entry has to forge every subsequent receipt. The Enterprise tier extends the chain into Sigstore / Rekor for cross-organization audit; the default Pro chain is re-verifiable offline using the shared tenant receipt secret against the artifact bytes (public-key receipts are roadmap).</p>
 
     <h2 id="verifier">Synthesizing a verifier from your seed examples.</h2>
     <p>A verifier is just a scoring function. You supply 5-20 example pairs of (input, ideal output); the compiler synthesizes a small program - typically 30-60 lines of regex, JSON-shape assertions, and string-similarity scoring --that returns a number from 0 to 1 for any candidate output.</p>
@@ -294,7 +294,7 @@ function score(input, output) {
       <li><b><code>tag</code></b> - HMAC-SHA256 of the entire object using a tenant-scoped secret.</li>
     </ul>
 
-    <p>The compiler emits receipts for every label and every eval decision. The retained chain is HMAC-bound and verifiable offline; external transparency anchoring (Sigstore / Rekor) is the Enterprise extension.</p>
+    <p>The compiler emits receipts for every label and every eval decision. The retained chain is HMAC-bound and re-verifiable offline using the shared tenant receipt secret; external transparency anchoring (Sigstore / Rekor) is the Enterprise extension.</p>
 
     <h2 id="numbers">Cost, accuracy, and how the numbers stack up.</h2>
     <p>Verified inference costs k&times; the unverified API call (k=8 is our default), plus O(microseconds) of verifier work. The accuracy lift over k=1 is not empirical hand-waving --it is monotone in k <em>by construction</em>:</p>

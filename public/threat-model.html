@@ -229,6 +229,12 @@ verify(output, receipt, artifact, secret) =&gt; <span class="ok">ok</span> | <sp
           <p>Receipts prove what the artifact said, not that a human acted on it correctly. Audit trail ends at the model output; downstream business logic is yours.</p>
         </div>
 
+        <div class="card does-not">
+          <div class="tag">out of scope · n5</div>
+          <h3>Recipe sandbox escapes (v0.1)</h3>
+          <p>v0.1 executes JS recipes in <code>node:vm</code> with a frozen <code>lib</code> global. <code>node:vm</code> is <b>defence-in-depth, not a hard security boundary</b> &mdash; synthesized recipes are scanned for canonical escape primitives (<code>process</code>, <code>require</code>, <code>constructor</code>, <code>Function</code>, <code>eval</code>) and rejected on match. For untrusted third-party recipes, run kolm under a hardened isolation layer (isolated-vm, Wasmtime, Firecracker). Roadmap: switch the default sandbox to isolated-vm.</p>
+        </div>
+
       </div>
     </div>
 
@@ -245,9 +251,9 @@ verify(output, receipt, artifact, secret) =&gt; <span class="ok">ok</span> | <sp
             <td data-l="verifies against">your own pubkey (or registry-stored fingerprint)</td>
           </tr>
           <tr>
-            <td class="row-h" data-l="component">Kolmogorov registry</td>
-            <td data-l="signs">co-signs published artifacts; signs spec versions</td>
-            <td data-l="verifies against">public registry pubkey at <code>/v1/registry/pubkey</code></td>
+            <td class="row-h" data-l="component">Kolmogorov registry (roadmap)</td>
+            <td data-l="signs">co-signs published artifacts; signs spec versions (rs-2 tier)</td>
+            <td data-l="verifies against">public registry pubkey at <code>/v1/registry/pubkey</code> (Ed25519 publication is roadmap; v0.1 receipts use HMAC + shared tenant secret)</td>
           </tr>
           <tr>
             <td class="row-h" data-l="component">Recipe registry</td>
