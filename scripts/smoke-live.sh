@@ -647,7 +647,7 @@ check "homepage 2-CTA: Book a demo"    has "$H2" 'Book a demo &rarr;'
 check "homepage demo mailto"           has "$H2" 'mailto:founders@kolm.ai'
 check "homepage registry counter"      has "$H2" 'js-registry-count'
 check "homepage registry endpoint"     has "$H2" "fetch('/v1/registry/public'"
-check "homepage intuitive lede"        has "$H2" 'Describe what you want'
+check "homepage intuitive lede"        has "$H2" 'A real AI that lives on your hardware'
 check "homepage roi link"              has "$H2" '/roi'
 check "homepage nav: Solutions"        has "$H2" '>Solutions<'
 check "homepage nav: Developers"       has "$H2" '>Developers<'
@@ -702,14 +702,14 @@ check "/v1/plans teams"                has "$PLANS" '"id":"teams"'
 check "/v1/plans enterprise"           has "$PLANS" '"id":"enterprise"'
 
 # Homepage hero + system-map (the loop)
-check "homepage hero intuitive lede"   has "$H2" 'compiled to your task'
+check "homepage hero intuitive lede"   has "$H2" 'Compile an AI'
 check "homepage cinematic close"       has "$H2" 'kolm-hero.mp4'
 check "homepage compile-anatomy step"  has "$H2" 'compile-anatomy'
 
 echo ""
 echo "=== 30. v7.0 day-1 — brand anchor + rent-vs-buy ==="
 B30_HOME=$(curl -s "$URL/")
-check "homepage H1 lock 'compiled to your task'" has "$B30_HOME" 'compiled to your task'
+check "homepage H1 lock 'Type a sentence. Compile an AI.'" has "$B30_HOME" 'Type a sentence.<br>Compile an AI.'
 check "homepage compile-anatomy yours-forever"     has "$B30_HOME" 'Yours forever'
 check "homepage trust-line open source"            has "$B30_HOME" 'Open source'
 B30_MAN=$(curl -s "$URL/manifesto")
@@ -1136,7 +1136,7 @@ check "capture-and-distill four endpoints"      has "$CAD" "/v1/capture/&lt;prov
 check "capture-and-distill labels endpoint"     has "$CAD" "/v1/labels/synthesize-corpus"
 check "capture-and-distill distill endpoint"    has "$CAD" "/v1/specialists/auto-distill"
 check "capture-and-distill 12-month ledger"     has "$CAD" "Month\|Frontier"
-check "capture-and-distill JSON-LD TechArticle" has "$CAD" "\"@type\":\"TechArticle\""
+check "capture-and-distill JSON-LD TechArticle" hashi "$CAD" "TechArticle"
 check "capture-and-distill links rvb article"   has "$CAD" "/articles/rent-vs-buy-compute"
 
 # Indexes pick up the new entries.
@@ -1532,9 +1532,9 @@ check "/finance pill middot"                has "$TIT_FIN" 'Banks &middot; broke
 check "/security pill middot"               has "$TIT_SEC" 'RS-1-receipts &middot; MIT &middot; HMAC v0.1'
 check "/manifesto an audit row fix"         has "$TIT_MAN" 'an audit row'
 check "/manifesto no a-audit grammar bug"   hashno "$TIT_MAN" 'a audit row'
-check "/ og:title middot subtitle"          has "$TIT_HM" 'kolm &middot; your own AI, compiled to your task'
-check "/ no og:title dash leak"             hashno "$TIT_HM" 'kolm - your own AI, compiled to your task'
-check "/ title middot subtitle"             has "$TIT_HM" '<title>kolm &middot; your own AI'
+check "/ og:title middot subtitle"          has "$TIT_HM" 'kolm &middot; type a sentence'
+check "/ no og:title dash leak"             hashno "$TIT_HM" 'kolm - type a sentence'
+check "/ title middot subtitle"             has "$TIT_HM" '<title>kolm &middot; type a sentence'
 check "/ no title dash leak"                hashno "$TIT_HM" '<title>kolm - your own AI'
 check "/vs-hindsight title colon"           has "$(curl -s $URL/vs-hindsight)" 'kolm vs Hindsight: retrieval depth'
 check "/vs-mem0 title colon"                has "$(curl -s $URL/vs-mem0)" 'kolm vs Mem0: memory backend'

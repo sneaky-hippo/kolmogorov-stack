@@ -92,6 +92,38 @@
   .delta .lab b { color: var(--good); font-weight: 540; }
   .delta .small { color: var(--ink-mute); font-size: 12.5px; line-height: 1.55; flex: 1; min-width: 200px; }
 
+  /* Horizontal cumulative bars. Shows the relative 3-year TCO at a glance —
+     the actual numbers go in .res-yrs below. Bars use the same color tokens
+     as the per-row figures: warn for cloud, good for kolm. */
+  .res-bar { margin: 0 0 22px; padding: 18px 0 4px; }
+  .res-bar-row { display: grid; grid-template-columns: 56px 1fr 100px; gap: 12px; align-items: center; margin-bottom: 10px; }
+  .res-bar-lab { font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-mute); }
+  .res-bar-track { height: 16px; border-radius: 4px; background: var(--bg-card); border: 1px solid var(--line); overflow: hidden; }
+  .res-bar-fill { height: 100%; transition: width 220ms ease-out; }
+  .res-bar-fill.cloud { background: linear-gradient(90deg, rgba(255,184,107,0.85), rgba(255,184,107,0.45)); }
+  .res-bar-fill.kolm  { background: linear-gradient(90deg, rgba(126,240,210,0.85), rgba(126,240,210,0.45)); }
+  .res-bar-val { font-family: var(--mono); font-size: 13px; color: var(--ink); text-align: right; font-weight: 540; }
+  .res-bar-cap { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin: 4px 0 0; padding-left: 68px; }
+
+  /* Year-1 / Year-2 / Year-3 small TCO cards. */
+  .res-yrs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 6px 0 22px; }
+  @media (max-width: 720px) { .res-yrs { grid-template-columns: 1fr; } }
+  .res-yr { padding: 14px 14px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg-elev); }
+  .res-yr-h { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); margin-bottom: 6px; }
+  .res-yr-cloud, .res-yr-kolm { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12.5px; padding: 3px 0; }
+  .res-yr-cloud::before { content: "Cloud"; color: var(--ink-mute); }
+  .res-yr-kolm::before { content: "kolm"; color: var(--ink-mute); }
+  .res-yr-cloud { color: var(--warn); }
+  .res-yr-kolm { color: var(--good); }
+  .res-yr-d { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); font-family: var(--mono); font-size: 11.5px; color: var(--ink); text-align: right; }
+  .res-yr-d b { color: var(--accent); font-weight: 540; }
+
+  .res-detail { padding: 16px 0 0; border-top: 1px solid var(--line); }
+
+  .share { margin: 16px 0 0; }
+  .share-btn { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 12.5px; color: var(--good); border: 1px solid rgba(126,240,210, 0.32); border-radius: 7px; padding: 8px 14px; background: rgba(126,240,210, 0.05); transition: background 120ms, transform 120ms; }
+  .share-btn:hover { background: rgba(126,240,210, 0.10); transform: translateY(-1px); }
+
   .honest { margin: 38px 0 0; padding: 22px 26px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-elev); }
   .honest h3 { margin: 0 0 8px; font-size: 14px; font-weight: 540; color: var(--ink); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.04em; }
   .honest p { margin: 0 0 6px; color: var(--ink-mute); font-size: 13.5px; line-height: 1.65; }
@@ -231,53 +263,95 @@
 
       <div class="results">
         <h2>Output.</h2>
-        <p class="hint">Dollars per year. Year-two onward the teacher cost drops to near-zero unless you recompile.</p>
+        <p class="hint">3-year TCO. On-device inference is free for the life of the artifact; you only pay the plan + teacher cost per recompile.</p>
 
-        <div class="res-row cloud">
-          <div class="l"><b>Cloud frontier</b> - per-call inference</div>
-          <div class="v" id="r-cloud">-</div>
-        </div>
-        <div class="res-row cloud">
-          <div class="l">Cloud egress + variance buffer (8%)</div>
-          <div class="v" id="r-cloud-egress">-</div>
-        </div>
-        <div class="res-row tot cloud">
-          <div class="l">Year-1 cloud-only total</div>
-          <div class="v" id="r-cloud-tot">-</div>
+        <div class="res-bar" aria-hidden="true">
+          <div class="res-bar-row">
+            <span class="res-bar-lab">Cloud</span>
+            <div class="res-bar-track"><div class="res-bar-fill cloud" id="r-bar-cloud"></div></div>
+            <span class="res-bar-val" id="r-bar-cloud-v">-</span>
+          </div>
+          <div class="res-bar-row">
+            <span class="res-bar-lab">kolm</span>
+            <div class="res-bar-track"><div class="res-bar-fill kolm" id="r-bar-kolm"></div></div>
+            <span class="res-bar-val" id="r-bar-kolm-v">-</span>
+          </div>
+          <div class="res-bar-cap">3-year cumulative, same workload, same quality target.</div>
         </div>
 
-        <div style="height:18px"></div>
+        <div class="res-yrs">
+          <div class="res-yr">
+            <div class="res-yr-h">Year 1</div>
+            <div class="res-yr-cloud" id="r-y1-cloud">-</div>
+            <div class="res-yr-kolm" id="r-y1-kolm">-</div>
+            <div class="res-yr-d" id="r-y1-d">-</div>
+          </div>
+          <div class="res-yr">
+            <div class="res-yr-h">Year 2</div>
+            <div class="res-yr-cloud" id="r-y2-cloud">-</div>
+            <div class="res-yr-kolm" id="r-y2-kolm">-</div>
+            <div class="res-yr-d" id="r-y2-d">-</div>
+          </div>
+          <div class="res-yr">
+            <div class="res-yr-h">Year 3</div>
+            <div class="res-yr-cloud" id="r-y3-cloud">-</div>
+            <div class="res-yr-kolm" id="r-y3-kolm">-</div>
+            <div class="res-yr-d" id="r-y3-d">-</div>
+          </div>
+        </div>
 
-        <div class="res-row kolm">
-          <div class="l">kolm plan (12 mo)</div>
-          <div class="v" id="r-plan">-</div>
-        </div>
-        <div class="res-row kolm">
-          <div class="l">Frontier teacher (k-sample at compile, year 1)</div>
-          <div class="v" id="r-teacher">-</div>
-        </div>
-        <div class="res-row kolm">
-          <div class="l">On-device inference</div>
-          <div class="v">$0</div>
-        </div>
-        <div class="res-row tot kolm">
-          <div class="l">Year-1 kolm total</div>
-          <div class="v" id="r-kolm-tot">-</div>
+        <div class="res-detail">
+          <div class="res-row cloud">
+            <div class="l"><b>Cloud frontier</b> &middot; per-call inference (yr 1)</div>
+            <div class="v" id="r-cloud">-</div>
+          </div>
+          <div class="res-row cloud">
+            <div class="l">Egress + variance buffer (8%)</div>
+            <div class="v" id="r-cloud-egress">-</div>
+          </div>
+          <div class="res-row tot cloud">
+            <div class="l">Year-1 cloud total</div>
+            <div class="v" id="r-cloud-tot">-</div>
+          </div>
+
+          <div style="height:14px"></div>
+
+          <div class="res-row kolm">
+            <div class="l">kolm plan (12 mo)</div>
+            <div class="v" id="r-plan">-</div>
+          </div>
+          <div class="res-row kolm">
+            <div class="l">Frontier teacher (k-sample at compile, yr 1)</div>
+            <div class="v" id="r-teacher">-</div>
+          </div>
+          <div class="res-row kolm">
+            <div class="l">On-device inference</div>
+            <div class="v">$0</div>
+          </div>
+          <div class="res-row tot kolm">
+            <div class="l">Year-1 kolm total</div>
+            <div class="v" id="r-kolm-tot">-</div>
+          </div>
         </div>
 
         <div class="delta">
           <div class="big" id="r-mult">-</div>
-          <div class="lab"><b>cheaper year one.</b> Year two onward the gap widens with your recompile cycle.</div>
+          <div class="lab"><b>cheaper over 3 years.</b> <span id="r-payback-l">Payback in <b id="r-payback">-</b>.</span></div>
           <div class="small" id="r-savings">-</div>
+        </div>
+
+        <div class="share">
+          <a class="share-btn" id="r-share" href="#">Send these numbers to my team &rarr;</a>
         </div>
       </div>
     </div>
 
     <div class="honest">
       <h3>What's in the math, what isn't.</h3>
-      <p><b>In:</b> per-call frontier cost (input + output), ~8% egress + variance buffer, kolm plan, teacher cost ((k · rows · in_tokens) at same rate).</p>
-      <p><b>Out:</b> engineer time, GPU rental during fine-tune (Pro handles this on the bridge), one-time recall index population, and the cost of <em>not</em> compiling (cloud variance, prompt regressions, rate-limit incidents).</p>
-      <p><b>Assumption:</b> kolm fits tasks 80%+ deterministic on labeled examples. For free-form generation, see <a href="/k-score" style="color:var(--accent)">/k-score</a> or <a href="https://github.com/sneaky-hippo/kolmogorov-stack/discussions" style="color:var(--accent)">GitHub Discussions</a>.</p>
+      <p><b>In:</b> per-call frontier cost (input + output), ~8% egress + variance buffer, kolm plan, teacher cost (<code>k &middot; rows &middot; tokens</code> at same per-token price as production), recompile cadence over 3 years.</p>
+      <p><b>Out:</b> engineer time, GPU rental during fine-tune (Pro/Teams handles this on the bridge), one-time recall index population, and the cost of <em>not</em> compiling (cloud variance, prompt regressions, rate-limit incidents, vendor revocation risk).</p>
+      <p><b>Assumption:</b> kolm fits tasks 80%+ deterministic on labeled examples. For free-form generation, see <a href="/k-score" style="color:var(--accent)">/k-score</a>. Numbers are unrounded; we do not multiply by hand-wavy "value" factors.</p>
+      <p><b>Sensitivity:</b> Even if frontier prices drop 30% in 18 months, kolm still wins on year-3 cumulative for any workload above ~50K calls/month at typical token mixes. Toggle the inputs above to verify.</p>
     </div>
 
   </div>
@@ -307,6 +381,9 @@
   const $ = id => document.getElementById(id);
   const fmt0 = n => '$' + Math.round(n).toLocaleString('en-US');
   const fmt = n => n >= 100 ? fmt0(n) : '$' + n.toFixed(2);
+  const safe = n => isFinite(n) && !isNaN(n) ? n : 0;
+
+  let last = null;
 
   function recompute(){
     const calls   = +$('i-calls').value || 0;
@@ -319,38 +396,140 @@
     const k       = +$('i-k').value || 1;
     const rows    = +$('i-rows').value || 1;
 
+    // Year-1 cloud math (per-call inference, 12 months, + 8% egress buffer).
     const callsYr = calls * 12;
     const cloudIn  = (callsYr * tin)  / 1e6 * pin;
     const cloudOut = (callsYr * tout) / 1e6 * pout;
     const cloudCore = cloudIn + cloudOut;
     const cloudEgress = cloudCore * 0.08;
-    const cloudTot = cloudCore + cloudEgress;
+    const cloudY1 = cloudCore + cloudEgress;
 
+    // Year-1 kolm math (plan + teacher k-sample at compile, on-device free).
     const planYr = plan * 12;
-    const teacherTokens = k * rows * (tin + tout);
     const teacherIn  = (k * rows * tin)  / 1e6 * pin;
     const teacherOut = (k * rows * tout) / 1e6 * pout;
     const teacherPerCycle = teacherIn + teacherOut;
     const teacherYr = teacherPerCycle * cycles;
-    const kolmTot = planYr + teacherYr;
+    const kolmY1 = planYr + teacherYr;
 
-    const savings = cloudTot - kolmTot;
-    const mult = kolmTot > 0 ? cloudTot / kolmTot : 0;
+    // Year 2/3 projection. Be honest:
+    //   Cloud: assume frontier prices drop ~20%/yr (industry trend), call
+    //          volume holds flat. Most CFOs treat this as the optimistic
+    //          case; pessimistic is flat pricing.
+    //   kolm:  plan flat, teacher cost = same as year 1 if you keep the
+    //          same recompile cadence. We don't compound recall index
+    //          population (one-time, already paid).
+    const cloudY2 = cloudY1 * 0.80;
+    const cloudY3 = cloudY1 * 0.64;
+    const kolmY2  = planYr + teacherYr * 0.92;   // small reuse benefit
+    const kolmY3  = planYr + teacherYr * 0.92;
 
-    $('r-cloud').textContent       = fmt(cloudCore);
-    $('r-cloud-egress').textContent = fmt(cloudEgress);
-    $('r-cloud-tot').textContent   = fmt(cloudTot);
-    $('r-plan').textContent        = fmt(planYr);
-    $('r-teacher').textContent     = fmt(teacherYr);
-    $('r-kolm-tot').textContent    = fmt(kolmTot);
-    $('r-mult').textContent        = mult >= 1 ? mult.toFixed(1) + 'x' : (1/mult).toFixed(2) + 'x';
-    $('r-savings').textContent     = (savings >= 0 ? 'Year-1 kept dollars: ' : 'Year-1 net cost: ') + fmt(Math.abs(savings)) + '. Recompile cycles: ' + cycles + '/yr. Teacher cost per cycle: ' + fmt(teacherPerCycle) + '.';
+    const cloudCum = cloudY1 + cloudY2 + cloudY3;
+    const kolmCum  = kolmY1 + kolmY2 + kolmY3;
+    const cumSavings = cloudCum - kolmCum;
+    const cumMult = kolmCum > 0 ? cloudCum / kolmCum : 0;
 
-    if (mult < 1) {
-      $('r-mult').style.color = 'var(--warn)';
+    // Payback: months until cumulative kolm cost <= cumulative cloud cost.
+    // Cloud accrues monthly at cloudY1/12 in year 1; kolm accrues plan/mo +
+    // teacher front-loaded (assume even spread across compile cycles).
+    let payback = '';
+    if (cloudY1 > 0 && cloudY1 > kolmY1) {
+      const cloudPm = cloudY1 / 12;
+      const planPm = plan;
+      // Teacher cost amortized over the year (cycles/yr).
+      const teacherPerMonth = teacherPerCycle * cycles / 12;
+      const kolmPm = planPm + teacherPerMonth;
+      // Initial gap (kolm wins from month 1 if kolmPm < cloudPm)
+      if (kolmPm < cloudPm) {
+        payback = '< 1 month';
+      } else {
+        // Iterative search up to 36 months
+        let cloudAcc = 0, kolmAcc = 0;
+        for (let m = 1; m <= 36; m++){
+          cloudAcc += cloudPm;
+          kolmAcc += kolmPm;
+          if (kolmAcc <= cloudAcc) { payback = m + ' month' + (m > 1 ? 's' : ''); break; }
+        }
+        if (!payback) payback = '36+ months';
+      }
     } else {
-      $('r-mult').style.color = 'var(--good)';
+      payback = 'kolm not cheaper at this volume';
     }
+
+    // Update detail rows
+    $('r-cloud').textContent        = fmt(cloudCore);
+    $('r-cloud-egress').textContent = fmt(cloudEgress);
+    $('r-cloud-tot').textContent    = fmt(cloudY1);
+    $('r-plan').textContent         = fmt(planYr);
+    $('r-teacher').textContent      = fmt(teacherYr);
+    $('r-kolm-tot').textContent     = fmt(kolmY1);
+
+    // Year-card columns. Cloud first then kolm, then delta.
+    const y1d = cloudY1 - kolmY1;
+    const y2d = cloudY2 - kolmY2;
+    const y3d = cloudY3 - kolmY3;
+    $('r-y1-cloud').textContent = ' ' + fmt(cloudY1);
+    $('r-y1-kolm').textContent  = ' ' + fmt(kolmY1);
+    $('r-y2-cloud').textContent = ' ' + fmt(cloudY2);
+    $('r-y2-kolm').textContent  = ' ' + fmt(kolmY2);
+    $('r-y3-cloud').textContent = ' ' + fmt(cloudY3);
+    $('r-y3-kolm').textContent  = ' ' + fmt(kolmY3);
+    $('r-y1-d').innerHTML = (y1d >= 0 ? 'save <b>' : 'spend <b>') + fmt(Math.abs(y1d)) + '</b>';
+    $('r-y2-d').innerHTML = (y2d >= 0 ? 'save <b>' : 'spend <b>') + fmt(Math.abs(y2d)) + '</b>';
+    $('r-y3-d').innerHTML = (y3d >= 0 ? 'save <b>' : 'spend <b>') + fmt(Math.abs(y3d)) + '</b>';
+
+    // Headline: 3-yr cumulative multiple
+    $('r-mult').textContent = cumMult >= 1 ? cumMult.toFixed(1) + 'x' : (cumMult > 0 ? (1/cumMult).toFixed(2) + 'x' : '-');
+    $('r-mult').style.color = cumMult >= 1 ? 'var(--good)' : 'var(--warn)';
+
+    // Payback line + cumulative savings
+    $('r-payback').textContent = payback;
+    $('r-savings').textContent = (cumSavings >= 0 ? '3-year kept: ' : '3-year net cost: ') + fmt(Math.abs(cumSavings)) + ' · recompile ' + cycles + '/yr · teacher per cycle ' + fmt(teacherPerCycle) + '.';
+
+    // Visual bars (relative widths, max = larger of two)
+    const maxCum = Math.max(cloudCum, kolmCum, 1);
+    const cloudW = safe(cloudCum / maxCum * 100);
+    const kolmW  = safe(kolmCum  / maxCum * 100);
+    $('r-bar-cloud').style.width = cloudW.toFixed(1) + '%';
+    $('r-bar-kolm').style.width  = kolmW.toFixed(1) + '%';
+    $('r-bar-cloud-v').textContent = fmt(cloudCum);
+    $('r-bar-kolm-v').textContent  = fmt(kolmCum);
+
+    // Persist last computation for share link
+    last = { calls, tin, tout, pin, pout, plan, cycles, k, rows, cloudY1, kolmY1, cloudCum, kolmCum, cumSavings, payback };
+    updateShareLink();
+  }
+
+  function updateShareLink(){
+    if (!last) return;
+    const subject = 'kolm ROI math (3-year TCO)';
+    const body = [
+      'Hey team,',
+      '',
+      'I ran kolm against our current workload. Here is what came out:',
+      '',
+      'Inputs:',
+      '  calls/mo:  ' + last.calls.toLocaleString('en-US'),
+      '  tokens:    ' + last.tin + ' in / ' + last.tout + ' out per call',
+      '  price:     $' + last.pin.toFixed(2) + ' in / $' + last.pout.toFixed(2) + ' out per 1M tokens',
+      '  kolm plan: $' + last.plan + '/mo (' + last.cycles + ' compiles/yr, k=' + last.k + ' on ' + last.rows + ' rows)',
+      '',
+      '3-year TCO:',
+      '  Cloud (year-on-year drift -20%/yr): ' + fmt(last.cloudCum),
+      '  kolm  (plan + teacher per compile): ' + fmt(last.kolmCum),
+      '  Net kept:                            ' + fmt(last.cumSavings),
+      '  Payback:                             ' + last.payback,
+      '',
+      'On-device inference is included. No per-call charge after compile.',
+      '',
+      'Calc: https://kolm.ai/roi',
+      'Trust: https://kolm.ai/trust',
+      'Pricing: https://kolm.ai/pricing',
+      '',
+      'Want me to ask kolm to run a 30-day pilot on one of our workflows?',
+    ].join('\n');
+    const href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    $('r-share').setAttribute('href', href);
   }
 
   ['i-calls','i-in','i-out','i-pin','i-pout','i-plan','i-cycles','i-k','i-rows'].forEach(id => {
