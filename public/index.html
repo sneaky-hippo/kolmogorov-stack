@@ -374,7 +374,8 @@
     .compile-anatomy,
     .after-compile,
     .uc-strip,
-    .home-faq { margin-top: 64px; }
+    .home-faq,
+    .access-anywhere { margin-top: 0; }
   }
 
   .compile-anatomy { max-width: 1180px; margin-left: auto; margin-right: auto; padding: 0 32px; }
@@ -473,8 +474,12 @@
   .uc-strip .uc-sub b { color: var(--ink, #faf2e1); font-weight: 540; }
   /* v7.11.2 — switchable industry tabs. SOTA restraint: tiny mono pills,
      teal active fill on dark / emerald on light. Cards swap with crossfade. */
-  .uc-strip .uc-tabs { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 999px; margin: 0 0 18px; background: rgba(0,0,0, 0.18); flex-wrap: wrap; }
-  .uc-strip .uc-tab { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.04em; padding: 8px 14px; border-radius: 999px; border: 0; background: transparent; color: var(--ink-mute, #b5bdb1); cursor: pointer; transition: color 160ms, background 160ms; text-transform: lowercase; }
+  .uc-strip .uc-tabs { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 999px; margin: 0 0 18px; background: rgba(0,0,0, 0.18); flex-wrap: nowrap; max-width: 100%; }
+  .uc-strip .uc-tab { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.04em; padding: 8px 14px; border-radius: 999px; border: 0; background: transparent; color: var(--ink-mute, #b5bdb1); cursor: pointer; transition: color 160ms, background 160ms; text-transform: lowercase; white-space: nowrap; }
+  @media (max-width: 480px) {
+    .uc-strip .uc-tabs { gap: 2px; padding: 3px; }
+    .uc-strip .uc-tab { font-size: 10.5px; padding: 7px 10px; }
+  }
   .uc-strip .uc-tab:hover { color: var(--ink, #faf2e1); }
   .uc-strip .uc-tab.is-on { color: #0c0e10; background: #7ef0d2; }
   .uc-strip .uc-tab:focus-visible { outline: 2px solid #7ef0d2; outline-offset: 2px; }
@@ -838,7 +843,7 @@
      Pattern: dot · 38 MB artifact · 0.6 ms median · K = 0.917 on /spec → verify */
   .hero-proof {
     display: flex; align-items: center; gap: 10px 12px;
-    margin: 18px 0 0;
+    margin: 20px 0 0;
     font-family: var(--mono, ui-monospace);
     font-size: 12.5px;
     line-height: 1.5;
@@ -862,9 +867,17 @@
     transition: border-color 140ms;
   }
   .hero-proof .hp-link:hover { border-bottom-color: rgba(126, 240, 210, 0.7); }
-  @media (max-width: 520px) {
-    .hero-proof { font-size: 12px; gap: 8px 10px; }
-    .hero-proof .hp-link { margin-left: 0; flex-basis: 100%; }
+  @media (max-width: 720px) {
+    .hero-proof {
+      justify-content: center;
+      text-align: center;
+      font-size: 11.5px;
+      gap: 4px 8px;
+      margin-top: 16px;
+      line-height: 1.7;
+    }
+    .hero-proof .hp-link { margin-left: 8px; }
+    .hero-proof .hp-sep:nth-of-type(3) { display: none; }
   }
   [data-theme=light] .hero-proof { color: #4b5158; }
   [data-theme=light] .hero-proof b { color: #0c0e10; }
@@ -1168,7 +1181,230 @@
 </section>
 
 
-<!-- v7.11.4: ROI calculator moved earlier — now sits between anatomy and after-compile to break the boxy card→card→card rhythm. -->
+<!-- v7.15: "Access anywhere" — your AI lives on your hardware, reachable
+     from anywhere via a secure mesh. Same model, same K-score, anywhere you
+     are. Replaces the "ai on the cloud" pattern with private mesh access. -->
+<section class="access-anywhere" aria-label="access your AI from anywhere">
+  <div class="aa-head">
+    <h2>Your AI lives with you. <span class="aa-h-soft">Reach it from anywhere.</span></h2>
+    <p class="aa-sub">One signed file on your machine. A private mesh between your devices. The same model answers your laptop, your phone, your server. Zero cloud in the middle.</p>
+  </div>
+  <div class="aa-diagram" aria-hidden="true">
+    <div class="aa-mesh">
+      <div class="aa-node aa-node-home" data-label="home">
+        <div class="aa-node-dot"></div>
+        <div class="aa-node-name">.kolm at home</div>
+        <div class="aa-node-meta">your model</div>
+      </div>
+      <div class="aa-spokes">
+        <div class="aa-spoke aa-spoke-1"></div>
+        <div class="aa-spoke aa-spoke-2"></div>
+        <div class="aa-spoke aa-spoke-3"></div>
+        <div class="aa-spoke aa-spoke-4"></div>
+      </div>
+      <div class="aa-clients">
+        <div class="aa-client" data-where="laptop">
+          <div class="aa-client-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M2 20h20"/></svg>
+          </div>
+          <div class="aa-client-label">laptop</div>
+          <div class="aa-client-meta">cafe, airplane</div>
+        </div>
+        <div class="aa-client" data-where="phone">
+          <div class="aa-client-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>
+          </div>
+          <div class="aa-client-label">phone</div>
+          <div class="aa-client-meta">anywhere with signal</div>
+        </div>
+        <div class="aa-client" data-where="agent">
+          <div class="aa-client-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>
+          </div>
+          <div class="aa-client-label">coding agent</div>
+          <div class="aa-client-meta">Cursor, Claude Code</div>
+        </div>
+        <div class="aa-client" data-where="edge">
+          <div class="aa-client-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>
+          </div>
+          <div class="aa-client-label">edge device</div>
+          <div class="aa-client-meta">factory, kiosk, robot</div>
+        </div>
+      </div>
+    </div>
+    <div class="aa-flow-line">
+      <span class="aa-flow-pulse"></span>
+      <span class="aa-flow-text">end-to-end encrypted &middot; never via our servers &middot; you control the mesh</span>
+    </div>
+  </div>
+  <ul class="aa-rows">
+    <li class="aa-row">
+      <div class="aa-row-num">01</div>
+      <div class="aa-row-body">
+        <h3>Mesh, not cloud.</h3>
+        <p>kolm pairs with Tailscale, WireGuard, or any private mesh you trust. Your devices talk directly. Our servers never see a token, a prompt, or a response.</p>
+      </div>
+    </li>
+    <li class="aa-row">
+      <div class="aa-row-num">02</div>
+      <div class="aa-row-body">
+        <h3>Same answer, any device.</h3>
+        <p>The K-score on your laptop is the K-score on your phone. One signed model, identical inference, no &ldquo;cloud version&rdquo; vs &ldquo;local version&rdquo; drift.</p>
+      </div>
+    </li>
+    <li class="aa-row">
+      <div class="aa-row-num">03</div>
+      <div class="aa-row-body">
+        <h3>Offline by default, online by choice.</h3>
+        <p>Take the model on a flight. Run it in a Faraday cage. When you want remote access, open a single mesh port. Never a public API.</p>
+      </div>
+    </li>
+  </ul>
+  <div class="aa-foot">
+    <code>kolm serve --mesh tailscale</code>
+    <span class="aa-foot-sep">&middot;</span>
+    <a href="/docs/mesh" class="aa-foot-link">how the mesh works &rarr;</a>
+  </div>
+</section>
+
+<style>
+  .access-anywhere { max-width: 1180px; margin: 96px auto 0; padding: 0 32px; }
+  .access-anywhere .aa-head { text-align: center; max-width: 880px; margin: 0 auto 56px; }
+  .access-anywhere h2 { font-size: clamp(32px, 3.6vw, 46px); line-height: 1.06; letter-spacing: -0.028em; margin: 0 0 16px; font-weight: 600; }
+  .access-anywhere .aa-h-soft { color: var(--ink-mute, #b5bdb1); display: block; }
+  .access-anywhere .aa-sub { font-size: 17px; line-height: 1.5; color: var(--ink-mute, #b5bdb1); margin: 0 auto; max-width: 60ch; }
+
+  /* Mesh diagram */
+  .access-anywhere .aa-diagram { margin: 0 auto 64px; max-width: 920px; }
+  .access-anywhere .aa-mesh { position: relative; height: 320px; margin: 0 auto; }
+  .access-anywhere .aa-node-home {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    text-align: center; z-index: 3;
+    padding: 22px 24px; border-radius: 14px;
+    background: linear-gradient(180deg, rgba(126,240,210,0.10), rgba(126,240,210,0.04));
+    border: 1px solid rgba(126,240,210,0.32);
+    box-shadow: 0 0 0 1px rgba(126,240,210,0.06), 0 12px 40px -16px rgba(126,240,210,0.30);
+    min-width: 180px;
+  }
+  .access-anywhere .aa-node-dot { width: 8px; height: 8px; border-radius: 50%; background: #7ef0d2; box-shadow: 0 0 12px rgba(126,240,210,0.75); margin: 0 auto 10px; }
+  .access-anywhere .aa-node-name { font-family: var(--mono); font-size: 13px; color: var(--ink, #faf2e1); letter-spacing: 0.02em; }
+  .access-anywhere .aa-node-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-faint, #737c73); margin-top: 4px; letter-spacing: 0.12em; text-transform: uppercase; }
+
+  .access-anywhere .aa-spokes { position: absolute; inset: 0; pointer-events: none; }
+  .access-anywhere .aa-spoke {
+    position: absolute; top: 50%; left: 50%; height: 1px; transform-origin: 0 50%;
+    background: linear-gradient(90deg, rgba(126,240,210,0.45), rgba(126,240,210,0.02));
+    width: 240px; opacity: 0.6;
+  }
+  .access-anywhere .aa-spoke-1 { transform: translateY(-50%) rotate(-150deg); }
+  .access-anywhere .aa-spoke-2 { transform: translateY(-50%) rotate(-30deg); }
+  .access-anywhere .aa-spoke-3 { transform: translateY(-50%) rotate(150deg); }
+  .access-anywhere .aa-spoke-4 { transform: translateY(-50%) rotate(30deg); }
+
+  .access-anywhere .aa-clients { position: absolute; inset: 0; }
+  .access-anywhere .aa-client {
+    position: absolute; text-align: center; min-width: 130px;
+    padding: 14px 14px 12px;
+    border: 1px solid var(--line, rgba(255,255,255,0.10));
+    border-radius: 12px;
+    background: rgba(255,255,255,0.02);
+    backdrop-filter: blur(8px);
+  }
+  .access-anywhere .aa-client[data-where="laptop"] { top: 8%; left: 6%; }
+  .access-anywhere .aa-client[data-where="phone"]  { top: 8%; right: 6%; }
+  .access-anywhere .aa-client[data-where="agent"]  { bottom: 8%; left: 6%; }
+  .access-anywhere .aa-client[data-where="edge"]   { bottom: 8%; right: 6%; }
+  .access-anywhere .aa-client-icon { color: var(--ink, #faf2e1); margin-bottom: 6px; }
+  .access-anywhere .aa-client-label { font-family: var(--mono); font-size: 12px; color: var(--ink, #faf2e1); letter-spacing: 0.04em; }
+  .access-anywhere .aa-client-meta { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint, #737c73); margin-top: 2px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .access-anywhere .aa-flow-line {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin: 28px auto 0; font-family: var(--mono); font-size: 12px;
+    color: var(--ink-mute, #b5bdb1); letter-spacing: 0.04em;
+  }
+  .access-anywhere .aa-flow-pulse {
+    width: 6px; height: 6px; border-radius: 50%; background: #7ef0d2;
+    box-shadow: 0 0 8px rgba(126,240,210,0.65);
+  }
+
+  /* 3 numbered rows */
+  .access-anywhere .aa-rows {
+    list-style: none; padding: 0; margin: 0 auto 48px; max-width: 920px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+  }
+  .access-anywhere .aa-row {
+    padding: 24px 22px; border-radius: 14px;
+    background: var(--bg-card, rgba(255,255,255,0.02));
+    border: 1px solid var(--line, rgba(255,255,255,0.08));
+  }
+  .access-anywhere .aa-row-num {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-faint, #737c73);
+    letter-spacing: 0.16em; margin-bottom: 10px;
+  }
+  .access-anywhere .aa-row h3 { font-size: 18px; line-height: 1.25; letter-spacing: -0.014em; margin: 0 0 8px; font-weight: 580; color: var(--ink, #faf2e1); }
+  .access-anywhere .aa-row p { font-size: 14.5px; line-height: 1.55; color: var(--ink-mute, #b5bdb1); margin: 0; }
+
+  /* Foot link line */
+  .access-anywhere .aa-foot {
+    text-align: center; font-family: var(--mono); font-size: 13px;
+    color: var(--ink-mute, #b5bdb1); display: flex; gap: 10px;
+    justify-content: center; align-items: center; flex-wrap: wrap;
+  }
+  .access-anywhere .aa-foot code {
+    padding: 6px 12px; border-radius: 8px;
+    background: rgba(126,240,210,0.06);
+    border: 1px solid rgba(126,240,210,0.20);
+    color: #7ef0d2; font-size: 12.5px;
+  }
+  .access-anywhere .aa-foot-sep { color: var(--ink-faint, #737c73); }
+  .access-anywhere .aa-foot-link { color: var(--ink, #faf2e1); text-decoration: none; border-bottom: 1px solid var(--line, rgba(255,255,255,0.18)); padding-bottom: 1px; }
+  .access-anywhere .aa-foot-link:hover { color: #7ef0d2; border-bottom-color: rgba(126,240,210,0.4); }
+
+  [data-theme="light"] .access-anywhere .aa-node-home {
+    background: linear-gradient(180deg, rgba(10,136,98,0.10), rgba(10,136,98,0.04));
+    border-color: rgba(10,136,98,0.32);
+    box-shadow: 0 0 0 1px rgba(10,136,98,0.06), 0 12px 40px -16px rgba(10,136,98,0.20);
+  }
+  [data-theme="light"] .access-anywhere .aa-node-dot { background: #0a8862; box-shadow: 0 0 12px rgba(10,136,98,0.55); }
+  [data-theme="light"] .access-anywhere .aa-spoke {
+    background: linear-gradient(90deg, rgba(10,136,98,0.45), rgba(10,136,98,0.02));
+  }
+  [data-theme="light"] .access-anywhere .aa-flow-pulse { background: #0a8862; box-shadow: 0 0 8px rgba(10,136,98,0.55); }
+  [data-theme="light"] .access-anywhere .aa-foot code {
+    background: rgba(10,136,98,0.08); border-color: rgba(10,136,98,0.24); color: #0a8862;
+  }
+
+  @media (max-width: 980px) {
+    .access-anywhere .aa-rows { grid-template-columns: 1fr; gap: 14px; max-width: 560px; }
+  }
+
+  @media (max-width: 720px) {
+    .access-anywhere { padding: 0 20px; }
+    .access-anywhere .aa-head { margin: 0 auto 32px; }
+    .access-anywhere h2 { font-size: clamp(28px, 7vw, 36px); }
+    .access-anywhere .aa-sub { font-size: 15.5px; }
+    .access-anywhere .aa-diagram { margin-bottom: 36px; }
+    .access-anywhere .aa-mesh { height: 280px; }
+    .access-anywhere .aa-node-home { min-width: 140px; padding: 14px 14px; }
+    .access-anywhere .aa-node-name { font-size: 12px; }
+    .access-anywhere .aa-node-meta { font-size: 10px; }
+    .access-anywhere .aa-client { min-width: 96px; padding: 10px 8px 8px; }
+    .access-anywhere .aa-client[data-where="laptop"] { top: 0%; left: 0%; }
+    .access-anywhere .aa-client[data-where="phone"]  { top: 0%; right: 0%; }
+    .access-anywhere .aa-client[data-where="agent"]  { bottom: 0%; left: 0%; }
+    .access-anywhere .aa-client[data-where="edge"]   { bottom: 0%; right: 0%; }
+    .access-anywhere .aa-client-label { font-size: 10.5px; }
+    .access-anywhere .aa-client-meta { font-size: 9.5px; }
+    .access-anywhere .aa-spoke { width: 130px; }
+    .access-anywhere .aa-flow-line { font-size: 10.5px; line-height: 1.5; padding: 0 8px; }
+    .access-anywhere .aa-rows { margin-bottom: 28px; }
+    .access-anywhere .aa-row { padding: 18px 16px; }
+    .access-anywhere .aa-foot { font-size: 11.5px; line-height: 1.7; }
+    .access-anywhere .aa-foot code { font-size: 11px; padding: 5px 9px; }
+  }
+</style>
 
 <section class="uc-strip" aria-label="what teams build with kolm">
   <h2>From coding agents to clinical intake.</h2>

@@ -2340,17 +2340,35 @@ a:focus-visible {
    v7.9.9 SOTA spacing pass. Section rhythm + mobile breathing.
    ============================================================ */
 
-/* Section rhythm: anchor every top-level section to a consistent vertical
-   beat. Desktop = 88px between sections, mobile = 56px. */
-.compile-anatomy { margin-top: 88px !important; }
+/* v7.14 → v7.15 section rhythm. Desktop = 96px between sections (Apple/
+   Anthropic cadence). Mobile = 0px margin since brand-refresh.css mobile
+   padding (28px each side) is the only rhythm source on phones — combined
+   that's 56px breath between sections. Previously these !important rules
+   set 88px on mobile too, which compounded with the 56px mobile padding
+   into a 144px cavern between every section. */
+.compile-anatomy { margin-top: 96px !important; }
+.after-compile { margin-top: 96px !important; }
+.access-anywhere { margin-top: 96px !important; }
 .vr,
 .vr.vr-calc-only { margin-top: 64px !important; }
-.uc-strip { margin-top: 88px !important; }
+.uc-strip { margin-top: 96px !important; }
+.home-faq { margin-top: 96px !important; }
 .trust-line { margin-top: 72px !important; padding: 40px 24px !important; }
-.bottom-cta { margin-top: 88px !important; }
+.bottom-cta { margin-top: 96px !important; }
 
 /* ROI calc-solo: tighter follow-on from heading. */
 .vr-calc-solo { margin-top: 32px !important; }
+
+@media (max-width: 720px) {
+  .compile-anatomy,
+  .after-compile,
+  .access-anywhere,
+  .uc-strip,
+  .home-faq,
+  .bottom-cta { margin-top: 0 !important; }
+  .vr,
+  .vr.vr-calc-only { margin-top: 0 !important; }
+}
 
 /* Hero: more breathing on phones so the lede + CTAs + form don't crowd. */
 @media (max-width: 640px) {
@@ -2852,17 +2870,22 @@ section.hero-demo {
 section.vr-calc-only { padding-top: var(--sp-section-tight) !important; padding-bottom: var(--sp-section-tight) !important; }
 
 @media (max-width: 720px) {
+  /* Mobile: drop section padding to 28px so it doesn't double-count with the
+     64px margin-top set in index.html. Total gap = 28 padding-bottom of prev
+     + 64 margin-top + 28 padding-top = 120px was cavernous. Now 28+0+28 with
+     margin-top set to 0 = 56px breath. Measured but not crushed. */
   section.compile-anatomy,
   section.after-compile,
   section.vr,
   section.uc-strip,
   section.home-faq,
   section.bottom-cta,
-  section.hero-demo {
-    padding-top: var(--sp-section-mob) !important;
-    padding-bottom: var(--sp-section-mob) !important;
+  section.hero-demo,
+  section.access-anywhere {
+    padding-top: 28px !important;
+    padding-bottom: 28px !important;
   }
-  section.vr-calc-only { padding-top: var(--sp-section-mob-tight) !important; padding-bottom: var(--sp-section-mob-tight) !important; }
+  section.vr-calc-only { padding-top: 20px !important; padding-bottom: 20px !important; }
 }
 
 /* Tighten home hero on mobile - the compounding margins were leaking.
