@@ -105,14 +105,14 @@
 <section class="hero"><div class="wrap">
   <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/docs">docs</a> &nbsp;/&nbsp; k-score methodology</p>
   <h1>K-score: how we score every artifact.</h1>
-  <p class="lede">K-score is a five-component weighted score, computed at compile time, replayable at any time from the receipt log. A single number that compresses what an engineering team would otherwise check by hand across five different dashboards. This page is the formal definition.</p>
+  <p class="lede"><b>Per-artifact, not per-model.</b> Every <code>.kolm</code> file gets its own K-score from its own frozen eval set; the score gates that artifact's shipping, not the underlying base model. K-score is a five-component weighted score, computed at compile time, replayable at any time from the receipt log. A single number that compresses what an engineering team would otherwise check by hand across five different dashboards. This page is the formal definition.</p>
 </div></section>
 
 <section class="body"><div class="wrap">
   <h2>The formula</h2>
   <code class="k-big">K = <span class="acc">0.40</span>&middot;A + <span class="acc">0.15</span>&middot;S + <span class="acc">0.15</span>&middot;L + <span class="acc">0.15</span>&middot;C + <span class="acc">0.15</span>&middot;V</code>
   <p class="formula-sub">A accuracy &middot; S stability &middot; L latency &middot; C compliance &middot; V verifier</p>
-  <p>Each component is normalized to the range [0, 1]. Weights sum to 1.00, so K is also bounded [0, 1]. The K-score is computed once at compile-time over the artifact's frozen eval set; the components are also recomputed at runtime per inference and emitted on the receipt, so drift over time is observable.</p>
+  <p>Each component is normalized to the range [0, 1]. Weights sum to 1.00, so K is also bounded [0, 1]. The K-score is computed once at compile-time over <i>this artifact's</i> frozen eval set; the components are also recomputed at runtime per inference and emitted on the receipt, so drift over time is observable. Two artifacts with different eval sets cannot be compared by K alone: each one only certifies that <i>that</i> .kolm meets <i>its</i> gate.</p>
 </div></section>
 
 <section class="body"><div class="wrap">

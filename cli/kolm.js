@@ -14,8 +14,8 @@
 // VERIFY + RUN
 //   kolm inspect <art.kolm>             manifest + recipes + signature
 //   kolm run <art.kolm> '<input>'       execute against an input
-//   kolm eval <art.kolm>                re-run evals, recompute K-score
-//   kolm score <art.kolm>               print K-score only
+//   kolm eval <art.kolm>                re-run evals, recompute this artifact's K-score
+//   kolm score <art.kolm>               print this artifact's K-score only (per-artifact, not per-model)
 //   kolm bench <art.kolm>               reproducible benchmark JSON
 //
 // SERVE + WIRE
@@ -185,10 +185,18 @@ function fmtBytes(n) {
   return (n / (1024 * 1024)).toFixed(1) + 'MB';
 }
 
-function fmtKScore(k) {
-  if (!k) return '(no k-score)';
+// K-score is per-artifact (not per-model): each .kolm gets its own score from
+// its own frozen eval set. The header always names the file so buyers can't
+// confuse this with a leaderboard for the base model underneath.
+function fmtKScore(k, artifactName) {
+  if (!k) return '(no k-score on this artifact)';
+  const composite = typeof k.composite === 'number' ? k.composite.toFixed(3) : k.composite;
+  const ships = (typeof k.composite === 'number') ? (k.composite >= 0.85 ? 'pass' : 'fail') : null;
+  const header = artifactName
+    ? `K-score for ${artifactName}: ${composite}${ships ? `  (gate >= 0.85 - ${ships})` : ''}`
+    : `K-score (for this artifact, not the base model): ${composite}${ships ? `  (gate >= 0.85 - ${ships})` : ''}`;
   return [
-    `  composite: ${k.composite}`,
+    header,
     `  accuracy:  ${(k.accuracy * 100).toFixed(1)}%`,
     `  coverage:  ${(k.coverage * 100).toFixed(1)}%`,
     `  size:      ${fmtBytes(k.size_bytes)}`,
@@ -222,9 +230,9 @@ COMMANDS
   seeds <sub>                      local-first training-data helpers (new|generate|list|bootstrap)
   anonymize <file.jsonl> [opts]    shortcut for 'seeds generate --strategy redact-pii-templated'
   run <art.kolm> '<input>'         execute a .kolm against an input
-  eval <art.kolm>                  re-run embedded evals, print K-score
+  eval <art.kolm>                  re-run embedded evals, print this artifact's K-score
   bench <art.kolm> [opts]          emit artifact benchmark JSON (alias: benchmark)
-  score <art.kolm>                 print just the K-score
+  score <art.kolm>                 print this artifact's K-score (per-artifact, not per-model)
   inspect <art.kolm>               manifest + recipes + signature
   diff <a.kolm> <b.kolm>           compare two artifact manifests (cid, K, recipe, etc.)
   export <art.kolm> [opts]         convert a .kolm to GGUF / MLX / ONNX / CoreML / TensorRT (--preview = forecast JSON, no toolchain)
@@ -513,7 +521,10 @@ EXAMPLES
   kolm run redactor.kolm '{"text":"id 12-345"}' --params '{"extra_patterns":[{"name":"emp_id","regex":"\\\\b\\\\d{2}-\\\\d{3}\\\\b","replacement":"[ID]"}]}'
   kolm run redactor.kolm '{"text":"..."}' --params @hospital-rules.json
 `,
-  eval: `kolm eval - re-run a .kolm's embedded eval set and recompute K-score.
+  eval: `kolm eval - re-run a .kolm's embedded eval set and recompute its K-score.
+
+K-score is per-artifact: each .kolm has its own eval set and its own number.
+This command re-runs THIS artifact's evals and prints THIS artifact's K-score.
 
 USAGE
   kolm eval <artifact.kolm>
@@ -555,7 +566,7 @@ EXIT CODES (--reproduce mode)
   1  bad arguments (unknown suite, bad seed/n, etc.).
   2  prerequisite missing (no docker, no ANTHROPIC_API_KEY, image not yet published).
 `,
-  score: `kolm score - print the K-score on an artifact's manifest.
+  score: `kolm score - print this artifact's K-score (per-artifact, not per-model).
 
 USAGE
   kolm score <artifact.kolm>
@@ -1963,7 +1974,7 @@ async function cmdCompile(args) {
     console.log(`  cost:      ${r.estimate.cost_usd == null ? '(varies)' : '$' + r.estimate.cost_usd.toFixed(2)}`);
     if (r.result && r.result.artifact_path) {
       console.log(`  artifact:  ${r.result.artifact_path}`);
-      if (r.result.k_score) console.log(`  k_score:   ${r.result.k_score.composite}`);
+      if (r.result.k_score) console.log(`  K-score for ${path.basename(r.result.artifact_path)}: ${r.result.k_score.composite}  (gate >= 0.85)`);
       console.log('');
       console.log(`run:    kolm run ${path.basename(r.result.artifact_path)} '<input-json>'`);
     } else {
@@ -2007,7 +2018,7 @@ async function cmdCompile(args) {
       console.log(`built: ${r.outPath}`);
       console.log(`bytes: ${r.bytes}`);
       console.log(`sha256: ${r.sha256}`);
-      if (r.k_score) console.log(`k_score: ${r.k_score.composite}`);
+      if (r.k_score) console.log(`K-score for ${path.basename(r.outPath)}: ${r.k_score.composite}  (gate >= 0.85)`);
       if (!args.includes('--no-skill')) {
         try {
           const skillPath = writeSkillSidecar({
@@ -2135,9 +2146,8 @@ async function cmdCompile(args) {
   } catch (e) {
     if (process.env.KOLM_DEBUG) console.error('cloud-trust record failed:', e.message);
   }
-  console.log('K-score:');
-  console.log(fmtKScore(state.k_score));
-  // Disclose when the K-score was computed entirely against auto-
+  console.log(fmtKScore(state.k_score, path.basename(outPath)));
+  // Disclose when this artifact's K-score was computed entirely against auto-
   // synthesized eval cases (no user examples). 0.985 vs. real data is
   // a very different signal than 0.985 vs. cases the user reviewed.
   if (state.evals_summary && state.evals_summary.total != null) {
@@ -2488,7 +2498,7 @@ async function cmdScore(args) {
   await withRunner(async ({ inspectArtifact }) => {
     const m = inspectArtifact(ap);
     console.log(`task: ${m.task}`);
-    console.log(fmtKScore(m.k_score));
+    console.log(fmtKScore(m.k_score, path.basename(ap)));
   });
 }
 
@@ -2628,7 +2638,7 @@ async function cmdVerify(args) {
   } else {
     console.log(`verdict: ${result.verdict}`);
     console.log(`cid:     ${result.manifest.cid}`);
-    console.log(`k_score: ${(result.manifest.k_score?.composite ?? 0).toFixed(4)}`);
+    console.log(`K-score for ${path.basename(ap)}: ${(result.manifest.k_score?.composite ?? 0).toFixed(4)}  (per-artifact gate, not a base-model score)`);
     for (const c of result.checks) {
       const tag = c.status === 'pass' ? 'ok  ' : c.status === 'warn' ? 'warn' : 'fail';
       console.log(`  [${tag}] ${c.name}: ${c.detail}`);
@@ -3252,7 +3262,7 @@ async function cmdTune(args) {
       console.log('revision ' + rev);
       console.log('  pass:     ' + e.pass + '/' + e.total + '  (' + (e.accuracy * 100).toFixed(1) + '% acc)');
       if (e.p50_latency_us != null) console.log('  p50:      ' + e.p50_latency_us + 'us');
-      console.log('  K-score:  ' + e.k_score.composite + '  (gate=0.85)');
+      console.log('  K-score for ' + path.basename(ap) + ': ' + e.k_score.composite + '  (gate >= 0.85)');
       console.log('  ships:    ' + (e.k_score.ships ? 'YES' : 'NO'));
       return;
     }
@@ -3264,7 +3274,7 @@ async function cmdTune(args) {
       try {
         const r = await tune.promoteRevision({ artifactPath: ap, revision: rev, force });
         console.log('ok  promoted ' + r.promoted + '  (prev=' + (r.previous || 'none') + ')');
-        console.log('    K-score: ' + r.k_score.composite);
+        console.log('    K-score for ' + path.basename(ap) + ': ' + r.k_score.composite);
       } catch (e) {
         console.error(e.message);
         process.exit(e.code === 'K_GATE' ? 2 : 1);
@@ -4078,7 +4088,6 @@ function chatPlanAction(prompt, reply) {
 function chatConfirm(label) {
   if (!process.stdin.isTTY) return Promise.resolve(true);
   return new Promise(function (resolve) {
-    const readline = require('readline');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     rl.question(color('36', 'kolm') + ' ' + color('2', '>') + ' about to run: ' + color('1', label) + ' . proceed? [Y/n] ', function (a) {
       rl.close();
@@ -4100,6 +4109,9 @@ async function chatRunAction(plan) {
     else if (plan.action === 'seeds_generate') await cmdSeeds(plan.argv);
     else if (plan.action === 'upgrade')     await cmdUpgrade(plan.argv);
     else if (plan.action === 'doctor')      await cmdDoctor(plan.argv);
+    else if (plan.action === 'verify')      await cmdVerify(plan.argv);
+    else if (plan.action === 'run')         await cmdRun(plan.argv);
+    else if (plan.action === 'compile_spec') await cmdCompile(plan.argv);
     else return { ok: false, error: 'unknown action: ' + plan.action };
     return { ok: true };
   } catch (e) {
@@ -4133,6 +4145,397 @@ function chatPrintNextSteps(plan) {
   }
 }
 
+// --- build-a-model funnel ---------------------------------------------------
+// Multi-turn stateful guide for the "i wanna build a model" flow. Founder ask:
+// "I put in NL I wanna build a model, I have an example or few, you need to
+// be able to guide the user through every single step in a funnel."
+//
+// Phases: detect -> task -> examples -> confirm -> compile -> verify -> run -> done.
+// Each step is ONE prompt + waits for the next user line. State lives in a
+// closure object inside cmdChat() so it persists across readline turns.
+//
+// Triggers on NL phrases that mean "i want to build a thing". Kept narrow
+// enough that single-shot intents ("show my status", "compile <task>") still
+// route to the existing cmd* dispatcher.
+function chatBuildFunnelTrigger(prompt) {
+  const p = chatLc(prompt);
+  if (!p) return false;
+  // Don't hijack prompts that already specify a concrete compile (those go
+  // through the existing compile dispatcher with a real task body).
+  if (/^compile\s+(?!a\s|an\s)/.test(p)) return false;
+  // Direct "i wanna build a model" family.
+  if (/\b(i\s+(wanna|want\s+to|wish\s+to|would\s+like\s+to)|lets|let\'?s)\s+(build|make|create|train|compile|ship)\s+(a|an|me|my|some)?\s*(model|ai|recipe|artifact|kolm|classifier|redactor|summari[sz]er|extractor)\b/.test(p)) return true;
+  // "build me a model" / "make me an ai".
+  if (/\b(build|make|create)\s+me\s+(a|an)\s+(model|ai|recipe|artifact|kolm|classifier|redactor|summari[sz]er|extractor)\b/.test(p)) return true;
+  // "i have examples" / "i have a few examples" / "with these examples".
+  if (/\b(i\s+have|we\s+have)\s+(a\s+few\s+|some\s+|several\s+)?examples\b/.test(p)) return true;
+  if (/\b(with|using)\s+(these|some|my|a\s+few)\s+examples\b/.test(p)) return true;
+  // Generic "build a <thing>" / "build an ai" with no leading verb fragment.
+  if (/^(build|make|create|train)\s+(a|an)\s+(model|ai|classifier|redactor|summari[sz]er|extractor)\b/.test(p)) return true;
+  // "compile a model" / "compile an ai" - explicit but task-less compile asks.
+  if (/^compile\s+(a|an)\s+(model|ai)\b/.test(p)) return true;
+  return false;
+}
+
+// Phase-machine factory.
+function chatCreateBuildFunnel() {
+  return {
+    phase: 'detect',
+    task: null,
+    template: null,
+    artifact_name: null,
+    examples_path: null,
+    examples_source: null,
+    pasted_jsonl: [],     // accumulator for multi-line paste in examples phase
+    compile_result: null,
+    verify_result: null,
+    started_at: Date.now(),
+  };
+}
+
+// Format the prompt for the current phase. Returns a string the caller
+// prints with the standard `kolm > ` bubble head. Each phase is ONE
+// question. No wall of text.
+function chatFunnelPromptFor(state) {
+  if (state.phase === 'detect') {
+    return "got it. what should this model do? (e.g. 'redact PHI from doctor notes', 'classify support tickets by urgency', 'extract invoice fields'). type a sentence, or 'exit' to bail.";
+  }
+  if (state.phase === 'examples') {
+    return "any examples? options:\n  paste JSONL (one row per line, e.g. {\"input\":\"...\",\"expected\":\"...\"})\n  give a path (./seeds.jsonl)\n  type 'no' to bootstrap a starter pack\n  type 'exit' to bail";
+  }
+  if (state.phase === 'confirm') {
+    const label = 'kolm new ' + state.artifact_name + ' --from ' + state.template +
+      (state.examples_path ? '  then  kolm compile "' + state.task + '" --examples ' + state.examples_path : '');
+    return "i'll scaffold this as " + color('1', state.artifact_name + '.kolm') + " using the " + color('1', state.template) + " template" +
+      (state.examples_path ? " with examples from " + color('1', state.examples_path) : " (starter recipe, you can edit before compile)") +
+      ". plan:\n  " + label + "\nproceed? (y/n, or type a new name)";
+  }
+  if (state.phase === 'verify') {
+    return "compiled. want me to run " + color('1', 'kolm verify') + " to confirm chain + signatures? (y/n)";
+  }
+  if (state.phase === 'run') {
+    return "verified. want to test it on a sample input now? (y/n, or paste an input string)";
+  }
+  return null;
+}
+
+// Given current state + user input, advance the state machine one step.
+// Returns { newState, narration, action?, postAction?, finished, hint? }.
+async function chatFunnelStep(state, input, opts) {
+  const optsX = opts || {};
+  const airgap = !!optsX.airgap;
+  void optsX;
+  const trimmed = chatTrim(input);
+  const lower = chatLc(trimmed);
+  // Bail anywhere with /exit, /quit, exit, stop, cancel.
+  if (/^(\/?(exit|quit)|stop|cancel|nevermind|never\s+mind)$/.test(lower)) {
+    state.phase = 'done';
+    return { newState: state, narration: 'funnel cancelled. nothing was built.', finished: true };
+  }
+
+  // PHASE 1 -> 2: capture task
+  if (state.phase === 'detect') {
+    if (trimmed.length < 4) {
+      return { newState: state, narration: "i need a sentence. what should the model do? (or 'exit' to bail)", finished: false };
+    }
+    state.task = trimmed;
+    state.template = chatInferTemplate(trimmed);
+    state.artifact_name = chatBuildFunnelDeriveName(trimmed, state.template);
+    state.phase = 'examples';
+    return { newState: state, narration: chatFunnelPromptFor(state), finished: false };
+  }
+
+  // PHASE 2 -> 3: examples
+  if (state.phase === 'examples') {
+    // Branch A: pasted JSONL (line starts with '{'). Accumulate consecutive
+    // JSONL lines until we see a non-JSONL line or "done" / blank line so
+    // the user can paste multiple rows back-to-back.
+    if (trimmed.startsWith('{')) {
+      const parsed = chatBuildFunnelParseJsonl(trimmed);
+      if (!parsed.ok) {
+        return { newState: state, narration: "couldn't parse JSONL: " + parsed.error + ". try again, paste a path, or type 'no'.", finished: false };
+      }
+      state.pasted_jsonl.push.apply(state.pasted_jsonl, parsed.rows);
+      // Stay in examples phase, prompt for more rows. The user can type
+      // 'done' (or 'y' / blank line) to commit, or paste more rows.
+      return { newState: state, narration: 'queued ' + state.pasted_jsonl.length + ' row(s). paste more, or type ' + color('1', 'done') + ' to use these.', finished: false };
+    }
+    // Commit accumulated rows.
+    if (state.pasted_jsonl.length > 0 && /^(done|y|yes|ok|that\'?s\s+it)$/.test(lower)) {
+      const outPath = chatBuildFunnelWriteSeeds(state.pasted_jsonl, state.artifact_name);
+      const count = state.pasted_jsonl.length;
+      state.examples_path = outPath;
+      state.examples_source = 'paste';
+      state.pasted_jsonl = [];
+      state.phase = 'confirm';
+      return { newState: state, narration: 'saved ' + count + ' example(s) to ' + color('1', outPath) + '.\n\n' + chatFunnelPromptFor(state), finished: false };
+    }
+    // Branch B: file path
+    if (/\.(jsonl|json|csv)$/i.test(trimmed) || trimmed.startsWith('./') || trimmed.startsWith('/') || /^[A-Za-z]:[\\/]/.test(trimmed) || trimmed.indexOf('/') >= 0 || trimmed.indexOf('\\') >= 0) {
+      const resolved = path.resolve(process.cwd(), trimmed);
+      if (!fs.existsSync(resolved)) {
+        return { newState: state, narration: "i don't see a file at " + trimmed + ". try a different path, paste JSONL, or type 'no'.", finished: false };
+      }
+      state.examples_path = trimmed;
+      state.examples_source = 'path';
+      state.phase = 'confirm';
+      return { newState: state, narration: "using examples from " + color('1', trimmed) + ".\n\n" + chatFunnelPromptFor(state), finished: false };
+    }
+    // Branch C: "no" / "none" / "skip"
+    if (/^(no|n|none|skip|nothing|no examples)$/.test(lower) || /\b(no\s+examples|don\'?t\s+have)/.test(lower)) {
+      const tmplName = state.template;
+      const seedTask = tmplName === 'redactor' ? 'phi-redactor' : null;
+      if (seedTask && PUBLIC_SEEDS[seedTask] && PUBLIC_SEEDS[seedTask].ships) {
+        const dir = findPublicSeedsDir();
+        const src = dir ? path.join(dir, PUBLIC_SEEDS[seedTask].file) : null;
+        if (src && fs.existsSync(src)) {
+          const outPath = path.resolve(process.cwd(), 'seeds.jsonl');
+          if (!fs.existsSync(outPath)) {
+            const raw = fs.readFileSync(src, 'utf8');
+            fs.writeFileSync(outPath, raw);
+          }
+          state.examples_path = 'seeds.jsonl';
+          state.examples_source = 'bootstrap';
+          state.phase = 'confirm';
+          return { newState: state, narration: "no problem. bootstrapped " + color('1', seedTask) + " public-domain starter pack into " + color('1', 'seeds.jsonl') + ". " + PUBLIC_SEEDS[seedTask].note + ".\n\n" + chatFunnelPromptFor(state), finished: false };
+        }
+      }
+      state.examples_path = null;
+      state.examples_source = 'none';
+      state.phase = 'confirm';
+      return { newState: state, narration: "ok. i'll scaffold the spec with the built-in starter recipe. you can edit recipes[0].source before compile, or add seeds.jsonl later.\n\n" + chatFunnelPromptFor(state), finished: false };
+    }
+    return { newState: state, narration: "i didn't catch that. paste JSONL (line starts with '{'), give a path ending in .jsonl, or type 'no'.", finished: false };
+  }
+
+  // PHASE 3 -> 4: confirm + dispatch scaffold
+  if (state.phase === 'confirm') {
+    if (lower === '' || /^(y|yes|yeah|yep|sure|ok|okay|go|proceed|do it|ship it)$/.test(lower)) {
+      // proceed
+    } else if (/^(n|no|nope|cancel|stop)$/.test(lower)) {
+      state.phase = 'done';
+      return { newState: state, narration: 'cancelled. nothing was built.', finished: true };
+    } else {
+      const candidate = slugify(trimmed);
+      if (candidate && candidate.length >= 3 && candidate.length <= 40 && candidate !== 'artifact') {
+        state.artifact_name = candidate;
+        return { newState: state, narration: "renamed to " + color('1', state.artifact_name + '.kolm') + ".\n\n" + chatFunnelPromptFor(state), finished: false };
+      }
+      return { newState: state, narration: "i couldn't read that as y/n or a valid name. try 'y' to proceed, 'n' to cancel, or a short slug.", finished: false };
+    }
+    state.phase = 'compile';
+    const newPlan = {
+      action: 'new',
+      argv: [state.artifact_name, '--from', state.template, '--yes'],
+      label: 'kolm new ' + state.artifact_name + ' --from ' + state.template,
+      expensive: false,
+    };
+    return { newState: state, narration: 'scaffolding...', action: newPlan, postAction: 'compile', finished: false };
+  }
+
+  // PHASE 4: after scaffold ran, decide compile path
+  if (state.phase === 'compile') {
+    if (airgap) {
+      state.phase = 'done';
+      const lines = [
+        'scaffold ready: ' + color('1', state.artifact_name + '.spec.json'),
+        'airgap mode is on, so i did not fire a cloud compile.',
+        '',
+        'ship checklist:',
+        '  edit:    open ' + state.artifact_name + '.spec.json and tweak recipes[0].source',
+        '  build:   kolm compile --spec ' + state.artifact_name + '.spec.json' + (state.examples_path ? ' --examples ' + state.examples_path : ''),
+        '  run:     kolm run ' + state.artifact_name + '.kolm \'{"text":"<input>"}\'',
+        '  verify:  kolm verify ' + state.artifact_name + '.kolm',
+      ];
+      if (state.examples_source === 'bootstrap') {
+        lines.push('  note:    ' + color('2', 'examples are public-domain starter rows. add your own real rows for honest K-score.'));
+      }
+      return { newState: state, narration: lines.join('\n'), finished: true };
+    }
+    if (!state.examples_path) {
+      state.phase = 'done';
+      const lines = [
+        'scaffold ready: ' + color('1', state.artifact_name + '.spec.json'),
+        '',
+        'next: edit recipes[0].source, then compile locally (no cloud needed):',
+        '  kolm compile --spec ' + state.artifact_name + '.spec.json',
+        '',
+        'or add some examples first:',
+        '  kolm seeds bootstrap --task phi-redactor   # public-domain starter',
+        '  kolm seeds new ' + state.template + '                  # 5-row scaffold to edit',
+      ];
+      return { newState: state, narration: lines.join('\n'), finished: true };
+    }
+    const compilePlan = {
+      action: 'compile_cloud',
+      argv: [state.task, '--examples', state.examples_path],
+      label: 'kolm compile "' + state.task + '" --examples ' + state.examples_path,
+      expensive: true,
+    };
+    state.phase = 'verify';
+    return { newState: state, narration: 'kicking off compile with your examples. this hits the cloud...', action: compilePlan, postAction: 'verify_prompt', finished: false };
+  }
+
+  // PHASE 5: verify gate (y/n)
+  if (state.phase === 'verify') {
+    if (/^(y|yes|yeah|sure|ok|okay|go|proceed)$/.test(lower) || lower === '') {
+      const candidate = chatBuildFunnelFindArtifact(state.artifact_name);
+      if (!candidate) {
+        state.phase = 'run';
+        return { newState: state, narration: "i can't find the compiled .kolm in ~/.kolm/artifacts/ or cwd. skipping verify.\n\n" + chatFunnelPromptFor(state), finished: false };
+      }
+      const verifyPlan = {
+        action: 'verify',
+        argv: [candidate],
+        label: 'kolm verify ' + candidate,
+        expensive: false,
+      };
+      state.phase = 'run';
+      return { newState: state, narration: 'verifying...', action: verifyPlan, postAction: 'run_prompt', finished: false };
+    }
+    if (/^(n|no|nope|skip)$/.test(lower)) {
+      state.phase = 'run';
+      return { newState: state, narration: 'skipping verify.\n\n' + chatFunnelPromptFor(state), finished: false };
+    }
+    return { newState: state, narration: "y / n? (or 'exit' to bail)", finished: false };
+  }
+
+  // PHASE 6: run gate
+  if (state.phase === 'run') {
+    if (/^(n|no|nope|skip)$/.test(lower)) {
+      state.phase = 'done';
+      return chatFunnelDoneSummary(state);
+    }
+    if (/^(y|yes|yeah|sure|ok|okay|go|proceed)$/.test(lower) || lower === '') {
+      return { newState: state, narration: "paste an input string (just the text), or type 'skip' to finish.", finished: false };
+    }
+    const candidate = chatBuildFunnelFindArtifact(state.artifact_name);
+    if (!candidate) {
+      state.phase = 'done';
+      const done = chatFunnelDoneSummary(state);
+      done.narration = "i can't find a compiled .kolm to run. " + done.narration;
+      return done;
+    }
+    const runArgv = [candidate, JSON.stringify({ text: trimmed })];
+    const runPlan = {
+      action: 'run',
+      argv: runArgv,
+      label: 'kolm run ' + candidate + ' \'' + JSON.stringify({ text: trimmed }) + '\'',
+      expensive: false,
+    };
+    state.phase = 'done';
+    return { newState: state, narration: 'running...', action: runPlan, postAction: 'summary', finished: true };
+  }
+
+  state.phase = 'done';
+  return chatFunnelDoneSummary(state);
+}
+
+function chatFunnelDoneSummary(state) {
+  const lines = [
+    'shipped ' + color('1', state.artifact_name + '.kolm') + '. checklist:',
+    '  run:     kolm run ' + state.artifact_name + '.kolm \'{"text":"<input>"}\'',
+    '  more:    edit seeds.jsonl, then kolm compile "' + state.task + '" --examples seeds.jsonl',
+    '  share:   kolm push   ' + color('2', '(auth required)'),
+  ];
+  return { newState: state, narration: lines.join('\n'), finished: true };
+}
+
+// Derive a clean artifact slug from the user's task description.
+function chatBuildFunnelDeriveName(taskDesc, template) {
+  const lower = chatLc(taskDesc);
+  const m1 = lower.match(/\b(phi|pii|ssn|email|phone|address)\b/);
+  if (template === 'redactor' && m1) return m1[1].toLowerCase() + '-redactor';
+  const m2 = lower.match(/\b(ticket|email|message|invoice|receipt|review|post|doctor|note|customer|order)s?\b/);
+  if (m2) {
+    const noun = m2[1].toLowerCase();
+    if (template === 'classifier') return noun + '-classifier';
+    if (template === 'extractor')  return noun + '-extractor';
+    if (template === 'redactor')   return noun + '-redactor';
+    if (template === 'summarizer') return noun + '-summarizer';
+  }
+  return chatInferArtifactName(taskDesc, template);
+}
+
+// Parse pasted JSONL. Tolerates code-fence wrappers and blank lines.
+function chatBuildFunnelParseJsonl(text) {
+  const cleaned = String(text || '')
+    .replace(/^```(?:jsonl|json)?/i, '')
+    .replace(/```$/i, '')
+    .trim();
+  const lines = cleaned.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+  if (!lines.length) return { ok: false, error: 'no lines found' };
+  const rows = [];
+  for (let i = 0; i < lines.length; i++) {
+    try {
+      const r = JSON.parse(lines[i]);
+      if (r && typeof r === 'object') rows.push(r);
+    } catch (e) {
+      return { ok: false, error: 'line ' + (i + 1) + ': ' + (e && e.message || 'parse error') };
+    }
+  }
+  if (!rows.length) return { ok: false, error: 'no valid rows' };
+  return { ok: true, rows: rows };
+}
+
+// Persist pasted rows to ./seeds.jsonl in cwd (auto-bumps if file exists).
+function chatBuildFunnelWriteSeeds(rows, _artifactName) {
+  let outPath = path.resolve(process.cwd(), 'seeds.jsonl');
+  if (fs.existsSync(outPath)) {
+    for (let i = 2; i <= 10; i++) {
+      const candidate = path.resolve(process.cwd(), 'seeds-' + i + '.jsonl');
+      if (!fs.existsSync(candidate)) { outPath = candidate; break; }
+    }
+  }
+  const body = rows.map(function (r) { return JSON.stringify(Object.assign({}, r, { source: 'user' })); }).join('\n') + '\n';
+  fs.writeFileSync(outPath, body);
+  return path.relative(process.cwd(), outPath) || outPath;
+}
+
+// Find the most recent compiled artifact matching the name slug.
+function chatBuildFunnelFindArtifact(artifactName) {
+  try {
+    const cwd = process.cwd();
+    const direct = path.join(cwd, artifactName + '.kolm');
+    if (fs.existsSync(direct)) return direct;
+    let entries = [];
+    try { entries = fs.readdirSync(cwd).filter(function (f) { return f.endsWith('.kolm') && f.indexOf(artifactName) >= 0; }); } catch (_e) {}
+    if (entries.length) {
+      entries.sort(function (a, b) {
+        return fs.statSync(path.join(cwd, b)).mtimeMs - fs.statSync(path.join(cwd, a)).mtimeMs;
+      });
+      return path.join(cwd, entries[0]);
+    }
+    if (fs.existsSync(ARTIFACTS_DIR)) {
+      let cand = fs.readdirSync(ARTIFACTS_DIR).filter(function (f) { return f.endsWith('.kolm'); });
+      if (cand.length) {
+        cand.sort(function (a, b) {
+          return fs.statSync(path.join(ARTIFACTS_DIR, b)).mtimeMs - fs.statSync(path.join(ARTIFACTS_DIR, a)).mtimeMs;
+        });
+        return path.join(ARTIFACTS_DIR, cand[0]);
+      }
+    }
+  } catch (_e) { /* ignore */ }
+  return null;
+}
+
+// Detect funnel-start prompts that already contain BOTH the trigger and a
+// task body in one line ("i wanna build a redactor for phi notes").
+function chatBuildFunnelExtractEmbeddedTask(prompt) {
+  const trimmed = chatTrim(prompt);
+  if (!trimmed) return null;
+  let task = trimmed
+    .replace(/^(please\s+)?(i\s+(wanna|want\s+to|wish\s+to|would\s+like\s+to)\s+)?(build|make|create|train|compile|ship)\s+/i, '')
+    .replace(/^(me\s+)?(a|an)\s+/i, '')
+    .replace(/^(model|ai|recipe|artifact|kolm)\s+(to|that|which|for)\s+/i, '')
+    .trim();
+  if (!task) return null;
+  if (/^(model|ai|recipe|artifact|redactor|summari[sz]er|classifier|extractor)$/i.test(task)) return null;
+  if (task.length < 6) return null;
+  task = task.replace(/\s*[,\.;]\s*(i\s+have|we\s+have)\s+(a\s+few\s+|some\s+)?examples?.*$/i, '').trim();
+  return task && task.length >= 4 ? task : null;
+}
+
 async function cmdChat(args) {
   args = args || [];
   if (args.indexOf('--help') >= 0 || args.indexOf('-h') >= 0) {
@@ -4159,6 +4562,11 @@ async function cmdChat(args) {
   // --once path is explicitly one-shot. Auto-yes in both so chat does not
   // hang forever waiting on stdin.
   const effectiveAutoYes = autoYes || onceMode || !process.stdin.isTTY;
+
+  // build-a-model funnel state. null = funnel inactive. When set, onLine
+  // routes the next line into chatFunnelStep() rather than the normal
+  // intent dispatcher. Persists across turns within this chat session.
+  let buildFunnelState = null;
 
   const c = loadConfig();
 
@@ -4247,11 +4655,82 @@ async function cmdChat(args) {
     return true;
   }
 
+  // Print the kolm reply bubble (same shape renderChatReply uses for the
+  // narration line) for funnel-driven replies. Indented continuation lines
+  // line up under the bubble head.
+  function printFunnelReply(narration) {
+    const head = color('36', 'kolm') + ' ' + color('2', '>') + ' ';
+    const lines = String(narration || '').split('\n');
+    console.log(head + lines[0]);
+    for (let i = 1; i < lines.length; i++) {
+      console.log('       ' + lines[i]);
+    }
+  }
+
+  // Drive one turn of the build-a-model funnel. Returns:
+  //   { handled: true, finished, asked }
+  //   - handled: always true if buildFunnelState was non-null on entry
+  //   - finished: true when the funnel reached 'done' (state should be cleared)
+  //   - asked: true if the funnel printed a new prompt and is waiting on input
+  // Caller is responsible for re-arming the readline prompt.
+  async function runFunnelTurn(input) {
+    if (!buildFunnelState) return { handled: false };
+    const result = await chatFunnelStep(buildFunnelState, input, { airgap: airgapMode, autoYes: effectiveAutoYes });
+    if (result.narration) printFunnelReply(result.narration);
+    // Dispatch any queued action (scaffold/compile/verify/run). Cheap actions
+    // print "about to run:" and dispatch immediately; expensive actions
+    // honor autoYes (which is true in --once / non-TTY contexts).
+    if (result.action) {
+      const plan = result.action;
+      let go = true;
+      if (plan.expensive && !effectiveAutoYes) {
+        go = await chatConfirm(plan.label);
+      } else {
+        console.log(color('36', 'kolm') + ' ' + color('2', '>') + ' about to run: ' + color('1', plan.label));
+      }
+      if (go) {
+        const r = await chatRunAction(plan);
+        // If the dispatched action was the scaffold step, re-enter the
+        // funnel one more time so it can decide whether to compile (or print
+        // the airgap checklist). chatFunnelStep advanced phase to 'compile'
+        // already; pass an empty line to re-drive.
+        if (r.ok && result.postAction === 'compile') {
+          const cont = await chatFunnelStep(buildFunnelState, '', { airgap: airgapMode, autoYes: effectiveAutoYes });
+          if (cont.narration) printFunnelReply(cont.narration);
+          if (cont.action) {
+            const plan2 = cont.action;
+            let go2 = true;
+            if (plan2.expensive && !effectiveAutoYes) go2 = await chatConfirm(plan2.label);
+            else console.log(color('36', 'kolm') + ' ' + color('2', '>') + ' about to run: ' + color('1', plan2.label));
+            if (go2) await chatRunAction(plan2);
+          }
+          if (cont.finished) {
+            buildFunnelState = null;
+            return { handled: true, finished: true, asked: false };
+          }
+        }
+      } else {
+        console.log(color('2', 'kolm > skipped. (no action taken)'));
+      }
+    }
+    if (result.finished) {
+      buildFunnelState = null;
+      return { handled: true, finished: true, asked: false };
+    }
+    return { handled: true, finished: false, asked: true };
+  }
+
   if (onceMode) {
     let promptText = String(oncePrompt == null ? '' : oncePrompt).replace(/^["']|["']$/g, '');
     if (promptText === '-' || promptText === '') {
       promptText = readStdinSync();
     }
+    // --once mode is single-shot: cannot ask follow-ups. If the prompt looks
+    // like a build-a-model funnel trigger, fall through to single-shot
+    // scaffold but print a hint suggesting interactive mode. The hint is
+    // suppressed in --json so the JSON contract stays a single parseable
+    // document.
+    const funnelHinted = !jsonMode && chatBuildFunnelTrigger(promptText);
     // Local-only actions take the short-circuit path: no cloud roundtrip.
     // We apply this in BOTH normal and --json mode because the cloud's
     // /v1/assistant fires a real compile job for any "make/build/create"
@@ -4284,6 +4763,10 @@ async function cmdChat(args) {
       }
       const r = await chatRunAction(plan);
       if (r.ok) chatPrintNextSteps(plan);
+      if (funnelHinted) {
+        console.log('');
+        console.log(color('2', 'tip: drop --once to enter the build funnel interactively (`kolm chat`).'));
+      }
       // Set exit code and return rather than process.exit() so lingering
       // handles (open fetch sockets from cmdDoctor's cloud reachability check,
       // etc.) drain cleanly. process.exit() while a UV handle is closing
@@ -4303,6 +4786,10 @@ async function cmdChat(args) {
     }
     renderChatReply(reply);
     const acted = await maybeAct(reply, promptText);
+    if (funnelHinted) {
+      console.log('');
+      console.log(color('2', 'tip: drop --once to enter the build funnel interactively (`kolm chat`).'));
+    }
     // If we dispatched, exit on the action result; otherwise on reply.ok.
     if (!acted) {
       process.exitCode = reply && reply.ok === false ? EXIT.EXECUTION : EXIT.OK;
@@ -4312,8 +4799,12 @@ async function cmdChat(args) {
     return;
   }
 
-  const readline = require('readline');
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  // readline is imported at the top of the file. For piped stdin (non-TTY)
+  // we set terminal: false so readline emits 'line' events as they arrive
+  // from the pipe; for an actual TTY we set terminal: true for interactive
+  // prompt rendering.
+  const rlTerminal = !!process.stdin.isTTY;
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: rlTerminal });
 
   console.log(color('2', 'kolm chat') + ' . interactive assistant (action mode)');
   console.log(color('2', "type a prompt, " + color('1', '/help') + ' for commands, ' + color('1', '/exit') + ' or Ctrl+C to quit'));
@@ -4322,31 +4813,102 @@ async function cmdChat(args) {
   if (!c.api_key && !airgapMode) console.log(color('33', 'no api key. replies will use the offline rule-based parser. run: kolm login'));
   console.log('');
 
-  const promptOnce = function () { rl.question(color('32', 'you ') + color('2', '> '), onLine); };
+  // Line-event + queue architecture. Reading via rl.question(callback) breaks
+  // when the callback is async on piped stdin: readline emits 'close' on EOF
+  // before the next question() is wired up, so subsequent lines drop. The
+  // queue serializes async processing while readline freely buffers input.
+  const lineQueue = [];
+  let processing = false;
+  let rlClosed = false;
+  let writingPrompt = false;
+
+  function writeYouPrompt() {
+    if (rlTerminal && !writingPrompt) {
+      writingPrompt = true;
+      process.stdout.write(color('32', 'you ') + color('2', '> '));
+      writingPrompt = false;
+    }
+  }
+
+  async function drainQueue() {
+    if (processing) return;
+    processing = true;
+    try {
+      while (lineQueue.length > 0) {
+        const line = lineQueue.shift();
+        await onLine(line);
+      }
+    } finally {
+      processing = false;
+    }
+    if (rlClosed) {
+      process.stdout.write('\n' + color('2', 'bye') + '\n');
+      process.exit(EXIT.OK);
+    } else {
+      writeYouPrompt();
+    }
+  }
+
+  const promptOnce = function () {
+    // No-op in the queue architecture: prompts are written by writeYouPrompt()
+    // before each read. Kept as a named function so existing call sites stay
+    // readable.
+    writeYouPrompt();
+  };
 
   const onLine = async function (line) {
     const input = chatTrim(line);
-    if (!input) { promptOnce(); return; }
+    if (!input) return;
 
     if (input === '/exit' || input === '/quit') { rl.close(); return; }
-    if (input === '/help') { printChatHelp(); promptOnce(); return; }
-    if (input === '/clear') { process.stdout.write('\x1b[2J\x1b[H'); promptOnce(); return; }
+    if (input === '/help') { printChatHelp(); return; }
+    if (input === '/clear') { process.stdout.write('\x1b[2J\x1b[H'); return; }
     if (input === '/airgap') {
       airgapMode = !airgapMode;
       console.log(color('2', 'airgap mode: ' + (airgapMode ? 'on' : 'off')));
-      promptOnce();
       return;
     }
     if (input === '/online') {
       airgapMode = false;
       console.log(color('2', 'airgap mode: off'));
-      promptOnce();
       return;
     }
     if (input === '/yes') {
       autoYes = !autoYes;
       console.log(color('2', 'auto-confirm: ' + (autoYes ? 'on' : 'off')));
-      promptOnce();
+      return;
+    }
+
+    // Funnel mid-flight: route this line into the build-a-model state machine
+    // rather than the single-shot intent dispatcher.
+    if (buildFunnelState) {
+      try {
+        await runFunnelTurn(input);
+      } catch (e) {
+        console.log(color('31', 'error: ') + (e && e.message || e));
+        buildFunnelState = null;
+      }
+      console.log('');
+      return;
+    }
+
+    // Funnel start: NL phrases like "i wanna build a model" / "build me an ai"
+    // open the multi-turn build flow. If the same line also includes a task
+    // body, jump straight to the examples step.
+    if (chatBuildFunnelTrigger(input)) {
+      buildFunnelState = chatCreateBuildFunnel();
+      const embeddedTask = chatBuildFunnelExtractEmbeddedTask(input);
+      if (embeddedTask && embeddedTask.length >= 4) {
+        try {
+          await runFunnelTurn(embeddedTask);
+        } catch (e) {
+          console.log(color('31', 'error: ') + (e && e.message || e));
+          buildFunnelState = null;
+        }
+      } else {
+        printFunnelReply(chatFunnelPromptFor(buildFunnelState));
+      }
+      console.log('');
       return;
     }
 
@@ -4384,11 +4946,20 @@ async function cmdChat(args) {
       console.log(color('31', 'error: ') + (e && e.message || e));
     }
     console.log('');
-    promptOnce();
   };
 
-  rl.on('close', function () { process.stdout.write('\n' + color('2', 'bye') + '\n'); process.exit(EXIT.OK); });
-  promptOnce();
+  rl.on('line', function (line) {
+    lineQueue.push(line);
+    drainQueue();
+  });
+  rl.on('close', function () {
+    rlClosed = true;
+    // Trigger the drainer one more time so any pending lines finish before
+    // we print "bye" and exit.
+    drainQueue();
+  });
+  // Initial prompt for TTY users (queue path handles subsequent prompts).
+  writeYouPrompt();
 }
 
 // ---------- kolm team ----------

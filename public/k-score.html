@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
 <title>K-score ·kolm</title>
-<meta name="description" content="K-score is the gate that decides whether a .kolm artifact is allowed to ship. Five components, one number, no eval no ship.">
+<meta name="description" content="K-score is a per-artifact gate: every .kolm file gets its own score from its own eval set. Not a leaderboard for the underlying base model. Five components, one number, no eval no ship.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
 <script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
 
 <meta property="og:site_name" content="kolm">
-<meta property="og:title" content="K-score ·one number that decides whether .kolm ships">
-<meta property="og:description" content="Accuracy, coverage, size, latency, and cost rolled into a composite gate. No eval, no ship.">
+<meta property="og:title" content="K-score ·one number per artifact decides whether it ships">
+<meta property="og:description" content="Per-artifact, not per-model. Each .kolm gets its own K-score from its own eval set. Accuracy, coverage, size, latency, cost.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kolm.ai/k-score">
 <meta property="og:image" content="https://kolm.ai/og-card.svg">
-<meta name="twitter:title" content="K-score ·one number that decides whether .kolm ships">
-<meta name="twitter:description" content="Accuracy, coverage, size, latency, and cost rolled into a composite gate. No eval, no ship.">
+<meta name="twitter:title" content="K-score ·one number per artifact decides whether it ships">
+<meta name="twitter:description" content="Per-artifact, not per-model. Each .kolm gets its own K-score from its own eval set.">
 <meta name="twitter:image" content="https://kolm.ai/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://kolm.ai/k-score">
@@ -225,9 +225,8 @@
 <section class="hero">
   <div class="wrap">
     <div class="eyebrow"><span class="num">04</span> ·The gate</div>
-    <h1>One number decides if it ships.</h1>
-    <p class="lede">Every <code>.kolm</code> artifact carries a single decimal, <b>K</b>, between 0 and 1.
-      Below the gate, kolm refuses to write the file. No score, no eval, no ship.</p>
+    <h1>One number per artifact. It decides if that artifact ships.</h1>
+    <p class="lede"><b>Per-artifact, not per-model.</b> Every <code>.kolm</code> file carries its own single decimal, <b>K</b>, computed against its own frozen eval set. <code>phi-redactor.kolm</code> has one K. <code>triage.kolm</code> has its own. Neither is a leaderboard for the base model underneath. Below the gate, kolm refuses to write the file. No eval, no ship.</p>
     <div class="formula" aria-label="K-score formula">
       <span class="lab">Definition</span>
       <span class="var">K</span>  <span class="op">=</span>  <span class="var">w<sub>a</sub></span>·Accuracy <span class="op">+</span>
@@ -237,10 +236,10 @@
       <span class="var">w<sub>v</sub></span>·Coverage<br>
       <span class="op">where</span>  &sum; <span class="var">w</span> <span class="op">=</span> 1
     </div>
-    <p>(Weighted average of five measurable qualities, normalized against the frontier model you started from.)</p>
+    <p>(Weighted average of five measurable qualities, normalized against the frontier model this artifact was distilled from.)</p>
     <p>Components are normalized to <code>[0,1]</code> against the frontier baseline
-      the artifact was distilled from. <b>1.0</b> means the artifact ties or beats
-      frontier on every component. <b>0.0</b> means it doesn'exist.</p>
+      this artifact was distilled from. <b>1.0</b> means the artifact ties or beats
+      frontier on every component for <i>its task</i>. <b>0.0</b> means it doesn't exist. Two artifacts both scoring 0.94 are each ship-ready against their own eval set; they are not "equivalently good" because the eval sets differ.</p>
 
   </div>
 </section>
@@ -304,7 +303,7 @@
     <pre><span class="com"># just the number, for CI gates, scripts, dashboards</span>
 $ kolm score <span class="key">support-triage.kolm</span>
 task: triage support email, output {label,severity}
-  composite: <span class="key">0.94</span>
+K-score for support-triage.kolm: <span class="key">0.94</span>  (gate &ge; 0.85 - pass)
   accuracy:  97.4%
   coverage:  92.0%
   size:      38.0MB
@@ -480,11 +479,11 @@ $ kolm inspect <span class="key">support-triage.kolm</span>
     <p class="lede">Every model card in the wild today is a tasteful menu of cherry-picked plots.
       You read down the page and never decide. <b>K is the decision.</b></p>
     <p>Every component is recoverable, but the gate hides the wiring.
-      A green K means the artifact passed its own tests, fits on the device,
+      A green K means <b>this artifact</b> passed <b>its own</b> tests, fits on the device,
       runs faster than frontier, costs nothing to invoke, and the recipe pack
       covers most of the outputs it&rsquo;ll be asked for. A single decimal lets a
-      CI pipeline gate a deploy. Lets a registry rank artifacts. Lets a phone
-      decide whether to download.</p>
+      CI pipeline gate a deploy. Lets a registry rank artifacts within the same task. Lets a phone
+      decide whether to download. The K travels with the file; pick up the artifact, you pick up its score.</p>
     <p>If you don'like 0.85, override it. The number is the contract; the
       threshold is the policy. They're separate on purpose.</p>
     <div class="cta-row">

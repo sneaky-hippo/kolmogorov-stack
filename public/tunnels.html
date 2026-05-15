@@ -219,17 +219,65 @@
       for (const t of r.tunnels) {
         const row = document.createElement('div');
         row.style.cssText = 'background:var(--bg-elev);border:1px solid var(--line-strong);border-radius:8px;padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap';
-        row.innerHTML = `
-          <div style="min-width:0;flex:1">
-            <div style="font-weight:500;font-size:15px">${esc(t.name || '(unnamed)')}</div>
-            <div style="font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);margin-top:3px">${esc(t.token)}</div>
-            <div style="font-family:var(--mono);font-size:12px;color:var(--ink);margin-top:8px;word-break:break-all"><a href="${esc(t.public_url)}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">${esc(t.public_url)}</a></div>
-            <div style="font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin-top:6px">${t.live ? '<span style="color:var(--good)">live</span>' : 'idle'} &middot; ${t.requests_count || 0} req &middot; expires ${esc((t.expires_at || '').slice(0,10))}</div>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <button class="btn ghost" data-action="copy" data-url="${esc(t.public_url)}" style="font-size:11px;padding:6px 10px">copy URL</button>
-            <button class="btn ghost" data-action="close" data-token="${esc(t.token)}" style="font-size:11px;padding:6px 10px">close</button>
-          </div>`;
+
+        const left = document.createElement('div');
+        left.style.cssText = 'min-width:0;flex:1';
+
+        const nameRow = document.createElement('div');
+        nameRow.style.cssText = 'font-weight:500;font-size:15px';
+        nameRow.textContent = t.name || '(unnamed)';
+        left.appendChild(nameRow);
+
+        const tokenRow = document.createElement('div');
+        tokenRow.style.cssText = 'font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);margin-top:3px';
+        tokenRow.textContent = t.token;
+        left.appendChild(tokenRow);
+
+        const urlRow = document.createElement('div');
+        urlRow.style.cssText = 'font-family:var(--mono);font-size:12px;color:var(--ink);margin-top:8px;word-break:break-all';
+        const a = document.createElement('a');
+        a.href = t.public_url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.style.cssText = 'color:var(--accent);text-decoration:underline';
+        a.textContent = t.public_url;
+        urlRow.appendChild(a);
+        left.appendChild(urlRow);
+
+        const metaRow = document.createElement('div');
+        metaRow.style.cssText = 'font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin-top:6px';
+        if (t.live) {
+          const liveSpan = document.createElement('span');
+          liveSpan.style.cssText = 'color:var(--good)';
+          liveSpan.textContent = 'live';
+          metaRow.appendChild(liveSpan);
+        } else {
+          metaRow.appendChild(document.createTextNode('idle'));
+        }
+        metaRow.appendChild(document.createTextNode(
+          ' · ' + (t.requests_count || 0) + ' req · expires ' + (t.expires_at || '').slice(0,10)
+        ));
+        left.appendChild(metaRow);
+
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;gap:6px;align-items:center';
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn ghost';
+        copyBtn.dataset.action = 'copy';
+        copyBtn.dataset.url = t.public_url;
+        copyBtn.style.cssText = 'font-size:11px;padding:6px 10px';
+        copyBtn.textContent = 'copy URL';
+        actions.appendChild(copyBtn);
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'btn ghost';
+        closeBtn.dataset.action = 'close';
+        closeBtn.dataset.token = t.token;
+        closeBtn.style.cssText = 'font-size:11px;padding:6px 10px';
+        closeBtn.textContent = 'close';
+        actions.appendChild(closeBtn);
+
+        row.appendChild(left);
+        row.appendChild(actions);
         list.appendChild(row);
       }
       $('list-sub').textContent = r.tunnels.length + ' tunnel' + (r.tunnels.length === 1 ? '' : 's');

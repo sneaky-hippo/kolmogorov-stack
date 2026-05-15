@@ -98,6 +98,16 @@ app.get('/cookbook', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'cookbook.html'));
 });
 
+// /registry — same trick. public/registry/ exists (submit.html), so without
+// an explicit pre-static handler express.static fires a 301 to /registry/.
+// /atlas alias maps onto registry.html as well.
+for (const url of ['/registry', '/atlas']) {
+  app.get(url, (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=60, must-revalidate');
+    res.sendFile(path.join(__dirname, 'public', 'registry.html'));
+  });
+}
+
 // RFC 9116 security.txt — serve from .well-known and as a top-level
 // alias. express.static skips dot-directories on some hosts, so we serve
 // explicitly to guarantee both URLs resolve.
@@ -163,7 +173,9 @@ const ROUTE_ALIASES = {
   '/signin': 'signup',
   '/login': 'signup',
 };
-for (const route of ['/', '/dashboard', '/playground', '/docs', '/registry', '/atlas', '/signup', '/signin', '/login', '/why', '/pricing', '/status', '/account', '/how-it-works', '/device', '/compile', '/run', '/recall', '/cloud', '/k-score', '/benchmarks', '/compare', '/research', '/serve', '/evolve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/legal', '/edge', '/cookbook', '/defense', '/manifesto', '/faq', '/quickstart', '/trust', '/integrations', '/press', '/vs-ollama', '/vs-rag', '/vs-fine-tune', '/vs-predibase', '/vs-openpipe', '/vs-langsmith', '/vs-mem0', '/vs-hindsight', '/vs-openai-fine-tune', '/vs-together', '/why-now', '/threat-model', '/roi', '/api', '/whitepaper', '/build-your-own', '/developers', '/solutions', '/audit-log', '/baa', '/captures', '/capture', '/enterprise', '/glossary', '/leaderboard', '/spec', '/spec/grammar', '/models', '/compute', '/troubleshooting', '/teams', '/teams/accept', '/tunnels', '/byoc', '/airgap', '/showcase', '/sdks', '/compliance-packs']) {
+// /registry + /atlas are handled BEFORE express.static (see top of file) because
+// public/registry/ exists as a subdirectory (submit.html).
+for (const route of ['/', '/dashboard', '/playground', '/docs', '/signup', '/signin', '/login', '/why', '/pricing', '/status', '/account', '/how-it-works', '/device', '/compile', '/run', '/recall', '/cloud', '/k-score', '/benchmarks', '/compare', '/research', '/serve', '/evolve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/legal', '/edge', '/cookbook', '/defense', '/manifesto', '/faq', '/quickstart', '/trust', '/integrations', '/press', '/vs-ollama', '/vs-rag', '/vs-fine-tune', '/vs-predibase', '/vs-openpipe', '/vs-langsmith', '/vs-mem0', '/vs-hindsight', '/vs-openai-fine-tune', '/vs-together', '/why-now', '/threat-model', '/roi', '/api', '/whitepaper', '/build-your-own', '/developers', '/solutions', '/audit-log', '/baa', '/captures', '/capture', '/enterprise', '/glossary', '/leaderboard', '/spec', '/spec/grammar', '/models', '/compute', '/troubleshooting', '/teams', '/teams/accept', '/tunnels', '/byoc', '/airgap', '/showcase', '/sdks', '/compliance-packs']) {
   app.get(route, (_req, res) => {
     const name = route === '/' ? 'index' : (ROUTE_ALIASES[route] || route.slice(1));
     const file = path.join(__dirname, 'public', name + '.html');

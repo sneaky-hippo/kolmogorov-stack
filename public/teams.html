@@ -190,13 +190,23 @@
         const row = document.createElement('button');
         row.type = 'button';
         row.style.cssText = 'text-align:left;background:var(--bg-elev);border:1px solid var(--line-strong);border-radius:8px;padding:14px 16px;color:inherit;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;font-family:inherit';
-        row.innerHTML = `
-          <div>
-            <div style="font-weight:500;font-size:15px">${esc(t.name)}</div>
-            <div style="font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);margin-top:3px">/${esc(t.slug)} · plan ${esc(t.plan || 'teams')} · ${t.seats_used}/${t.seats_max} seats</div>
-          </div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.06em">${esc(t.your_role || '')}</div>
-        `;
+
+        const left = document.createElement('div');
+        const nameDiv = document.createElement('div');
+        nameDiv.style.cssText = 'font-weight:500;font-size:15px';
+        nameDiv.textContent = t.name;
+        left.appendChild(nameDiv);
+        const metaDiv = document.createElement('div');
+        metaDiv.style.cssText = 'font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);margin-top:3px';
+        metaDiv.textContent = '/' + t.slug + ' · plan ' + (t.plan || 'teams') + ' · ' + t.seats_used + '/' + t.seats_max + ' seats';
+        left.appendChild(metaDiv);
+
+        const roleDiv = document.createElement('div');
+        roleDiv.style.cssText = 'font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.06em';
+        roleDiv.textContent = t.your_role || '';
+
+        row.appendChild(left);
+        row.appendChild(roleDiv);
         row.addEventListener('click', () => openTeam(t.slug));
         list.appendChild(row);
       }
@@ -214,21 +224,40 @@
       $('detail-panel').hidden = false;
       $('dt-name').textContent = r.team.name;
       $('dt-role').textContent = '/' + r.team.slug;
-      $('dt-meta').innerHTML = `plan ${esc(r.team.plan || 'teams')} · ${r.team.seats_used}/${r.team.seats_max} seats · owner ${esc(r.team.owner_tenant_id || '')}`;
+      $('dt-meta').textContent = 'plan ' + (r.team.plan || 'teams') + ' · ' + r.team.seats_used + '/' + r.team.seats_max + ' seats · owner ' + (r.team.owner_tenant_id || '');
       const members = $('dt-members');
       members.innerHTML = '';
       for (const m of (r.members || [])) {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 12px;background:var(--bg-elev);border:1px solid var(--line);border-radius:6px';
-        row.innerHTML = `
-          <div>
-            <div>${esc(m.tenant_id)}</div>
-            <div style="color:var(--ink-faint);font-size:11.5px;margin-top:2px">joined ${esc((m.joined_at || '').slice(0, 10))}</div>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute)">${esc(m.role)}</span>
-            ${m.role !== 'owner' ? `<button class="btn ghost" data-action="remove" data-tid="${esc(m.tenant_id)}" style="font-size:11px;padding:4px 8px">remove</button>` : ''}
-          </div>`;
+
+        const left = document.createElement('div');
+        const tidDiv = document.createElement('div');
+        tidDiv.textContent = m.tenant_id;
+        left.appendChild(tidDiv);
+        const joinedDiv = document.createElement('div');
+        joinedDiv.style.cssText = 'color:var(--ink-faint);font-size:11.5px;margin-top:2px';
+        joinedDiv.textContent = 'joined ' + (m.joined_at || '').slice(0, 10);
+        left.appendChild(joinedDiv);
+
+        const right = document.createElement('div');
+        right.style.cssText = 'display:flex;gap:6px;align-items:center';
+        const roleSpan = document.createElement('span');
+        roleSpan.style.cssText = 'font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute)';
+        roleSpan.textContent = m.role;
+        right.appendChild(roleSpan);
+        if (m.role !== 'owner') {
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'btn ghost';
+          removeBtn.dataset.action = 'remove';
+          removeBtn.dataset.tid = m.tenant_id;
+          removeBtn.style.cssText = 'font-size:11px;padding:4px 8px';
+          removeBtn.textContent = 'remove';
+          right.appendChild(removeBtn);
+        }
+
+        row.appendChild(left);
+        row.appendChild(right);
         members.appendChild(row);
       }
       const invites = $('dt-invites');
@@ -240,12 +269,33 @@
         for (const i of invList) {
           const row = document.createElement('div');
           row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 12px;background:var(--bg-elev);border:1px solid var(--line);border-radius:6px';
-          row.innerHTML = `
-            <div>${esc(i.email)} <span style="color:var(--ink-mute)">as ${esc(i.role)}</span></div>
-            <div style="display:flex;gap:6px;align-items:center">
-              <button class="btn ghost" data-action="copy-invite" data-token="${esc(i.token)}" style="font-size:11px;padding:4px 8px">copy link</button>
-              <button class="btn ghost" data-action="revoke" data-iid="${esc(i.id)}" style="font-size:11px;padding:4px 8px">revoke</button>
-            </div>`;
+
+          const left = document.createElement('div');
+          left.appendChild(document.createTextNode(i.email + ' '));
+          const roleSpan = document.createElement('span');
+          roleSpan.style.cssText = 'color:var(--ink-mute)';
+          roleSpan.textContent = 'as ' + i.role;
+          left.appendChild(roleSpan);
+
+          const right = document.createElement('div');
+          right.style.cssText = 'display:flex;gap:6px;align-items:center';
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'btn ghost';
+          copyBtn.dataset.action = 'copy-invite';
+          copyBtn.dataset.token = i.token;
+          copyBtn.style.cssText = 'font-size:11px;padding:4px 8px';
+          copyBtn.textContent = 'copy link';
+          right.appendChild(copyBtn);
+          const revokeBtn = document.createElement('button');
+          revokeBtn.className = 'btn ghost';
+          revokeBtn.dataset.action = 'revoke';
+          revokeBtn.dataset.iid = i.id;
+          revokeBtn.style.cssText = 'font-size:11px;padding:4px 8px';
+          revokeBtn.textContent = 'revoke';
+          right.appendChild(revokeBtn);
+
+          row.appendChild(left);
+          row.appendChild(right);
           invites.appendChild(row);
         }
       }
@@ -317,7 +367,18 @@
     try {
       const r = await KS.api(`/v1/teams/${encodeURIComponent(activeTeam.slug)}/invite`, { method: 'POST', body: JSON.stringify({ email, role }) });
       $('inv-email').value = '';
-      $('inv-status').innerHTML = `invited <code>${esc(email)}</code>. share link: <a href="${esc(r.accept_url)}" style="color:var(--accent);text-decoration:underline">${esc(r.accept_url)}</a>`;
+      const statusEl = $('inv-status');
+      statusEl.textContent = '';
+      statusEl.appendChild(document.createTextNode('invited '));
+      const codeEl = document.createElement('code');
+      codeEl.textContent = email;
+      statusEl.appendChild(codeEl);
+      statusEl.appendChild(document.createTextNode('. share link: '));
+      const linkEl = document.createElement('a');
+      linkEl.href = r.accept_url;
+      linkEl.style.cssText = 'color:var(--accent);text-decoration:underline';
+      linkEl.textContent = r.accept_url;
+      statusEl.appendChild(linkEl);
       openTeam(activeTeam.slug);
     } catch (e) {
       $('inv-status').textContent = 'failed: ' + (e.message || '');

@@ -318,13 +318,13 @@ kolm init
       <p>Output looks like this:</p>
       <pre class="code-block"><button class="copy" type="button">copy</button><code>compile     my-redactor
 synthesize  redact-secrets         pass_pos=1.000  reject_neg=1.000
-k-score     0.917                  floor=0.85  status=accepted
+K-score for my-redactor.kolm  0.917   floor=0.85  status=accepted
 sign        hmac-sha256            8f3e2a...
 write       my-redactor.kolm       size=14.2KB</code></pre>
 
       <div class="step"><span class="step-n">4</span><span class="step-t">Inspect the artifact</span></div>
       <pre class="code-block"><button class="copy" type="button">copy</button><code>kolm inspect my-redactor.kolm</code></pre>
-      <p>You will see the manifest (spec/policy/verifier/receipt entries), the K-score breakdown by axis, the signature, and the deterministic source hash. The <code>.kolm</code> file is a signed zip; you can unzip it and read every byte. Full schema at <a href="/spec" style="color:var(--accent)">/spec</a>.</p>
+      <p>You will see the manifest (spec/policy/verifier/receipt entries), this artifact's K-score breakdown by axis (per-artifact, not per-model), the signature, and the deterministic source hash. The <code>.kolm</code> file is a signed zip; you can unzip it and read every byte. Full schema at <a href="/spec" style="color:var(--accent)">/spec</a>.</p>
       <div class="note"><b>What you just shipped:</b> a single signed file that runs locally with <code>kolm run my-redactor.kolm</code>, emits a per-call receipt, and can be re-inspected forever without our servers.</div>
       <div class="next-hint">next: <a href="#tut-2">Tutorial 2 . Ship with CI/CD</a> &rarr;</div>
     </section>
@@ -646,7 +646,7 @@ console.log(expected === r.hmac ? "ok" : "tamper");</code></pre>
     <p>A signed zip with five files: <code>spec.json</code> (the recipe), <code>policy.json</code> (gates), <code>recall/</code> (optional sidecar), <code>verifier.js</code> (cheap output check), <code>receipt.json</code> (the HMAC chain). Full schema at <a href="/spec" style="color:var(--accent)">/spec</a>.</p>
 
     <h2 id="kscore">K-score</h2>
-    <p>One scalar per concept, gated at 0.85 to ship. Computed as <code>0.40&middot;A + 0.15&middot;(S + L + C + V)</code> where A=accuracy, S=specificity, L=latency, C=cost, V=verifiability. Full breakdown at <a href="/k-score" style="color:var(--accent)">/k-score</a>.</p>
+    <p><b>Per-artifact, not per-model.</b> Every compiled <code>.kolm</code> gets its own K-score from its own eval set; the score gates that artifact, not the base model underneath. One scalar, gated at 0.85 to ship. Computed as <code>0.40&middot;A + 0.15&middot;(S + L + C + V)</code> where A=accuracy, S=specificity, L=latency, C=cost, V=verifiability. Full breakdown at <a href="/k-score" style="color:var(--accent)">/k-score</a>.</p>
 
     <h2 id="cli">CLI</h2>
     <p>Eight verbs cover the loop. Same auth as the API; <code>kolm login</code> stores the key in <code>~/.kolm/config.json</code>.</p>
