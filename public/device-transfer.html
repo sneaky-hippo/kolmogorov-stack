@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
 <title>Device transfer: pick a base, a quant, and a target box | kolm</title>
-<meta name="description" content="Interactive picker: choose a source artifact, a quantization tier, and a target device. Get an estimated size, throughput, K-score loss, fit verdict, and the exact kolm export command.">
-<meta name="keywords" content="edge AI, quantization, int4, gguf, q4_k_m, MLX, CoreML, ONNX, TensorRT, Raspberry Pi 5, Jetson Orin, M3 Pro, RTX 4090, iPhone, Pixel, Snapdragon X Elite">
+<meta name="description" content="Pick a .kolm artifact, a compression tier, and a target device. See the estimated size, speed, accuracy drop, fit verdict, and the exact export command before you buy hardware.">
+<meta name="keywords" content="local AI, on-device AI, edge AI, model compression, Raspberry Pi, Jetson, Mac, iPhone, Android">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
 <script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
@@ -178,10 +178,10 @@
 
 <section class="hero">
   <div class="wrap">
-    <span class="pill"><span class="dot"></span>Device transfer &middot; estimator &middot; public benchmarks</span>
+    <span class="pill"><span class="dot"></span>Device transfer &middot; size / speed estimator</span>
     <h1>Build it on a laptop. <span class="tone">Ship it to a Pi.</span></h1>
-    <p class="lede">Pick the source artifact, the quantization tier, and the target box. Get an estimated <b>size on disk</b>, <b>tokens per second</b>, <b>K-score loss</b>, and the exact <code>kolm export</code> command. Throughput rows are forecasts based on public llama.cpp, MLX, and CoreML benchmarks. Measure on your actual hardware before you sign procurement.</p>
-    <div class="meta"><span><b>Spec</b>&nbsp;RS-1</span><span><b>Backends</b>&nbsp;GGUF / MLX / ONNX / CoreML / TensorRT</span><span><b>Updated</b>&nbsp;2026-05-15</span></div>
+    <p class="lede">Pick your <code>.kolm</code> artifact, the compression tier, and the target device. See the <b>size on disk</b>, <b>tokens per second</b>, <b>accuracy drop</b>, and the exact <code>kolm export</code> command before you commit hardware. Throughput rows are forecasts from public llama.cpp, MLX, and CoreML benchmarks. Measure on the real device before you finalize.</p>
+    <div class="meta"><span><b>Backends</b>&nbsp;GGUF / MLX / ONNX / CoreML / TensorRT</span><span><b>Updated</b>&nbsp;2026-05-15</span></div>
   </div>
 </section>
 
@@ -320,9 +320,9 @@
           <span class="step-note">optional</span>
         </div>
         <div class="step-body">
-          <p>On the source machine, regenerate the binder and compare. Quantization can drop K-score by a fraction of a point. Confirm the drop is within tolerance for your task before procurement signs off.</p>
+          <p>On the source machine, regenerate the binder and compare. Compression can drop the K-score by a fraction of a point. Confirm the drop is acceptable for your task before you ship to a fleet.</p>
           <pre class="step-cmd" id="s4-cmd">$ kolm verify</pre>
-          <p class="toolchain-line">Reviewer-grade evidence: <a href="/verify-prod">/verify-prod</a> accepts the same <code>.kolm</code> in the browser and runs the same six checks.</p>
+          <p class="toolchain-line">Audit-grade evidence: <a href="/verify-prod">/verify-prod</a> accepts the same <code>.kolm</code> in the browser and runs the same six checks.</p>
         </div>
       </div>
 
@@ -335,7 +335,7 @@
 
     <h2>What the numbers mean.</h2>
     <p><b>Size on disk.</b> The packed artifact, including base weights at the chosen quantization tier. Add roughly 1 GB at runtime for kv-cache, tokenizer, and the runtime working set. The fit verdict accounts for that overhead.</p>
-    <p><b>Throughput.</b> Tokens per second at the chosen quantization, taken from published llama.cpp, MLX, and CoreML community benchmarks for a 2025 build. These are point estimates, not measurements on your device. Quantization scaling assumes the standard memory-bandwidth-bound regime (int4 roughly 1.0x reference, int8 roughly 0.55x, fp16 roughly 0.30x, int3 roughly 1.15x).</p>
+    <p><b>Throughput.</b> Tokens per second at the chosen compression, taken from published llama.cpp, MLX, and CoreML community benchmarks (refreshed 2026). These are point estimates, not measurements on your device. Compression scaling assumes the standard memory-bandwidth-bound regime (int4 roughly 1.0x reference, int8 roughly 0.55x, fp16 roughly 0.30x, int3 roughly 1.15x).</p>
     <p><b>K-score loss.</b> The delta versus the fp16 reference on the artifact's embedded eval pack. Typical: int8 loses about 0.5 points, int4 about 2 points, int3 about 5 points. Task-dependent. The compile gate refuses K below 0.85 by default.</p>
     <p><b>Fit verdict.</b> Pass if (artifact size + 1 GB runtime overhead) is at most 80 percent of device RAM. Tight if 80 to 100 percent. Over if it exceeds device RAM. RTX 4090 row uses VRAM, not system RAM.</p>
     <p><b>Recommended backend.</b> GGUF for llama.cpp targets (Pi, Jetson, x86 laptops, Steam Deck, Snapdragon, RTX). MLX for Apple Silicon. CoreML for iPhone. ONNX for Android via ORT. TensorRT for NVIDIA serving rigs.</p>
@@ -354,7 +354,7 @@
     </table>
 
     <h2>Reference throughput at int4.</h2>
-    <p>Tokens per second sampled from 2025 community benchmarks. Reads as: a 7B int4 artifact on this device at this rate, when memory permits. SBC and phone rows assume a 3B int4 artifact because 7B does not realistically fit.</p>
+    <p>Tokens per second sampled from refreshed 2026 community benchmarks. Reads as: a 7B int4 artifact on this device at this rate, when memory permits. SBC and phone rows assume a 3B int4 artifact because 7B does not realistically fit.</p>
     <table>
       <thead><tr><th>device</th><th>typical artifact</th><th>tok/s</th><th>backend</th></tr></thead>
       <tbody>
