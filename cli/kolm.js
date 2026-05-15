@@ -242,6 +242,7 @@ COMMANDS
   eval <art.kolm>                  re-run embedded evals, print this artifact's K-score
   bench <art.kolm> [opts]          emit artifact benchmark JSON (alias: benchmark)
   score <art.kolm>                 print this artifact's K-score (per-artifact, not per-model)
+  list                             show every local .kolm artifact (alias: ls)
   inspect <art.kolm>               manifest + recipes + signature
   diff <a.kolm> <b.kolm>           compare two artifact manifests (cid, K, recipe, etc.)
   export <art.kolm> [opts]         convert a .kolm to GGUF / MLX / ONNX / CoreML / TensorRT (--preview = forecast JSON, no toolchain)
@@ -627,6 +628,19 @@ EXIT CODES (--reproduce mode)
 
 USAGE
   kolm score <artifact.kolm>
+`,
+  list: `kolm list - show every local .kolm artifact (alias: kolm ls).
+
+USAGE
+  kolm list [--json]
+
+SCANS
+  ~/.kolm/artifacts/     global, where 'kolm compile' writes by default
+  ./.kolm/artifacts/     project-scoped (when a kolm.yaml sits at cwd)
+  ./                     current dir, picks up 'kolm build' outputs
+
+The default output is a table: name, K-score, size, age, source.
+--json emits a machine-readable array (script-friendly).
 `,
   inspect: `kolm inspect - dump manifest + recipes + signature.
 
@@ -2842,6 +2856,105 @@ async function cmdInspect(args) {
   });
 }
 
+// cmdList scans the local artifact roots and prints a clean table of every
+// .kolm on disk with name, K-score, size, and mtime. Replaces the
+// long-broken `kolm artifacts list` reference the chat narrator pointed at.
+//
+// Roots scanned (in order):
+//   ~/.kolm/artifacts/   (global, where `kolm compile` writes by default)
+//   ./.kolm/artifacts/   (project-scoped, when a kolm.yaml sits at cwd)
+//   ./                   (current dir, picks up `kolm build` outputs)
+//
+// Same artifact discovered at multiple roots is deduped by absolute path.
+// --json emits a machine-readable array; default is the human table.
+async function cmdList(args) {
+  if (maybeHelp('list', args)) return;
+  const jsonOut = args.includes('--json');
+  const roots = [];
+  roots.push({ dir: ARTIFACTS_DIR, label: 'global' });
+  const projArt = path.join(process.cwd(), '.kolm', 'artifacts');
+  if (fs.existsSync(projArt)) roots.push({ dir: projArt, label: 'project' });
+  roots.push({ dir: process.cwd(), label: 'cwd' });
+  const seen = new Set();
+  const rows = [];
+  for (const { dir, label } of roots) {
+    if (!fs.existsSync(dir)) continue;
+    let entries;
+    try { entries = fs.readdirSync(dir); } catch { continue; }
+    for (const name of entries) {
+      if (!name.endsWith('.kolm')) continue;
+      const full = path.resolve(dir, name);
+      if (seen.has(full)) continue;
+      seen.add(full);
+      let stat;
+      try { stat = fs.statSync(full); } catch { continue; }
+      if (!stat.isFile()) continue;
+      rows.push({ path: full, name, size: stat.size, mtime: stat.mtime, source: label });
+    }
+  }
+  // Resolve K-scores via the runner; keep failures non-fatal so a single
+  // corrupt artifact doesn't blank the whole listing.
+  await withRunner(async ({ inspectArtifact }) => {
+    for (const r of rows) {
+      try {
+        const m = inspectArtifact(r.path);
+        r.k = (m && m.k_score && typeof m.k_score.composite === 'number') ? m.k_score.composite : null;
+        r.task = (m && m.task) || null;
+      } catch {
+        r.k = null;
+        r.task = null;
+      }
+    }
+  });
+  rows.sort((a, b) => b.mtime - a.mtime);
+  if (jsonOut) {
+    console.log(JSON.stringify(rows.map(r => ({
+      path: r.path,
+      name: r.name,
+      size_bytes: r.size,
+      mtime: r.mtime.toISOString(),
+      source: r.source,
+      k_score: r.k,
+      task: r.task,
+    })), null, 2));
+    return;
+  }
+  if (!rows.length) {
+    console.log('no .kolm artifacts found.');
+    console.log('');
+    console.log('  ~/.kolm/artifacts/  (global)   - written by `kolm compile`');
+    console.log('  ./                  (cwd)      - written by `kolm build`');
+    console.log('');
+    console.log('try: kolm build my-redactor --from redactor --yes');
+    return;
+  }
+  // Header + rows. Columns: NAME, K-score, size, age, source.
+  const fmtAge = (mtime) => {
+    const sec = Math.max(1, Math.floor((Date.now() - mtime.getTime()) / 1000));
+    if (sec < 60) return sec + 's';
+    if (sec < 3600) return Math.floor(sec / 60) + 'm';
+    if (sec < 86400) return Math.floor(sec / 3600) + 'h';
+    return Math.floor(sec / 86400) + 'd';
+  };
+  const nameW = Math.max(4, ...rows.map(r => r.name.length));
+  const sizeW = Math.max(4, ...rows.map(r => fmtBytes(r.size).length));
+  const pad = (s, w) => s + ' '.repeat(Math.max(0, w - s.length));
+  console.log(pad('NAME', nameW) + '  K-SCORE  ' + pad('SIZE', sizeW) + '  AGE   SOURCE');
+  for (const r of rows) {
+    const kStr = (typeof r.k === 'number') ? r.k.toFixed(3) : '  -  ';
+    const verdict = (typeof r.k === 'number') ? (r.k >= 0.85 ? 'p' : 'f') : ' ';
+    console.log(
+      pad(r.name, nameW) + '  ' +
+      kStr + ' ' + verdict + '  ' +
+      pad(fmtBytes(r.size), sizeW) + '  ' +
+      pad(fmtAge(r.mtime), 4) + '  ' +
+      r.source
+    );
+  }
+  console.log('');
+  console.log(`${rows.length} artifact${rows.length === 1 ? '' : 's'}. inspect with: kolm score <name>`);
+}
+
 async function cmdDiff(args) {
   if (maybeHelp('diff', args)) return;
   const positional = args.filter(a => !a.startsWith('--'));
@@ -4023,9 +4136,9 @@ function localAssistantParse(prompt) {
       return {
         ok: true,
         intent: 'list',
-        narration: "Run 'kolm artifacts list' or check ~/.kolm/recipes/ for local artifacts.",
+        narration: "Run 'kolm list' to see every local .kolm artifact with K-score, size, and age.",
         next_steps: [
-          { label: 'list',    command: 'kolm artifacts list' },
+          { label: 'list',    command: 'kolm list' },
           { label: 'inspect', command: 'kolm inspect <art.kolm>' },
         ],
       };
@@ -4074,7 +4187,7 @@ function localAssistantParse(prompt) {
         data: { concept_id: cid, command: 'kolm run' + tail },
         next_steps: [
           { label: 'run',     command: 'kolm run' + tail },
-          { label: 'list',    command: 'kolm artifacts list' },
+          { label: 'list',    command: 'kolm list' },
         ],
       };
     }
@@ -4493,7 +4606,7 @@ function chatPrintNextSteps(plan) {
     console.log('  ' + color('2', '->') + ' compile  kolm compile --spec ' + name + '.spec.json');
     console.log('  ' + color('2', '->') + ' edit     open ' + name + '.spec.json and tweak recipes[0].source');
   } else if (plan.action === 'compile_cloud') {
-    console.log('  ' + color('2', '->') + ' list     kolm artifacts list');
+    console.log('  ' + color('2', '->') + ' list     kolm list');
     console.log('  ' + color('2', '->') + ' run      kolm run <artifact>.kolm \'<input-json>\'');
   } else if (plan.action === 'seeds_generate') {
     console.log('  ' + color('2', '->') + ' inspect  kolm seeds list');
@@ -6121,7 +6234,7 @@ function looksLikeNaturalLanguage(cmd, rest) {
 // scripts consume. Keep this in sync with the dispatch switch below.
 const COMPLETION_VERBS = [
   'init', 'signup', 'login', 'whoami', 'new', 'build', 'compile', 'train', 'run', 'eval', 'benchmark', 'bench',
-  'score', 'inspect', 'diff', 'verify', 'serve', 'publish', 'capture', 'labels', 'distill',
+  'score', 'list', 'ls', 'inspect', 'diff', 'verify', 'serve', 'publish', 'capture', 'labels', 'distill',
   'config', 'install', 'tune', 'rag', 'team', 'tunnel', 'cloud', 'airgap',
   'compute', 'doctor', 'logs', 'ask', 'chat', 'version', 'help', 'completion', 'upgrade', 'update',
   'models', 'gpu', 'export', 'seeds', 'anonymize', 'improve', 'instant',
@@ -8021,6 +8134,8 @@ async function main() {
       case 'benchmark':
       case 'bench':    await withErrorContext('bench',    () => cmdBenchmark(rest)); break;
       case 'score':    await withErrorContext('score',    () => cmdScore(rest)); break;
+      case 'list':
+      case 'ls':       await withErrorContext('list',     () => cmdList(rest)); break;
       case 'inspect':  await withErrorContext('inspect',  () => cmdInspect(rest)); break;
       case 'diff':     await withErrorContext('diff',     () => cmdDiff(rest)); break;
       case 'verify':   await withErrorContext('verify',   () => cmdVerify(rest)); break;
