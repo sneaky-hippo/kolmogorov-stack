@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Hub &middot; kolm</title>
+<meta name="description" content="The kolm hub. Publish a compiled .kolm artifact with one command, pull anyone else's by handle, verify the SHA-256 on every download. No proprietary file format, no lock-in, no rebuild required.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:title" content="Hub &middot; kolm">
+<meta property="og:description" content="Publish, pull, verify .kolm artifacts. Handle format: owner/name@sha256:hex. Pull is sha-pinned; mismatches fail closed.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/hub">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:title" content="Hub &middot; kolm">
+<meta name="twitter:description" content="Publish, pull, verify .kolm artifacts. Handle format owner/name@sha256:hex.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/hub">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script src="/escape.js"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "ItemList",
+      "name": "kolm hub",
+      "description": "Public hub of compiled .kolm artifacts. Each artifact carries its own SHA-256 fingerprint, K-score, and base-model lineage. Pull is sha-pinned; mismatches fail closed.",
+      "url": "https://kolm.ai/hub",
+      "publisher": { "@type": "Organization", "name": "Kolmogorov", "url": "https://kolm.ai" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "Hub", "item": "https://kolm.ai/hub" }
+      ]
+    }
+  ]
+}
+</script>
+
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#faf2e1;--accent-soft:rgba(236,231,220, 0.10);--good:#7ef0d2;--bad:#ff6b91;--warn:#ff6f3c;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;letter-spacing:0;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none;min-height:100vh;display:flex;flex-direction:column}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:rgba(236,231,220,0.30)}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px;width:100%}
+  @media(max-width:720px){.wrap{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand img{height:18px;width:18px}
+  header.site .brand span{font-weight:500;font-size:16px;letter-spacing:0}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover,header.site nav a.active{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .ghost:hover{color:var(--ink)}
+  header.site .right .cta{display:inline-flex;align-items:center;gap:6px;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:500}
+
+  main{padding:48px 0 96px;flex:1}
+  .head{margin-bottom:28px;display:flex;align-items:end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+  .head h1{font-family:var(--sans);font-weight:500;letter-spacing:0;line-height:1.05;font-size:38px;margin:0 0 8px}
+  .head .lede{color:var(--ink-mute);font-size:15px;margin:0;max-width:62ch}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:0;text-transform:uppercase;color:var(--ink-faint);margin:0 0 14px}
+  .eyebrow .num{color:var(--accent)}
+
+  .controls{display:flex;gap:12px;align-items:center;margin:24px 0 24px;flex-wrap:wrap}
+  .search{flex:1;min-width:260px;position:relative}
+  .search input{width:100%;box-sizing:border-box;padding:10px 12px 10px 36px;background:var(--bg-elev);border:1px solid var(--line-strong);border-radius:6px;color:var(--ink);font-family:var(--mono);font-size:13px;outline:0;transition:border-color 120ms,box-shadow 120ms}
+  .search input:focus{border-color:var(--ink);box-shadow:0 0 0 3px rgba(255,255,255,0.10)}
+  .search input::placeholder{color:var(--ink-faint)}
+  .search .icn{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);font-family:var(--mono);font-size:12px}
+  .count{font-family:var(--mono);font-size:12px;color:var(--ink-faint);letter-spacing:0;margin-left:auto}
+
+  .table{display:block;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg-elev)}
+  .row-head{display:grid;grid-template-columns:1fr 92px 84px 140px 110px;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--bg-card);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint)}
+  .row-head .ksc,.row-head .size,.row-head .updated{text-align:right}
+  .hub-row{display:grid;grid-template-columns:1fr 92px 84px 140px 110px;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);align-items:center;cursor:pointer;transition:background 120ms;color:inherit}
+  .hub-row:last-child{border-bottom:0}
+  .hub-row:hover{background:var(--bg-card)}
+  .hub-row .meta{min-width:0}
+  .hub-row .meta .handle{font-family:var(--mono);font-size:13.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0}
+  .hub-row .meta .handle .owner{color:var(--ink-mute)}
+  .hub-row .meta .handle .sep{color:var(--ink-faint);margin:0 2px}
+  .hub-row .meta .task{font-size:12.5px;color:var(--ink-mute);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hub-row .ksc{font-family:var(--mono);font-size:13px;text-align:right;letter-spacing:0}
+  .hub-row .ksc.high{color:var(--good)}
+  .hub-row .ksc.mid{color:var(--ink)}
+  .hub-row .ksc.low{color:var(--ink-faint)}
+  .hub-row .size,.hub-row .updated{font-family:var(--mono);font-size:12px;color:var(--ink-mute);text-align:right;letter-spacing:0}
+  .hub-row .base{font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  @media(max-width:760px){
+    .row-head{display:none}
+    .hub-row{grid-template-columns:1fr 78px;grid-auto-rows:auto;padding:14px 16px}
+    .hub-row .size,.hub-row .updated,.hub-row .base{display:none}
+  }
+
+  .empty{padding:80px 22px;text-align:center;border:1px dashed var(--line-strong);border-radius:8px;color:var(--ink-mute);font-size:14px}
+  .empty .glyph{font-family:var(--mono);color:var(--ink-faint);font-size:24px;margin-bottom:14px}
+  .empty h3{font-family:var(--sans);font-size:18px;font-weight:500;letter-spacing:0;margin:0 0 6px;color:var(--ink)}
+  .empty p{color:var(--ink-mute);font-size:13.5px;margin:0 auto 18px;max-width:520px}
+  .empty code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:6px;padding:8px 12px;display:inline-block}
+
+  .skel{padding:14px 18px;border-bottom:1px solid var(--line);height:54px;background:linear-gradient(90deg,var(--bg-elev),var(--bg-card),var(--bg-elev));background-size:200% 100%;animation:shimmer 1.6s linear infinite}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  .detail{position:fixed;inset:0;background:rgba(5,6,7,0.78);z-index:80;display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(6px)}
+  .detail.open{display:flex}
+  .detail .card{max-width:640px;width:100%;background:var(--bg-elev);border:1px solid var(--line-strong);border-radius:10px;padding:24px 26px;color:var(--ink);max-height:90vh;overflow:auto}
+  .detail h2{margin:0 0 4px;font-size:20px;font-weight:500;letter-spacing:0;font-family:var(--mono)}
+  .detail .sub{margin:0 0 18px;color:var(--ink-mute);font-size:13px}
+  .detail .grid{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:0 0 20px;font-size:13px}
+  .detail .grid dt{color:var(--ink-faint);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;align-self:center}
+  .detail .grid dd{margin:0;font-family:var(--mono);font-size:12.5px;color:var(--ink);word-break:break-all}
+  .detail .pull{margin:0 0 14px;padding:12px 14px;background:var(--bg-card);border:1px solid var(--line);border-radius:6px;font-family:var(--mono);font-size:13px;color:var(--ink);overflow:auto;white-space:pre}
+  .detail .row-btns{display:flex;gap:10px;flex-wrap:wrap}
+  .detail .row-btns button,.detail .row-btns a{appearance:none;cursor:pointer;background:var(--bg-card);border:1px solid var(--line-strong);color:var(--ink);font-family:var(--sans);font-size:13px;padding:8px 14px;border-radius:6px;text-decoration:none}
+  .detail .row-btns button:hover,.detail .row-btns a:hover{background:var(--bg);border-color:var(--ink-mute)}
+  .detail .row-btns .primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .detail .close{position:absolute;right:18px;top:14px;appearance:none;cursor:pointer;background:transparent;border:0;color:var(--ink-mute);font-family:var(--mono);font-size:16px}
+  .detail .close:hover{color:var(--ink)}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-elev);border:1px solid var(--line-strong);border-radius:6px;padding:10px 16px;font-family:var(--mono);font-size:12.5px;color:var(--good);z-index:100;display:none}
+  .toast.show{display:block}
+
+  .how{margin-top:48px;padding:28px 28px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev)}
+  .how h3{margin:0 0 6px;font-size:18px;font-weight:500;letter-spacing:0}
+  .how p.sub{margin:0 0 18px;color:var(--ink-mute);font-size:13.5px}
+  .how .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:760px){.how .steps{grid-template-columns:1fr}}
+  .how .step{padding:18px;background:var(--bg-card);border:1px solid var(--line);border-radius:8px}
+  .how .step .n{font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px}
+  .how .step h4{margin:0 0 6px;font-size:14.5px;font-weight:500;letter-spacing:0;color:var(--ink)}
+  .how .step pre{margin:0;font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+  .how .step p{margin:8px 0 0;color:var(--ink-mute);font-size:12.5px}
+
+  .legend{margin-top:32px;padding:18px 22px;border:1px solid var(--line);border-radius:8px;background:var(--bg-elev);font-size:13px;color:var(--ink-mute);display:flex;gap:24px;flex-wrap:wrap;align-items:center}
+  .legend strong{color:var(--ink);font-weight:500}
+  .legend code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+
+  footer{border-top:1px solid var(--line);padding:32px 32px 28px;color:var(--ink-faint);font-size:12.5px;text-align:center}
+  footer a{color:var(--ink-mute)}
+  footer a:hover{color:var(--ink)}
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap"><div class="row">
+    <div class="left">
+      <a class="brand" href="/" aria-label="kolm home"><span>kolm</span></a>
+      <nav>
+        <a href="/use-cases">Solutions</a>
+        <a href="/docs">Developers</a>
+        <a href="/research">Research</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button>
+      <button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div></div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">01</span> Public hub</div>
+    <div class="head">
+      <div>
+        <h1>Publish a .kolm. Pull anyone else's.</h1>
+        <p class="lede">A compiled .kolm artifact is one self-contained file. The hub gives every artifact a stable handle, a SHA-256 fingerprint, and a verified-on-download contract. Same file format the CLI builds locally - no rebuild, no rehosting, no proprietary container.</p>
+      </div>
+      <a class="cta" href="/quickstart" style="display:inline-flex;align-items:center;gap:6px;color:var(--bg);background:var(--ink);border-radius:6px;padding:9px 14px;font-size:13px;font-weight:500">Publish your own <span aria-hidden="true">&rarr;</span></a>
+    </div>
+
+    <div class="controls">
+      <div class="search">
+        <span class="icn">/</span>
+        <input type="search" id="q" placeholder="Search by name, owner, base model, task tag" autocomplete="off">
+      </div>
+      <span class="count" id="count"></span>
+    </div>
+
+    <div class="table" id="table">
+      <div class="row-head">
+        <span>Handle</span>
+        <span class="ksc">K-score</span>
+        <span class="size">Size</span>
+        <span class="base">Base</span>
+        <span class="updated">Updated</span>
+      </div>
+      <div id="rows">
+        <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+        <div class="skel"></div><div class="skel"></div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><strong>Handle format:</strong> <code>owner/name</code> for latest, <code>owner/name@sha256:hex</code> to pin a specific build.</span>
+      <span><a href="/k-score" style="color:var(--ink);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;text-decoration-color:rgba(255,255,255,0.18)">how K-score is computed</a></span>
+    </div>
+
+    <div class="how">
+      <h3>How the hub works</h3>
+      <p class="sub">Three commands. Every artifact carries its own SHA. Pull is sha-pinned; mismatches fail closed with exit 5.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="n">01 &middot; publish</div>
+          <h4>Push a compiled .kolm</h4>
+          <pre>kolm publish my-redactor.kolm \
+  --name my-redactor \
+  --task redaction</pre>
+          <p>Returns a handle pinned to the artifact's SHA. Same SHA = idempotent update; different SHA under same name = 409 unless you bump or replace.</p>
+        </div>
+        <div class="step">
+          <div class="n">02 &middot; pull</div>
+          <h4>Fetch by handle, verify on disk</h4>
+          <pre>kolm pull alice/my-redactor
+kolm pull alice/my-redactor@sha256:abc123</pre>
+          <p>Downloads, hashes, and rejects if the local SHA doesn't match the handle pin. Exit 5 on mismatch &mdash; nothing lands in your filesystem.</p>
+        </div>
+        <div class="step">
+          <div class="n">03 &middot; list</div>
+          <h4>Search and inspect</h4>
+          <pre>kolm hub list --q redactor
+kolm hub show alice/my-redactor</pre>
+          <p>Public hub is read-only without an API key. Publishing requires <a href="/signup" style="color:var(--ink);text-decoration:underline">an account</a>; pulls are open.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="detail" id="detail" aria-hidden="true">
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="detail-handle">
+    <button type="button" class="close" aria-label="Close" id="detail-close">&times;</button>
+    <h2 id="detail-handle">handle</h2>
+    <p class="sub" id="detail-sub">task &middot; updated &middot; size</p>
+    <dl class="grid" id="detail-grid"></dl>
+    <div class="pull" id="detail-pull">kolm pull ...</div>
+    <div class="row-btns">
+      <button type="button" class="primary" id="copy-pull">Copy pull command</button>
+      <a id="download-link" target="_blank" rel="noopener">Download .kolm</a>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">copied</div>
+
+<footer class="site">
+  <div class="wrap" style="max-width:1180px">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/hub">Hub</a>
+        <a href="/registry">Registry</a>
+        <a href="/openapi.json">OpenAPI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/badge">Embed badge</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/leaderboard">Leaderboard</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai &middot; Made with .kolm &middot; Apache-2.0</span>
+      <span>Pull is sha-pinned. Mismatches fail closed.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function fmtBytes(n){
+    if (n == null || !isFinite(n)) return '-';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
+    return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  }
+  function ago(iso){
+    if (!iso) return '-';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '-';
+    var s = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (s < 60) return s + 's ago';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+    if (s < 2629800) return Math.floor(s / 604800) + 'w ago';
+    return Math.floor(s / 2629800) + 'mo ago';
+  }
+  function kClass(k){ if (k == null) return 'low'; if (k >= 0.90) return 'high'; if (k >= 0.80) return 'mid'; return 'low'; }
+  function shortSha(sha){ if (!sha) return ''; return sha.slice(0, 12); }
+
+  var STATE = { all: [], q: '' };
+
+  function render(){
+    var rows = STATE.all.slice();
+    var q = STATE.q.trim().toLowerCase();
+    if (q){
+      rows = rows.filter(function(r){
+        var hay = (r.owner + '/' + r.name + ' ' + (r.metadata && r.metadata.base_model || '') + ' ' + (r.metadata && r.metadata.task || '') + ' ' + (r.metadata && r.metadata.tags || []).join(' ')).toLowerCase();
+        return hay.indexOf(q) !== -1;
+      });
+    }
+    $('count').textContent = rows.length + (rows.length === 1 ? ' artifact' : ' artifacts');
+    var host = $('rows');
+    host.innerHTML = '';
+    if (!rows.length){
+      var empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.innerHTML = ''
+        + '<div class="glyph">[ empty ]</div>'
+        + '<h3>' + (STATE.all.length ? 'No matches for "' + esc(STATE.q) + '"' : 'No public artifacts yet') + '</h3>'
+        + '<p>' + (STATE.all.length ? 'Try a broader query. Search matches owner, name, base model, and task tags.' : 'Be the first to publish. The CLI handles bytes, SHA, and metadata.') + '</p>'
+        + (STATE.all.length ? '' : '<code>kolm publish my-redactor.kolm --name my-redactor</code>');
+      host.appendChild(empty);
+      return;
+    }
+    rows.forEach(function(r){
+      var row = document.createElement('div');
+      row.className = 'hub-row';
+      row.dataset.owner = r.owner;
+      row.dataset.name = r.name;
+
+      var meta = document.createElement('div'); meta.className = 'meta';
+      var handle = document.createElement('div'); handle.className = 'handle';
+      var owner = document.createElement('span'); owner.className = 'owner'; owner.textContent = r.owner;
+      var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '/';
+      var name = document.createElement('span'); name.textContent = r.name;
+      handle.appendChild(owner); handle.appendChild(sep); handle.appendChild(name);
+      meta.appendChild(handle);
+      var task = document.createElement('div'); task.className = 'task';
+      var taskText = (r.metadata && r.metadata.task) ? r.metadata.task : 'sha256:' + shortSha(r.sha256);
+      task.textContent = taskText;
+      meta.appendChild(task);
+      row.appendChild(meta);
+
+      var ksc = document.createElement('div');
+      var kVal = (r.metadata && r.metadata.k_score != null) ? Number(r.metadata.k_score) : null;
+      ksc.className = 'ksc ' + kClass(kVal);
+      ksc.textContent = kVal != null ? kVal.toFixed(3) : '-';
+      row.appendChild(ksc);
+
+      var size = document.createElement('div'); size.className = 'size';
+      size.textContent = fmtBytes(r.size_bytes);
+      row.appendChild(size);
+
+      var base = document.createElement('div'); base.className = 'base';
+      base.textContent = (r.metadata && r.metadata.base_model) || '-';
+      row.appendChild(base);
+
+      var upd = document.createElement('div'); upd.className = 'updated';
+      upd.textContent = ago(r.updated_at);
+      row.appendChild(upd);
+
+      row.addEventListener('click', function(){ openDetail(r); });
+      host.appendChild(row);
+    });
+  }
+
+  function openDetail(r){
+    $('detail-handle').textContent = r.owner + '/' + r.name;
+    var bits = [];
+    if (r.metadata && r.metadata.task) bits.push(r.metadata.task);
+    bits.push(fmtBytes(r.size_bytes));
+    bits.push('updated ' + ago(r.updated_at));
+    $('detail-sub').textContent = bits.join(' · ');
+
+    var grid = $('detail-grid');
+    grid.innerHTML = '';
+    function row(k, v){
+      if (v == null || v === '') return;
+      var dt = document.createElement('dt'); dt.textContent = k;
+      var dd = document.createElement('dd'); dd.textContent = v;
+      grid.appendChild(dt); grid.appendChild(dd);
+    }
+    row('sha256', r.sha256);
+    row('base model', r.metadata && r.metadata.base_model);
+    row('gate', r.metadata && r.metadata.gate != null ? Number(r.metadata.gate).toFixed(2) : null);
+    row('k-score', r.metadata && r.metadata.k_score != null ? Number(r.metadata.k_score).toFixed(3) : null);
+    row('license', r.metadata && r.metadata.license);
+    if (r.metadata && r.metadata.tags && r.metadata.tags.length) row('tags', r.metadata.tags.join(', '));
+    row('published', r.created_at && new Date(r.created_at).toLocaleString());
+
+    var pullCmd = 'kolm pull ' + r.owner + '/' + r.name + '@sha256:' + shortSha(r.sha256);
+    $('detail-pull').textContent = pullCmd;
+    $('copy-pull').dataset.cmd = pullCmd;
+    $('download-link').href = '/v1/hub/' + encodeURIComponent(r.owner) + '/' + encodeURIComponent(r.name) + '/download';
+    $('download-link').download = r.name + '.kolm';
+
+    $('detail').classList.add('open');
+    $('detail').setAttribute('aria-hidden', 'false');
+  }
+
+  function closeDetail(){
+    $('detail').classList.remove('open');
+    $('detail').setAttribute('aria-hidden', 'true');
+  }
+
+  function toast(msg){
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 1600);
+  }
+
+  $('detail-close').addEventListener('click', closeDetail);
+  $('detail').addEventListener('click', function(e){ if (e.target === $('detail')) closeDetail(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeDetail(); });
+
+  $('copy-pull').addEventListener('click', function(){
+    var cmd = $('copy-pull').dataset.cmd || '';
+    if (!cmd) return;
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(cmd).then(function(){ toast('copied'); }, function(){ toast('copy failed'); });
+    } else {
+      var ta = document.createElement('textarea'); ta.value = cmd; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast('copied'); } catch(e){ toast('copy failed'); }
+      document.body.removeChild(ta);
+    }
+  });
+
+  var qInput = $('q');
+  var qTimer = null;
+  qInput.addEventListener('input', function(){
+    STATE.q = qInput.value || '';
+    if (qTimer) clearTimeout(qTimer);
+    qTimer = setTimeout(render, 80);
+  });
+
+  function load(){
+    fetch('/v1/hub?limit=200', { headers: { 'Accept': 'application/json' } })
+      .then(function(r){ if (!r.ok) throw new Error('hub list ' + r.status); return r.json(); })
+      .then(function(data){
+        STATE.all = Array.isArray(data && data.artifacts) ? data.artifacts : [];
+        render();
+      })
+      .catch(function(err){
+        var host = $('rows');
+        host.innerHTML = '';
+        var empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.innerHTML = '<div class="glyph">[ error ]</div><h3>Could not load hub</h3><p>' + esc(err && err.message || String(err)) + '</p>';
+        host.appendChild(empty);
+      });
+  }
+
+  load();
+})();
+</script>
+<script src="/menu.js" defer></script>
+<script src="/theme-toggle.js" defer></script>
+</body>
+</html>

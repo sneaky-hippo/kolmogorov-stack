@@ -51,6 +51,7 @@ import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 import http from 'node:http';
+import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 
 const VERSION = '0.2.0';
@@ -252,7 +253,9 @@ COMMANDS
   models <sub>                     local model registry (list|info|recommend|pin|devices)
   gpu <sub>                        accelerator probe (detect|doctor|setup|stress)
   serve [--mcp] [--http] [--port]  expose ~/.kolm/artifacts/* as MCP tools
-  publish <art.kolm>               push to public gallery (Sprint 4)
+  publish <art.kolm> [--public]    push a .kolm to the verifiable hub (handle: <owner>/<name>)
+  pull <owner>/<name>[@sha:...]    download a published artifact (SHA-256 pin verified if given)
+  hub list|show                    browse the public artifact gallery (alias: kolm hub)
   capture --provider <p> --as <t>  configure a drop-in proxy for OpenAI/Anthropic
   capture status [--namespace <n>] pairs captured / pairs until distill
   labels [--namespace <n>] [--out] download the captured corpus as JSONL
@@ -768,12 +771,50 @@ ENV
   KOLM_FORCE_TRANSFORMERS=1       prefer transformers.generate() over vLLM
   KOLM_LORA_DIR                   where to extract LoRA packs (default ~/.kolm/lora)
 `,
-  publish: `kolm publish - push to the public gallery.
+  publish: `kolm publish - upload a .kolm artifact to the hub.
 
 USAGE
-  kolm publish <artifact.kolm>
+  kolm publish <artifact.kolm> [--name <name>] [--public|--private]
 
-NOTE: The public gallery ships in Sprint 4. Until then, this exits with status 1.
+The hub is a verifiable artifact gallery: every published .kolm has a SHA-256
+fingerprint, a K-score, and a handle of the form <owner>/<name>. Default
+visibility is private (only you can see it); --public makes it discoverable.
+
+REQUIRES
+  signed in (kolm signup or kolm login)
+
+EXAMPLE
+  kolm publish phi-redactor.kolm --public
+  # ok  published
+  # handle:    rodney/phi-redactor@sha256:7c0a3f9e
+  # url:       https://kolm.ai/v1/hub/rodney/phi-redactor
+
+  # someone else, anywhere:
+  kolm pull rodney/phi-redactor
+`,
+  pull: `kolm pull - download a .kolm artifact from the hub by handle.
+
+USAGE
+  kolm pull <owner>/<name>[@sha256:<hex>] [--out <path>]
+
+SHA-256 pin (the @sha256: suffix) is optional but recommended for CI: if the
+hub-stored bytes ever drift from the pinned digest, the pull fails with exit
+code 5 instead of writing a tampered artifact.
+
+EXAMPLE
+  kolm pull rodney/phi-redactor
+  kolm pull rodney/phi-redactor@sha256:7c0a3f9e --out ./fresh.kolm
+`,
+  hub: `kolm hub - browse the public artifact gallery.
+
+USAGE
+  kolm hub list [--q <search>] [--limit 50] [--json]
+  kolm hub show <owner>/<name> [--json]
+
+EXAMPLE
+  kolm hub list                          # most-recent 50 public artifacts
+  kolm hub list --q redactor             # search by name / task / tags
+  kolm hub show rodney/phi-redactor      # full metadata for one artifact
 `,
   capture: `kolm capture - drop-in proxy for OpenAI / Anthropic that captures (input, output) pairs.
 
@@ -3285,12 +3326,224 @@ async function cmdServe(args) {
   process.exit(EXIT.BAD_ARGS);
 }
 
-function cmdPublish(args) {
+async function cmdPublish(args) {
   if (maybeHelp('publish', args)) return;
-  console.error('kolm publish: the public gallery ships in Sprint 4.');
-  console.error('  artifact:  ' + (args[0] || '(specify path)'));
-  console.error('  meanwhile: share the .kolm file directly, or push to your own registry.');
-  process.exit(EXIT.MISSING_PREREQ);
+  const positional = args.filter(a => !a.startsWith('--'));
+  const ap = resolveArtifact(positional[0]);
+  if (!ap) {
+    console.error('error: artifact not found: ' + (positional[0] || '(none given)'));
+    console.error('  usage: kolm publish <artifact.kolm> [--name <name>] [--public|--private]');
+    process.exit(EXIT.NOT_FOUND);
+  }
+  const c = loadConfig();
+  if (!c.api_key) {
+    console.error('error: not signed in. run `kolm login` or `kolm signup` first.');
+    process.exit(EXIT.UNAUTHORIZED || 4);
+  }
+
+  // Default name = basename without .kolm. Override with --name.
+  const flagName = pickFlag(args, '--name');
+  const defaultName = path.basename(ap, '.kolm');
+  const name = (flagName || defaultName).toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (!name || name.length < 2) {
+    console.error(`error: bad name "${flagName || defaultName}" — needs 2-64 chars, kebab-case`);
+    process.exit(EXIT.BAD_ARGS);
+  }
+  // Default visibility: private. Buyer opts in via --public or --visibility public.
+  // Healthcare buyers ship sensitive recipes; safest default is private.
+  const flagVis = pickFlag(args, '--visibility');
+  let visibility = 'private';
+  if (args.includes('--public') || flagVis === 'public') visibility = 'public';
+  else if (args.includes('--private') || flagVis === 'private') visibility = 'private';
+  else if (flagVis && flagVis !== 'public' && flagVis !== 'private') {
+    console.error(`error: --visibility must be 'public' or 'private', got "${flagVis}"`);
+    process.exit(EXIT.BAD_ARGS);
+  }
+
+  const bytes = fs.readFileSync(ap);
+  const sha = crypto.createHash('sha256').update(bytes).digest('hex');
+
+  // Pull K-score / base / task off the artifact for the metadata row. Best
+  // effort — corrupt artifact still publishes, just without rich metadata.
+  let metadata = { artifact_id: path.basename(ap, '.kolm') };
+  try {
+    const info = await withRunner(({ inspectArtifact }) => inspectArtifact(ap));
+    metadata = {
+      artifact_id: info.id || info.artifact_id || path.basename(ap, '.kolm'),
+      k_score: typeof info.k_score?.composite === 'number' ? info.k_score.composite : null,
+      gate: info.k_score?.gate || 0.85,
+      base_model: info.base_model || info.spec?.base_model || null,
+      task: info.task || info.spec?.task || null,
+      tags: Array.isArray(info.tags) ? info.tags : (Array.isArray(info.spec?.tags) ? info.spec.tags : []),
+      license: info.license || info.spec?.license || null,
+      receipt: info.receipt || null,
+    };
+  } catch (e) {
+    // Non-fatal — the artifact still publishes.
+  }
+
+  console.log(`publishing ${path.basename(ap)}  (${fmtBytes(bytes.length)})`);
+  console.log(`  sha256:     ${sha}`);
+  console.log(`  visibility: ${visibility}`);
+  if (metadata.k_score != null) console.log(`  K-score:    ${Number(metadata.k_score).toFixed(3)}  (gate ${metadata.gate})`);
+  if (metadata.base_model) console.log(`  base:       ${metadata.base_model}`);
+
+  let result;
+  try {
+    result = await api(c, 'POST', '/v1/hub/publish', {
+      name,
+      visibility,
+      artifact_b64: bytes.toString('base64'),
+      metadata,
+    });
+  } catch (e) {
+    console.error('\npublish failed: ' + (e.message || e));
+    if (e.status === 409) {
+      console.error('  this name already exists. retry with --name <different>.');
+    }
+    if (e.status === 413) {
+      console.error('  artifact exceeds 25 MB cap. trim the .kolm or contact support@kolm.ai for large-artifact storage.');
+    }
+    process.exit(1);
+  }
+  console.log('');
+  console.log('ok  published');
+  console.log(`  handle:     ${result.handle}`);
+  console.log(`  url:        ${result.url}`);
+  console.log(`  download:   ${result.download_url}`);
+  console.log('');
+  console.log(`  pull it anywhere:  kolm pull ${result.owner}/${result.name}`);
+  console.log(`  verify it:         kolm verify ${result.owner}/${result.name}`);
+}
+
+// kolm pull <owner>/<name>[@sha256:<hex>] [--out <path>]
+//
+// Downloads a published .kolm from the hub. Verifies SHA-256 against the
+// handle if the handle pins one. Writes to cwd by default; --out overrides.
+async function cmdPull(args) {
+  if (maybeHelp('pull', args)) return;
+  const positional = args.filter(a => !a.startsWith('--'));
+  const handle = positional[0];
+  if (!handle) {
+    console.error('usage: kolm pull <owner>/<name>[@sha256:<hex>] [--out <path>]');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  const m = handle.match(/^([a-z0-9-]+)\/([a-z0-9-]+)(?:@sha256:([0-9a-f]+))?$/i);
+  if (!m) {
+    console.error(`error: handle "${handle}" must be <owner>/<name>[@sha256:<hex>]`);
+    process.exit(EXIT.BAD_ARGS);
+  }
+  const [, owner, name, shaPin] = m;
+  const c = loadConfig();
+  const outArg = pickFlag(args, '--out');
+
+  console.log(`pulling ${owner}/${name}${shaPin ? `@sha256:${shaPin}` : ''}...`);
+  let meta;
+  try {
+    meta = await api(c, 'GET', `/v1/hub/${owner}/${name}`);
+  } catch (e) {
+    console.error('error: ' + (e.message || e));
+    if (e.status === 404) console.error('  no artifact at that handle (or it is private and you are not the owner)');
+    process.exit(1);
+  }
+
+  const url = c.base.replace(/\/+$/, '') + `/v1/hub/${owner}/${name}/download`;
+  const dlRes = await fetch(url, { headers: { ...authHeaders(c) } });
+  if (!dlRes.ok) {
+    console.error(`error: download http ${dlRes.status}`);
+    process.exit(1);
+  }
+  const buf = Buffer.from(await dlRes.arrayBuffer());
+  const localSha = crypto.createHash('sha256').update(buf).digest('hex');
+
+  if (shaPin && !localSha.startsWith(shaPin.toLowerCase())) {
+    console.error(`error: sha256 mismatch. handle pinned ${shaPin}, got ${localSha.slice(0, 16)}`);
+    process.exit(EXIT.CHECKSUM_FAIL || 5);
+  }
+  if (meta.sha256 && meta.sha256 !== localSha) {
+    console.error(`error: server-reported sha256 (${meta.sha256.slice(0, 16)}) does not match download (${localSha.slice(0, 16)})`);
+    process.exit(EXIT.CHECKSUM_FAIL || 5);
+  }
+
+  const outPath = path.resolve(outArg || `${name}.kolm`);
+  fs.writeFileSync(outPath, buf);
+
+  console.log('ok  pulled');
+  console.log(`  file:       ${outPath}`);
+  console.log(`  size:       ${fmtBytes(buf.length)}`);
+  console.log(`  sha256:     ${localSha}`);
+  if (meta.metadata?.k_score != null) {
+    console.log(`  K-score:    ${Number(meta.metadata.k_score).toFixed(3)}  (gate ${meta.metadata.gate || 0.85})`);
+  }
+  if (meta.metadata?.base_model) console.log(`  base:       ${meta.metadata.base_model}`);
+  console.log('');
+  console.log(`  next:  kolm inspect ${outPath}`);
+  console.log(`         kolm run ${outPath} '<input>'`);
+}
+
+// kolm hub [list|show <handle>] — browse the public artifact gallery.
+async function cmdHub(args) {
+  if (maybeHelp('hub', args)) return;
+  const sub = args[0] || 'list';
+  const c = loadConfig();
+  if (sub === 'list' || sub === 'ls') {
+    const q = pickFlag(args, '--q') || pickFlag(args, '--search') || '';
+    const limit = Number(pickFlag(args, '--limit') || 50);
+    const url = `/v1/hub${q ? `?q=${encodeURIComponent(q)}&limit=${limit}` : `?limit=${limit}`}`;
+    let r;
+    try { r = await api(c, 'GET', url); }
+    catch (e) { console.error('error: ' + e.message); process.exit(1); }
+    if (args.includes('--json')) { console.log(JSON.stringify(r, null, 2)); return; }
+    if (!r.artifacts.length) {
+      console.log('(no published artifacts yet)');
+      console.log('');
+      console.log('publish your first:  kolm compile && kolm publish <file>.kolm --public');
+      return;
+    }
+    console.log(`${r.total} published artifacts (showing ${r.artifacts.length}):`);
+    console.log('');
+    console.log('HANDLE                              K-SCORE  SIZE      BASE                          UPDATED');
+    console.log('-'.repeat(110));
+    for (const a of r.artifacts) {
+      const handle = `${a.owner}/${a.name}`;
+      const k = a.k_score != null ? Number(a.k_score).toFixed(3) : '   -  ';
+      const sz = fmtBytes(a.size_bytes).padStart(8);
+      const base = (a.base_model || '-').slice(0, 28).padEnd(28);
+      const age = a.updated_at ? a.updated_at.slice(0, 10) : '-';
+      console.log(`${handle.padEnd(36)}${k.padStart(7)}  ${sz}  ${base}  ${age}`);
+    }
+    console.log('');
+    console.log(`  pull one:  kolm pull ${r.artifacts[0].owner}/${r.artifacts[0].name}`);
+    return;
+  }
+  if (sub === 'show') {
+    const handle = args[1];
+    if (!handle) { console.error('usage: kolm hub show <owner>/<name>'); process.exit(EXIT.BAD_ARGS); }
+    const m = handle.match(/^([a-z0-9-]+)\/([a-z0-9-]+)/i);
+    if (!m) { console.error('error: handle must be <owner>/<name>'); process.exit(EXIT.BAD_ARGS); }
+    const [, owner, name] = m;
+    let r;
+    try { r = await api(c, 'GET', `/v1/hub/${owner}/${name}`); }
+    catch (e) { console.error('error: ' + e.message); process.exit(1); }
+    if (args.includes('--json')) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log(`${r.owner}/${r.name}`);
+    console.log('-'.repeat(48));
+    console.log(`  handle:     ${r.handle}`);
+    console.log(`  sha256:     ${r.sha256}`);
+    console.log(`  size:       ${fmtBytes(r.size_bytes)}`);
+    console.log(`  visibility: ${r.visibility}`);
+    if (r.metadata?.k_score != null) console.log(`  K-score:    ${Number(r.metadata.k_score).toFixed(3)}  (gate ${r.metadata.gate || 0.85})`);
+    if (r.metadata?.base_model) console.log(`  base:       ${r.metadata.base_model}`);
+    if (r.metadata?.task) console.log(`  task:       ${r.metadata.task}`);
+    if (r.metadata?.tags?.length) console.log(`  tags:       ${r.metadata.tags.join(', ')}`);
+    if (r.metadata?.license) console.log(`  license:    ${r.metadata.license}`);
+    console.log(`  updated:    ${r.updated_at}`);
+    console.log('');
+    console.log(`  download:   kolm pull ${r.owner}/${r.name}`);
+    return;
+  }
+  console.error('usage: kolm hub [list|show <handle>]');
+  process.exit(EXIT.BAD_ARGS);
 }
 
 function cmdConfig(args) {
@@ -6647,7 +6900,7 @@ function looksLikeNaturalLanguage(cmd, rest) {
 // scripts consume. Keep this in sync with the dispatch switch below.
 const COMPLETION_VERBS = [
   'init', 'signup', 'login', 'whoami', 'new', 'build', 'compile', 'train', 'run', 'eval', 'benchmark', 'bench',
-  'score', 'list', 'ls', 'inspect', 'diff', 'verify', 'serve', 'publish', 'capture', 'labels', 'distill',
+  'score', 'list', 'ls', 'inspect', 'diff', 'verify', 'serve', 'publish', 'pull', 'hub', 'capture', 'labels', 'distill',
   'config', 'install', 'tune', 'rag', 'team', 'tunnel', 'cloud', 'airgap',
   'compute', 'doctor', 'logs', 'ask', 'chat', 'version', 'help', 'completion', 'upgrade', 'update',
   'models', 'gpu', 'export', 'seeds', 'anonymize', 'improve', 'instant',
@@ -6657,7 +6910,8 @@ const COMPLETION_SUBS = {
   airgap:  ['status', 'enable', 'disable', 'verify'],
   team:    ['create', 'list', 'show', 'invite', 'accept', 'members', 'role', 'remove', 'transfer', 'delete'],
   tunnel:  ['new', 'list', 'start', 'close'],
-  cloud:   ['targets', 'deploy', 'list', 'show', 'destroy'],
+  cloud:   ['train', 'targets', 'deploy', 'list', 'show', 'destroy'],
+  hub:     ['list', 'ls', 'show'],
   tune:    ['init', 'capture-on', 'capture-off', 'step', 'eval', 'promote', 'rollback', 'watch', 'status'],
   rag:     ['index', 'query', 'attach', 'list'],
   capture: ['status'],
@@ -8723,6 +8977,8 @@ async function main() {
       case 'verify':   await withErrorContext('verify',   () => cmdVerify(rest)); break;
       case 'serve':    await withErrorContext('serve',    () => cmdServe(rest)); break;
       case 'publish':  await withErrorContext('publish',  () => cmdPublish(rest)); break;
+      case 'pull':     await withErrorContext('pull',     () => cmdPull(rest)); break;
+      case 'hub':      await withErrorContext('hub',      () => cmdHub(rest)); break;
       case 'capture':  await withErrorContext('capture',  () => cmdCapture(rest)); break;
       case 'labels':   await withErrorContext('labels',   () => cmdLabels(rest)); break;
       case 'distill':  await withErrorContext('distill',  () => cmdDistill(rest)); break;

@@ -14,7 +14,7 @@ import { mountOAuth, oauthConfigured } from './oauth.js';
 import { sendWelcome, sendBillingActivated, sendBillingFailed, emailConfigured } from './email.js';
 import { compileJs, verify } from './verifier.js';
 import { LIBRARY_VERSION, libraryDescription } from './library.js';
-import { all, findOne, insert, update, stats as storeStats } from './store.js';
+import { all, findOne, insert, update, id as storeId, stats as storeStats } from './store.js';
 import { verifiedInference } from './verified.js';
 import { createJob, getJob, listJobs, runJob } from './compile.js';
 import * as recall from './recall.js';
@@ -1230,6 +1230,168 @@ export function buildRouter() {
       total: matches.length,
       artifacts: matches.slice(0, limit),
     });
+  });
+
+  // ---------- Hub — verifiable artifact gallery ----------
+  // The hub is where compiled .kolm artifacts get published, listed, and
+  // pulled. Distinct from /v1/registry/* (concept recipes / source) — this
+  // surface stores the *output* binaries with their K-score, base model,
+  // SHA-256, and signed receipt. Handle shape: <owner>/<name>[@sha256:hex].
+  // Publish requires auth (API key); reads are public for visibility=public.
+
+  function hubSlug(s, { max = 64 } = {}) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, max);
+  }
+
+  // POST /v1/hub/publish
+  // body: { name, visibility?: 'public'|'private', artifact_b64, metadata? }
+  // Stores the artifact bytes + metadata. Returns { handle, owner, name, sha256, url }.
+  r.post('/v1/hub/publish', publishLimiter, authMiddleware, (req, res) => {
+    const body = req.body || {};
+    const name = hubSlug(body.name);
+    if (!name || name.length < 2) {
+      return res.status(400).json({ error: 'name required (2-64 chars, kebab-case)' });
+    }
+    const visibility = body.visibility === 'public' ? 'public' : 'private';
+    const b64 = String(body.artifact_b64 || '');
+    if (!b64) return res.status(400).json({ error: 'artifact_b64 required' });
+    // Cap at 25MB raw (~33MB base64).
+    if (b64.length > 33 * 1024 * 1024) {
+      return res.status(413).json({ error: 'artifact too large (max 25 MB)' });
+    }
+    let bytes;
+    try {
+      bytes = Buffer.from(b64, 'base64');
+      if (bytes.length === 0) throw new Error('empty');
+    } catch (e) {
+      return res.status(400).json({ error: 'artifact_b64 is not valid base64' });
+    }
+    const sha256Hex = crypto.createHash('sha256').update(bytes).digest('hex');
+    const owner = hubSlug(req.tenant_record?.handle || req.tenant_record?.name || req.tenant_record?.id || req.tenant || 'anon');
+    if (!owner) return res.status(400).json({ error: 'cannot derive owner from tenant' });
+
+    // Reject duplicate publish of same owner/name unless sha differs; same sha = idempotent.
+    const existing = findOne('hub_artifacts', x => x.owner === owner && x.name === name);
+    if (existing && existing.sha256 !== sha256Hex) {
+      return res.status(409).json({ error: `already published as ${owner}/${name}; bump --name or republish with --replace` });
+    }
+
+    const metadata = body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
+    const row = existing || {
+      id: storeId('hub'),
+      owner,
+      name,
+      visibility,
+      sha256: sha256Hex,
+      size_bytes: bytes.length,
+      artifact_b64: b64,
+      metadata: {
+        artifact_id: metadata.artifact_id || null,
+        k_score: metadata.k_score != null ? Number(metadata.k_score) : null,
+        gate: metadata.gate != null ? Number(metadata.gate) : null,
+        base_model: metadata.base_model || null,
+        task: metadata.task || null,
+        tags: Array.isArray(metadata.tags) ? metadata.tags.slice(0, 16).map(String) : [],
+        license: metadata.license || null,
+        receipt: metadata.receipt || null,
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    if (existing) {
+      update('hub_artifacts', x => x.id === existing.id, {
+        visibility,
+        metadata: row.metadata,
+        updated_at: new Date().toISOString(),
+      });
+    } else {
+      insert('hub_artifacts', row);
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    res.status(existing ? 200 : 201).json({
+      handle: `${owner}/${name}@sha256:${sha256Hex.slice(0, 8)}`,
+      owner,
+      name,
+      sha256: sha256Hex,
+      size_bytes: bytes.length,
+      url: `${baseUrl}/v1/hub/${owner}/${name}`,
+      download_url: `${baseUrl}/v1/hub/${owner}/${name}/download`,
+      visibility,
+    });
+  });
+
+  // GET /v1/hub — public list, most-recent first, paginated by `limit`.
+  r.get('/v1/hub', (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    const q = String(req.query.q || '').toLowerCase().trim();
+    const rows = all('hub_artifacts').filter(x => x.visibility === 'public');
+    const filtered = q
+      ? rows.filter(x => (x.name + ' ' + x.owner + ' ' + (x.metadata?.task || '') + ' ' + (x.metadata?.tags || []).join(' ')).toLowerCase().includes(q))
+      : rows;
+    const sorted = filtered.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+    res.json({
+      total: filtered.length,
+      artifacts: sorted.slice(0, limit).map(x => ({
+        handle: `${x.owner}/${x.name}`,
+        owner: x.owner,
+        name: x.name,
+        sha256: x.sha256,
+        size_bytes: x.size_bytes,
+        k_score: x.metadata?.k_score,
+        gate: x.metadata?.gate,
+        base_model: x.metadata?.base_model,
+        task: x.metadata?.task,
+        tags: x.metadata?.tags || [],
+        license: x.metadata?.license,
+        updated_at: x.updated_at,
+      })),
+    });
+  });
+
+  // GET /v1/hub/:owner/:name — public metadata for a single artifact.
+  r.get('/v1/hub/:owner/:name', (req, res) => {
+    const owner = hubSlug(req.params.owner);
+    const name = hubSlug(req.params.name);
+    const row = findOne('hub_artifacts', x => x.owner === owner && x.name === name);
+    if (!row) return res.status(404).json({ error: 'not found' });
+    // Private rows: only the owner can read.
+    if (row.visibility !== 'public') {
+      const reqOwner = hubSlug(req.tenant_record?.handle || req.tenant_record?.name || req.tenant_record?.id || req.tenant || '');
+      if (reqOwner !== owner) return res.status(404).json({ error: 'not found' });
+    }
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    res.json({
+      handle: `${row.owner}/${row.name}@sha256:${row.sha256.slice(0, 8)}`,
+      owner: row.owner,
+      name: row.name,
+      sha256: row.sha256,
+      size_bytes: row.size_bytes,
+      visibility: row.visibility,
+      metadata: row.metadata,
+      download_url: `${baseUrl}/v1/hub/${row.owner}/${row.name}/download`,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    });
+  });
+
+  // GET /v1/hub/:owner/:name/download — binary download, content-type application/octet-stream.
+  r.get('/v1/hub/:owner/:name/download', (req, res) => {
+    const owner = hubSlug(req.params.owner);
+    const name = hubSlug(req.params.name);
+    const row = findOne('hub_artifacts', x => x.owner === owner && x.name === name);
+    if (!row) return res.status(404).json({ error: 'not found' });
+    if (row.visibility !== 'public') {
+      const reqOwner = hubSlug(req.tenant_record?.handle || req.tenant_record?.name || req.tenant_record?.id || req.tenant || '');
+      if (reqOwner !== owner) return res.status(404).json({ error: 'not found' });
+    }
+    const bytes = Buffer.from(row.artifact_b64, 'base64');
+    res.set('Content-Type', 'application/octet-stream');
+    res.set('Content-Disposition', `attachment; filename="${row.name}.kolm"`);
+    res.set('X-Kolm-Sha256', row.sha256);
+    res.set('X-Kolm-Owner', row.owner);
+    res.set('X-Kolm-Name', row.name);
+    res.send(bytes);
   });
 
   // ---------- Recall ----------

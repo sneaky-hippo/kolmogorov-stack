@@ -276,6 +276,8 @@ const PUBLIC_API = (p) =>
   p === '/v1/anon/bootstrap' ||
   p === '/v1/anon/claim' ||
   p === '/v1/registry/public' ||
+  p === '/v1/hub' ||
+  /^\/v1\/hub\/[^/]+\/[^/]+(?:\/download)?$/.test(p) ||
   p === '/v1/stripe/webhook' ||
   p === '/v1/oauth/providers' ||
   p === '/v1/byoc/attestation' ||
