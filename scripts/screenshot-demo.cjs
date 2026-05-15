@@ -51,19 +51,17 @@ async function run() {
           if (typed) typed.textContent = 'extract PHI from clinical notes';
           sEl.classList.add('go');
         } else if (sceneIndex === 1) {
-          // PROOF: K-score at final 0.94, shipped state, badge PASSED.
+          // PROOF: accuracy at final 94%, shipped state, badge BEATS TARGET.
           sEl.classList.add('go');
           sEl.classList.add('shipped');
           const k = document.getElementById('hcn-proof-k');
-          if (k) k.textContent = '0.94';
+          if (k) k.textContent = '94%';
           const ep = document.getElementById('hcn-proof-epoch');
           if (ep) ep.textContent = '25/25';
-          const loss = document.getElementById('hcn-proof-loss');
-          if (loss) loss.textContent = '0.62';
           const seen = document.getElementById('hcn-proof-seen');
           if (seen) seen.textContent = '3,200';
           const gb = document.getElementById('hcn-proof-gate-badge');
-          if (gb) gb.innerHTML = 'gate 0.85 · PASSED';
+          if (gb) gb.textContent = 'beats target';
         } else if (sceneIndex === 2) {
           // PORT: all 6 devices lit.
           sEl.classList.add('go');
