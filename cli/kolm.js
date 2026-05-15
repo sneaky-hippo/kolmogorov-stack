@@ -54,7 +54,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 
-const VERSION = '0.2.2';
+const VERSION = '0.2.3';
 const HOME = os.homedir();
 const KOLM_DIR = path.join(HOME, '.kolm');
 const CONFIG_PATH = path.join(KOLM_DIR, 'config.json');
@@ -63,12 +63,14 @@ const ARTIFACTS_DIR = path.join(KOLM_DIR, 'artifacts');
 // Canonical exit codes. Use these instead of bare process.exit(1).
 //   OK              - success
 //   BAD_ARGS        - unknown command / unknown flag / missing required arg / "usage:" errors
+//   GATE_FAIL       - artifact built but K-score below gate (CI-actionable)
 //   MISSING_PREREQ  - environment-level miss (no docker, no api key, not logged in)
 //   EXECUTION       - the command ran but failed at runtime (run/eval/distill threw)
 //   NOT_FOUND       - file/artifact/resource not present on disk or server
 const EXIT = {
   OK: 0,
   BAD_ARGS: 1,
+  GATE_FAIL: 2,
   MISSING_PREREQ: 3,
   EXECUTION: 4,
   NOT_FOUND: 5,
@@ -466,7 +468,8 @@ OPTIONS (spec)
   --gate <n>                   K-score gate override (default 0.85). Use --gate 0.75 to
                                accept lower-scoring artifacts; --gate 0.95 for stricter.
                                Compile still emits the artifact; the gate verdict line
-                               (pass|fail) reflects this threshold.
+                               (pass|fail) reflects this threshold. EXIT CODES: 0 = pass,
+                               2 = gate fail (artifact on disk, do not promote in CI).
 
 RECIPE SOURCE - two ways to author
   Inline:    "recipes": [{ "source": "function generate(input, lib) {...}" }]
@@ -2479,6 +2482,14 @@ async function cmdCompile(args) {
       await dispatch('PostCompile', { command: 'compile', cwd: process.cwd(), artifact: r.outPath, sha256: r.sha256, bytes: r.bytes, k_score: r.k_score }, { onResult: printHookResult });
       console.log(`\ntry it:  kolm run ${path.basename(r.outPath)} '<input-json>'`);
       console.log(`serve:   kolm serve --mcp     # frontier agents discover it`);
+      // Gate-fail exit: 2 agents (43, 48) flagged that --gate 0.999 printed
+      // "gate >= 1.00 - fail" but still exited 0, silently green-lighting
+      // sub-gate artifacts in CI. compile is the gate verb; it must fail
+      // closed when verdict is fail. Artifact is still on disk (debuggable);
+      // exit code signals "do not promote" to the wrapping pipeline.
+      if (r.k_score && typeof r.k_score.composite === 'number' && r.k_score.composite < kGate()) {
+        process.exit(EXIT.GATE_FAIL);
+      }
       return;
     } catch (e) {
       const code = e.code ? `[${e.code}] ` : '';
