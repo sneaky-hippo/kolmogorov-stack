@@ -665,6 +665,29 @@
     autoresize();
   }
   init();
+
+  // ---------- Deep-link: /ask?prompt=... ----------
+  // Lets the homepage 4-door row and other surfaces hand off a prefilled
+  // prompt. Best-effort: never blocks page render, caps length at 500 to
+  // prevent abuse, auto-submits after a short delay so layout settles and
+  // the initial kolm turn is in the thread first.
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var preset = params.get('prompt');
+    if (preset && typeof preset === 'string') {
+      preset = preset.trim();
+      if (preset.length > 0 && preset.length <= 500) {
+        input.value = preset;
+        autoresize();
+        setTimeout(function(){
+          // Re-check value in case the user already started typing.
+          if ((input.value || '').trim() === preset) {
+            handleSend();
+          }
+        }, 240);
+      }
+    }
+  } catch (_) { /* deep-link is best-effort */ }
 })();
 </script>
 </body>

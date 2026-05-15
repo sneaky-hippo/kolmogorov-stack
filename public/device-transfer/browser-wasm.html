@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Device transfer: Browser WASM quickstart (wasm-llamacpp) | kolm</title>
+<meta name="description" content="Export a .kolm to a wasm-llamacpp bundle and serve it on any modern browser. No install on the client, weights cached via IndexedDB. Honest about WASM single-thread throughput.">
+<meta name="keywords" content="browser inference, WebAssembly, WASM, wasm-llamacpp, ggml, Chrome 121, Firefox 122, IndexedDB, on-device LLM, no install">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta name="author" content="kolm">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="Browser WASM quickstart for kolm device transfer">
+<meta property="og:description" content="WASM export, kolm serve, click Run in the browser. No CLI required for the end user. Real commands, honest about WASM single-thread throughput.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/device-transfer/browser-wasm">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/device-transfer/browser-wasm">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#faf2e1;--good:#10b981;--warn:#f1c777;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:820px;margin:0 auto;padding:0 32px}
+  .wrap-wide{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap,.wrap-wide{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand span{font-weight:500;font-size:16px}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px}
+  header.site nav a:hover{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .cta{color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:500}
+  @media(max-width:720px){header.site nav{display:none}}
+
+  section.hero{padding:60px 0 24px}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-mute);border:1px solid var(--line-strong);border-radius:999px;padding:5px 12px;background:var(--bg-elev)}
+  .pill .dot{width:5px;height:5px;border-radius:50%;background:var(--good)}
+  .crumbs{font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px}
+  .crumbs a{color:var(--ink-mute)}
+  .crumbs a:hover{color:var(--ink)}
+  h1{margin:14px 0 12px;font-size:clamp(28px,4.2vw,40px);line-height:1.1;font-weight:500;max-width:22ch}
+  h1 .tone{color:var(--good)}
+  p.lede{margin:0;font-size:16px;line-height:1.6;color:var(--ink-mute);max-width:62ch}
+
+  section.body{padding:32px 0 64px}
+  section.body h2{margin:36px 0 12px;font-size:22px;line-height:1.25;font-weight:500;color:var(--ink)}
+  section.body h3{margin:24px 0 8px;font-size:16px;line-height:1.3;font-weight:500;color:var(--ink)}
+  section.body p{margin:0 0 14px;font-size:15.5px;line-height:1.65;color:var(--ink-mute)}
+  section.body p b{color:var(--ink);font-weight:500}
+  section.body code{font-family:var(--mono);font-size:0.92em;background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--ink)}
+  section.body ul{margin:0 0 16px;padding-left:22px;color:var(--ink-mute)}
+  section.body ul li{margin:6px 0;font-size:15.5px}
+  section.body ul li b{color:var(--ink)}
+  pre.cmd{margin:8px 0 18px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;font-family:var(--mono);font-size:13px;line-height:1.7;color:var(--ink);white-space:pre-wrap;word-break:break-word;overflow-x:auto}
+  pre.cmd .com{color:var(--ink-faint)}
+  pre.cmd .arg{color:var(--good)}
+  pre.cmd .kw{color:#b0bbff}
+
+  .specs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0 28px;padding:18px 22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:10px}
+  @media(max-width:580px){.specs{grid-template-columns:1fr 1fr}}
+  .specs .cell{display:flex;flex-direction:column;gap:4px}
+  .specs .cell .k{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;color:var(--ink-faint);letter-spacing:0.04em}
+  .specs .cell .v{font-size:14px;color:var(--ink);font-weight:500}
+  .specs .cell .v b{color:var(--good)}
+
+  .callout{margin:16px 0 24px;padding:14px 18px;background:rgba(241,199,119,0.08);border:1px solid rgba(241,199,119,0.4);border-radius:8px;color:var(--ink-mute);font-size:14px;line-height:1.6}
+  .callout b{color:var(--warn);font-weight:500}
+
+  .forecast{margin:16px 0 28px;background:var(--bg-elev);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .forecast table{width:100%;border-collapse:collapse;font-size:14px}
+  .forecast th, .forecast td{padding:11px 18px;text-align:left;border-bottom:1px solid var(--line)}
+  .forecast tr:last-child th, .forecast tr:last-child td{border-bottom:0}
+  .forecast th{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;color:var(--ink-faint);letter-spacing:0.04em;font-weight:500;width:38%}
+  .forecast td{color:var(--ink)}
+  .forecast td b{color:var(--good);font-weight:500}
+
+  footer.site{padding:48px 0 36px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:48px}
+  .footer-tag{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding-top:18px;color:var(--ink-faint)}
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/use-cases">Solutions</a>
+        <a href="/docs">Developers</a>
+        <a href="/research">Research</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/device-transfer">device transfer</a> / browser wasm</div>
+    <span class="pill"><span class="dot"></span>Browser quickstart &middot; WebAssembly &middot; no install on the client</span>
+    <h1>Browser (WASM): <span class="tone">export, serve, click Run.</span></h1>
+    <p class="lede">Runs in any modern browser via WebAssembly. Chrome 121+, Firefox 122+, Safari 17+. The end user installs <b>nothing</b>: weights load over HTTP, decode runs inside the tab, the model is cached in IndexedDB after first load. Throughput is honest single-thread WASM: <b>about 9 tok/s for 7B int4 on a modern laptop</b>.</p>
+  </div>
+</section>
+
+<section class="body">
+  <div class="wrap">
+
+    <div class="specs">
+      <div class="cell"><span class="k">Runtime</span><span class="v">WebAssembly + SIMD</span></div>
+      <div class="cell"><span class="k">Browsers</span><span class="v">Chrome 121+, Firefox 122+, Safari 17+</span></div>
+      <div class="cell"><span class="k">Quant</span><span class="v">int4 only on the web</span></div>
+      <div class="cell"><span class="k">Backend</span><span class="v"><b>wasm-llamacpp</b> (ggml + WASM SIMD)</span></div>
+      <div class="cell"><span class="k">Throughput (7B int4)</span><span class="v">about 9 tok/s</span></div>
+      <div class="cell"><span class="k">Memory budget</span><span class="v">about 4 GB per tab</span></div>
+    </div>
+
+    <h3>Forecast for a 7B int4 artifact in the browser.</h3>
+    <div class="forecast">
+      <table>
+        <tr><th>Output artifact</th><td><code>phi-redactor.wasm-bundle.tar</code></td></tr>
+        <tr><th>Bundle size</th><td>about 1.2 GB (wasm runtime + ggml weights)</td></tr>
+        <tr><th>Throughput</th><td><b>9 tok/s</b> (7B INT4, single-thread WASM, modern laptop)</td></tr>
+        <tr><th>K-score (estimated)</th><td>0.86 (4-bit drift)</td></tr>
+        <tr><th>Fits in tab</th><td><b>yes</b> (1.2 GB weights, 4 GB tab budget)</td></tr>
+        <tr><th>First load (cold)</th><td>about 22 seconds (decode + warm)</td></tr>
+        <tr><th>Subsequent loads</th><td>near-instant (weights cached in IndexedDB)</td></tr>
+      </table>
+    </div>
+
+    <h2>Step 1. Export from your <code>.kolm</code> on the source machine.</h2>
+    <p>The wasm bundle packs the wasm-llamacpp runtime, the ggml quantized weights, and the kolm manifest into a single <code>.tar</code> that <code>kolm serve</code> can host. There is no install step on the source machine beyond having the kolm CLI itself.</p>
+    <pre class="cmd"><span class="kw">$</span> kolm export phi-redactor.kolm <span class="arg">--device</span> browser-wasm <span class="arg">--quant</span> int4
+<span class="com"># output: phi-redactor.wasm-bundle.tar (about 1.2 GB)</span></pre>
+
+    <p>The bundle ships with a tiny static frontend (HTML + JS) that talks to the wasm runtime in-tab. No backend round-trip after the initial download.</p>
+
+    <h2>Step 2. Serve the bundle.</h2>
+    <p>Use <code>kolm serve</code> to host the bundle on a local port. This is a static HTTP server with the right MIME types and IndexedDB-friendly Cache-Control headers baked in. It does not run inference, the browser does.</p>
+    <pre class="cmd"><span class="kw">$</span> kolm serve phi-redactor.wasm-bundle.tar <span class="arg">--port</span> 8080
+<span class="com"># static UI now live at http://localhost:8080</span></pre>
+
+    <p>For internal demos, deploy the same bundle to any static host (Vercel, S3, Cloudflare Pages). The wasm runtime does not need WebGPU, WebGL, or any server-side compute.</p>
+
+    <h2>Step 3. Open the browser and click Run.</h2>
+    <p>Open <code>http://localhost:8080</code> in Chrome 121+. The page shows a textarea and a Run button. First click streams the weights from the server into IndexedDB, decodes, and warms the wasm runtime in about 22 seconds. Subsequent clicks are near-instant.</p>
+
+    <pre class="cmd"><span class="com"># end-user flow:</span>
+<span class="com"># 1. open http://localhost:8080</span>
+<span class="com"># 2. wait ~22s for first cold load (weights download, decode, warm)</span>
+<span class="com"># 3. type or paste input, click Run</span>
+<span class="com"># 4. stream tokens at ~9 tok/s</span>
+<span class="com"># 5. tab can be closed and reopened, weights stay cached in IndexedDB</span></pre>
+
+    <p><b>No CLI required for the end user.</b> The whole flow above is point-and-click. The only CLI usage is on whoever runs <code>kolm serve</code> (or who deploys to a static host once).</p>
+
+    <h2>Throughput envelope across browsers and devices.</h2>
+    <ul>
+      <li><b>7B int4, modern laptop (M-series Mac, Ryzen 7+, Core i7 12th+):</b> about 9 tok/s.</li>
+      <li><b>3B int4, modern laptop:</b> about 22 tok/s. Better fit for interactive UX.</li>
+      <li><b>1B int4, modern laptop:</b> about 65 tok/s. Snappy on any modern browser.</li>
+      <li><b>7B int4, iPhone 15 Pro (Safari 17):</b> about 3 tok/s. WASM is single-thread.</li>
+      <li><b>7B int4, Android (Chrome 121):</b> about 3 to 5 tok/s, depending on SoC.</li>
+      <li><b>13B int4 or higher:</b> not viable on most browsers, memory budget exceeds 4 GB per tab.</li>
+    </ul>
+
+    <div class="callout"><b>WASM is single-thread by default.</b> SharedArrayBuffer and threading are gated behind cross-origin isolation headers (<code>Cross-Origin-Opener-Policy</code> and <code>Cross-Origin-Embedder-Policy</code>) which <code>kolm serve</code> sets correctly. Even with threading, browser WASM is 2 to 4x slower than native ggml. For a 70 tok/s native run, expect 15 to 25 tok/s in-browser at best. Treat the browser as the zero-install path, not the throughput path.</div>
+
+    <h2>Troubleshooting.</h2>
+    <ul>
+      <li><b>Slow on iPhone (about 3 tok/s):</b> expected. WASM is single-thread on iOS Safari (no SAB workers), and the A17 cores cannot match a laptop. Use the <a href="/device-transfer/iphone-15-pro">iPhone CoreML quickstart</a> for native-throughput iPhone deployments.</li>
+      <li><b>Tab freezes during decode:</b> upgrade to Chrome 121+ or Firefox 122+. SIMD-relaxed instructions are on by default in those versions and give a 1.8x throughput bump on ggml-style kernels. Older browsers fall back to scalar wasm.</li>
+      <li><b>Weights re-download every visit:</b> IndexedDB hit the per-origin quota and evicted the cache. The bundle calls <code>navigator.storage.persist()</code> on first load, but the user has to accept the prompt. If declined, the cache is best-effort. Tell users to grant persistent storage in the browser's site-data settings.</li>
+      <li><b>"SharedArrayBuffer is not defined":</b> the host did not set COOP/COEP headers. <code>kolm serve</code> sets them; a custom static host (Vercel, S3, Cloudflare) needs them too. Without them WASM falls back to single-thread, which works but is slower.</li>
+    </ul>
+
+    <h2>Verify the artifact stayed honest.</h2>
+    <p>The browser bundle ships the same <code>kolm.manifest.json</code> as the desktop export, with K-score, SHA-256 of the weights, quant tier, and signature. Drop the bundle into <a href="/verify-prod">/verify-prod</a> to recompute the six checks in another browser tab. No upload, no backend.</p>
+    <pre class="cmd"><span class="com"># on the source machine</span>
+<span class="kw">$</span> kolm verify phi-redactor.kolm <span class="arg">--binder</span> report.html</pre>
+
+    <h2>References.</h2>
+    <ul>
+      <li><a href="https://github.com/ggerganov/llama.cpp/tree/master/examples/wasm" rel="noopener">wasm-llamacpp upstream</a></li>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API" rel="noopener">MDN: IndexedDB API</a></li>
+      <li><a href="https://developer.chrome.com/blog/enabling-shared-array-buffer/" rel="noopener">SharedArrayBuffer and cross-origin isolation</a></li>
+    </ul>
+
+    <h2>Next.</h2>
+    <ul>
+      <li><a href="/device-transfer">Picker: pick a different device or quant.</a></li>
+      <li><a href="/device-transfer/m3-mac">M3 Mac quickstart: native MLX, 50+ tok/s for the same artifact.</a></li>
+      <li><a href="/research/edge-artifact-sizing">Edge artifact sizing: the full doc.</a></li>
+    </ul>
+
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

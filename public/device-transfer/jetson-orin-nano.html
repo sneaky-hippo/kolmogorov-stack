@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Device transfer: Jetson Orin Nano quickstart (TensorRT-LLM) | kolm</title>
+<meta name="description" content="Export a .kolm to a TensorRT-LLM engine, scp to a Jetson Orin Nano, and run inference. Honest about the 8GB unified ceiling and the first-run JIT cost.">
+<meta name="keywords" content="Jetson Orin Nano, TensorRT-LLM, ONNX Runtime CUDA, Ampere GPU, 67 TOPS, edge inference, NVIDIA JetPack">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta name="author" content="kolm">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="Jetson Orin Nano quickstart for kolm device transfer">
+<meta property="og:description" content="TensorRT-LLM engine build, scp to the Jetson, run on Ampere. Real commands, honest about the 8GB unified ceiling.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/device-transfer/jetson-orin-nano">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/device-transfer/jetson-orin-nano">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#faf2e1;--good:#10b981;--warn:#f1c777;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:820px;margin:0 auto;padding:0 32px}
+  .wrap-wide{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap,.wrap-wide{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand span{font-weight:500;font-size:16px}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px}
+  header.site nav a:hover{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .cta{color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:500}
+  @media(max-width:720px){header.site nav{display:none}}
+
+  section.hero{padding:60px 0 24px}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-mute);border:1px solid var(--line-strong);border-radius:999px;padding:5px 12px;background:var(--bg-elev)}
+  .pill .dot{width:5px;height:5px;border-radius:50%;background:var(--good)}
+  .crumbs{font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px}
+  .crumbs a{color:var(--ink-mute)}
+  .crumbs a:hover{color:var(--ink)}
+  h1{margin:14px 0 12px;font-size:clamp(28px,4.2vw,40px);line-height:1.1;font-weight:500;max-width:22ch}
+  h1 .tone{color:var(--good)}
+  p.lede{margin:0;font-size:16px;line-height:1.6;color:var(--ink-mute);max-width:62ch}
+
+  section.body{padding:32px 0 64px}
+  section.body h2{margin:36px 0 12px;font-size:22px;line-height:1.25;font-weight:500;color:var(--ink)}
+  section.body h3{margin:24px 0 8px;font-size:16px;line-height:1.3;font-weight:500;color:var(--ink)}
+  section.body p{margin:0 0 14px;font-size:15.5px;line-height:1.65;color:var(--ink-mute)}
+  section.body p b{color:var(--ink);font-weight:500}
+  section.body code{font-family:var(--mono);font-size:0.92em;background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--ink)}
+  section.body ul{margin:0 0 16px;padding-left:22px;color:var(--ink-mute)}
+  section.body ul li{margin:6px 0;font-size:15.5px}
+  section.body ul li b{color:var(--ink)}
+  pre.cmd{margin:8px 0 18px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;font-family:var(--mono);font-size:13px;line-height:1.7;color:var(--ink);white-space:pre-wrap;word-break:break-word;overflow-x:auto}
+  pre.cmd .com{color:var(--ink-faint)}
+  pre.cmd .arg{color:var(--good)}
+  pre.cmd .kw{color:#b0bbff}
+
+  .specs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0 28px;padding:18px 22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:10px}
+  @media(max-width:580px){.specs{grid-template-columns:1fr 1fr}}
+  .specs .cell{display:flex;flex-direction:column;gap:4px}
+  .specs .cell .k{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;color:var(--ink-faint);letter-spacing:0.04em}
+  .specs .cell .v{font-size:14px;color:var(--ink);font-weight:500}
+  .specs .cell .v b{color:var(--good)}
+
+  .callout{margin:16px 0 24px;padding:14px 18px;background:rgba(241,199,119,0.08);border:1px solid rgba(241,199,119,0.4);border-radius:8px;color:var(--ink-mute);font-size:14px;line-height:1.6}
+  .callout b{color:var(--warn);font-weight:500}
+
+  .forecast{margin:16px 0 28px;background:var(--bg-elev);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .forecast table{width:100%;border-collapse:collapse;font-size:14px}
+  .forecast th, .forecast td{padding:11px 18px;text-align:left;border-bottom:1px solid var(--line)}
+  .forecast tr:last-child th, .forecast tr:last-child td{border-bottom:0}
+  .forecast th{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;color:var(--ink-faint);letter-spacing:0.04em;font-weight:500;width:38%}
+  .forecast td{color:var(--ink)}
+  .forecast td b{color:var(--good);font-weight:500}
+
+  footer.site{padding:48px 0 36px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:48px}
+  .footer-tag{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding-top:18px;color:var(--ink-faint)}
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/use-cases">Solutions</a>
+        <a href="/docs">Developers</a>
+        <a href="/research">Research</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/device-transfer">device transfer</a> / jetson orin nano</div>
+    <span class="pill"><span class="dot"></span>Jetson quickstart &middot; Ampere GPU &middot; TensorRT-LLM</span>
+    <h1>Jetson Orin Nano: <span class="tone">build engine, scp, run.</span></h1>
+    <p class="lede">The Orin Nano 8GB is a 25-watt edge box that runs a 7B int4 artifact at <b>about 38 tok/s</b> once the TensorRT engine is built. The first run pays a JIT cost of <b>roughly 90 seconds</b> for engine compilation, then every run after is cached. ONNX Runtime CUDA is the fallback path if TensorRT-LLM is not yet on your JetPack.</p>
+  </div>
+</section>
+
+<section class="body">
+  <div class="wrap">
+
+    <div class="specs">
+      <div class="cell"><span class="k">Module</span><span class="v">Jetson Orin Nano 8GB</span></div>
+      <div class="cell"><span class="k">GPU</span><span class="v">Ampere, 1024 CUDA cores, 32 Tensor</span></div>
+      <div class="cell"><span class="k">Compute</span><span class="v">67 TOPS sparse INT8</span></div>
+      <div class="cell"><span class="k">Memory</span><span class="v">8 GB LPDDR5 unified</span></div>
+      <div class="cell"><span class="k">Backend</span><span class="v"><b>TensorRT-LLM</b> (fallback: ONNX Runtime CUDA)</span></div>
+      <div class="cell"><span class="k">Power</span><span class="v">7W to 25W (selectable)</span></div>
+    </div>
+
+    <h3>Forecast for a 7B int4 artifact.</h3>
+    <div class="forecast">
+      <table>
+        <tr><th>Output artifact</th><td><code>phi-redactor.jetson-orin-nano.trt-engine</code></td></tr>
+        <tr><th>Engine size</th><td>about 1.4 GB</td></tr>
+        <tr><th>Throughput</th><td><b>38 tok/s</b> (7B INT4, public benchmarks)</td></tr>
+        <tr><th>K-score (estimated)</th><td>0.88 (drift from int4 quant)</td></tr>
+        <tr><th>Fits in memory</th><td><b>yes</b> (1.4 GB engine + KV cache fits under 8 GB)</td></tr>
+        <tr><th>First-run JIT</th><td>about 90 seconds (TensorRT engine build, cached after)</td></tr>
+      </table>
+    </div>
+
+    <h2>Step 1. Flash the Jetson with JetPack 6.</h2>
+    <p>JetPack 6 ships CUDA 12, cuDNN 9, and TensorRT 10 out of the box. Use NVIDIA SDK Manager from a host Linux box, or flash a fresh microSD via the L4T image. After boot, confirm the CUDA toolchain is on PATH.</p>
+    <pre class="cmd"><span class="kw">$</span> sudo apt update
+<span class="kw">$</span> sudo apt install -y python3-pip python3-venv git
+<span class="kw">$</span> nvcc --version
+<span class="com"># expected: release 12.x, build cuda_12.x</span>
+<span class="kw">$</span> nvidia-smi
+<span class="com"># expected: Orin (nvgpu) device listed</span></pre>
+
+    <h2>Step 2. Install TensorRT-LLM (preferred) or ONNX Runtime CUDA (fallback).</h2>
+    <p>TensorRT-LLM is the NVIDIA-blessed path for LLM inference on Jetson. It compiles a static engine that runs at near-peak Ampere throughput. ONNX Runtime CUDA is the portable fallback if a JetPack release lags behind TensorRT-LLM upstream.</p>
+    <pre class="cmd"><span class="com"># TensorRT-LLM (preferred)</span>
+<span class="kw">$</span> python3 -m venv ~/kolm-trt
+<span class="kw">$</span> source ~/kolm-trt/bin/activate
+<span class="kw">$</span> pip install --upgrade pip
+<span class="kw">$</span> pip install tensorrt_llm <span class="arg">--extra-index-url</span> https://pypi.nvidia.com
+
+<span class="com"># ONNX Runtime CUDA (fallback)</span>
+<span class="kw">$</span> pip install onnxruntime-gpu optimum[exporters]</pre>
+
+    <p>If <code>tensorrt_llm</code> import fails, the JetPack version is older than the wheel. Either upgrade JetPack or use the ONNX fallback. The kolm export command handles both.</p>
+
+    <h2>Step 3. Export from your <code>.kolm</code> on the source machine.</h2>
+    <p>Run this on whatever box you compiled the <code>.kolm</code> on, not the Jetson. The export produces a serialized TensorRT engine targeted at Orin Nano (sm_87). Use <code>--quant int4</code> for the 8 GB module.</p>
+    <pre class="cmd"><span class="kw">$</span> kolm export phi-redactor.kolm <span class="arg">--device</span> jetson-orin-nano <span class="arg">--backend</span> trt-llm <span class="arg">--quant</span> int4
+<span class="com"># output: phi-redactor.jetson-orin-nano.trt-engine (about 1.4 GB)</span></pre>
+
+    <p>The output is a single file at <code>phi-redactor.jetson-orin-nano.trt-engine</code> plus a small <code>kolm.manifest.json</code> for verify. Both ship together.</p>
+
+    <h2>Step 4. Move it to the Jetson.</h2>
+    <p>Jetson Orin Nano DevKit ships with Ubuntu and SSH ready out of the box. Use <code>scp</code> for one-shot transfers, <code>rsync</code> if the LAN is flaky.</p>
+    <pre class="cmd"><span class="kw">$</span> scp phi-redactor.jetson-orin-nano.trt-engine nvidia@jetson.local:~/engines/
+<span class="kw">$</span> scp kolm.manifest.json nvidia@jetson.local:~/engines/
+<span class="com"># resumable alternative:</span>
+<span class="kw">$</span> rsync -avP phi-redactor.jetson-orin-nano.trt-engine nvidia@jetson.local:~/engines/</pre>
+
+    <h2>Step 5. Run on the Jetson.</h2>
+    <p>SSH into the Jetson and invoke <code>kolm run</code> against the engine file. The first run JIT-builds the runtime context, which takes about 90 seconds. After that the engine is cached in <code>~/.kolm/trt-cache</code> and every run is instant.</p>
+    <pre class="cmd"><span class="kw">$</span> ssh nvidia@jetson.local
+<span class="kw">$</span> kolm run phi-redactor.jetson-orin-nano.trt-engine <span class="arg">'MRN 123456 SSN 555-44-3333'</span>
+<span class="com"># first run: about 90s for engine warmup, then 38 tok/s steady state</span>
+<span class="com"># subsequent runs: instant warmup</span></pre>
+
+    <p>For an OpenAI-compatible HTTP server, use the TensorRT-LLM serve harness directly:</p>
+    <pre class="cmd"><span class="kw">$</span> trtllm-serve <span class="arg">--engine_dir</span> ~/engines/phi-redactor.jetson-orin-nano.trt-engine <span class="arg">--port</span> 8080
+<span class="com"># OpenAI-compatible endpoint at http://jetson.local:8080/v1/chat/completions</span></pre>
+
+    <h2>Throughput envelope on Orin Nano.</h2>
+    <ul>
+      <li><b>7B int4 (default):</b> 38 tok/s steady state. The picker's reference rate.</li>
+      <li><b>7B int8:</b> about 22 tok/s. Higher fidelity, tighter memory budget.</li>
+      <li><b>3B int4:</b> about 75 tok/s. Best for interactive chat, leaves headroom for batch.</li>
+      <li><b>3B int8:</b> about 48 tok/s. Comfortable interactive ceiling.</li>
+      <li><b>13B int4:</b> does not fit on Orin Nano 8GB. Use the Orin AGX 32 or 64 GB module instead.</li>
+    </ul>
+
+    <div class="callout"><b>Power mode matters.</b> The Orin Nano defaults to a 15W power profile out of the box. Push it to 25W with <code>sudo nvpmodel -m 0</code> and <code>sudo jetson_clocks</code> to get the 38 tok/s figure above. At 7W (battery mode), expect about 18 tok/s on the same workload.</div>
+
+    <h2>Troubleshooting.</h2>
+    <ul>
+      <li><b>Out of memory at engine load:</b> drop to int3 (<code>--quant int3</code>). This brings K-est to about 0.84, which may fail your ship gate. Verify against the eval pack before going lower than int4.</li>
+      <li><b>Engine build slow on first run:</b> expected. The ~90s JIT compile happens once per artifact, then the engine is cached in <code>~/.kolm/trt-cache</code> and every subsequent run is instant.</li>
+      <li><b>Low throughput (under 25 tok/s):</b> check <code>tegrastats</code> for GPU clock. If the clock drops below 800 MHz the module is thermal-throttling. Add a fan, or run <code>sudo jetson_clocks</code> to pin the clock at max.</li>
+      <li><b>ONNX fallback is needed:</b> if <code>tensorrt_llm</code> wheel does not import, fall back to <code>--backend onnxruntime-cuda</code>. Throughput is about 60 percent of TensorRT-LLM, K-est is identical.</li>
+    </ul>
+
+    <h2>Verify the artifact stayed honest.</h2>
+    <p>Quantization can cost up to 0.05 K-points. Confirm the drop is within your task tolerance before procurement signs off. Run <code>kolm verify</code> on the source <code>.kolm</code> to regenerate the binder, and run <code>kolm bench</code> against a small eval set on the Jetson to compare.</p>
+    <pre class="cmd"><span class="com"># on the source machine</span>
+<span class="kw">$</span> kolm verify phi-redactor.kolm <span class="arg">--binder</span> report.html
+
+<span class="com"># on the Jetson, after pulling a small eval set</span>
+<span class="kw">$</span> kolm bench phi-redactor.jetson-orin-nano.trt-engine <span class="arg">--evals</span> ~/evals/sample.jsonl</pre>
+
+    <p>For reviewer-grade evidence, <a href="/verify-prod">/verify-prod</a> accepts the same <code>.kolm</code> in the browser and runs the same six checks.</p>
+
+    <h2>References.</h2>
+    <ul>
+      <li><a href="https://nvidia.github.io/TensorRT-LLM/" rel="noopener">NVIDIA TensorRT-LLM docs</a></li>
+      <li><a href="https://developer.nvidia.com/embedded/jetpack" rel="noopener">JetPack SDK</a></li>
+      <li><a href="https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html" rel="noopener">ONNX Runtime CUDA EP</a></li>
+    </ul>
+
+    <h2>Next.</h2>
+    <ul>
+      <li><a href="/device-transfer">Picker: pick a different device or quant.</a></li>
+      <li><a href="/edge">Edge deployment reference architectures.</a></li>
+      <li><a href="/research/edge-artifact-sizing">Edge artifact sizing: the full doc.</a></li>
+    </ul>
+
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>
