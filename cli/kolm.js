@@ -219,6 +219,7 @@ COMMANDS
   compile --spec <file|->           offline build from a JSON spec (any author, AI included)
   train --spec <file>              alias for compile from a spec (training entry point)
   train --namespace <n>            alias for distill (after capture)
+  seeds <sub>                      local-first training-data helpers (new|generate|list|bootstrap)
   run <art.kolm> '<input>'         execute a .kolm against an input
   eval <art.kolm>                  re-run embedded evals, print K-score
   bench <art.kolm> [opts]          emit artifact benchmark JSON (alias: benchmark)
@@ -872,6 +873,59 @@ EXAMPLES
   #     var hits = lib.rag ? lib.rag.query(input.q, 3).matches : [];
   #     ...
   #   }
+`,
+  seeds: `kolm seeds - honest, local-first training-data helpers.
+
+USAGE
+  kolm seeds new <name>                                 scaffold a seeds.jsonl with starter rows
+  kolm seeds generate --from <file> --count <N> [opts]  rule-based mutate seeds into N rows
+  kolm seeds list                                       list files under ~/.kolm/seeds with counts
+  kolm seeds bootstrap --task <name>                    install a public-domain starter dataset
+
+NEW
+  Templates: phi-redactor, ticket-classifier, invoice-extractor, generic
+  Writes to ./seeds.jsonl in the current directory (refuses to overwrite).
+
+GENERATE
+  --from <file>            jsonl input. each row is {"input": "...", "output": "...", ...}
+  --count, -n <N>          target row count (>= number of input seeds)
+  --strategy <name>        templated (default) | redact-pii-templated | classify-mutate
+                           | extract-permute | local-llm
+  --seed-rng <int>         PRNG seed for reproducible output (default: 1)
+  --out <path>             output jsonl path (default: ~/.kolm/seeds/expanded-<ts>.jsonl)
+  --local-llm-url <url>    only used with --strategy local-llm. must be localhost (127.0.0.1, ::1).
+                           default: http://localhost:11434 (ollama)
+  --local-llm-model <name> model name for local-llm strategy
+  --yes, -y                skip the local-llm confirmation prompt (CI usage)
+  --json                   emit a single-line summary JSON instead of human text
+
+Every generated row carries provenance:
+  {"input": "...", "output": "...", "source": "templated|seed|public|local-llm", "from_seed": N}
+
+The train loop later reports K-score broken out by source so a templated row is never
+counted as ground truth. We never call a third-party API. local-llm strategy only
+hits localhost (validated) and is opt-in.
+
+BOOTSTRAP
+  --task <name>            phi-redactor (shipped) | email-classifier (coming) | invoice-fields (coming)
+  --out <path>             where to copy the dataset (default: ~/.kolm/seeds/<task>.jsonl)
+
+Bootstrap datasets are PUBLIC seed data shipped with kolm, not synthetic K-score.
+Use to start the train loop, then add your own real examples for a higher K-score.
+
+LIST
+  --json                   one-line JSON per file (name, rows, source-mix)
+
+EXAMPLES
+  kolm seeds new phi-redactor
+  kolm seeds generate --from seeds.jsonl --count 200 --strategy redact-pii-templated --seed-rng 42
+  kolm seeds bootstrap --task phi-redactor
+  kolm seeds list
+
+HONESTY
+  We never hallucinate data from thin air. Every strategy requires seeds as input
+  (except bootstrap which ships public-domain data). Provenance is recorded on every
+  row. Determinism: same --from + --strategy + --seed-rng -> identical bytes.
 `,
 };
 
@@ -4214,7 +4268,7 @@ const COMPLETION_VERBS = [
   'score', 'inspect', 'diff', 'verify', 'serve', 'publish', 'capture', 'labels', 'distill',
   'config', 'install', 'tune', 'rag', 'team', 'tunnel', 'cloud', 'airgap',
   'compute', 'doctor', 'logs', 'ask', 'chat', 'version', 'help', 'completion', 'upgrade', 'update',
-  'models', 'gpu', 'export',
+  'models', 'gpu', 'export', 'seeds',
 ];
 const COMPLETION_SUBS = {
   compute: ['list', 'detect', 'pick', 'use', 'info', 'test', 'status'],
@@ -4229,6 +4283,7 @@ const COMPLETION_SUBS = {
   completion: ['bash', 'zsh', 'fish'],
   models:  ['list', 'info', 'recommend', 'pin', 'devices'],
   gpu:     ['detect', 'doctor', 'setup', 'stress'],
+  seeds:   ['new', 'generate', 'list', 'bootstrap'],
 };
 
 function emitBashCompletion() {
@@ -4676,6 +4731,710 @@ async function cmdUpgrade(args) {
     console.log('could not reach npm to check for updates.');
     console.log('to upgrade manually:');
     console.log('  npm i -g github:sneaky-hippo/kolmogorov-stack');
+}
+
+// ---------- seeds ----------
+// `kolm seeds <sub>` is the honest training-data helper family.
+//
+// Goals (the founder constraints):
+//   1. NO hallucinated data. Every strategy needs seeds as input (except
+//      `bootstrap` which ships public-domain data).
+//   2. NO fake K-scores. We only emit input/output pairs. K-score is computed
+//      later by the train loop, with provenance broken out per row.
+//   3. NO third-party API leakage. The only network egress allowed is the
+//      `local-llm` strategy, which is gated to localhost (validateLocalhost)
+//      and prompts the user for explicit confirmation before sending seeds.
+//   4. Local-first. Everything (templates, public seed dataset, mutation rules)
+//      ships on disk. The verb works fully offline.
+//   5. Determinism. Same --from + --strategy + --seed-rng -> identical bytes.
+//
+// Subcommands:
+//   new <name>         scaffold a seeds.jsonl with starter rows for the task type
+//   generate           expand seeds via rule-based mutation (5 strategies)
+//   list               list ~/.kolm/seeds files with provenance summary
+//   bootstrap          install a public-domain starter dataset shipped with kolm
+//
+// Provenance: every emitted row gets {"source": "templated|seed|public|local-llm",
+// "from_seed": <index>}. The train loop reads these and reports K-score per source.
+
+// Seed templates per task type. These are STARTER rows for the user to replace
+// with their own real examples. They are intentionally small (3-5 per template)
+// because the point is to teach the format and unblock the user, not to generate
+// training data from thin air.
+const SEED_TEMPLATES = {
+  'phi-redactor': [
+    { input: 'patient John Doe MRN 1234567 visited on 2024-03-12 for follow-up.', output: 'patient [REDACTED] MRN [REDACTED] visited on [DATE] for follow-up.', tags: ['name', 'mrn', 'date'] },
+    { input: 'contact Jane Smith at 555-123-4567 or jsmith@example.com', output: 'contact [REDACTED] at [PHONE] or [EMAIL]', tags: ['name', 'phone', 'email'] },
+    { input: 'SSN 555-44-3333 was flagged in the audit log.', output: 'SSN [REDACTED] was flagged in the audit log.', tags: ['ssn'] },
+    { input: 'address: 1234 Oak Street, Springfield, IL 62701', output: 'address: [REDACTED]', tags: ['address'] },
+    { input: 'DOB 1975-08-14, admitted 2024-01-09, MRN 7890123.', output: 'DOB [DATE], admitted [DATE], MRN [REDACTED].', tags: ['dob', 'date', 'mrn'] },
+  ],
+  'ticket-classifier': [
+    { input: 'my password reset email never arrived. been waiting 20 minutes.', output: 'auth', tags: ['auth'] },
+    { input: 'invoice from last month shows the wrong amount, please refund.', output: 'billing', tags: ['billing'] },
+    { input: 'when i click export the page just spins forever and never finishes.', output: 'bug', tags: ['bug'] },
+    { input: 'would love to see dark mode in the dashboard.', output: 'feature_request', tags: ['feature_request'] },
+    { input: 'how do i add a teammate to my workspace?', output: 'how_to', tags: ['how_to'] },
+  ],
+  'invoice-extractor': [
+    { input: 'Invoice from Acme Corp, dated 2024-03-15, total $1,234.56', output: '{"vendor": "Acme Corp", "amount": 1234.56, "date": "2024-03-15"}', tags: ['vendor', 'amount', 'date'] },
+    { input: 'Bill: Globex LLC -- amount due 99.00 USD, invoice date 04/02/2024', output: '{"vendor": "Globex LLC", "amount": 99.00, "date": "2024-04-02"}', tags: ['vendor', 'amount', 'date'] },
+    { input: 'INV-7821: Initech, $4,500.00, billed 2023-12-30.', output: '{"vendor": "Initech", "amount": 4500.00, "date": "2023-12-30"}', tags: ['vendor', 'amount', 'date'] },
+    { input: 'Soylent Industries invoice 2024-05-01 for 250.00', output: '{"vendor": "Soylent Industries", "amount": 250.00, "date": "2024-05-01"}', tags: ['vendor', 'amount', 'date'] },
+    { input: 'Hooli, total: 12345.67, date: 2024-02-09', output: '{"vendor": "Hooli", "amount": 12345.67, "date": "2024-02-09"}', tags: ['vendor', 'amount', 'date'] },
+  ],
+  'generic': [
+    { input: 'sample input one. replace with your real example.', output: 'sample expected output one.', tags: ['placeholder'] },
+    { input: 'sample input two. replace with your real example.', output: 'sample expected output two.', tags: ['placeholder'] },
+    { input: 'sample input three. replace with your real example.', output: 'sample expected output three.', tags: ['placeholder'] },
+  ],
+};
+
+// 100-name dictionary used by the redact-pii-templated strategy. Names are
+// common English first+last combos. Shipped on disk so it works airgapped.
+const NAME_DICT = [
+  'Alex Carter', 'Bailey Brown', 'Casey Clark', 'Drew Davis', 'Evan Edwards',
+  'Frankie Fisher', 'Gray Garcia', 'Harper Hall', 'Indigo Ingram', 'Jordan Johnson',
+  'Kai King', 'Logan Lewis', 'Morgan Martin', 'Nico Nguyen', 'Oakley Owens',
+  'Parker Parker', 'Quinn Quincy', 'Reese Roberts', 'Sage Sanchez', 'Taylor Turner',
+  'Uri Underwood', 'Val Vance', 'Wren Walker', 'Xan Xu', 'Yael Young',
+  'Zion Zimmerman', 'Avery Adams', 'Blair Bailey', 'Cameron Cook', 'Dakota Diaz',
+  'Eli Ellis', 'Finley Fox', 'Greer Gray', 'Hayden Hayes', 'Iris Irwin',
+  'Jules Jenkins', 'Kit Kelly', 'Lane Long', 'Micah Mills', 'Noor Nash',
+  'Ollie Ortiz', 'Phoenix Patel', 'Quinn Quintero', 'River Reed', 'Sky Stone',
+  'Toni Tate', 'Uma Ueda', 'Vince Vargas', 'Wade Webb', 'Xen Xiong',
+  'Yuki Yamada', 'Zane Zhou', 'Ari Atkins', 'Bowie Burns', 'Cleo Coleman',
+  'Devon Doyle', 'Emery Eaton', 'Fern Flores', 'Gus Gonzalez', 'Holly Holmes',
+  'Ivy Ito', 'Jess Jacobs', 'Kim Kane', 'Lou Lambert', 'Max Moore',
+  'Niko Newton', 'Owen Oden', 'Pat Park', 'Quill Quan', 'Ren Reyes',
+  'Sam Sutton', 'Theo Thomas', 'Ula Usman', 'Vera Vega', 'Wes Wood',
+  'Xena Xu', 'Yves Yates', 'Zola Zane', 'Ash Anderson', 'Beau Bishop',
+  'Cody Costa', 'Dani Drake', 'Echo Estes', 'Felix Frazier', 'Gemma Greene',
+  'Henley Hu', 'Imani Isaac', 'Jay Joyce', 'Kris Khan', 'Leo Lin',
+  'Mira Mahmoud', 'Nat Norris', 'Onyx Ortega', 'Piper Pena', 'Rae Rivera',
+  'Sloan Singh', 'Tess Toledo', 'Umi Ueno', 'Vega Vu', 'Wilder Wright',
+];
+
+// Synonym dictionary used by classify-mutate. Small, hand-built. Words that
+// don't have entries here are left alone.
+const SYNONYMS = {
+  'wait': ['hang', 'sit', 'idle'],
+  'waiting': ['hanging', 'sitting', 'idling'],
+  'minutes': ['mins', 'minutes'],
+  'never': ['still has not', 'has not'],
+  'arrived': ['shown up', 'come through'],
+  'reset': ['reissue', 'reissuing'],
+  'wrong': ['incorrect', 'off'],
+  'amount': ['total', 'figure'],
+  'refund': ['credit', 'return the funds for'],
+  'click': ['tap', 'press'],
+  'spins': ['hangs', 'loads forever'],
+  'forever': ['indefinitely', 'and never finishes'],
+  'love': ['like', 'appreciate'],
+  'see': ['get', 'have'],
+  'add': ['invite', 'bring on'],
+  'teammate': ['colleague', 'collaborator'],
+  'workspace': ['org', 'team'],
+};
+
+// Mulberry32 PRNG. Deterministic, 32-bit state. Same seed -> same sequence.
+function seededRng(seed) {
+  let t = (seed | 0) || 1;
+  return function () {
+    t = (t + 0x6D2B79F5) | 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function rngInt(rng, lo, hi) {
+  return Math.floor(rng() * (hi - lo + 1)) + lo;
+}
+function rngPick(rng, arr) {
+  return arr[Math.floor(rng() * arr.length)];
+}
+
+// Validate that a URL points at the local machine. Refuses anything else.
+// Accepted hosts: localhost, 127.0.0.1, ::1. Anything else throws.
+function validateLocalhost(urlStr) {
+  let u;
+  try { u = new URL(urlStr); }
+  catch (e) {
+    const err = new Error(`invalid url for --local-llm-url: ${urlStr}`);
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  const host = (u.hostname || '').toLowerCase();
+  const ok = host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]';
+  if (!ok) {
+    const err = new Error(`refused: --local-llm-url must be localhost (got "${host}"). kolm seeds never leaks data to a third-party endpoint.`);
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  return u;
+}
+
+// Read a jsonl file. Tolerates blank lines and `//` comment lines (the header
+// note line in bootstrap datasets). Throws on parse error with line context.
+function loadSeeds(filePath) {
+  if (!fs.existsSync(filePath)) {
+    const err = new Error(`seeds file not found: ${filePath}`);
+    err.exitCode = EXIT.NOT_FOUND;
+    throw err;
+  }
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const lines = raw.split(/\r?\n/);
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i].trim();
+    if (!ln) continue;
+    if (ln.startsWith('//') || ln.startsWith('#')) continue;
+    try {
+      const row = JSON.parse(ln);
+      if (row && typeof row === 'object') out.push(row);
+    } catch (e) {
+      const err = new Error(`seeds parse error at line ${i + 1}: ${e.message}`);
+      err.exitCode = EXIT.BAD_ARGS;
+      throw err;
+    }
+  }
+  return out;
+}
+
+// Write rows to a jsonl file. Creates parent dirs as needed.
+function writeJsonl(rows, outPath) {
+  const dir = path.dirname(outPath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const body = rows.map(r => JSON.stringify(r)).join('\n') + '\n';
+  fs.writeFileSync(outPath, body);
+  return body.length;
+}
+
+// Identifier permutation. Given an identifier kind, return a new one that
+// looks like a valid-shape example but uses ranges reserved for testing
+// (so we don't accidentally generate a real person's number).
+function permuteIdentifier(rng, kind) {
+  if (kind === 'mrn') {
+    return String(rngInt(rng, 1000000, 9999999));
+  }
+  if (kind === 'ssn') {
+    // Use 9xx area numbers which are reserved (not issued) per SSA.
+    return `9${rngInt(rng, 10, 99)}-${rngInt(rng, 10, 99)}-${rngInt(rng, 1000, 9999)}`;
+  }
+  if (kind === 'phone') {
+    // Use 555 prefix (Hollywood-style, reserved for fiction).
+    return `555-${rngInt(rng, 100, 999)}-${rngInt(rng, 1000, 9999)}`;
+  }
+  if (kind === 'email') {
+    const handles = ['alex', 'bailey', 'casey', 'drew', 'evan'];
+    return `${rngPick(rng, handles)}@example.com`;
+  }
+  if (kind === 'date') {
+    const yr = rngInt(rng, 2020, 2025);
+    const mo = String(rngInt(rng, 1, 12)).padStart(2, '0');
+    const da = String(rngInt(rng, 1, 28)).padStart(2, '0');
+    const formats = [
+      `${yr}-${mo}-${da}`,
+      `${mo}/${da}/${yr}`,
+      `${da} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mo, 10) - 1]} ${yr}`,
+      `${yr}/${mo}/${da}`,
+      `${mo}-${da}-${yr}`,
+    ];
+    return rngPick(rng, formats);
+  }
+  if (kind === 'name') {
+    return rngPick(rng, NAME_DICT);
+  }
+  return null;
+}
+
+// Templated mutation. Generic. Rotates punctuation, casing, and minor
+// connectives. Never invents semantic content. The output is just a stylistic
+// variation of the input row used to test the model for robustness, not to
+// ground-truth a new fact.
+function mutateText(text, rng) {
+  if (typeof text !== 'string') return text;
+  const ops = [
+    s => s,
+    s => s.replace(/\s+/g, ' ').trim(),
+    s => s.endsWith('.') ? s : s + '.',
+    s => s.charAt(0).toUpperCase() + s.slice(1),
+    s => s.replace(/\.$/, ''),
+    s => s.toLowerCase(),
+    s => s.replace(/,\s*/g, ', '),
+    s => s.replace(/\s+--\s+/g, ', '),
+    s => s.replace(/\bplease\b/gi, ''),
+    s => s.replace(/\bjust\b/gi, ''),
+  ];
+  // Apply 1-3 ops chosen by rng.
+  const n = rngInt(rng, 1, 3);
+  let out = text;
+  for (let i = 0; i < n; i++) out = rngPick(rng, ops)(out);
+  return out.replace(/\s+/g, ' ').trim();
+}
+
+// PII-aware mutation. Walks the input/output text replacing numeric-shaped
+// identifiers with permutations and names with dictionary picks. Only touches
+// patterns that look like the identifier; everything else is left alone.
+function mutatePIIRow(seed, rng) {
+  let input = String(seed.input || '');
+  let output = String(seed.output || '');
+  // Permute MRN: a 7-digit number after "MRN".
+  input = input.replace(/MRN\s+\d+/gi, (m) => `MRN ${permuteIdentifier(rng, 'mrn')}`);
+  // SSN.
+  input = input.replace(/\bSSN\s+\d{3}-\d{2}-\d{4}/gi, () => `SSN ${permuteIdentifier(rng, 'ssn')}`);
+  input = input.replace(/\b\d{3}-\d{2}-\d{4}\b/g, () => permuteIdentifier(rng, 'ssn'));
+  // Phone (10-digit dashed).
+  input = input.replace(/\b\d{3}-\d{3}-\d{4}\b/g, () => permuteIdentifier(rng, 'phone'));
+  // Email.
+  input = input.replace(/\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/gi, () => permuteIdentifier(rng, 'email'));
+  // Dates in yyyy-mm-dd form.
+  input = input.replace(/\b\d{4}-\d{2}-\d{2}\b/g, () => permuteIdentifier(rng, 'date'));
+  // Names: any capital-then-capital "Firstname Lastname" near "patient" or "contact".
+  input = input.replace(/(patient|contact|Mr\.|Ms\.|Mrs\.|Dr\.)\s+[A-Z][a-z]+\s+[A-Z][a-z]+/g,
+    (m, prefix) => `${prefix} ${permuteIdentifier(rng, 'name')}`);
+  return { input: mutateText(input, rng), output: mutateText(output, rng) };
+}
+
+// Classifier mutation. Swaps synonyms in the input. Output (the class label)
+// is preserved verbatim. Optionally splices a sentence order if input has
+// two sentences.
+function mutateClassifyRow(seed, rng) {
+  let input = String(seed.input || '');
+  // Synonym pass.
+  input = input.replace(/\b([a-z]+)\b/gi, (w) => {
+    const key = w.toLowerCase();
+    const opts = SYNONYMS[key];
+    if (!opts || opts.length === 0) return w;
+    if (rng() < 0.4) return rngPick(rng, opts);
+    return w;
+  });
+  // Sentence order swap (if 2 sentences).
+  if (rng() < 0.3) {
+    const parts = input.split(/(?<=\.)\s+/);
+    if (parts.length === 2) input = `${parts[1]} ${parts[0]}`;
+  }
+  // Case variation.
+  if (rng() < 0.2) input = input.toLowerCase();
+  return { input: mutateText(input, rng), output: String(seed.output || '') };
+}
+
+// Extractor mutation. The input is permuted (field order, format), the output
+// (a JSON object) is preserved with the same fields but optionally re-ordered.
+function mutateExtractRow(seed, rng) {
+  let input = String(seed.input || '');
+  let output = String(seed.output || '');
+  // Swap "amount: X, date: Y" -> "date: Y, amount: X" etc.
+  const segs = input.split(',').map(s => s.trim()).filter(Boolean);
+  if (segs.length >= 2 && rng() < 0.5) {
+    // Shuffle by a single-swap (deterministic per rng draw).
+    const i = rngInt(rng, 0, segs.length - 1);
+    const j = rngInt(rng, 0, segs.length - 1);
+    if (i !== j) { const t = segs[i]; segs[i] = segs[j]; segs[j] = t; }
+    input = segs.join(', ');
+  }
+  // Re-order JSON output keys deterministically (if it's a JSON object).
+  try {
+    const obj = JSON.parse(output);
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      const keys = Object.keys(obj);
+      // Single rng-driven rotation.
+      const rot = rngInt(rng, 0, keys.length - 1);
+      const rotated = keys.slice(rot).concat(keys.slice(0, rot));
+      const reord = {};
+      for (const k of rotated) reord[k] = obj[k];
+      output = JSON.stringify(reord);
+    }
+  } catch (e) { /* output wasn't JSON, leave it */ }
+  return { input: mutateText(input, rng), output };
+}
+
+// Local-LLM strategy. Optional, opt-in. Only ever called against a localhost
+// endpoint (validated). Builds a deterministic prompt, posts to the endpoint,
+// reads the response, attaches provenance. If the endpoint isn't reachable,
+// throws a useful hint instead of silently falling back.
+async function mutateViaLocalLlm(seed, rng, opts) {
+  const u = opts.urlObj;
+  const body = JSON.stringify({
+    model: opts.model,
+    prompt: `Paraphrase the following input/output pair, keeping the output's structure and semantics identical. Reply with JSON only: {"input": "...", "output": "..."}\n\nINPUT: ${seed.input}\nOUTPUT: ${seed.output}`,
+    stream: false,
+    options: { seed: rngInt(rng, 1, 1 << 30) },
+  });
+  return await new Promise((resolve, reject) => {
+    const req = http.request({
+      host: u.hostname,
+      port: u.port || 11434,
+      path: '/api/generate',
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) },
+      timeout: 30000,
+    }, (res) => {
+      let chunks = '';
+      res.on('data', d => chunks += d);
+      res.on('end', () => {
+        try {
+          const env = JSON.parse(chunks);
+          const text = (env && env.response) || '';
+          // Try to extract a {"input":..."output":...} JSON object.
+          const m = text.match(/\{[\s\S]*\}/);
+          if (m) {
+            const obj = JSON.parse(m[0]);
+            if (obj && typeof obj.input === 'string' && typeof obj.output === 'string') {
+              resolve({ input: obj.input, output: obj.output });
+              return;
+            }
+          }
+          // Fallback: keep the seed but mark provenance honestly.
+          resolve({ input: String(seed.input), output: String(seed.output) });
+        } catch (e) {
+          reject(new Error(`local-llm parse error: ${e.message}`));
+        }
+      });
+    });
+    req.on('error', (e) => reject(new Error(`local-llm endpoint unreachable at ${u.origin}: ${e.message}. is it running? try: ollama serve`)));
+    req.on('timeout', () => { req.destroy(); reject(new Error('local-llm endpoint timed out after 30s')); });
+    req.write(body);
+    req.end();
+  });
+}
+
+// `kolm seeds new <name>`
+async function cmdSeedsNew(args) {
+  const positional = args.find(a => !a.startsWith('--'));
+  if (!positional) {
+    const err = new Error('kolm seeds new <name>  (one of: ' + Object.keys(SEED_TEMPLATES).join(', ') + ')');
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  const name = String(positional).toLowerCase();
+  const tmpl = SEED_TEMPLATES[name];
+  if (!tmpl) {
+    const err = new Error(`unknown template "${name}". choose: ${Object.keys(SEED_TEMPLATES).join(', ')}`);
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  const outFlag = pickFlag(args, '--out');
+  const outPath = outFlag
+    ? path.resolve(process.cwd(), outFlag)
+    : path.resolve(process.cwd(), 'seeds.jsonl');
+  const force = args.includes('--force');
+  if (fs.existsSync(outPath) && !force) {
+    const err = new Error(`refuses to overwrite ${outPath}. pass --force or pick --out <path>.`);
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  // Add provenance: source=seed-template (these are placeholders, not real data).
+  const rows = tmpl.map((r, i) => Object.assign({}, r, { source: 'seed-template', from_seed: i }));
+  writeJsonl(rows, outPath);
+  console.log(`wrote ${rows.length} starter rows to ${outPath}`);
+  console.log('');
+  console.log('next:');
+  console.log(`  1. edit ${path.basename(outPath)} and replace placeholders with YOUR real examples (>= 5 recommended)`);
+  console.log(`  2. expand:  kolm seeds generate --from ${path.basename(outPath)} --count 200`);
+  console.log(`  3. train:   kolm train --spec <spec> --seeds ${path.basename(outPath)}`);
+  console.log('');
+  console.log('honesty: these starter rows are PLACEHOLDERS, not training data.');
+  console.log('         replace them with examples you actually want the model to learn from.');
+}
+
+// `kolm seeds generate --from <file> --count N [--strategy s] [--seed-rng N] [--out p]`
+async function cmdSeedsGenerate(args) {
+  const fromFlag = pickFlag(args, '--from');
+  if (!fromFlag) {
+    const err = new Error('kolm seeds generate --from <file.jsonl> --count <N> [--strategy <name>] [--seed-rng <int>] [--out <path>]');
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  const countFlag = pickFlag(args, '--count') || pickFlag(args, '-n');
+  const count = parseInt(countFlag, 10);
+  if (!Number.isFinite(count) || count <= 0) {
+    const err = new Error('--count <N> required and must be a positive integer.');
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  const strategy = pickFlag(args, '--strategy') || 'templated';
+  const validStrategies = ['templated', 'redact-pii-templated', 'classify-mutate', 'extract-permute', 'local-llm'];
+  if (validStrategies.indexOf(strategy) < 0) {
+    const err = new Error(`unknown --strategy "${strategy}". choose: ${validStrategies.join(', ')}`);
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  const seedRng = parseInt(pickFlag(args, '--seed-rng'), 10);
+  const rngSeed = Number.isFinite(seedRng) ? seedRng : 1;
+  const jsonOut = args.includes('--json');
+  const skipPrompt = args.includes('--yes') || args.includes('-y') || !process.stdin.isTTY;
+
+  const seeds = loadSeeds(path.resolve(process.cwd(), fromFlag));
+  if (seeds.length === 0) {
+    const err = new Error(`no seed rows found in ${fromFlag}. expected one JSON object per line.`);
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  if (count < seeds.length) {
+    const err = new Error(`--count ${count} is less than ${seeds.length} input seeds. we never drop seeds; bump --count or trim --from.`);
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+
+  // Local-llm setup.
+  let llmOpts = null;
+  if (strategy === 'local-llm') {
+    const urlFlag = pickFlag(args, '--local-llm-url') || 'http://localhost:11434';
+    const modelFlag = pickFlag(args, '--local-llm-model') || 'llama3.2:3b';
+    const urlObj = validateLocalhost(urlFlag);
+    if (!skipPrompt) {
+      console.log('');
+      console.log(`local-llm strategy will POST your seeds to ${urlObj.origin} (model: ${modelFlag}).`);
+      console.log('No data leaves your machine if and only if that endpoint runs locally.');
+      console.log('This is the only network call kolm seeds will ever make, and only to localhost.');
+      console.log('');
+      const ans = (await prompt('Proceed? [y/N] ')).trim().toLowerCase();
+      if (ans !== 'y' && ans !== 'yes') {
+        console.log('aborted. nothing was sent.');
+        return;
+      }
+    }
+    llmOpts = { urlObj, model: modelFlag };
+  }
+
+  const outFlag = pickFlag(args, '--out');
+  const seedsDir = path.join(KOLM_DIR, 'seeds');
+  if (!fs.existsSync(seedsDir)) fs.mkdirSync(seedsDir, { recursive: true });
+  const ts = `${Date.now().toString(36)}-${rngSeed}`;
+  const outPath = outFlag ? path.resolve(process.cwd(), outFlag) : path.join(seedsDir, `expanded-${ts}.jsonl`);
+
+  const rng = seededRng(rngSeed);
+  const out = [];
+  // Pass 1: emit every user seed verbatim with provenance source=seed.
+  for (let i = 0; i < seeds.length; i++) {
+    const s = seeds[i];
+    out.push({
+      input: String(s.input != null ? s.input : ''),
+      output: String(s.output != null ? s.output : ''),
+      source: 'seed',
+      from_seed: i,
+    });
+  }
+  // Pass 2: produce (count - seeds.length) mutated rows.
+  const toGenerate = count - seeds.length;
+  for (let i = 0; i < toGenerate; i++) {
+    const idx = i % seeds.length;
+    const seed = seeds[idx];
+    let mut;
+    if (strategy === 'templated') {
+      mut = { input: mutateText(String(seed.input || ''), rng), output: mutateText(String(seed.output || ''), rng) };
+    } else if (strategy === 'redact-pii-templated') {
+      mut = mutatePIIRow(seed, rng);
+    } else if (strategy === 'classify-mutate') {
+      mut = mutateClassifyRow(seed, rng);
+    } else if (strategy === 'extract-permute') {
+      mut = mutateExtractRow(seed, rng);
+    } else if (strategy === 'local-llm') {
+      try {
+        mut = await mutateViaLocalLlm(seed, rng, llmOpts);
+      } catch (e) {
+        console.error(`error: ${e.message}`);
+        const err = new Error('local-llm strategy failed. nothing was written.');
+        err.exitCode = EXIT.EXECUTION;
+        throw err;
+      }
+    }
+    out.push({
+      input: mut.input,
+      output: mut.output,
+      source: strategy === 'local-llm' ? 'local-llm' : 'templated',
+      from_seed: idx,
+    });
+  }
+
+  const bytes = writeJsonl(out, outPath);
+  const seedCount = seeds.length;
+  const mutCount = out.length - seedCount;
+  if (jsonOut) {
+    console.log(JSON.stringify({
+      out: outPath,
+      bytes: bytes,
+      total: out.length,
+      seeds: seedCount,
+      mutated: mutCount,
+      hallucinated: 0,
+      strategy: strategy,
+      seed_rng: rngSeed,
+      provenance: 'every row has source + from_seed',
+      deterministic: true,
+    }));
+    return;
+  }
+  console.log(`generating ${count} rows from ${seedCount} seeds using strategy '${strategy}'...`);
+  console.log(`  written: ${outPath} (${Math.round(bytes / 1024)}KB)`);
+  console.log(`  composition: ${seedCount} user seeds + ${mutCount} ${strategy === 'local-llm' ? 'local-llm' : 'templated'} mutations + 0 hallucinated`);
+  console.log(`  provenance tags written: yes (every row has source + from_seed)`);
+  console.log(`  determinism: --seed-rng ${rngSeed} (reproducible)`);
+  console.log('');
+  console.log('honest reporting: when you train with this file, K-score reports will');
+  console.log("distinguish 'K on user seeds' vs 'K on " + (strategy === 'local-llm' ? 'local-llm' : 'templated') + " rows'. Templated rows");
+  console.log('test for robustness, not ground truth.');
+}
+
+// `kolm seeds list`
+async function cmdSeedsList(args) {
+  const jsonOut = args.includes('--json');
+  const seedsDir = path.join(KOLM_DIR, 'seeds');
+  if (!fs.existsSync(seedsDir)) {
+    if (jsonOut) { console.log(JSON.stringify({ dir: seedsDir, files: [] })); return; }
+    console.log(`no seeds yet. dir does not exist: ${seedsDir}`);
+    console.log('try: kolm seeds new <name>');
+    return;
+  }
+  const entries = fs.readdirSync(seedsDir).filter(n => n.endsWith('.jsonl'));
+  if (entries.length === 0) {
+    if (jsonOut) { console.log(JSON.stringify({ dir: seedsDir, files: [] })); return; }
+    console.log(`no seeds files in ${seedsDir}`);
+    console.log('try: kolm seeds new <name>');
+    return;
+  }
+  const summaries = [];
+  for (const name of entries) {
+    const p = path.join(seedsDir, name);
+    let rows = 0;
+    const counts = { seed: 0, templated: 0, 'local-llm': 0, public: 0, 'seed-template': 0, other: 0 };
+    try {
+      const lines = fs.readFileSync(p, 'utf8').split(/\r?\n/);
+      for (const ln of lines) {
+        const t = ln.trim();
+        if (!t || t.startsWith('//') || t.startsWith('#')) continue;
+        rows++;
+        try {
+          const r = JSON.parse(t);
+          const src = String(r && r.source || 'other');
+          if (counts[src] !== undefined) counts[src]++; else counts.other++;
+        } catch (e) { counts.other++; }
+      }
+    } catch (e) { /* skip */ }
+    const stat = fs.statSync(p);
+    summaries.push({ name, path: p, rows, size_bytes: stat.size, mtime: stat.mtime.toISOString(), counts });
+  }
+  if (jsonOut) {
+    for (const s of summaries) console.log(JSON.stringify(s));
+    return;
+  }
+  console.log(`seeds in ${seedsDir}:`);
+  console.log('');
+  for (const s of summaries) {
+    const mix = Object.entries(s.counts).filter(([k, v]) => v > 0).map(([k, v]) => `${k}=${v}`).join(' ');
+    console.log(`  ${s.name}  ${s.rows} rows  ${Math.round(s.size_bytes / 1024)}KB  [${mix || 'unknown'}]`);
+  }
+  console.log('');
+  console.log(`total: ${summaries.length} file${summaries.length === 1 ? '' : 's'}.`);
+}
+
+// Public-domain dataset registry. Files live in <install-dir>/data/public-seeds.
+// Only phi-redactor is shipped today; the others are placeholders.
+const PUBLIC_SEEDS = {
+  'phi-redactor':     { file: 'phi-redactor.jsonl',     ships: true,  rows_hint: 10, note: 'synthetic, public domain, illustrative only' },
+  'email-classifier': { file: 'email-classifier.jsonl', ships: false, rows_hint: 50, note: 'coming-in-v11.30' },
+  'invoice-fields':   { file: 'invoice-fields.jsonl',   ships: false, rows_hint: 15, note: 'coming-in-v11.30' },
+};
+
+function findPublicSeedsDir() {
+  // We look in two places:
+  //   1. the kolm install dir (../data/public-seeds relative to this file)
+  //   2. the current working directory's ./data/public-seeds (dev path)
+  const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/(\w:)/, '$1'));
+  const candidates = [
+    path.resolve(here, '..', 'data', 'public-seeds'),
+    path.resolve(process.cwd(), 'data', 'public-seeds'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
+
+// `kolm seeds bootstrap --task <name>`
+async function cmdSeedsBootstrap(args) {
+  const taskFlag = pickFlag(args, '--task') || pickFlag(args, '-t');
+  if (!taskFlag) {
+    const err = new Error('kolm seeds bootstrap --task <name>  (one of: ' + Object.keys(PUBLIC_SEEDS).join(', ') + ')');
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  const meta = PUBLIC_SEEDS[taskFlag];
+  if (!meta) {
+    const err = new Error(`unknown --task "${taskFlag}". choose: ${Object.keys(PUBLIC_SEEDS).join(', ')}`);
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  if (!meta.ships) {
+    const err = new Error(`task "${taskFlag}" is not yet shipped (${meta.note}). available: ${Object.entries(PUBLIC_SEEDS).filter(([k, v]) => v.ships).map(([k]) => k).join(', ')}`);
+    err.exitCode = EXIT.NOT_FOUND;
+    throw err;
+  }
+  const dir = findPublicSeedsDir();
+  if (!dir) {
+    const err = new Error('could not locate data/public-seeds. is kolm installed correctly?');
+    err.exitCode = EXIT.NOT_FOUND;
+    throw err;
+  }
+  const src = path.join(dir, meta.file);
+  if (!fs.existsSync(src)) {
+    const err = new Error(`public dataset file missing: ${src}`);
+    err.exitCode = EXIT.NOT_FOUND;
+    throw err;
+  }
+  const outFlag = pickFlag(args, '--out');
+  const seedsDir = path.join(KOLM_DIR, 'seeds');
+  if (!fs.existsSync(seedsDir)) fs.mkdirSync(seedsDir, { recursive: true });
+  const outPath = outFlag ? path.resolve(process.cwd(), outFlag) : path.join(seedsDir, meta.file);
+  // Read, tag with provenance source=public, write to outPath.
+  const raw = fs.readFileSync(src, 'utf8').split(/\r?\n/);
+  const rows = [];
+  let comments = [];
+  for (let i = 0; i < raw.length; i++) {
+    const ln = raw[i].trim();
+    if (!ln) continue;
+    if (ln.startsWith('//') || ln.startsWith('#')) { comments.push(ln); continue; }
+    try {
+      const r = JSON.parse(ln);
+      if (r && typeof r === 'object') {
+        rows.push(Object.assign({}, r, { source: 'public', from_seed: i }));
+      }
+    } catch (e) { /* skip */ }
+  }
+  // Preserve the leading comment header in the copied file so the user can
+  // see the public-domain note.
+  const body = comments.concat(rows.map(r => JSON.stringify(r))).join('\n') + '\n';
+  fs.writeFileSync(outPath, body);
+
+  console.log(`bootstrapped public seed dataset: ${taskFlag}`);
+  console.log(`  source: ${src}`);
+  console.log(`  copied to: ${outPath} (${rows.length} rows)`);
+  console.log(`  note: ${meta.note}`);
+  console.log('');
+  console.log('these are PUBLIC SEED DATASETS, not synthetic K-score.');
+  console.log('use them to bootstrap your model, then add your own real examples for higher K-score.');
+  console.log('');
+  console.log('next:');
+  console.log(`  kolm seeds generate --from ${path.relative(process.cwd(), outPath)} --count 200 --strategy redact-pii-templated`);
+}
+
+// `kolm seeds` dispatcher.
+async function cmdSeeds(args) {
+  const sub = args && args[0];
+  const rest = (args || []).slice(1);
+  if (!sub || sub === '--help' || sub === '-h' || sub === 'help') {
+    console.log(HELP.seeds);
+    return;
+  }
+  if (sub === 'new')       return cmdSeedsNew(rest);
+  if (sub === 'generate')  return cmdSeedsGenerate(rest);
+  if (sub === 'list')      return cmdSeedsList(rest);
+  if (sub === 'bootstrap') return cmdSeedsBootstrap(rest);
+  const err = new Error(`unknown subcommand: ${sub}\ntry: kolm seeds --help`);
+  err.exitCode = EXIT.BAD_ARGS;
+  throw err;
 }
 
 // ---------- update ----------
@@ -5307,6 +6066,7 @@ async function main() {
       case 'models':   await withErrorContext('models',   () => cmdModels(rest)); break;
       case 'gpu':      await withErrorContext('gpu',      () => cmdGpu(rest)); break;
       case 'export':   await withErrorContext('export',   () => cmdExport(rest)); break;
+      case 'seeds':    await withErrorContext('seeds',    () => cmdSeeds(rest)); break;
       case 'improve':  await withErrorContext('improve',  () => cmdImprove(rest)); break;
       case 'instant':  await withErrorContext('instant',  () => cmdInstant(rest)); break;
       case 'version':

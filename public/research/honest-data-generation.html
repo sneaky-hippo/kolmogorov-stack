@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Honest training-data generation: local-first, no hallucinated K-score &middot; kolm research</title>
+<meta name="description" content="How kolm seeds helps you turn 5 real examples into a usable training set without lying. Templated mutation, public datasets, optional local-LLM. No third-party APIs. Every row provenance-tagged. K-score reported per source.">
+<meta name="keywords" content="training data, synthetic data, data augmentation, privacy, PHI, local-first, on-device, kolm seeds, K-score">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta name="author" content="kolm">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="Honest training-data generation">
+<meta property="og:description" content="Local-first data helpers. No third-party APIs. No fake K-score. Every row provenance-tagged.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Honest training-data generation">
+<meta name="twitter:description" content="Local-first data helpers. No third-party APIs. No fake K-score. Every row provenance-tagged.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<meta property="og:url" content="https://kolm.ai/research/honest-data-generation">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/honest-data-generation">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "Honest training-data generation: local-first, no hallucinated K-score",
+      "description": "How kolm seeds turns 5 real examples into a usable training set without lying. Templated mutation, public seed datasets, optional local-LLM. No third-party APIs. Every row provenance-tagged.",
+      "author": { "@type": "Organization", "name": "kolm", "url": "https://kolm.ai" },
+      "publisher": { "@type": "Organization", "name": "kolm", "logo": { "@type": "ImageObject", "url": "https://kolm.ai/favicon.svg" } },
+      "datePublished": "2026-05-15",
+      "dateModified": "2026-05-15",
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://kolm.ai/research/honest-data-generation" },
+      "image": "https://kolm.ai/og-card.svg",
+      "keywords": "training data, synthetic data, data augmentation, privacy, local-first, kolm seeds, K-score",
+      "articleSection": "Data",
+      "wordCount": 1500
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "kolm", "item": "https://kolm.ai/"},
+        {"@type": "ListItem", "position": 2, "name": "Research", "item": "https://kolm.ai/research"},
+        {"@type": "ListItem", "position": 3, "name": "Honest data generation", "item": "https://kolm.ai/research/honest-data-generation"}
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#faf2e1;--accent-soft:rgba(236,231,220, 0.10);--good:#7ef0d2;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:760px;margin:0 auto;padding:0 32px}
+  .wrap-wide{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap,.wrap-wide{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand span{font-weight:500;font-size:16px}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .cta{color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:500}
+  @media(max-width:720px){header.site nav{display:none}}
+
+  section.hero{padding:80px 0 36px;position:relative;overflow:hidden}
+  section.hero::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 900px 460px at 22% 12%,rgba(236,231,220, 0.10),transparent 60%)}
+  section.hero .wrap{position:relative}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-mute);border:1px solid var(--line-strong);border-radius:999px;padding:5px 12px;background:var(--bg-elev)}
+  .pill .dot{width:5px;height:5px;border-radius:50%;background:#10b981}
+  h1{margin:22px 0 18px;font-size:clamp(34px,5.4vw,54px);line-height:1.05;font-weight:500;max-width:22ch}
+  h1 .tone{color:#10b981}
+  p.lede{margin:0;font-size:clamp(17px,1.4vw,20px);line-height:1.55;color:var(--ink-mute);max-width:60ch}
+  p.lede b{color:var(--ink);font-weight:500}
+  .meta{display:flex;gap:18px;margin-top:22px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
+  .meta b{color:var(--ink-mute);font-weight:500}
+
+  article{padding:36px 0 96px}
+  article h2{margin:56px 0 14px;font-size:clamp(24px,2.6vw,30px);line-height:1.2;font-weight:500;color:var(--ink)}
+  article h3{margin:36px 0 10px;font-size:18px;font-weight:500;color:var(--ink)}
+  article p{margin:0 0 16px;font-size:16.5px;line-height:1.7;color:var(--ink-mute)}
+  article p b{color:var(--ink);font-weight:500}
+  article p code,article li code,article td code{font-family:var(--mono);font-size:0.92em;background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--ink)}
+  article blockquote{margin:28px 0;padding:16px 22px;border-left:2px solid #10b981;background:var(--bg-elev);border-radius:0 8px 8px 0;font-size:17px;line-height:1.6;color:var(--ink)}
+  article blockquote p{color:var(--ink);margin:0;font-weight:500}
+  article ul{padding-left:0;list-style:none;margin:16px 0 24px}
+  article ul li{padding:8px 0 8px 22px;position:relative;font-size:16px;line-height:1.6;color:var(--ink-mute)}
+  article ul li::before{content:"-";color:#10b981;position:absolute;left:6px;font-weight:500}
+  article ul li b{color:var(--ink);font-weight:500}
+  article pre{margin:18px 0 24px;padding:18px 22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.75;color:var(--ink)}
+  article pre .com{color:var(--ink-faint)}
+  article pre .arg{color:#10b981}
+  article pre .kw{color:#b0bbff}
+  article table{width:100%;border-collapse:collapse;margin:18px 0 24px;font-size:14px}
+  article table th,article table td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;color:var(--ink-mute)}
+  article table th{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);font-weight:500;letter-spacing:0.04em}
+  article table td b{color:var(--ink)}
+  article .good{color:#7ef0d2}
+  article .bad{color:#ff6b91}
+
+  .toc{margin:28px 0 36px;padding:18px 22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px}
+  .toc h5{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px;font-weight:500}
+  .toc ol{margin:0;padding-left:20px}
+  .toc li{padding:4px 0;font-size:14px;color:var(--ink-mute)}
+  .toc li a{color:var(--ink-mute)}
+  .toc li a:hover{color:#10b981}
+
+  .signpost{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:48px 0 0}
+  @media(max-width:720px){.signpost{grid-template-columns:1fr}}
+  .signpost a{display:flex;flex-direction:column;gap:8px;padding:22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;transition:border-color 120ms,background 120ms}
+  .signpost a:hover{border-color:var(--line-strong);background:var(--bg-card)}
+  .signpost a .lab{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
+  .signpost a .v{color:var(--ink);font-weight:500;font-size:16px}
+  .signpost a .v .arrow{color:#10b981;margin-left:6px}
+  .signpost a p{margin:4px 0 0;font-size:13.5px;color:var(--ink-mute);line-height:1.5}
+
+  footer.site{padding:56px 0 40px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+  footer.site .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+</style>
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/use-cases">Solutions</a>
+        <a href="/docs">Developers</a>
+        <a href="/research">Research</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span>Research &middot; Data &middot; 2026-05-15 &middot; 9 min read</span>
+    <h1>Honest training-data generation: <span class="tone">no fake K-score, no API leakage.</span></h1>
+    <p class="lede">Most teams trying to train a private model have <b>5 to 20 real examples, not 3,200</b>. The bad answer is to call OpenAI or Anthropic to fabricate 3,000 more, which leaks the seeds and produces a K-score nobody should trust. The honest answer is rule-based mutation with full provenance, public seed datasets where they exist, and an optional local-LLM strategy that never leaves the machine. This is what <code>kolm seeds</code> does.</p>
+    <div class="meta"><span><b>By</b>&nbsp;kolm</span><span><b>Tag</b>&nbsp;data &middot; privacy &middot; provenance</span></div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="toc">
+      <h5>Contents</h5>
+      <ol>
+        <li><a href="#problem">The problem</a></li>
+        <li><a href="#do">What we do</a></li>
+        <li><a href="#dont">What we do not do</a></li>
+        <li><a href="#provenance">Provenance and the K-score split</a></li>
+        <li><a href="#strategies">The five strategies</a></li>
+        <li><a href="#recipe">Recipe: three commands</a></li>
+        <li><a href="#limits">Honest limits</a></li>
+      </ol>
+    </div>
+
+    <h2 id="problem">The problem.</h2>
+    <p>A health insurer wants a PHI redactor. A logistics company wants an invoice extractor. A SaaS support team wants a ticket classifier. All three teams come to us with the same thing: a handful of real examples in a Google Doc, maybe a CSV with 8 rows, and the very reasonable question, <b>"how do I train on this?"</b></p>
+
+    <p>The bad answer in 2025 is "paste your data into ChatGPT and ask for variations." That leaks the data, and any K-score you compute on the resulting set is a story about ChatGPT, not about your task.</p>
+
+    <p>The other bad answer is "use a synthetic data generator that calls a frontier model." Same problem in a fancier wrapper. The seeds leave the machine, the K-score on the synthetic data is not the K-score on real data, and the team that owns the compliance binder cannot sign the artifact.</p>
+
+    <p>The constraint set we landed on for <code>kolm seeds</code>:</p>
+
+    <ul>
+      <li><b>No hallucination from thin air.</b> Every strategy needs real seeds as input. The only exception is the public seed datasets shipped with kolm, which are openly licensed and tagged as such.</li>
+      <li><b>No fake K-score.</b> We never emit a K-score. K-score is computed by the train loop, with provenance, so a templated row is never counted as if it were a user-authored row.</li>
+      <li><b>No third-party API.</b> The only network egress allowed is <code>--strategy local-llm</code>, which is gated to localhost and prompts the user for explicit confirmation.</li>
+      <li><b>Local-first.</b> Templates, public datasets, and mutation rules ship on disk. The verb works on an airgapped laptop.</li>
+      <li><b>Deterministic.</b> Same <code>--from</code> + same <code>--strategy</code> + same <code>--seed-rng</code> produces byte-identical output.</li>
+    </ul>
+
+    <h2 id="do">What we do.</h2>
+    <p><b>Templated mutation.</b> Rule-based, deterministic. The mutators rotate punctuation, casing, sentence order, and minor connectives. They never invent a fact. The result is a stylistic variation of a real seed used to test the model for robustness, not to ground-truth a new claim.</p>
+
+    <p><b>PII-aware mutation.</b> For redaction tasks, we permute the identifier itself. The MRN becomes a different 7-digit number; the SSN uses 9xx area codes that the SSA has reserved as never-issued; the phone uses 555 prefix (the Hollywood-fiction range); names come from a 100-entry dictionary shipped with kolm. The output (the redacted form) is preserved exactly. The model learns the redaction shape on a synthetic identifier without ever seeing a real one.</p>
+
+    <p><b>Classifier mutation.</b> Synonym substitution from a small hand-built dictionary, sentence-order swap when there are two clauses, case variation. The class label is preserved verbatim because that is the ground-truth signal.</p>
+
+    <p><b>Extractor mutation.</b> Field-order permutation in the input, JSON key-rotation in the output. Same fields, different surface form. The model learns the extraction is independent of the order the source text presented the fields.</p>
+
+    <p><b>Public seed datasets.</b> Where a public-domain dataset already exists (NIST Safe Harbor examples, the Enron emails for classification, our own synthetic invoice rows marked as such), we ship a small starter set with kolm. Bootstrap with one verb, then add your own real examples on top.</p>
+
+    <p><b>Optional local LLM.</b> If you have Ollama running on <code>localhost:11434</code> or llama.cpp on <code>localhost:8080</code>, you can call it via <code>--strategy local-llm</code>. The URL is validated to be localhost (one of <code>localhost</code>, <code>127.0.0.1</code>, <code>::1</code>); any other hostname is refused at parse time. The first invocation prompts the user for confirmation. No data leaves the machine.</p>
+
+    <h2 id="dont">What we do not do.</h2>
+    <p>The list is short and load-bearing.</p>
+
+    <ul>
+      <li><b>We do not call OpenAI, Anthropic, Google, or any third-party API.</b> There is no code path in <code>kolm seeds</code> that opens a network connection to a non-localhost endpoint. The CLI ships without API keys for these providers; adding them yourself does not change the behavior.</li>
+      <li><b>We do not generate K-score from purely synthetic data.</b> <code>kolm seeds</code> emits input/output pairs only. The K-score is computed downstream by the train loop, which reads the per-row provenance tag and reports the score broken out by source.</li>
+      <li><b>We do not hallucinate data from thin air.</b> Every strategy that emits rows requires real seeds as input. The only path to rows-with-no-seeds is <code>kolm seeds bootstrap</code>, which copies a public-domain dataset shipped with kolm, and the dataset's header notes its provenance explicitly.</li>
+      <li><b>We do not silently fall back to a less-private path.</b> If the local-LLM endpoint is unreachable, we error with a useful hint. We do not switch to a remote endpoint or to a templated mutation without telling the user.</li>
+    </ul>
+
+    <h2 id="provenance">Provenance and the K-score split.</h2>
+    <p>Every row written by <code>kolm seeds generate</code> carries two fields the train loop reads.</p>
+
+    <pre><span class="com">// a seed row, written verbatim from the user's input file:</span>
+{<span class="kw">"input"</span>: <span class="arg">"patient John Doe MRN 1234567 visited on 2024-03-12"</span>,
+ <span class="kw">"output"</span>: <span class="arg">"patient [REDACTED] MRN [REDACTED] visited on [DATE]"</span>,
+ <span class="kw">"source"</span>: <span class="arg">"seed"</span>,         <span class="com">// from the user's seeds.jsonl directly</span>
+ <span class="kw">"from_seed"</span>: 0}        <span class="com">// 0-indexed pointer into seeds.jsonl</span>
+
+<span class="com">// a templated mutation derived from seed 0:</span>
+{<span class="kw">"input"</span>: <span class="arg">"Patient Bailey Brown, MRN 4291807, visited on 02/14/2023."</span>,
+ <span class="kw">"output"</span>: <span class="arg">"patient [redacted], mrn [redacted], visited on [date]."</span>,
+ <span class="kw">"source"</span>: <span class="arg">"templated"</span>,    <span class="com">// produced by mutatePIIRow()</span>
+ <span class="kw">"from_seed"</span>: 0}        <span class="com">// derived from seed 0</span></pre>
+
+    <p>The train loop reads the source field and reports two K-scores: <code>K_seed</code> on the rows tagged <code>source: "seed"</code> (your real data), and <code>K_templated</code> on the rows tagged <code>source: "templated"</code> (the robustness test set). The artifact's compliance binder reports both. The gate is set on <code>K_seed</code>, not on a blend, because that is the score about your task.</p>
+
+    <p>A team shipping with 5 user seeds and 195 templated rows might see <code>K_seed = 0.94</code>, <code>K_templated = 0.91</code>. A team that <i>only</i> trained on templated mutations of one or two seeds will see <code>K_seed</code> on a tiny holdout and the binder will say so. The numbers tell the truth.</p>
+
+    <h2 id="strategies">The five strategies.</h2>
+    <p>The table below is the full set. Each strategy is deterministic given a seed file and a <code>--seed-rng</code> integer.</p>
+
+    <table>
+      <thead>
+        <tr><th>strategy</th><th>best for</th><th>what it does</th><th>provenance tag</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>templated</b></td><td>generic</td><td>rotates punctuation, casing, connectives. no semantic invention.</td><td><code>templated</code></td></tr>
+        <tr><td><b>redact-pii-templated</b></td><td>PHI, PII, GDPR redactors</td><td>permutes identifier numbers (within reserved ranges), names from a 100-entry dictionary, dates in 5 formats.</td><td><code>templated</code></td></tr>
+        <tr><td><b>classify-mutate</b></td><td>ticket and email classifiers</td><td>synonym substitution from a small dictionary, sentence-order swap, case variation. label preserved.</td><td><code>templated</code></td></tr>
+        <tr><td><b>extract-permute</b></td><td>invoice and form extractors</td><td>input field-order swap, JSON key rotation in output. same fields, different surface form.</td><td><code>templated</code></td></tr>
+        <tr><td><b>local-llm</b></td><td>users who already run ollama or llama.cpp locally</td><td>POSTs to localhost (validated). user must confirm. seeds never leave the machine.</td><td><code>local-llm</code></td></tr>
+      </tbody>
+    </table>
+
+    <p>None of these are large-language-model-grade variation. They are deterministic, rule-based, and small. The point is to expand a handful of real examples into a few hundred rows the train loop can use to estimate robustness, while keeping every row traceable to a user seed.</p>
+
+    <h2 id="recipe">Recipe: three commands.</h2>
+    <p>The full flow from "I have 8 examples in a CSV" to "I have a .kolm artifact" is three CLI calls. None of them touch the network unless you opt in to <code>--strategy local-llm</code>.</p>
+
+    <pre><span class="com"># 1. scaffold a seeds.jsonl with starter rows for your task type.</span>
+<span class="com">#    edit it to replace placeholders with your real examples.</span>
+<span class="kw">$</span> kolm seeds new phi-redactor
+<span class="arg">wrote 5 starter rows to ./seeds.jsonl</span>
+
+<span class="com"># 2. expand to 200 rows via rule-based mutation. deterministic.</span>
+<span class="kw">$</span> kolm seeds generate --from seeds.jsonl --count 200 \
+                       --strategy redact-pii-templated --seed-rng 42
+<span class="arg">generating 200 rows from 8 seeds using strategy 'redact-pii-templated'...</span>
+<span class="arg">  composition: 8 user seeds + 192 templated mutations + 0 hallucinated</span>
+<span class="arg">  provenance tags written: yes (every row has source + from_seed)</span>
+<span class="arg">  determinism: --seed-rng 42 (reproducible)</span>
+
+<span class="com"># 3. train. the loop reads provenance and reports K-score per source.</span>
+<span class="kw">$</span> kolm train --spec phi-redactor.spec.json \
+              --seeds ~/.kolm/seeds/expanded-1234-42.jsonl
+<span class="arg">K_seed     = 0.94 (8 rows)</span>
+<span class="arg">K_templated = 0.91 (192 rows)</span>
+<span class="arg">gate 0.85 passed; binder written to ./hipaa-binder.html</span></pre>
+
+    <p>The artifact's compliance binder records both numbers, the seed count, the strategy, and the <code>--seed-rng</code> integer. Anyone reproducing the build can re-run the three commands and confirm the bytes match.</p>
+
+    <h2 id="limits">Honest limits.</h2>
+    <p>Three places this story breaks, named on purpose.</p>
+
+    <p><b>Templated mutation does not substitute for real data.</b> If you start with 3 real examples, the train loop has 3 real examples to score against. Templated rows test the model's tolerance for surface variation; they do not introduce new semantic cases. A team shipping a redactor that has never seen a real lab report should be told its <code>K_seed</code> is a small-sample estimate. The binder says so.</p>
+
+    <p><b>Some tasks have no public seed dataset.</b> A construction-claims classifier or a proprietary supply-chain extractor is not a public dataset problem. For these, <code>kolm seeds bootstrap</code> has nothing to offer; the user has to bring their own seeds, full stop. The verb refuses with a useful error rather than fabricating.</p>
+
+    <p><b>Local-LLM strategy is only as private as your local LLM.</b> If the user points <code>--local-llm-url</code> at <code>http://localhost:8000</code> and that endpoint is a reverse proxy to a frontier model, the privacy guarantee is broken. We validate the URL hostname is localhost; we cannot validate the daemon behind that port. The user is responsible for what their localhost is.</p>
+
+    <blockquote>
+      <p>The honest path is small. Five rules, four strategies, one optional opt-in. The point is not to generate impressive numbers; the point is that the numbers the binder reports are the numbers the auditor can trust.</p>
+    </blockquote>
+
+    <p>The verb is part of kolm v11. The full grammar is documented at <code>kolm seeds --help</code>. The CLI source is on the public mirror at <code>cli/kolm.js</code>. The public-domain phi-redactor seed dataset is in <code>data/public-seeds/</code>.</p>
+
+    <div class="signpost">
+      <a href="/research/capture-loop-honesty">
+        <span class="lab">read next</span>
+        <span class="v">Capture-loop honesty <span class="arrow">&rarr;</span></span>
+        <p>How the capture verb turns proxy traffic into honest training pairs without leaking secrets or fabricating labels.</p>
+      </a>
+      <a href="/research/k-score-correlation">
+        <span class="lab">read next</span>
+        <span class="v">K-score correlation <span class="arrow">&rarr;</span></span>
+        <p>What the K-score actually correlates with on production traffic, broken out by source.</p>
+      </a>
+      <a href="/research/eval-set-drift">
+        <span class="lab">related</span>
+        <span class="v">Eval-set drift <span class="arrow">&rarr;</span></span>
+        <p>When a templated eval set stops resembling production. When to refresh, and how to know.</p>
+      </a>
+      <a href="/docs">
+        <span class="lab">docs</span>
+        <span class="v">CLI reference <span class="arrow">&rarr;</span></span>
+        <p>Full grammar for <code>kolm seeds new</code>, <code>generate</code>, <code>list</code>, and <code>bootstrap</code>.</p>
+      </a>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/badge">Embed badge</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/registry">Registry</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>
