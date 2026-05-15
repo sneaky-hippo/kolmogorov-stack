@@ -2137,6 +2137,20 @@ async function cmdCompile(args) {
   }
   console.log('K-score:');
   console.log(fmtKScore(state.k_score));
+  // Disclose when the K-score was computed entirely against auto-
+  // synthesized eval cases (no user examples). 0.985 vs. real data is
+  // a very different signal than 0.985 vs. cases the user reviewed.
+  if (state.evals_summary && state.evals_summary.total != null) {
+    const total = state.evals_summary.total;
+    const auto = state.evals_summary.auto_synthesized || 0;
+    if (total > 0 && auto === total) {
+      console.log('  evals:     ' + total + ' auto-synthesized (no user examples) — add real cases for honest signal');
+    } else if (auto > 0) {
+      console.log('  evals:     ' + (total - auto) + ' user / ' + auto + ' auto-synthesized');
+    } else if (total > 0) {
+      console.log('  evals:     ' + total + ' user-provided');
+    }
+  }
   if (!args.includes('--no-skill')) {
     try {
       const skillPath = writeSkillSidecar({

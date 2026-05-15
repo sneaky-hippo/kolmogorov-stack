@@ -383,6 +383,15 @@ export async function runJob(job, ctx) {
       cid: built.cid,
       eval_set_hash: built.eval_set_hash,
       k_score: built.k_score,
+      // Surface eval-source breakdown so CLI can disclose when K-score
+      // was computed entirely against auto-synthesized cases (user gave
+      // no examples) vs. real user examples. Buyers must see this to
+      // judge whether 0.985 means "this is production-ready" or "this
+      // passed against test cases I never reviewed".
+      evals_summary: {
+        total: Array.isArray(evals_obj?.cases) ? evals_obj.cases.length : null,
+        auto_synthesized: evals_obj?.auto_synthesized_n ?? 0,
+      },
       completed_at: new Date().toISOString(),
     });
 
