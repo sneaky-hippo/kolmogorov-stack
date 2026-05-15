@@ -294,7 +294,23 @@ export function authMiddleware(req, res, next) {
   const p = req.path;
   // Non-API paths bypass auth entirely (page routes, static, 404 fallback handle them)
   if (!p.startsWith('/v1/')) return next();
-  if (PUBLIC_API(p)) return next();
+  if (PUBLIC_API(p)) {
+    // Soft-auth: never reject, but if the caller sent a valid key, populate
+    // req.tenant_record so the route can differentiate anon vs owner reads
+    // (e.g. /v1/hub/:owner/:name returning private rows only to their owner).
+    const header = req.headers.authorization || '';
+    const xApi = req.headers['x-api-key'] || '';
+    const cookieKey = (req.cookies && req.cookies.kolm_session) || '';
+    const key = cookieKey || header.replace(/^Bearer\s+/i, '').trim() || xApi || req.query.api_key;
+    if (key) {
+      const t = findTenantByApiKey(key);
+      if (t && !(t.kind === 'anon' && t.expires_at && new Date(t.expires_at) < new Date())) {
+        req.tenant_record = t;
+        req.tenant = t.id;
+      }
+    }
+    return next();
+  }
   const adminKey = adminApiKey();
   const header = req.headers.authorization || '';
   const xApi = req.headers['x-api-key'] || '';
