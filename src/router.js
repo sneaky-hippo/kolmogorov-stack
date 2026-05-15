@@ -1267,7 +1267,25 @@ export function buildRouter() {
       return res.status(400).json({ error: 'artifact_b64 is not valid base64' });
     }
     const sha256Hex = crypto.createHash('sha256').update(bytes).digest('hex');
-    const owner = hubSlug(req.tenant_record?.handle || req.tenant_record?.name || req.tenant_record?.id || req.tenant || 'anon');
+
+    // Team-scoped publish (wave 57): if the caller passes `team`, resolve it to
+    // a team record, verify membership, and use the team slug as the artifact
+    // owner namespace. Private team artifacts are readable by any member, not
+    // just the publisher — that's the Teams-tier ($149/mo) unlock.
+    const teamArg = body.team ? String(body.team).trim() : null;
+    let teamRow = null;
+    if (teamArg) {
+      teamRow = teams.getTeam(teamArg);
+      if (!teamRow) {
+        return res.status(404).json({ error: `team not found: ${teamArg}` });
+      }
+      if (!teams.isMember(teamRow.id, req.tenant_record?.id || req.tenant)) {
+        return res.status(403).json({ error: `not a member of team ${teamRow.slug}` });
+      }
+    }
+    const owner = teamRow
+      ? teamRow.slug
+      : hubSlug(req.tenant_record?.handle || req.tenant_record?.name || req.tenant_record?.id || req.tenant || 'anon');
     if (!owner) return res.status(400).json({ error: 'cannot derive owner from tenant' });
 
     // Reject duplicate publish of same owner/name unless sha differs; same sha = idempotent.
@@ -1282,6 +1300,8 @@ export function buildRouter() {
       owner,
       name,
       visibility,
+      team_id: teamRow ? teamRow.id : null,
+      publisher_tenant_id: req.tenant_record?.id || req.tenant || null,
       sha256: sha256Hex,
       size_bytes: bytes.length,
       artifact_b64: b64,
@@ -1359,10 +1379,16 @@ export function buildRouter() {
     const name = hubSlug(req.params.name);
     const row = findOne('hub_artifacts', x => x.owner === owner && x.name === name);
     if (!row) return res.status(404).json({ error: 'not found' });
-    // Private rows: only the owner can read.
+    // Private rows: owner-private OR team-private. For team-scoped artifacts
+    // (row.team_id set), any active team member can read. Otherwise only the
+    // owning tenant. 404 (not 403) avoids leaking existence to non-members.
     if (row.visibility !== 'public') {
+      const reqTenantId = req.tenant_record?.id || req.tenant || '';
       const reqOwner = hubSlug(req.tenant_record?.handle || req.tenant_record?.name || req.tenant_record?.id || req.tenant || '');
-      if (reqOwner !== owner) return res.status(404).json({ error: 'not found' });
+      const isTeamMember = row.team_id && reqTenantId && teams.isMember(row.team_id, reqTenantId);
+      if (!isTeamMember && reqOwner !== owner) {
+        return res.status(404).json({ error: 'not found' });
+      }
     }
     const fwdHost = req.headers['x-forwarded-host'];
     const fwdProto = req.headers['x-forwarded-proto'];
@@ -1390,8 +1416,12 @@ export function buildRouter() {
     const row = findOne('hub_artifacts', x => x.owner === owner && x.name === name);
     if (!row) return res.status(404).json({ error: 'not found' });
     if (row.visibility !== 'public') {
+      const reqTenantId = req.tenant_record?.id || req.tenant || '';
       const reqOwner = hubSlug(req.tenant_record?.handle || req.tenant_record?.name || req.tenant_record?.id || req.tenant || '');
-      if (reqOwner !== owner) return res.status(404).json({ error: 'not found' });
+      const isTeamMember = row.team_id && reqTenantId && teams.isMember(row.team_id, reqTenantId);
+      if (!isTeamMember && reqOwner !== owner) {
+        return res.status(404).json({ error: 'not found' });
+      }
     }
     const bytes = Buffer.from(row.artifact_b64, 'base64');
     res.set('Content-Type', 'application/octet-stream');

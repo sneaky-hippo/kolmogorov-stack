@@ -54,7 +54,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 
-const VERSION = '0.2.3';
+const VERSION = '0.2.4';
 const HOME = os.homedir();
 const KOLM_DIR = path.join(HOME, '.kolm');
 const CONFIG_PATH = path.join(KOLM_DIR, 'config.json');
@@ -815,23 +815,34 @@ ENV
   publish: `kolm publish - upload a .kolm artifact to the hub.
 
 USAGE
-  kolm publish <artifact.kolm> [--name <name>] [--public|--private]
+  kolm publish <artifact.kolm> [--name <name>] [--public|--private] [--team <handle>]
 
 The hub is a verifiable artifact gallery: every published .kolm has a SHA-256
 fingerprint, a K-score, and a handle of the form <owner>/<name>. Default
 visibility is private (only you can see it); --public makes it discoverable.
 
+TEAM-SCOPED PUBLISH (Teams tier: $149/mo, 5 seats)
+  --team <handle>  publishes to the team's namespace. Any active team member
+                   can pull, even when the artifact is --private. Use this
+                   for shared models inside a healthcare/finance/legal team
+                   where the recipe must stay confidential between members.
+                   Server verifies you're a member; non-members get 403.
+
 REQUIRES
   signed in (kolm signup or kolm login)
 
-EXAMPLE
+EXAMPLES
+  # public artifact, your personal namespace
   kolm publish phi-redactor.kolm --public
-  # ok  published
-  # handle:    rodney/phi-redactor@sha256:7c0a3f9e
-  # url:       https://kolm.ai/v1/hub/rodney/phi-redactor
 
-  # someone else, anywhere:
-  kolm pull rodney/phi-redactor
+  # private team artifact (default for --team)
+  kolm publish phi-redactor.kolm --team acme-health
+  # ok  published
+  # handle:    acme-health/phi-redactor@sha256:7c0a3f9e
+  # url:       https://kolm.ai/v1/hub/acme-health/phi-redactor
+
+  # any member of acme-health pulls it (private to team):
+  kolm pull acme-health/phi-redactor
 `,
   pull: `kolm pull - download a .kolm artifact from the hub by handle.
 
@@ -3473,6 +3484,12 @@ async function cmdPublish(args) {
     process.exit(EXIT.BAD_ARGS);
   }
 
+  // --team <handle>: publish to a team workspace instead of your personal namespace.
+  // Wave 57. Server verifies you're a member of the team and uses the team slug
+  // as the artifact owner. All other team members can pull private team artifacts.
+  // Requires Teams plan ($149/mo, 5 seats) — non-members get 403.
+  const teamHandle = pickFlag(args, '--team');
+
   const bytes = fs.readFileSync(ap);
   const sha = crypto.createHash('sha256').update(bytes).digest('hex');
 
@@ -3498,6 +3515,7 @@ async function cmdPublish(args) {
   console.log(`publishing ${path.basename(ap)}  (${fmtBytes(bytes.length)})`);
   console.log(`  sha256:     ${sha}`);
   console.log(`  visibility: ${visibility}`);
+  if (teamHandle) console.log(`  team:       ${teamHandle}`);
   if (metadata.k_score != null) console.log(`  K-score:    ${Number(metadata.k_score).toFixed(3)}  (gate ${metadata.gate})`);
   if (metadata.base_model) console.log(`  base:       ${metadata.base_model}`);
 
@@ -3508,9 +3526,17 @@ async function cmdPublish(args) {
       visibility,
       artifact_b64: bytes.toString('base64'),
       metadata,
+      ...(teamHandle ? { team: teamHandle } : {}),
     });
   } catch (e) {
     console.error('\npublish failed: ' + (e.message || e));
+    if (e.status === 403 && teamHandle) {
+      console.error(`  you are not a member of team "${teamHandle}". list yours with: kolm team list`);
+      console.error('  Teams plan ($149/mo, 5 seats) required to publish team-scoped artifacts.');
+    }
+    if (e.status === 404 && teamHandle) {
+      console.error(`  team "${teamHandle}" does not exist. create one with: kolm team create <name>`);
+    }
     if (e.status === 409) {
       console.error('  this name already exists. retry with --name <different>.');
     }
