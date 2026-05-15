@@ -305,6 +305,32 @@
     })
     .catch(function () {});
   } // end loadLog()
+
+  function downloadAuditLog(format) {
+    var apiKey = key();
+    if (!apiKey) { window.location.href = '/signin'; return; }
+    var url = '/v1/audit/log?format=' + encodeURIComponent(format);
+    fetch(url, { headers: { authorization: 'Bearer ' + apiKey }, credentials: 'include' })
+      .then(function (r) { return r.ok ? r.text() : null; })
+      .then(function (text) {
+        if (text == null) return;
+        var mime = format === 'csv' ? 'text/csv' : 'application/x-ndjson';
+        var ext = format === 'csv' ? 'csv' : 'jsonl';
+        var blob = new Blob([text], { type: mime });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'kolm-audit-' + new Date().toISOString().slice(0, 10) + '.' + ext;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      })
+      .catch(function () {});
+  }
+  var btnJson = document.getElementById('export-json');
+  if (btnJson) btnJson.addEventListener('click', function () { downloadAuditLog('jsonl'); });
+  var btnCsv = document.getElementById('export-csv');
+  if (btnCsv) btnCsv.addEventListener('click', function () { downloadAuditLog('csv'); });
 })();
 </script>
 <script src="/nav.js" defer></script>
