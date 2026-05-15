@@ -23,6 +23,64 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  /* elite demo on /enterprise: an animated, 4-step CLI walk-through that
+     shows the team-private publish flow end-to-end. No JS dependencies —
+     the auto-advance is a setInterval that toggles an `is-active` class;
+     keyboard arrows and click-to-jump still work even if JS is blocked. */
+  .ed-wrap { margin: 56px auto 96px; max-width: 1180px; padding: 0 32px; }
+  .ed-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 22px; }
+  .ed-head h2 { font-size: 30px; font-weight: 500; letter-spacing: -0.01em; margin: 0; max-width: 38ch; line-height: 1.12; }
+  .ed-head .ed-lede { color: var(--ink-mute, #b5bdb1); font-size: 14.5px; max-width: 52ch; margin: 0; }
+  .ed-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 24px; align-items: stretch; }
+  @media (max-width: 880px) { .ed-grid { grid-template-columns: 1fr; } }
+  .ed-term { background: #0b0f10; border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 12px; overflow: hidden; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .ed-term-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--line, rgba(255,255,255,0.06)); font-size: 11.5px; color: var(--ink-faint, #737c73); }
+  .ed-dot { width: 9px; height: 9px; border-radius: 50%; background: #5a635a; }
+  .ed-dot.green { background: #7ef0d2; }
+  .ed-dot.amber { background: #ffb84d; }
+  .ed-dot.red { background: #ff6b91; }
+  .ed-term-title { margin-left: 6px; letter-spacing: 0.04em; }
+  .ed-term-body { padding: 18px 20px; min-height: 260px; font-size: 13px; line-height: 1.65; color: #d6dccf; }
+  .ed-term-body pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: inherit; }
+  .ed-term-body .cmd { color: #faf2e1; }
+  .ed-term-body .ok  { color: #7ef0d2; }
+  .ed-term-body .lo  { color: #737c73; }
+  .ed-term-body .hi  { color: #ffd97a; }
+  .ed-term-body .fail{ color: #ff6b91; }
+  .ed-step { display: none; }
+  .ed-step.is-active { display: block; }
+  .ed-side { display: flex; flex-direction: column; gap: 14px; }
+  .ed-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .ed-tab { appearance: none; border: 1px solid var(--line, rgba(255,255,255,0.10)); background: transparent; color: var(--ink-mute, #b5bdb1); border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: 0.04em; cursor: pointer; text-align: left; transition: border-color 120ms, color 120ms, background 120ms; }
+  .ed-tab .ed-num { color: var(--ink-faint, #737c73); margin-right: 7px; font-variant-numeric: tabular-nums; }
+  .ed-tab:hover { color: var(--ink, #faf2e1); border-color: var(--line-2, rgba(255,255,255,0.18)); }
+  .ed-tab.is-active { color: var(--ink, #faf2e1); border-color: var(--ink, #faf2e1); background: rgba(236,231,220,0.04); }
+  .ed-tab.is-active .ed-num { color: var(--ink, #faf2e1); }
+  .ed-detail { background: rgba(255,255,255,0.025); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 10px; padding: 18px 20px; flex: 1; }
+  .ed-detail .ed-d-eye { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint, #737c73); margin-bottom: 8px; }
+  .ed-detail h3 { font-size: 18px; font-weight: 500; margin: 0 0 8px; line-height: 1.2; }
+  .ed-detail p { font-size: 14px; color: var(--ink-mute, #b5bdb1); margin: 0 0 10px; line-height: 1.55; }
+  .ed-detail p:last-child { margin-bottom: 0; }
+  .ed-detail .ed-d-pill { display: inline-flex; align-items: center; gap: 6px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--ink, #faf2e1); border: 1px solid var(--line-2, rgba(255,255,255,0.18)); padding: 4px 9px; border-radius: 999px; margin-top: 10px; }
+  .ed-foot { margin-top: 18px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; color: var(--ink-faint, #737c73); }
+  .ed-foot a { color: var(--ink, #faf2e1); border-bottom: 1px solid var(--line-2, rgba(255,255,255,0.18)); padding-bottom: 1px; }
+  .ed-foot a:hover { border-color: var(--ink, #faf2e1); }
+  .ed-cap { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 10.5px; letter-spacing: 0.06em; color: var(--ink-faint, #737c73); text-transform: uppercase; }
+  [data-theme="light"] .ed-term { background: #fbf8f0; border-color: #e8e3d6; }
+  [data-theme="light"] .ed-term-head { background: rgba(0,0,0,0.025); border-bottom-color: #e8e3d6; color: #6a695f; }
+  [data-theme="light"] .ed-term-body { color: #1f2120; }
+  [data-theme="light"] .ed-term-body .cmd { color: #0c0d10; }
+  [data-theme="light"] .ed-term-body .lo { color: #8a8a7a; }
+  [data-theme="light"] .ed-term-body .ok { color: #138a6a; }
+  [data-theme="light"] .ed-term-body .hi { color: #8a6800; }
+  [data-theme="light"] .ed-detail { background: rgba(0,0,0,0.025); border-color: #e8e3d6; }
+  [data-theme="light"] .ed-detail .ed-d-eye, [data-theme="light"] .ed-cap, [data-theme="light"] .ed-foot { color: #6a695f; }
+  [data-theme="light"] .ed-detail p { color: #4a4945; }
+  [data-theme="light"] .ed-tab { color: #4a4945; border-color: #e8e3d6; }
+  [data-theme="light"] .ed-tab.is-active { color: #0c0d10; border-color: #0c0d10; background: rgba(0,0,0,0.03); }
+  [data-theme="light"] .ed-tab.is-active .ed-num { color: #0c0d10; }
+</style>
 </head>
 <body>
 
@@ -33,6 +91,7 @@
       <a href="/use-cases">Solutions</a>
       <a href="/docs">Developers</a>
       <a href="/research">Research</a>
+      <a href="/enterprise">Enterprise</a>
       <a href="/pricing">Pricing</a>
     </nav>
     <div class="site-actions">
@@ -48,8 +107,8 @@
     <div class="wrap">
       <div class="hero-copy">
         <div class="hero-eyebrow"><span class="he-dot"></span>Enterprise &middot; founder-direct &middot; in-boundary AI</div>
-        <h1>Procurement-ready local AI. <span class="tone">Founder-direct contract.</span></h1>
-        <p class="lede">If your CISO bans cloud LLMs on regulated data, kolm is the architecture that ends the argument: compile your model behavior into a single signed file, run it inside the boundary, keep the receipt. Below: the four motions we support, the paperwork your procurement team needs, the design-partner program, and a direct line to the founders.</p>
+        <h1>Your team's AI, on your hardware. <span class="tone">Signed, sharable, audited.</span></h1>
+        <p class="lede">Compile a model into a single file. Publish it to a private team registry that nobody outside your team can read. Every pull verifies the SHA. Every run leaves a receipt. Below: a live walk-through of the team flow, the four motions we support, the paperwork your procurement team needs, and a direct line to the founders.</p>
         <div class="actions">
           <a href="mailto:founders@kolm.ai?subject=kolm%20enterprise%20%E2%80%94%20intro" class="btn primary electric">Talk to founders &rarr;</a>
           <a href="/baa" class="btn ghost">BAA / DPA template</a>
@@ -58,6 +117,122 @@
       </div>
     </div>
   </section>
+
+  <div class="ed-wrap">
+    <div class="ed-head">
+      <div>
+        <div class="ed-cap">live demo &middot; team-private publish</div>
+        <h2>How a team ships an audited model in four commands.</h2>
+      </div>
+      <p class="ed-lede">A healthcare engineer compiles a PHI redactor on a workstation that never reaches the public internet. A teammate pulls it. The artifact is SHA-pinned. The receipt is signed. Click a step to inspect it.</p>
+    </div>
+    <div class="ed-grid">
+      <div class="ed-term" aria-label="kolm terminal demo">
+        <div class="ed-term-head"><span class="ed-dot red"></span><span class="ed-dot amber"></span><span class="ed-dot green"></span><span class="ed-term-title">acme-health &middot; engineer-workstation-04</span></div>
+        <div class="ed-term-body">
+<div class="ed-step is-active" data-step="1">
+<pre><span class="lo">$</span> <span class="cmd">kolm compile --spec phi-redactor.spec.json --examples gold.jsonl</span>
+
+loaded 142 user examples from gold.jsonl
+built:   ~/.kolm/artifacts/phi-redactor.kolm
+bytes:   4942
+sha256:  7d4f81a2c6e9...e2a1
+<span class="ok">K-score for phi-redactor.kolm: 0.987  (gate &gt;= 0.85 - pass)</span>
+evals:   142 / 142 cases pass
+skill:   ~/.kolm/skills/phi-redactor.skill.json
+
+<span class="hi">try it:</span>
+  kolm run phi-redactor.kolm --input sample.json</pre>
+</div>
+<div class="ed-step" data-step="2">
+<pre><span class="lo">$</span> <span class="cmd">kolm inspect phi-redactor.kolm</span>
+
+task:       redact PHI from clinical notes
+built:      2026-05-16T18:42:11Z
+sha256:     7d4f81a2c6e9...e2a1
+K-score:    0.987  (gate &gt;= 0.85 - <span class="ok">pass</span>)
+runtime:    p50 = 60 us  &middot;  p99 = 410 us  &middot;  egress = 0
+signature:  HMAC-SHA256 verified  &middot;  receipt chain valid
+
+recipes:
+  - id: redact-v1
+    source: ./redactor.js  (subset-equal on 142 cases)
+evals:
+  - 142 / 142 pass    spec, gold, holdout</pre>
+</div>
+<div class="ed-step" data-step="3">
+<pre><span class="lo">$</span> <span class="cmd">kolm publish phi-redactor --team acme-health</span>
+
+owner:        acme-health  (team)
+name:         phi-redactor
+visibility:   <span class="ok">private (team-only)</span>
+handle:       acme-health/phi-redactor@sha256:7d4f81a2c6e9
+size:         4.8 KiB
+url:          https://kolm.ai/hub/acme-health/phi-redactor
+
+3 team members can pull. Tenants outside the team see 404.
+no public-internet egress for the artifact bytes.</pre>
+</div>
+<div class="ed-step" data-step="4">
+<pre><span class="lo">$</span> <span class="cmd">kolm pull acme-health/phi-redactor@sha256:7d4f81a2c6e9</span>
+
+resolved:   acme-health/phi-redactor@sha256:7d4f81a2c6e9
+auth:       member of team acme-health
+downloaded: 4942 bytes
+<span class="ok">sha256:     7d4f81a2c6e9...e2a1  (matches pin)</span>
+
+<span class="lo">$</span> <span class="cmd">kolm audit phi-redactor.kolm</span>
+
+receipt-chain:   4 entries, HMAC valid
+K-score drift:   0.000 (matches publish-time)
+external calls:  0 in 47 local runs
+verdict:         <span class="ok">audit clean</span></pre>
+</div>
+        </div>
+      </div>
+      <div class="ed-side">
+        <div class="ed-tabs" role="tablist">
+          <button type="button" class="ed-tab is-active" data-target="1" role="tab" aria-selected="true"><span class="ed-num">01</span>compile</button>
+          <button type="button" class="ed-tab" data-target="2" role="tab" aria-selected="false"><span class="ed-num">02</span>verify</button>
+          <button type="button" class="ed-tab" data-target="3" role="tab" aria-selected="false"><span class="ed-num">03</span>publish</button>
+          <button type="button" class="ed-tab" data-target="4" role="tab" aria-selected="false"><span class="ed-num">04</span>audit</button>
+        </div>
+        <div class="ed-detail" data-detail="1">
+          <div class="ed-d-eye">step 01 &middot; compile</div>
+          <h3>The model is born inside your boundary.</h3>
+          <p>kolm reads a JSON spec plus your gold examples and produces a single .kolm file. The compile runs on your hardware. The bytes never leave the host.</p>
+          <p>The K-score is the gate. 0.85 is the default floor. CI exits non-zero on a fail so the artifact never gets promoted by accident.</p>
+          <span class="ed-d-pill">no cloud roundtrip &middot; no training data leak</span>
+        </div>
+        <div class="ed-detail" data-detail="2" hidden>
+          <div class="ed-d-eye">step 02 &middot; verify</div>
+          <h3>The artifact carries its own proof.</h3>
+          <p>Every .kolm has a SHA-256, an HMAC-signed receipt chain, and the K-score it passed at. Inspection is offline. You don't need our infrastructure to trust the file.</p>
+          <p>The signature also pins the recipe source and the spec evals: if anything inside the artifact changes, the signature breaks.</p>
+          <span class="ed-d-pill">verifiable offline &middot; signature breaks on tamper</span>
+        </div>
+        <div class="ed-detail" data-detail="3" hidden>
+          <div class="ed-d-eye">step 03 &middot; publish</div>
+          <h3>Share with the team. Nobody else.</h3>
+          <p>Publish with <code>--team &lt;handle&gt;</code> and the artifact is owned by the team, not a person. Members pull it. Non-members get 404 — we don't even confirm the name exists.</p>
+          <p>Storage and bandwidth are billed on the Teams plan ($149/mo, 5 seats). Visibility defaults to private; <code>--public</code> is opt-in.</p>
+          <span class="ed-d-pill">private by default &middot; 5 seats &middot; $149/mo</span>
+        </div>
+        <div class="ed-detail" data-detail="4" hidden>
+          <div class="ed-d-eye">step 04 &middot; audit</div>
+          <h3>Receipts your auditor will accept.</h3>
+          <p>Each pull and each run appends to a receipt chain. The K-score is checked against the publish-time value to detect drift. External calls are counted (and forbidden by default).</p>
+          <p>One quarterly PDF rolls this up: regression report, drift, sub-processor delta, incident log. Goes to your auditor unchanged.</p>
+          <span class="ed-d-pill">drift = 0 &middot; egress = 0 &middot; auditor-ready</span>
+        </div>
+      </div>
+    </div>
+    <div class="ed-foot">
+      <span>&rarr; full CLI walkthrough at <a href="/quickstart">/quickstart</a></span>
+      <span>&rarr; receipt spec at <a href="/spec/rs-1">/spec/rs-1</a></span>
+      <span>&rarr; hub API at <a href="/api">/api</a></span>
+    </div>
+  </div>
 
   <section class="section">
     <div class="wrap">
@@ -193,5 +368,56 @@
 </footer>
 
 <script src="/nav.js" defer></script>
+<script>
+  // Elite-demo stepper: cycle 4 steps every 6s, pause on user interaction
+  // (click or arrow-key), resume after 20s of idle. No external deps.
+  (function () {
+    var STEPS = 4;
+    var IDLE_MS = 20000;
+    var TICK_MS = 6000;
+    var idx = 1;
+    var paused = false;
+    var resumeTimer = null;
+    var steps = document.querySelectorAll('.ed-step');
+    var tabs = document.querySelectorAll('.ed-tab');
+    var details = document.querySelectorAll('.ed-detail');
+    if (!steps.length || !tabs.length) return;
+
+    function showStep(n) {
+      idx = ((n - 1 + STEPS) % STEPS) + 1;
+      steps.forEach(function (s) { s.classList.toggle('is-active', Number(s.dataset.step) === idx); });
+      tabs.forEach(function (t) {
+        var on = Number(t.dataset.target) === idx;
+        t.classList.toggle('is-active', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      details.forEach(function (d) { d.hidden = Number(d.dataset.detail) !== idx; });
+    }
+
+    function pauseUntilIdle() {
+      paused = true;
+      clearTimeout(resumeTimer);
+      resumeTimer = setTimeout(function () { paused = false; }, IDLE_MS);
+    }
+
+    tabs.forEach(function (t) {
+      t.addEventListener('click', function () {
+        showStep(Number(t.dataset.target));
+        pauseUntilIdle();
+      });
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (!document.querySelector('.ed-term:hover, .ed-side:hover, .ed-tabs:focus-within')) return;
+      if (e.key === 'ArrowRight') { showStep(idx + 1); pauseUntilIdle(); }
+      if (e.key === 'ArrowLeft')  { showStep(idx - 1); pauseUntilIdle(); }
+    });
+
+    setInterval(function () {
+      if (paused) return;
+      showStep(idx + 1);
+    }, TICK_MS);
+  })();
+</script>
 </body>
 </html>

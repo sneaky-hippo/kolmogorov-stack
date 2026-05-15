@@ -54,7 +54,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 
-const VERSION = '0.2.4';
+const VERSION = '0.2.5';
 const HOME = os.homedir();
 const KOLM_DIR = path.join(HOME, '.kolm');
 const CONFIG_PATH = path.join(KOLM_DIR, 'config.json');
@@ -2321,7 +2321,7 @@ async function cmdCompile(args) {
       console.log(`  artifact:  ${r.result.artifact_path}`);
       if (r.result.k_score) console.log('  ' + fmtKScoreLine(r.result.k_score, path.basename(r.result.artifact_path)));
       console.log('');
-      console.log(`run:    kolm run ${path.basename(r.result.artifact_path)} '<input-json>'`);
+      console.log(`run:    kolm run ${path.basename(r.result.artifact_path)} --input <sample.json>`);
     } else {
       console.log('(adapter did not return an artifact path — check ~/.kolm/artifacts/)');
     }
@@ -2460,8 +2460,34 @@ async function cmdCompile(args) {
     const preOk = await dispatch('PreCompile', { command: 'compile', cwd: process.cwd(), spec_job_id: spec.job_id, spec_task: spec.task }, { onResult: printHookResult });
     if (!preOk) { console.error('PreCompile hook blocked compile (exit 2)'); process.exit(2); }
     const { compileSpec } = await import('../src/spec-compile.js');
+    const wantJsonCompile = args.includes('--json');
     try {
       const r = await compileSpec(spec, { outDir: outDirL, outPath });
+      const composite = r.k_score && typeof r.k_score.composite === 'number' ? r.k_score.composite : null;
+      const gate = kGate();
+      const verdict = composite == null ? null : (composite >= gate ? 'pass' : 'fail');
+      // --json: emit a single machine-readable object for CI. The fields are
+      // stable (artifact/sha256/bytes/k_score/gate/verdict/evals_report) and
+      // mirror what `kolm inspect --json` exposes. Skill sidecar still emits;
+      // PostCompile hook still fires. Gate-fail exit still applies after print.
+      if (wantJsonCompile) {
+        if (!args.includes('--no-skill')) {
+          try { writeSkillSidecar({ artifactPath: r.outPath, description: spec.task || `Spec-compiled artifact ${path.basename(r.outPath, '.kolm')}.`, kScore: r.k_score }); }
+          catch (e) { if (process.env.KOLM_DEBUG) console.error('skill emit failed:', e.message); }
+        }
+        await dispatch('PostCompile', { command: 'compile', cwd: process.cwd(), artifact: r.outPath, sha256: r.sha256, bytes: r.bytes, k_score: r.k_score }, { onResult: printHookResult });
+        console.log(JSON.stringify({
+          artifact: r.outPath,
+          sha256: r.sha256,
+          bytes: r.bytes,
+          k_score: r.k_score || null,
+          gate,
+          verdict,
+          evals_report: r.evals_report || null,
+        }, null, 2));
+        if (verdict === 'fail') process.exit(EXIT.GATE_FAIL);
+        return;
+      }
       console.log(`built: ${r.outPath}`);
       console.log(`bytes: ${r.bytes}`);
       console.log(`sha256: ${r.sha256}`);
@@ -2491,14 +2517,19 @@ async function cmdCompile(args) {
         }
       }
       await dispatch('PostCompile', { command: 'compile', cwd: process.cwd(), artifact: r.outPath, sha256: r.sha256, bytes: r.bytes, k_score: r.k_score }, { onResult: printHookResult });
-      console.log(`\ntry it:  kolm run ${path.basename(r.outPath)} '<input-json>'`);
+      // Post-compile hint: show --input form first because single-quoted JSON
+      // breaks on Windows cmd ('foo' is not stripped, parses as the literal
+      // string with quotes). The --input <file> + stdin forms work everywhere.
+      console.log(`\ntry it:`);
+      console.log(`  kolm run ${path.basename(r.outPath)} --input <sample.json>`);
+      console.log(`  echo {"text":"..."} | kolm run ${path.basename(r.outPath)}`);
       console.log(`serve:   kolm serve --mcp     # frontier agents discover it`);
       // Gate-fail exit: 2 agents (43, 48) flagged that --gate 0.999 printed
       // "gate >= 1.00 - fail" but still exited 0, silently green-lighting
       // sub-gate artifacts in CI. compile is the gate verb; it must fail
       // closed when verdict is fail. Artifact is still on disk (debuggable);
       // exit code signals "do not promote" to the wrapping pipeline.
-      if (r.k_score && typeof r.k_score.composite === 'number' && r.k_score.composite < kGate()) {
+      if (verdict === 'fail') {
         process.exit(EXIT.GATE_FAIL);
       }
       return;
@@ -2684,7 +2715,7 @@ async function cmdCompile(args) {
       console.log(`deploy: webhook FAILED${state.deploy_response_code ? ' (' + state.deploy_response_code + ')' : ''}`);
     }
   }
-  console.log(`\nrun:    kolm run ${path.basename(outPath)} '<input-json>'`);
+  console.log(`\nrun:    kolm run ${path.basename(outPath)} --input <sample.json>`);
   console.log(`serve:  kolm serve --mcp     # frontier agents will see this skill`);
 }
 
@@ -3254,13 +3285,17 @@ async function cmdList(args) {
   const nameW = Math.max(4, ...rows.map(r => r.name.length));
   const sizeW = Math.max(4, ...rows.map(r => fmtBytes(r.size).length));
   const pad = (s, w) => s + ' '.repeat(Math.max(0, w - s.length));
-  console.log(pad('NAME', nameW) + '  K-SCORE  ' + pad('SIZE', sizeW) + '  AGE   SOURCE');
+  // Verdict gets its own column so `awk '{print $2}'` on a data row gives
+  // the K-score as a clean token (was "0.988 p" before — two tokens, breaks
+  // grep/awk scripts). Header rows now have the same column count as data.
+  console.log(pad('NAME', nameW) + '  K-SCORE  PASS  ' + pad('SIZE', sizeW) + '  AGE   SOURCE');
   for (const r of rows) {
     const kStr = (typeof r.k === 'number') ? r.k.toFixed(3) : '  -  ';
-    const verdict = (typeof r.k === 'number') ? (r.k >= 0.85 ? 'p' : 'f') : ' ';
+    const verdict = (typeof r.k === 'number') ? (r.k >= 0.85 ? 'pass' : 'fail') : '-';
     console.log(
       pad(r.name, nameW) + '  ' +
-      kStr + ' ' + verdict + '  ' +
+      pad(kStr, 7) + '  ' +
+      pad(verdict, 4) + '  ' +
       pad(fmtBytes(r.size), sizeW) + '  ' +
       pad(fmtAge(r.mtime), 4) + '  ' +
       r.source
@@ -3617,7 +3652,7 @@ async function cmdPull(args) {
   if (meta.metadata?.base_model) console.log(`  base:       ${meta.metadata.base_model}`);
   console.log('');
   console.log(`  next:  kolm inspect ${outPath}`);
-  console.log(`         kolm run ${outPath} '<input>'`);
+  console.log(`         kolm run ${outPath} --input <sample.json>`);
 }
 
 // kolm hub [list|show <handle>] — browse the public artifact gallery.
