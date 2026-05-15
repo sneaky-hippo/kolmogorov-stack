@@ -318,9 +318,17 @@ export async function runArtifact(artifactPath, input, opts = {}) {
 // Re-run the embedded eval suite against the artifact's recipes. This is
 // what backs `kolm eval <artifact>` — recompute K-score axes from scratch
 // to confirm the bundle still passes.
+//
+// opts.cases overrides the embedded cases (used by `kolm eval --examples <file>`
+// to test against fresh data without touching the artifact). Pass an array of
+// {id?, input, expected, params?} rows. Missing ids get auto-numbered so the
+// failure printer always has something to anchor against.
 export async function evalArtifact(artifactPath, opts = {}) {
   const bundle = loadArtifact(artifactPath);
-  const cases = bundle.evals?.cases || [];
+  const embedded = bundle.evals?.cases || [];
+  const cases = Array.isArray(opts.cases) && opts.cases.length
+    ? opts.cases.map((c, i) => ({ id: c.id || `case_${i + 1}`, ...c }))
+    : embedded;
   if (!cases.length) {
     return { n: 0, passed: 0, accuracy: 0, latencies_us: [], note: 'no evals embedded' };
   }
@@ -344,7 +352,11 @@ export async function evalArtifact(artifactPath, opts = {}) {
     passed,
     accuracy: cases.length ? passed / cases.length : 0,
     p50_latency_us: p50,
-    errors: errors.slice(0, 5),
+    // Returning all errors so the CLI can decide how many to show (--trace
+    // shows everything, default tops out at 5). Used to slice here, which
+    // truncated --trace too.
+    errors,
+    source: Array.isArray(opts.cases) && opts.cases.length ? 'override' : 'embedded',
   };
 }
 

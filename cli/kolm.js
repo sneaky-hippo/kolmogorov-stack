@@ -543,15 +543,23 @@ EXAMPLE
   run: `kolm run - execute a .kolm artifact locally.
 
 USAGE
-  kolm run <artifact.kolm> '<input-json>' [--params <json|@file>]
+  kolm run <artifact.kolm> '<input-json>' [--params <json|@file>] [--json]
 
 The input is parsed as JSON when possible; otherwise passed as a bare string.
 --params lets you pass tenant-runtime config to the recipes (extra patterns,
 allowlists, vertical rules). Recipes read these via lib.params. Tenant params
 are never persisted by the runtime and never re-signed into the artifact.
 
+Default output is the recipe's output only (pretty JSON, or string), with a
+one-line footer on stderr: 'recipe: <id>  ·  <latency>'. Pipes cleanly:
+  kolm run x.kolm 'foo' | jq .
+Pass --json for the full doc (output + recipe + latency_us + k_score + receipt
++ audit) as a single parseable JSON document — used by CI and agents that need
+everything.
+
 EXAMPLES
   kolm run redactor.kolm '{"text":"call 555-1212"}'
+  kolm run redactor.kolm '{"text":"call 555-1212"}' --json
   kolm run redactor.kolm '{"text":"id 12-345"}' --params '{"extra_patterns":[{"name":"emp_id","regex":"\\\\b\\\\d{2}-\\\\d{3}\\\\b","replacement":"[ID]"}]}'
   kolm run redactor.kolm '{"text":"..."}' --params @hospital-rules.json
 `,
@@ -562,14 +570,19 @@ This command re-runs THIS artifact's evals and prints THIS artifact's pass/fail
 breakdown plus what each failing case got vs what was expected.
 
 USAGE
-  kolm eval <artifact.kolm> [--trace] [--json]
+  kolm eval <artifact.kolm> [--examples <file>] [--trace] [--json]
 
 FLAGS
-  --trace        show every failing case (default: first 5)
-  --json         emit the full machine-readable doc (used by CI / agents)
+  --examples <file>  eval against a fresh JSONL of {"input":..., "expected":...}
+                     rows (also accepts "output" in place of "expected"). Use
+                     this to A/B an artifact against real holdout data without
+                     recompiling — the embedded eval set is bypassed.
+  --trace            show every failing case (default: first 5)
+  --json             emit the full machine-readable doc (used by CI / agents)
 
 EXAMPLE
   kolm eval my-redactor.kolm
+  kolm eval my-redactor.kolm --examples holdout.jsonl
   kolm eval my-redactor.kolm --trace
   kolm eval my-redactor.kolm --json > eval-report.json
 `,
@@ -2493,11 +2506,22 @@ async function cmdRun(args) {
   await withRunner(async ({ runArtifact }) => {
     try {
       const r = await runArtifact(ap, input, { params });
-      // cmdRun's text path was already a JSON dump, so --json behaves identically.
-      // Gating still flips the contract: --json guarantees stdout is parseable
-      // JSON (no narration ever) so downstream tools can `kolm run … --json | jq`.
+      // Wave 38: text-mode prints only the recipe output (string-or-pretty-JSON)
+      // plus a one-line footer on stderr (recipe + latency). Pipes stay clean
+      // for `kolm run x.kolm 'foo' | jq`. --json keeps the full doc with
+      // K-score / receipt / audit so CI and agents have one parseable blob.
       const result = { output: r.output, recipe: r.recipe_name || r.recipe_id, latency_us: r.latency_us, k_score: r.k_score, receipt: r.receipt, audit: r.audit };
-      console.log(JSON.stringify(result, null, 2));
+      if (jsonOut) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        const outStr = (typeof r.output === 'string')
+          ? r.output
+          : JSON.stringify(r.output, null, 2);
+        console.log(outStr);
+        const lat = typeof r.latency_us === 'number' ? `${r.latency_us}us` : '?';
+        const recipe = r.recipe_name || r.recipe_id || '?';
+        process.stderr.write(`recipe: ${recipe}  ·  ${lat}\n`);
+      }
       appendRunLog({ command: 'run', artifact: ap, recipe_id: r.recipe_id, recipe_name: r.recipe_name, latency_us: r.latency_us, k_composite: r.k_score?.composite, ok: r.audit?.ok !== false });
       try {
         const { appendCapture } = await import('../src/tune.js');
@@ -2527,8 +2551,12 @@ async function cmdEval(args) {
   // Default to a human-readable summary so `kolm eval my.kolm` is useful at a
   // glance. Pass --json for the full machine-readable doc (used by CI / agents).
   // --trace forces per-case failure detail; without it we show the top 5.
+  // --examples <file> evals against a fresh JSONL instead of the embedded
+  // cases — the way to A/B a candidate artifact against real holdout data
+  // without recompiling.
   const jsonOut = args.includes('--json');
   const traceFlag = args.includes('--trace');
+  const examplesFlag = pickFlag(args, '--examples');
   const positional = args.filter(a => !a.startsWith('--'));
   const ap = resolveArtifact(positional[0]);
   if (!ap) {
@@ -2536,15 +2564,31 @@ async function cmdEval(args) {
     err.exitCode = EXIT.NOT_FOUND;
     throw err;
   }
+  let overrideCases = null;
+  if (examplesFlag) {
+    if (!fs.existsSync(examplesFlag)) {
+      const err = new Error(`--examples file not found: ${examplesFlag}`);
+      err.exitCode = EXIT.NOT_FOUND;
+      throw err;
+    }
+    const rows = readExamplesJsonl(examplesFlag);
+    if (!rows.length) {
+      const err = new Error(`--examples file has no parseable rows: ${examplesFlag}`);
+      err.exitCode = EXIT.BAD_ARGS;
+      throw err;
+    }
+    overrideCases = rows;
+    if (!jsonOut) console.log(`loaded ${rows.length} cases from ${examplesFlag}`);
+  }
   await withRunner(async ({ evalArtifact }) => {
-    const r = await evalArtifact(ap);
+    const r = await evalArtifact(ap, overrideCases ? { cases: overrideCases } : {});
     if (jsonOut) { console.log(JSON.stringify(r, null, 2)); return; }
     const name = path.basename(ap);
     const total = r.n != null ? r.n : (Array.isArray(r.cases) ? r.cases.length : 0);
     const passed = r.passed != null ? r.passed : (total - (r.errors ? r.errors.length : 0));
     const accPct = typeof r.accuracy === 'number' ? (r.accuracy * 100).toFixed(1) + '%' : '?';
     const lat = r.p50_latency_us != null ? `${r.p50_latency_us}us` : '?';
-    console.log(`eval: ${name}`);
+    console.log(`eval: ${name}${r.source === 'override' ? `  (against ${examplesFlag})` : ''}`);
     console.log(`  passed:    ${passed} / ${total}  (${accPct})`);
     console.log(`  p50_lat:   ${lat}`);
     const errs = Array.isArray(r.errors) ? r.errors : [];
@@ -3198,6 +3242,42 @@ function pickFlag(args, name) {
   const v = args[i + 1];
   if (v === undefined || v.startsWith('-')) return '';
   return v;
+}
+
+// Read a JSONL or JSON-array file of eval rows. Tolerant of both shapes the
+// CLI documents: {input, expected} and {input, output} (the same JSONL used
+// for training fixtures). Lines that don't parse are skipped silently — eval
+// failure should be from the recipe, not a one-bad-line abort. Returns an
+// array of {input, expected, id?, params?} suitable for evalArtifact({cases}).
+function readExamplesJsonl(filePath) {
+  const text = fs.readFileSync(filePath, 'utf8');
+  const trimmed = text.trim();
+  let rawRows;
+  if (trimmed.startsWith('[')) {
+    try { rawRows = JSON.parse(trimmed); }
+    catch { rawRows = []; }
+  } else {
+    rawRows = trimmed.split(/\r?\n/).filter(Boolean).map(ln => {
+      try { return JSON.parse(ln); } catch { return null; }
+    }).filter(Boolean);
+  }
+  const out = [];
+  for (let i = 0; i < rawRows.length; i++) {
+    const row = rawRows[i];
+    if (!row || typeof row !== 'object') continue;
+    if (row.input === undefined) continue;
+    const expected = row.expected !== undefined ? row.expected
+                   : row.output   !== undefined ? row.output
+                   : null;
+    if (expected === null) continue;
+    out.push({
+      id: row.id || `case_${i + 1}`,
+      input: row.input,
+      expected,
+      ...(row.params ? { params: row.params } : {}),
+    });
+  }
+  return out;
 }
 
 // kolm install <harness> [--apply]

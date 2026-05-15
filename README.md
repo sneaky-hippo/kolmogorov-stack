@@ -4,8 +4,15 @@ The AI compiler. Compile a task into a signed `.kolm` artifact you own, run it o
 
 ```bash
 npm i -g github:sneaky-hippo/kolmogorov-stack
-kolm signup --email you@example.com         # or: kolm login --key ks_... (paste from /signup)
-kolm compile "your task" --examples ./examples.jsonl
+kolm build my-redactor --from redactor --yes     # one-shot: scaffold + seeds + compile + verify
+kolm run my-redactor.kolm '{"text":"call 555-1212"}'
+```
+
+The `kolm build` one-shot is the fastest path: it scaffolds the spec, drops in starter seeds, compiles, and verifies — printing the K-score, the failing cases (if any), and the exact iterate command. The four underlying verbs (`kolm new`, `kolm seeds new`, `kolm compile`, `kolm verify`) still exist for power use and CI:
+
+```bash
+kolm signup --email you@example.com               # or: kolm login --key ks_... (paste from /signup)
+kolm compile "your task" --examples ./examples.jsonl   # cloud-compile w/ your frontier key
 kolm run your-artifact.kolm "new input"
 ```
 
