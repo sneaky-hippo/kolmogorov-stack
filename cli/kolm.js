@@ -54,7 +54,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 
-const VERSION = '0.2.0';
+const VERSION = '0.2.1';
 const HOME = os.homedir();
 const KOLM_DIR = path.join(HOME, '.kolm');
 const CONFIG_PATH = path.join(KOLM_DIR, 'config.json');
