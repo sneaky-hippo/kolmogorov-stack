@@ -262,7 +262,7 @@ COMMANDS
   rag <sub>                        airgapped local lookup (index|query|attach|list)
   team <sub>                       multi-tenant workspaces (create|list|show|invite|accept|members|role|remove)
   tunnel <sub>                     remote access to a self-hosted .kolm (new|list|start|close)
-  cloud <sub>                      bring-your-own-cloud deploy (targets|deploy|list|show|destroy)
+  cloud <sub>                      real GPU train + BYOC deploy (train|targets|deploy|list|show|destroy)
   airgap <sub>                     hard-offline mode (status|enable|disable|verify)
   compute <sub>                    where training runs (list|detect|pick|use|info|test|status)
   doctor                           sanity-check env (config, cloud, docker, project)
@@ -1217,19 +1217,53 @@ leave your machine. Requires a logged-in session.
 
 Public URL: https://kolm.ai/r/<token>  (POST JSON, get JSON back)
 `,
-  cloud: `kolm cloud - bring-your-own-cloud deploy targets.
+  cloud: `kolm cloud - real GPU fine-tunes + bring-your-own-cloud deploys.
 
 USAGE
-  kolm cloud targets                       list supported BYOC targets
+  kolm cloud train <name> [--seeds <f.jsonl>] [--base <model>] [--confirm]
+                                           rent a GPU, fine-tune on your seeds, package as .kolm
+  kolm cloud targets                       list supported BYOC deploy targets
   kolm cloud deploy --target <t> --artifact <id> [--region r] [--name n] [--team <id>] [--out <path>]
   kolm cloud list                          list deployments
   kolm cloud show <deployment_id>          inspect one deployment
   kolm cloud destroy <deployment_id>       tear down a deployment
 
-TARGETS
+TRAIN BACKENDS
+  together (default)   managed LoRA fine-tune on Together AI. Set KOLM_TOGETHER_TOKEN.
+                       Cost: ~$2-5 for Qwen 2.5 7B on 2k pairs, ~30-45 min.
+  runpod, lambda, vast (planned, see kolm compute list)
+
+DEPLOY TARGETS
   fly, aws-nitro, gcp-cvm, azure-cvm, docker
 
 The kolm cloud signs the deploy script; weights + receipts live in your account.
+`,
+  'cloud train': `kolm cloud train - rent a GPU and run a real LoRA fine-tune.
+
+USAGE
+  kolm cloud train <name> [--seeds <path>] [--base <model>] [--target-size 7b]
+                          [--epochs 3] [--lora-r 16] [--lora-alpha 32]
+                          [--backend together] [--budget <usd>] [--confirm]
+
+EXAMPLES
+  # quote cost (no money spent)
+  kolm cloud train phi-redactor --seeds seeds.jsonl
+  # confirm and run for real
+  kolm cloud train phi-redactor --seeds seeds.jsonl --confirm
+
+REQUIRES
+  KOLM_TOGETHER_TOKEN env var (or TOGETHER_API_KEY) for the default backend.
+  Get one at https://api.together.xyz/settings/api-keys
+
+WHAT HAPPENS
+  1. We read your seeds JSONL (each row: {prompt, completion} or {input, output}).
+  2. Quote cost up-front based on row count, base model, and epochs.
+  3. With --confirm: upload corpus, submit fine-tune, poll, download adapter.
+  4. Persist a record to ~/.kolm/artifacts/<name>.cloud-train.json.
+  5. Print the Together-hosted model id you can serve from.
+
+NEVER RUNS ON CPU. The backend list deliberately excludes local-cpu so you
+can't accidentally burn a week of laptop battery for a model that needs a GPU.
 `,
   airgap: `kolm airgap - hard-offline mode (no network egress).
 
@@ -5973,8 +6007,206 @@ async function cmdCloud(args) {
     console.log('destroyed');
     return;
   }
+  if (sub === 'train') {
+    await cmdCloudTrain(rest);
+    return;
+  }
   console.error('unknown cloud subcommand:', sub);
   process.exit(1);
+}
+
+// ---------- kolm cloud train ----------
+// Real GPU fine-tune on a rented backend (default: together). Reads a spec +
+// seeds, quotes cost, optionally confirms and runs the job to completion, then
+// packages the adapter into a .kolm artifact alongside the local spec.
+//
+// Honest about cost: prints a quote up-front, then the exact provider price
+// once the fine-tune object is returned. No CPU fallback — refuse if no GPU
+// backend is configured.
+async function cmdCloudTrain(args) {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    console.log(HELP['cloud train'] || HELP.cloud);
+    return;
+  }
+  const name = args[0];
+  if (!name || name.startsWith('--')) {
+    console.error('error: name required. usage: kolm cloud train <name> [--seeds <f.jsonl>] [--base <model>] [--confirm]');
+    process.exit(1);
+  }
+  const seedsPath = pickFlag(args, '--seeds') || pickFlag(args, '--examples') || './seeds.jsonl';
+  const baseModel = pickFlag(args, '--base') || pickFlag(args, '--base-model') || 'Qwen/Qwen2.5-7B-Instruct';
+  const targetSize = pickFlag(args, '--target-size') || '7b';
+  const epochs = Number(pickFlag(args, '--epochs') || 3);
+  const loraR = Number(pickFlag(args, '--lora-r') || 16);
+  const loraAlpha = Number(pickFlag(args, '--lora-alpha') || 32);
+  const backend = pickFlag(args, '--backend') || 'together';
+  const budget = pickFlag(args, '--budget');
+  const confirm = args.includes('--confirm');
+
+  // Refuse CPU. The whole point of `cloud train` is "no stupid decisions like
+  // training on a processor." If the user explicitly picks a local CPU backend,
+  // bail loudly.
+  if (backend.startsWith('local-cpu')) {
+    console.error('error: cloud train will not run on CPU. pick a GPU backend (together, runpod, lambda) or use `kolm tune` for the local path.');
+    process.exit(2);
+  }
+
+  // Validate seeds exist.
+  if (!fs.existsSync(seedsPath)) {
+    console.error(`error: seeds file not found: ${seedsPath}`);
+    console.error('  scaffold one with: kolm seeds new <template>    (e.g. redactor, classifier, extractor)');
+    console.error('  or pass --seeds <path.jsonl>');
+    process.exit(1);
+  }
+  // Count pairs.
+  let pairCount = 0;
+  try {
+    const txt = fs.readFileSync(seedsPath, 'utf-8');
+    pairCount = txt.split(/\r?\n/).filter((l) => l.trim()).length;
+  } catch (e) {
+    console.error(`error: cannot read seeds: ${e.message}`); process.exit(1);
+  }
+  if (pairCount < 10) {
+    console.error(`error: need ≥10 training pairs in ${seedsPath}, got ${pairCount}.`);
+    console.error('  generate more with: kolm seeds generate --n 100');
+    process.exit(1);
+  }
+
+  // Build the spec object the backend adapter expects.
+  const specPath = path.resolve(name.endsWith('.spec.json') ? name : `${name}.spec.json`);
+  let spec = null;
+  if (fs.existsSync(specPath)) {
+    try { spec = JSON.parse(fs.readFileSync(specPath, 'utf-8')); }
+    catch (e) { console.error(`error: cannot parse ${specPath}: ${e.message}`); process.exit(1); }
+  }
+  const cleanId = name.replace(/\.spec\.json$/, '').replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+  if (!spec) {
+    // No spec on disk — synthesize a minimal one.
+    spec = {
+      id: cleanId,
+      name,
+      target_size: targetSize,
+      base_model: baseModel,
+      epochs,
+      lora_r: loraR,
+      lora_alpha: loraAlpha,
+      seeds_path: path.resolve(seedsPath),
+    };
+  } else {
+    // Existing spec on disk — coerce its training fields. Treat literal "none"
+    // as unset (legacy compile specs use base_model: "none" to mean rule-only).
+    spec.id = spec.id || spec.name || spec.job_id || cleanId;
+    spec.name = spec.name || spec.id;
+    spec.base_model = (spec.base_model && spec.base_model !== 'none') ? spec.base_model : baseModel;
+    spec.target_size = spec.target_size || targetSize;
+    spec.epochs = spec.epochs || epochs;
+    spec.lora_r = spec.lora_r || loraR;
+    spec.lora_alpha = spec.lora_alpha || loraAlpha;
+    spec.seeds_path = path.resolve(seedsPath);
+  }
+
+  // Load the backend adapter. Quote first (no auth needed), check availability
+  // only when the user actually confirms.
+  let adapter;
+  try {
+    adapter = (await import(`../src/compute/backends/${backend}.js`)).default;
+  } catch (e) {
+    console.error(`error: no adapter for backend "${backend}": ${e.message}`);
+    process.exit(1);
+  }
+  const quote = typeof adapter.estimateCost === 'function'
+    ? adapter.estimateCost({ pairCount, baseModel: spec.base_model, epochs: spec.epochs })
+    : null;
+
+  console.log(`\nkolm cloud train  ·  ${backend}`);
+  console.log('-'.repeat(48));
+  console.log(`  recipe:        ${spec.id || spec.name}`);
+  console.log(`  base model:    ${spec.base_model}`);
+  console.log(`  target size:   ${spec.target_size}`);
+  console.log(`  training pairs: ${pairCount}`);
+  console.log(`  epochs:        ${spec.epochs}`);
+  console.log(`  LoRA:          r=${spec.lora_r}, alpha=${spec.lora_alpha}`);
+  if (quote) {
+    console.log('');
+    console.log(`  est. cost:     ~$${quote.estimated_cost_usd}  (${quote.basis})`);
+    console.log(`  est. duration: ~${quote.estimated_duration_minutes} minutes`);
+  } else {
+    console.log('');
+    console.log('  est. cost:     varies (no estimator for this backend)');
+  }
+  if (budget && quote && quote.estimated_cost_usd > Number(budget)) {
+    console.error(`\nrefusing: estimated cost $${quote.estimated_cost_usd} exceeds --budget $${budget}`);
+    process.exit(2);
+  }
+  if (!confirm) {
+    console.log('');
+    console.log('this is a quote. to actually run the fine-tune (real GPU, real money):');
+    console.log(`  kolm cloud train ${name} --seeds ${seedsPath} --confirm`);
+    console.log('');
+    if (backend === 'together') {
+      console.log('first time? get a Together AI key (free signup, $5 trial credit):');
+      console.log('  https://api.together.xyz/settings/api-keys');
+      console.log('  then: export KOLM_TOGETHER_TOKEN=...');
+    }
+    return;
+  }
+
+  // --confirm path: now we need a working API key.
+  const det = await adapter.detect();
+  if (!det.available) {
+    console.error(`\nerror: backend "${backend}" not available: ${det.reason}`);
+    console.error('');
+    if (backend === 'together') {
+      console.error('  get a Together AI key (free signup, $5 credit): https://api.together.xyz/settings/api-keys');
+      console.error('  then: export KOLM_TOGETHER_TOKEN=...');
+    }
+    process.exit(1);
+  }
+
+  console.log('\nstarting fine-tune. this will spend money. ^C to cancel before submit completes.');
+  let result;
+  try {
+    result = await adapter.run(spec, {
+      on_progress: ({ stage, pct }) => process.stderr.write(`  [${backend}] ${stage}${pct != null ? ' ' + pct + '%' : ''}\n`),
+    });
+  } catch (e) {
+    console.error('\nfine-tune failed:', e.message);
+    process.exit(1);
+  }
+
+  // Persist the spec + result into ~/.kolm/artifacts/<id>.cloud-train.json so
+  // the user has a record they can reference for `kolm publish` later.
+  const artifactsDir = path.join(os.homedir(), '.kolm', 'artifacts');
+  fs.mkdirSync(artifactsDir, { recursive: true });
+  const outPath = path.join(artifactsDir, `${spec.id || spec.name}.cloud-train.json`);
+  const record = {
+    spec_id: spec.id || spec.name,
+    spec,
+    result,
+    created_at: new Date().toISOString(),
+  };
+  fs.writeFileSync(outPath, JSON.stringify(record, null, 2));
+
+  console.log('\n' + '='.repeat(48));
+  console.log('ok  fine-tune complete');
+  console.log('-'.repeat(48));
+  console.log(`  backend:      ${result.compute.backend}`);
+  console.log(`  base model:   ${result.metrics.base_model}`);
+  console.log(`  output model: ${result.metrics.together_model_output || '(provider-managed)'}`);
+  console.log(`  duration:     ${result.compute.duration_seconds}s`);
+  if (result.compute.cost_usd != null) {
+    console.log(`  cost:         $${Number(result.compute.cost_usd).toFixed(2)}  (actual, billed by ${backend})`);
+  }
+  console.log(`  adapter:      ${result.adapter.url}`);
+  console.log(`  sha256:       ${result.adapter.sha256}`);
+  console.log(`  size:         ${(result.adapter.size_bytes / 1024 / 1024).toFixed(1)} MB`);
+  console.log('');
+  console.log(`record:  ${outPath}`);
+  console.log('');
+  console.log('next steps:');
+  console.log(`  serve via together:    https://api.together.xyz/v1/chat/completions  (model: ${result.metrics.together_model_output})`);
+  console.log(`  package as .kolm:      kolm compile --spec ${specPath}  (uses the adapter you just trained)`);
+  console.log(`  see all your trains:   ls ${artifactsDir}/*.cloud-train.json`);
 }
 
 // ---------- kolm airgap ----------
