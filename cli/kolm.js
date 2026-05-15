@@ -4191,8 +4191,21 @@ async function cmdChat(args) {
       promptText = readStdinSync();
     }
     // Local-only actions take the short-circuit path: no cloud roundtrip.
-    const sc = !jsonMode ? localShortCircuitPlan(promptText) : null;
+    // We apply this in BOTH normal and --json mode because the cloud's
+    // /v1/assistant fires a real compile job for any "make/build/create"
+    // prompt, which would dispatch a side-effect even when the local plan
+    // is `new` (scaffold) and we are merely reporting a plan via --json.
+    const sc = localShortCircuitPlan(promptText);
     if (sc) {
+      if (jsonMode) {
+        // --json contract: emit one parseable doc and exit. Use the local
+        // reply (which already reflects the scaffold/seeds intent) and tag
+        // the planned action so the caller can dispatch (or inspect) it.
+        sc.reply._planned_action = sc.plan;
+        console.log(JSON.stringify(sc.reply));
+        process.exitCode = sc.reply && sc.reply.ok === false ? EXIT.EXECUTION : EXIT.OK;
+        return;
+      }
       renderChatReply(sc.reply);
       const plan = sc.plan;
       if (plan.expensive && !effectiveAutoYes) {
