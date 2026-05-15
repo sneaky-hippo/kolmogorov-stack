@@ -64,7 +64,34 @@ npm i -g github:sneaky-hippo/kolmogorov-stack
 kolm version
 ```
 
+This repository is public. The shortcut above resolves to
+`https://github.com/sneaky-hippo/kolmogorov-stack` and `npm` clones it over HTTPS
+with no auth. If the install hangs silently:
+
+1. Re-run with `--verbose` to see what npm is stuck on:
+   ```bash
+   npm i -g github:sneaky-hippo/kolmogorov-stack --verbose
+   ```
+2. Use the explicit HTTPS URL (skips git-protocol negotiation on some networks):
+   ```bash
+   npm i -g git+https://github.com/sneaky-hippo/kolmogorov-stack.git
+   ```
+3. Or fetch a tarball directly (no git required at all):
+   ```bash
+   npm i -g https://github.com/sneaky-hippo/kolmogorov-stack/archive/refs/heads/main.tar.gz
+   ```
+4. After install completes:
+   ```bash
+   kolm version
+   kolm doctor
+   ```
+
 `kolm` reads/writes `~/.kolm/` on macOS/Linux and `%USERPROFILE%\.kolm\` on Windows (via Node's `os.homedir()`). All shell-out hooks branch on `process.platform` to use `/bin/sh -c` on POSIX and `cmd /c` on Windows.
+
+The canonical install is always the GitHub repo above (not the unrelated `kolm`
+package on the public npm registry). `kolm upgrade` reads the version off the
+GitHub main branch's `package.json` to compare; `kolm update` re-runs the GitHub
+install one-shot.
 
 Run tests:
 

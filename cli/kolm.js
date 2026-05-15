@@ -53,7 +53,7 @@ import readline from 'node:readline';
 import http from 'node:http';
 import { spawnSync } from 'node:child_process';
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 const HOME = os.homedir();
 const KOLM_DIR = path.join(HOME, '.kolm');
 const CONFIG_PATH = path.join(KOLM_DIR, 'config.json');
@@ -225,8 +225,13 @@ COMMANDS
   bench <art.kolm> [opts]          emit artifact benchmark JSON (alias: benchmark)
   score <art.kolm>                 print just the K-score
   inspect <art.kolm>               manifest + recipes + signature
+  diff <a.kolm> <b.kolm>           compare two artifact manifests (cid, K, recipe, etc.)
   export <art.kolm> [opts]         convert a .kolm to GGUF / MLX / ONNX / CoreML / TensorRT (--preview = forecast JSON, no toolchain)
   verify <art.kolm> [--binder out.html]  full verification + optional printable compliance binder
+  improve <art-id> [--epsilon n]   re-distill from low-confidence captures; swap only on K improvement
+  instant "<task>" [--n 64]        synthesise a recipe from a one-line task (requires teacher)
+  models <sub>                     local model registry (list|info|recommend|pin|devices)
+  gpu <sub>                        accelerator probe (detect|doctor|setup|stress)
   serve [--mcp] [--http] [--port]  expose ~/.kolm/artifacts/* as MCP tools
   publish <art.kolm>               push to public gallery (Sprint 4)
   capture --provider <p> --as <t>  configure a drop-in proxy for OpenAI/Anthropic
@@ -455,10 +460,15 @@ USAGE
   kolm new <name> [--from <template>] [--out <file>]
 
 TEMPLATES
-  --from blank        empty stub: one no-op recipe + one eval, ready to edit
+  --from summarizer   deterministic sentence-pick summarizer (no LLM, ships working)
   --from redactor     identifier redactor (regex pack + tenant extras)
   --from extractor    structured-field extractor (regex rules pack)
   --from classifier   keyword-weighted classifier (categories pack)
+  --from blank        STUB - echoes input back unchanged; replace recipes[0].source before shipping
+
+If --from is omitted and the name hints at a task (summari*, redact*, classif*,
+extract*) kolm picks a matching template. Otherwise the blank stub is used; a
+warning is printed when the blank stub is selected so you don't ship an echo.
 
 The output is a JSON file at <name>.spec.json (or --out <file>) that you can
 compile with: kolm compile --spec <name>.spec.json --out <name>.kolm
@@ -802,11 +812,9 @@ EXAMPLES
   Zsh:   kolm completion zsh > ~/.zsh/completions/_kolm
   Fish:  kolm completion fish > ~/.config/fish/completions/kolm.fish
 
-The script wires up tab completion for top-level verbs (init, login, new,
-compile, run, eval, benchmark, score, inspect, serve, publish, capture, labels,
-distill, config, install, tune, rag, team, tunnel, cloud, airgap, compute,
-doctor, logs, ask, version, help, completion, upgrade) and second-level
-subcommands for compute, airgap, team, tunnel, and cloud.
+The script wires up tab completion for every top-level verb (kolm <TAB>) and
+second-level subcommands for compute, airgap, team, tunnel, cloud, tune, rag,
+capture, install, completion, models, gpu, and seeds.
 
 After installing, restart your shell or source the file.
 `,
@@ -822,11 +830,15 @@ EXAMPLES
   kolm upgrade                     # human-readable check
   kolm upgrade --json | jq .status # script-friendly
 
-Reads the current version from package.json. Queries npm for the latest
-published kolm release with a 5s timeout. If a newer version is available, it
+Reads the current version from package.json. Fetches the latest version from
+the canonical install source (github.com/sneaky-hippo/kolmogorov-stack main
+branch package.json) with a 5s timeout. If a newer version is available, it
 prints the upgrade command. It does NOT auto-upgrade (too many footguns).
 
-Status values: current, outdated, unknown (network or npm unavailable).
+The canonical install is "npm i -g github:sneaky-hippo/kolmogorov-stack", NOT
+the unrelated "kolm" package on the public npm registry.
+
+Status values: current, outdated, unknown (network or github unavailable).
 `,
   update: `kolm update - self-install the latest kolm from the canonical github source.
 
@@ -927,6 +939,163 @@ HONESTY
   (except bootstrap which ships public-domain data). Provenance is recorded on every
   row. Determinism: same --from + --strategy + --seed-rng -> identical bytes.
 `,
+  models: `kolm models - inspect the local model registry (license + size + recommendation).
+
+USAGE
+  kolm models list [--family <f>] [--tier <t>] [--license <l>] [--permissive] [--max-vram <gb>] [--json]
+  kolm models info <model-id> [--json]
+  kolm models recommend --device <key> [--task <t>] [--json]
+  kolm models pin <model-id>
+  kolm models devices [--json]
+
+LIST FILTERS
+  --family       qwen | llama | phi | mistral
+  --tier         small | medium | large
+  --license      apache-2.0 | mit | llama-3 | research
+  --permissive   only Apache/MIT/BSD-style (commercial-friendly)
+  --max-vram     max VRAM in GB at 4-bit (e.g. 8)
+
+EXAMPLES
+  kolm models list --permissive --max-vram 8
+  kolm models info Qwen/Qwen2.5-3B-Instruct
+  kolm models recommend --device m3-pro --task redact-pii
+
+Output is pure local lookup. No network calls.
+`,
+  gpu: `kolm gpu - detect, doctor, and stress-test the local accelerator.
+
+USAGE
+  kolm gpu detect [--json]                hardware fingerprint (vendor, vram, drivers)
+  kolm gpu doctor [--json]                check torch / cuda / mlx / metal versions vs minimums
+  kolm gpu setup                          print the install steps for the detected GPU
+  kolm gpu stress [--seconds 30] [--json] run a brief gemm load and report tok/s estimate
+
+EXAMPLES
+  kolm gpu detect
+  kolm gpu doctor --json | jq '.checks[] | select(.status != "ok")'
+  kolm gpu stress --seconds 10
+
+All four subcommands run fully offline. detect uses platform-native probes
+(nvidia-smi, system_profiler, /proc/cpuinfo); doctor reports versions only.
+`,
+  improve: `kolm improve - re-distill an artifact from recent low-confidence captures.
+
+USAGE
+  kolm improve <artifact-id-or-path> [--epsilon 0.01] [--dry-run]
+
+FLAGS
+  --epsilon <n>   only swap when new K-score > old + epsilon (default: 0.01)
+  --dry-run       compile but do not swap; print the new artifact path
+
+The verb walks recent receipts + audit log for the artifact, finds high-
+uncertainty rows (teacher-fallback, low confidence), batches them, recompiles,
+and only swaps the live artifact if the new K-score beats the current one by
+more than --epsilon. Safe to schedule (cron, GitHub Actions).
+`,
+  instant: `kolm instant - synthesise a recipe from a one-line task description.
+
+USAGE
+  kolm instant "<task>" [--n 64] [--teacher MODEL] [--base-model HF_ID]
+                        [--schema schema.json] [--out FILE] [--k 0.85] [--compile]
+
+FLAGS
+  --n <n>          target pair count (default: 64)
+  --teacher <m>    teacher model id (default: qwen-2.5-7b-instruct)
+  --base-model <h> base model HuggingFace id (default: Qwen/Qwen2.5-3B-Instruct)
+  --schema <f>     optional JSON schema hint for the output shape
+  --out <f>        recipe path (default: instant-recipe.json)
+  --k <n>          K-score gate (default: 0.85)
+  --compile        also send the recipe to /v1/compile after synth
+
+Requires a configured teacher (KOLM_TEACHER_BASE / KOLM_TEACHER_KEY). When the
+teacher is unconfigured, status is 'pending' and the verb writes the partial
+recipe so you can re-run after configuration.
+`,
+  diff: `kolm diff - compare two .kolm manifests field by field.
+
+USAGE
+  kolm diff <a.kolm> <b.kolm> [--json]
+
+OUTPUT
+  Default: a unified-style report (cid, base_model, K-score, task, compliance).
+  --json:  a structured delta (a, b, changes[]).
+
+EXIT CODES
+  0  diff rendered (changes may be zero)
+  1  bad args (missing artifact)
+  5  artifact not found
+
+This is the verb you run before a promote / rollback to see what actually
+changed between two builds.
+`,
+  team: `kolm team - multi-tenant workspace management.
+
+USAGE
+  kolm team create <name> [--seats N]                create a new team workspace
+  kolm team list                                     list teams you belong to
+  kolm team show <slug>                              show one team (members, plan, quotas)
+  kolm team invite <slug> <email> [--role member|admin|viewer]
+  kolm team accept <token>                           accept an invite token
+  kolm team members <slug>                           list members
+  kolm team role <slug> <tenant_id> <role>           change a member's role
+  kolm team remove <slug> <tenant_id>                remove a member
+  kolm team transfer <slug> <new_owner_tenant_id>    transfer ownership
+  kolm team delete <slug>                            delete a team
+
+All forms require a logged-in session (kolm login).
+`,
+  tunnel: `kolm tunnel - remote access to a self-hosted .kolm via a signed reverse tunnel.
+
+USAGE
+  kolm tunnel new [--name n] [--team <team_id>]          provision a tunnel; prints a public URL + token
+  kolm tunnel list                                       list active tunnels
+  kolm tunnel start --token <t> --artifact <path>        run the agent that bridges traffic
+  kolm tunnel close <token>                              revoke a tunnel
+
+The kolm cloud terminates TLS; your machine runs the agent. No artifact bytes
+leave your machine. Requires a logged-in session.
+
+Public URL: https://kolm.ai/r/<token>  (POST JSON, get JSON back)
+`,
+  cloud: `kolm cloud - bring-your-own-cloud deploy targets.
+
+USAGE
+  kolm cloud targets                       list supported BYOC targets
+  kolm cloud deploy --target <t> --artifact <id> [--region r] [--name n] [--team <id>] [--out <path>]
+  kolm cloud list                          list deployments
+  kolm cloud show <deployment_id>          inspect one deployment
+  kolm cloud destroy <deployment_id>       tear down a deployment
+
+TARGETS
+  fly, aws-nitro, gcp-cvm, azure-cvm, docker
+
+The kolm cloud signs the deploy script; weights + receipts live in your account.
+`,
+  airgap: `kolm airgap - hard-offline mode (no network egress).
+
+USAGE
+  kolm airgap status                     show env state + on-disk artifacts
+  kolm airgap enable                     write ~/.kolm/airgap.env (source it in your shell)
+  kolm airgap disable                    remove ~/.kolm/airgap.env
+  kolm airgap verify <artifact.kolm>     inspect + signature-check entirely offline
+
+Sets TRANSFORMERS_OFFLINE=1, HF_DATASETS_OFFLINE=1, HF_HUB_OFFLINE=1, KOLM_AIRGAP=1.
+After 'enable', source the env file in your shell to make every kolm verb in
+that session refuse any network call.
+`,
+  compute: `kolm compute - where training runs (local CPU/GPU, cloud, or hybrid).
+
+USAGE
+  kolm compute list                      list known compute targets
+  kolm compute detect                    detect the best local target
+  kolm compute pick                      interactive picker
+  kolm compute use <target>              persist a default in ~/.kolm/config.json
+  kolm compute info <target>             cost, latency, and capability summary
+  kolm compute test <target>             run a small benchmark on the target
+  kolm compute status                    current pin + recent runs
+
+Use 'compute info' before 'compute use' so you know what you are choosing.
+`,
 };
 
 function usage(topic) {
@@ -955,15 +1124,18 @@ function firstRunBannerIfNeeded() {
 const SPEC_TEMPLATES = {
   blank: (jobId) => ({
     job_id: jobId,
-    task: 'describe what this artifact does in one sentence',
+    task: 'STUB. echoes input back unchanged. REPLACE recipes[0].source with real behavior before you ship.',
     base_model: 'none',
     recipes: [{
       id: 'rcp_main_v1',
-      name: 'main recipe',
+      name: 'main recipe (STUB - echoes input)',
       source: [
+        '// STUB RECIPE. Replace this body with your real logic.',
+        '// Inputs come in as { text: string, ... }; return any JSON-serializable object.',
+        '// lib.pack / lib.params / lib.patterns are available - see /docs/AUTHORING.md.',
         'function generate(input, lib) {',
         "  var text = (typeof input === 'string') ? input : (input && input.text) || '';",
-        "  return { echoed: String(text) };",
+        "  return { echoed: String(text), _stub: 'replace recipes[0].source with real logic' };",
         '}',
       ].join('\n'),
       tags: ['stub'],
@@ -973,11 +1145,67 @@ const SPEC_TEMPLATES = {
       spec: 'rs-1-evals',
       n: 1,
       cases: [
-        { id: 'echo', input: { text: 'hello' }, expected: { echoed: 'hello' } },
+        { id: 'echo', input: { text: 'hello' }, expected: { echoed: 'hello', _stub: 'replace recipes[0].source with real logic' } },
       ],
       coverage: 1.0,
     },
     training_stats: { pass_rate_positive: 1.0, latency_p50_us: 50 },
+  }),
+
+  // Deterministic sentence-pick summarizer. No LLM. No network. Scores each
+  // sentence by (word frequency / length) and returns the top-k as a single
+  // string. Good enough to demo the happy path without echoing input back.
+  summarizer: (jobId) => ({
+    job_id: jobId,
+    task: 'deterministic sentence-pick summarizer: scores sentences by word frequency and returns the top-k as a summary',
+    base_model: 'none',
+    recipes: [{
+      id: 'rcp_summarizer_v1',
+      name: 'sentence-pick summarizer',
+      source: [
+        'function generate(input, lib) {',
+        "  var text = (typeof input === 'string') ? input : (input && input.text) || '';",
+        "  if (!text) return { summary: '', sentences_kept: 0, sentences_total: 0 };",
+        '  var k = (lib.params && lib.params.k) || 2;',
+        '  if (typeof k !== "number" || k < 1) k = 2;',
+        '  var stop = { a:1,an:1,and:1,are:1,as:1,at:1,be:1,but:1,by:1,for:1,from:1,had:1,has:1,have:1,he:1,her:1,his:1,i:1,in:1,is:1,it:1,its:1,me:1,my:1,no:1,not:1,of:1,on:1,or:1,our:1,she:1,so:1,that:1,the:1,their:1,them:1,they:1,this:1,to:1,was:1,we:1,were:1,will:1,with:1,you:1,your:1 };',
+        '  var sents = text.split(/(?<=[.!?])\\s+/).map(function(s){ return s.trim(); }).filter(function(s){ return s.length > 0; });',
+        '  if (sents.length <= k) return { summary: sents.join(" "), sentences_kept: sents.length, sentences_total: sents.length };',
+        '  var freq = {};',
+        '  for (var i=0; i<sents.length; i++) {',
+        '    var words = sents[i].toLowerCase().replace(/[^a-z0-9 ]+/g," ").split(/\\s+/).filter(Boolean);',
+        '    for (var j=0; j<words.length; j++) { var w = words[j]; if (stop[w]) continue; freq[w] = (freq[w]||0) + 1; }',
+        '  }',
+        '  var scored = sents.map(function(s, idx){',
+        '    var words = s.toLowerCase().replace(/[^a-z0-9 ]+/g," ").split(/\\s+/).filter(Boolean);',
+        '    var sum = 0, kept = 0;',
+        '    for (var j=0; j<words.length; j++) { var w = words[j]; if (stop[w]) continue; sum += (freq[w]||0); kept++; }',
+        '    var score = kept > 0 ? sum / Math.sqrt(kept) : 0;',
+        '    return { sentence: s, score: score, idx: idx };',
+        '  });',
+        '  scored.sort(function(a,b){ if (b.score !== a.score) return b.score - a.score; return a.idx - b.idx; });',
+        '  var picks = scored.slice(0, k);',
+        '  picks.sort(function(a,b){ return a.idx - b.idx; });',
+        '  var summary = picks.map(function(p){ return p.sentence; }).join(" ");',
+        '  return { summary: summary, sentences_kept: picks.length, sentences_total: sents.length };',
+        '}',
+      ].join('\n'),
+      tags: ['summarization', 'deterministic', 'generic'],
+      schema: { input: { text: 'string' }, output: { summary: 'string', sentences_kept: 'number', sentences_total: 'number' } },
+    }],
+    evals: {
+      spec: 'rs-1-evals',
+      n: 1,
+      cases: [
+        {
+          id: 'short',
+          input: { text: 'The quick brown fox jumps over the lazy dog. The fox is very quick. Dogs are lazy.' },
+          expected: { summary: 'The quick brown fox jumps over the lazy dog. The fox is very quick.', sentences_kept: 2, sentences_total: 3 },
+        },
+      ],
+      coverage: 1.0,
+    },
+    training_stats: { pass_rate_positive: 1.0, latency_p50_us: 90 },
   }),
 
   redactor: (jobId) => ({
@@ -1358,13 +1586,23 @@ async function cmdNew(args) {
   if (maybeHelp('new', args)) return;
   const positional = args.find(a => !a.startsWith('--'));
   if (!positional) {
-    const err = new Error('kolm new <name> [--from blank|redactor|extractor|classifier]');
+    const err = new Error('kolm new <name> [--from blank|summarizer|redactor|extractor|classifier]');
     err.exitCode = EXIT.BAD_ARGS;
     throw err;
   }
   const name = slugify(positional);
   const fromIdx = args.indexOf('--from');
-  const tmplName = (fromIdx >= 0 ? args[fromIdx + 1] : 'blank') || 'blank';
+  // Auto-pick a sensible template when the user's name hints at the task. The
+  // user can always override with --from. Mapping is intentionally narrow so
+  // it never overrides an explicit choice or misclassifies a generic name.
+  const lowerName = name.toLowerCase();
+  let inferred = null;
+  if (/summari[sz]|abstract|tldr|tl-dr|digest/.test(lowerName)) inferred = 'summarizer';
+  else if (/redact|deidentify|de-identify|phi|pii|scrub|mask/.test(lowerName)) inferred = 'redactor';
+  else if (/classif|triag|categor|label|route|router/.test(lowerName)) inferred = 'classifier';
+  else if (/extract|parse|fields|invoice/.test(lowerName)) inferred = 'extractor';
+  const explicitFrom = fromIdx >= 0 ? args[fromIdx + 1] : null;
+  const tmplName = explicitFrom || inferred || 'blank';
   const tmpl = SPEC_TEMPLATES[tmplName];
   if (!tmpl) {
     const err = new Error(`unknown template "${tmplName}". choose: ${Object.keys(SPEC_TEMPLATES).join(', ')}`);
@@ -1377,11 +1615,39 @@ async function cmdNew(args) {
   const jobId = `job_${name.replace(/-/g, '_')}_v1`;
   const spec = tmpl(jobId);
   fs.writeFileSync(outPath, JSON.stringify(spec, null, 2) + '\n');
+  const relSpec = path.relative(process.cwd(), outPath) || outPath;
   console.log(`wrote: ${outPath}`);
-  console.log(`compile: kolm compile --spec ${path.relative(process.cwd(), outPath) || outPath} --out ${name}.kolm`);
-  console.log(`then run:  kolm run ${name}.kolm '{"text":"..."}'`);
-  console.log(`\nedit the spec to point recipes/pack/index/evals at your task.`);
-  console.log(`docs: see /docs/AUTHORING.md for the full schema + sensitive-data caveats.`);
+  if (!explicitFrom && inferred) {
+    console.log(`template: ${tmplName} (inferred from name "${name}"; override with --from blank)`);
+  } else {
+    console.log(`template: ${tmplName}`);
+  }
+  if (tmplName === 'blank') {
+    console.log('');
+    console.log('WARNING: the blank template is a STUB that echoes input back unchanged.');
+    console.log('         it compiles, signs, and passes its own eval - but does no real work.');
+    console.log('         edit recipes[0].source before you ship. concrete templates that work');
+    console.log('         out of the box: --from summarizer | redactor | extractor | classifier');
+  }
+  console.log('');
+  console.log('next steps:');
+  console.log(`  1. compile:  kolm compile --spec ${relSpec} --out ${name}.kolm`);
+  if (tmplName === 'summarizer') {
+    console.log(`  2. run:      kolm run ${name}.kolm '{"text":"first sentence. second one. third one too."}'`);
+  } else if (tmplName === 'redactor') {
+    console.log(`  2. run:      kolm run ${name}.kolm '{"text":"call 555-123-4567 today"}'`);
+  } else if (tmplName === 'extractor') {
+    console.log(`  2. run:      kolm run ${name}.kolm '{"text":"invoice dated 2026-05-09"}'`);
+  } else if (tmplName === 'classifier') {
+    console.log(`  2. run:      kolm run ${name}.kolm '{"text":"I need a refund"}'`);
+  } else {
+    console.log(`  2. run:      kolm run ${name}.kolm '{"text":"any input"}'`);
+  }
+  console.log(`  3. verify:   kolm verify ${name}.kolm`);
+  console.log(`  4. inspect:  kolm inspect ${name}.kolm`);
+  console.log('');
+  console.log(`to edit behavior, open ${relSpec} and change recipes[0].source (a JS function).`);
+  console.log(`docs: /docs/AUTHORING.md for the full schema + sensitive-data caveats.`);
 }
 
 async function cmdLogin(args) {
@@ -1736,6 +2002,17 @@ async function cmdCompile(args) {
   const buf = Buffer.from(await res.arrayBuffer());
   fs.writeFileSync(outPath, buf);
   console.log(`wrote ${outPath} (${fmtBytes(buf.length)})`);
+  // Record this artifact in ~/.kolm/cloud-trusted.json so the runner's HMAC
+  // step accepts it. Cloud artifacts are signed with the server's secret,
+  // which we don't possess locally; trusting by authenticated-download sha256
+  // is the pragmatic workaround until the cloud publishes a verifier token.
+  try {
+    const { recordCloudTrusted } = await import('../src/artifact-runner.js');
+    const sha = recordCloudTrusted(outPath, { source: 'cloud', cloud_base: c.base, job_id: state.id, task });
+    if (sha && process.env.KOLM_DEBUG) console.error(`cloud-trust: recorded sha256=${sha.slice(0, 16)}…`);
+  } catch (e) {
+    if (process.env.KOLM_DEBUG) console.error('cloud-trust record failed:', e.message);
+  }
   console.log('K-score:');
   console.log(fmtKScore(state.k_score));
   if (!args.includes('--no-skill')) {
@@ -2278,7 +2555,7 @@ function cmdPublish(args) {
   console.error('kolm publish: the public gallery ships in Sprint 4.');
   console.error('  artifact:  ' + (args[0] || '(specify path)'));
   console.error('  meanwhile: share the .kolm file directly, or push to your own registry.');
-  process.exit(1);
+  process.exit(EXIT.MISSING_PREREQ);
 }
 
 function cmdConfig(args) {
@@ -2956,13 +3233,56 @@ const KOLM_BRAND = [
 
 async function cmdVersion(args) {
   if (maybeHelp('version', args)) return;
+  const jsonOut = args.includes('--json');
+  // Short form: --version / -v / --short returns a single SemVer line in <50ms.
+  // This matches gh/deno/stripe/vercel behaviour; only the full `kolm version`
+  // verb hits the network for a cloud handshake.
+  const shortMode = args.includes('--short') || args.includes('-v');
+  // Hard-offline mode: KOLM_AIRGAP=1, ~/.kolm/airgap.env on disk, or --offline.
+  const offline = args.includes('--offline') || process.env.KOLM_AIRGAP === '1'
+    || fs.existsSync(path.join(KOLM_DIR, 'airgap.env'));
   const c = loadConfig();
+  if (jsonOut) {
+    let cloud = null;
+    if (!offline && !shortMode) {
+      try {
+        const url = c.base.replace(/\/+$/, '') + '/health';
+        const ctl = new AbortController();
+        const t = setTimeout(() => ctl.abort(), 2000);
+        const res = await fetch(url, { headers: authHeaders(c), signal: ctl.signal });
+        clearTimeout(t);
+        if (res.ok) cloud = await res.json();
+      } catch {}
+    }
+    console.log(JSON.stringify({
+      cli: VERSION,
+      spec: 'rs-1',
+      node: process.versions.node,
+      platform: process.platform,
+      arch: process.arch,
+      base: c.base,
+      airgap: offline,
+      cloud,
+    }, null, 2));
+    return;
+  }
+  if (shortMode) {
+    console.log('kolm v' + VERSION);
+    return;
+  }
   console.log(KOLM_BRAND);
   console.log('kolm cli   v' + VERSION);
   console.log('spec       rs-1');
+  if (offline) {
+    console.log('kolm cloud (skipped: airgap mode)');
+    return;
+  }
   try {
     const url = c.base.replace(/\/+$/, '') + '/health';
-    const res = await fetch(url, { headers: authHeaders(c) });
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 2000);
+    const res = await fetch(url, { headers: authHeaders(c), signal: ctl.signal });
+    clearTimeout(t);
     if (res.ok) {
       const j = await res.json();
       const v = j.version || '?';
@@ -2988,51 +3308,84 @@ async function cmdAsk(args) {
     console.log(HELP.ask || `kolm ask - ask in natural language. Usage: kolm ask "<your question>"`);
     return;
   }
+  // Strip flags from the prompt so users can pass `--airgap` / `--offline` / `--json`.
+  const wantJson = args.includes('--json');
+  const wantOffline = args.includes('--airgap') || args.includes('--offline')
+    || process.env.KOLM_AIRGAP === '1'
+    || fs.existsSync(path.join(KOLM_DIR, 'airgap.env'));
+  const promptArgs = args.filter(a => !['--json', '--airgap', '--offline'].includes(a));
+  const prompt = promptArgs.join(' ').replace(/^["']|["']$/g, '');
   const c = loadConfig();
-  if (!c.api_key) {
-    console.error('not signed in. run: kolm login   (or paste your key from https://kolm.ai/dashboard)');
-    process.exit(1);
+  // Local-first fallback mirrors `kolm chat` so the verb is useful without an
+  // api key OR on a fully air-gapped box. Online path stays primary when a key
+  // is configured and --offline is not set (deterministic intent parser, no LLM).
+  const useLocal = wantOffline || !c.api_key;
+  if (useLocal) {
+    const r = localAssistantParse(prompt);
+    if (wantJson) { console.log(JSON.stringify(r, null, 2)); return; }
+    renderAskReply(r, c, { local: true });
+    if (!c.api_key && !wantOffline) {
+      console.log('note: run `kolm login` for live hosted replies (status, builds, quota).');
+    }
+    return;
   }
-  const prompt = args.join(' ').replace(/^["']|["']$/g, '');
   try {
     const r = await api(c, 'POST', '/v1/assistant', { prompt });
-    if (r.narration) {
-      console.log('');
-      console.log(r.narration);
-      console.log('');
-    }
-    if (r.data && r.data.command) {
-      console.log('  ' + r.data.command);
-      console.log('');
-    }
-    if (r.data && r.data.curl) {
-      console.log(r.data.curl);
-      console.log('');
-    }
-    if (Array.isArray(r.next_steps) && r.next_steps.length) {
-      console.log('try:');
-      for (const s of r.next_steps) {
-        const tail = s.prompt ? `kolm ask "${s.prompt}"` : (s.href ? c.base.replace(/\/$/, '') + s.href : '');
-        console.log('  ' + (s.label || '').padEnd(12) + tail);
-      }
-      console.log('');
-    }
-    if (Array.isArray(r.data && r.data.items) && r.data.items.length) {
-      for (const it of r.data.items.slice(0, 10)) {
-        console.log('  ' + (it.id || '').padEnd(24) + ' ' + (it.name || '').padEnd(28) + (it.k_score != null ? `K=${it.k_score}` : ''));
-      }
-      console.log('');
-    }
+    if (wantJson) { console.log(JSON.stringify(r, null, 2)); return; }
+    renderAskReply(r, c, { local: false });
     if (!r.ok && !r.narration) {
-      console.error('assistant: no reply');
-      process.exit(1);
+      const err = new Error('assistant: no reply');
+      err.exitCode = EXIT.EXECUTION;
+      throw err;
     }
   } catch (e) {
     if (e.status === 401) {
-      console.error('auth_required. run: kolm login');
-      process.exit(1);
+      const err = new Error('auth_required. run `kolm login` or set KOLM_API_KEY.');
+      err.exitCode = EXIT.MISSING_PREREQ;
+      throw err;
     }
-    throw e;
+    // On any network/transport error fall back to the local parser so the verb
+    // stays useful (matches `kolm chat` behaviour). Only surface the original
+    // error in --json mode where callers parse it.
+    if (wantJson) { throw e; }
+    const r = localAssistantParse(prompt);
+    renderAskReply(r, c, { local: true });
+    console.log('note: hosted assistant unreachable (' + (e && e.message || 'network') + '). offline reply above.');
+  }
+}
+
+// Shared renderer for ask + chat-once. Keeps formatting consistent so both
+// verbs print identical layouts regardless of which path served the reply.
+function renderAskReply(r, c, opts) {
+  if (!r) return;
+  if (r.narration) {
+    console.log('');
+    console.log(r.narration);
+    console.log('');
+  }
+  if (r.data && r.data.command) {
+    console.log('  ' + r.data.command);
+    console.log('');
+  }
+  if (r.data && r.data.curl) {
+    console.log(r.data.curl);
+    console.log('');
+  }
+  if (Array.isArray(r.next_steps) && r.next_steps.length) {
+    console.log('try:');
+    for (const s of r.next_steps) {
+      const tail = s.command ? s.command
+        : (s.prompt ? `kolm ask "${s.prompt}"`
+        : (s.href ? (c && c.base ? c.base.replace(/\/$/, '') : '') + s.href : ''));
+      console.log('  ' + (s.label || '').padEnd(12) + tail);
+    }
+    console.log('');
+  }
+  if (Array.isArray(r.data && r.data.items) && r.data.items.length) {
+    for (const it of r.data.items.slice(0, 10)) {
+      console.log('  ' + (it.id || '').padEnd(24) + ' ' + (it.name || '').padEnd(28) + (it.k_score != null ? `K=${it.k_score}` : ''));
+    }
+    console.log('');
   }
 }
 
@@ -3053,9 +3406,19 @@ async function cmdAsk(args) {
 function chatLc(s) { return String(s == null ? '' : s).toLowerCase(); }
 function chatTrim(s) { return String(s == null ? '' : s).trim(); }
 
+const CHAT_JOB_ID_RE = /\bjob_[0-9a-f]{6,}\b/i;
+
+function chatExtractJobId(prompt) {
+  const m = String(prompt == null ? '' : prompt).match(CHAT_JOB_ID_RE);
+  return m ? m[0] : null;
+}
+
 function chatDetectIntent(prompt) {
   const p = chatLc(prompt);
   if (!p) return 'help';
+  // A prompt containing a job_xxx id is ALWAYS a status query, never a new
+  // compile. Mirrors src/assistant.js so airgap parity holds.
+  if (CHAT_JOB_ID_RE.test(p)) return 'job_status';
   if (/^(help|hi|hello|hey|what can you do|what do you do)\b/.test(p)) return 'help';
   if (/\b(doctor|debug|why( is| 's|s) it broken|whats wrong|health check)\b/.test(p)) return 'doctor';
   if (/\b(usage|how much (have i|did i)|left in (my )?quota|consumed|burning)\b/.test(p)) return 'usage';
@@ -3145,6 +3508,26 @@ function localAssistantParse(prompt) {
           { label: 'inspect', command: 'kolm inspect <art.kolm>' },
         ],
       };
+    case 'job_status': {
+      // Offline mirror: we cannot query cloud-side job state, so we just
+      // surface the right local command. Online (sendChat -> /v1/assistant)
+      // hits the server case which returns live state.
+      const jobId = chatExtractJobId(prompt);
+      return {
+        ok: true,
+        intent: 'job_status',
+        narration: jobId
+          ? "Online: I'd fetch live status for " + jobId + ". Offline: run 'kolm whoami' for a snapshot or visit /dashboard."
+          : "I could not parse a job id (looks like job_abcdef123456).",
+        data: { job_id: jobId, command: jobId ? 'kolm jobs ' + jobId : null },
+        next_steps: jobId ? [
+          { label: 'view job', command: 'kolm jobs ' + jobId },
+          { label: 'list jobs', command: 'kolm jobs list' },
+        ] : [
+          { label: 'list jobs', command: 'kolm jobs list' },
+        ],
+      };
+    }
     case 'compile': {
       const task = chatExtractTask(prompt);
       const tail = task && task.length >= 4 ? ' "' + task + '"' : ' "<describe the recipe>"';
@@ -3519,17 +3902,7 @@ async function cmdTeam(args) {
   const rest = args.slice(1);
   const c = loadConfig();
   if (!sub || sub === '--help' || sub === '-h' || sub === 'help') {
-    console.log('kolm team <create|list|show|invite|accept|members|role|remove|transfer|delete>');
-    console.log('  kolm team create <name> [--seats N]');
-    console.log('  kolm team list');
-    console.log('  kolm team show <slug>');
-    console.log('  kolm team invite <slug> <email> [--role member|admin|viewer]');
-    console.log('  kolm team accept <token>');
-    console.log('  kolm team members <slug>');
-    console.log('  kolm team role <slug> <tenant_id> <role>');
-    console.log('  kolm team remove <slug> <tenant_id>');
-    console.log('  kolm team transfer <slug> <new_owner_tenant_id>');
-    console.log('  kolm team delete <slug>');
+    usage('team');
     return;
   }
   if (sub === 'create') {
@@ -3624,13 +3997,7 @@ async function cmdTunnel(args) {
   const rest = args.slice(1);
   const c = loadConfig();
   if (!sub || sub === '--help' || sub === '-h' || sub === 'help') {
-    console.log('kolm tunnel <new|list|close|start>');
-    console.log('  kolm tunnel new [--name n] [--team <team_id>]');
-    console.log('  kolm tunnel list');
-    console.log('  kolm tunnel close <token>');
-    console.log('  kolm tunnel start --token <t> --artifact <p>');
-    console.log('');
-    console.log('Public URL: https://kolm.ai/r/<token>  (POST JSON, get JSON back)');
+    usage('tunnel');
     return;
   }
   if (sub === 'new' || sub === 'create' || sub === 'register') {
@@ -3790,12 +4157,7 @@ async function cmdCloud(args) {
   const rest = args.slice(1);
   const c = loadConfig();
   if (!sub || sub === '--help' || sub === '-h' || sub === 'help') {
-    console.log('kolm cloud <targets|deploy|list|show|destroy>');
-    console.log('  kolm cloud targets');
-    console.log('  kolm cloud deploy --target <fly|aws-nitro|gcp-cvm|azure-cvm|docker> --artifact <id> [--region r] [--name n] [--team <team_id>] [--out <path>]');
-    console.log('  kolm cloud list');
-    console.log('  kolm cloud show <deployment_id>');
-    console.log('  kolm cloud destroy <deployment_id>');
+    usage('cloud');
     return;
   }
   if (sub === 'targets') {
@@ -4176,11 +4538,7 @@ async function cmdAirgap(args) {
     HF_HUB_OFFLINE: '1',
   };
   if (sub === '--help' || sub === '-h' || sub === 'help') {
-    console.log('kolm airgap <status|enable|disable|verify>');
-    console.log('  kolm airgap status            show env state + on-disk artifacts');
-    console.log('  kolm airgap enable            write ~/.kolm/airgap.env so all kolm verbs run offline');
-    console.log('  kolm airgap disable           remove ~/.kolm/airgap.env');
-    console.log('  kolm airgap verify <art.kolm> inspect + signature-check entirely offline');
+    usage('airgap');
     return;
   }
   if (sub === 'status') {
@@ -4241,7 +4599,8 @@ async function cmdAirgap(args) {
     return;
   }
   console.error('unknown airgap subcommand:', sub);
-  process.exit(1);
+  console.error('try: kolm airgap --help');
+  process.exit(EXIT.BAD_ARGS);
 }
 
 // Detect when the user typed a bare natural-language string instead of a
@@ -4268,7 +4627,7 @@ const COMPLETION_VERBS = [
   'score', 'inspect', 'diff', 'verify', 'serve', 'publish', 'capture', 'labels', 'distill',
   'config', 'install', 'tune', 'rag', 'team', 'tunnel', 'cloud', 'airgap',
   'compute', 'doctor', 'logs', 'ask', 'chat', 'version', 'help', 'completion', 'upgrade', 'update',
-  'models', 'gpu', 'export', 'seeds',
+  'models', 'gpu', 'export', 'seeds', 'improve', 'instant',
 ];
 const COMPLETION_SUBS = {
   compute: ['list', 'detect', 'pick', 'use', 'info', 'test', 'status'],
@@ -4653,9 +5012,11 @@ async function cmdCompletion(args) {
 
 // ---------- kolm upgrade ----------
 // Informational verb only — never auto-upgrades. Reads the current version from
-// the package.json that ships next to this CLI, then asks npm for the latest
-// published kolm version (5s timeout). If the network is down or npm is
-// unreachable, status is `unknown` and we fall back to the current version.
+// the package.json that ships next to this CLI, then fetches the latest
+// version from the canonical install source (github main package.json, NOT
+// the unrelated `kolm` package on npm registry). 5s timeout. If the network
+// is down or github is unreachable, status is `unknown` and we keep the
+// current version.
 function readPackageVersion() {
     try {
         const pkgPath = new URL('../package.json', import.meta.url);
@@ -4666,22 +5027,27 @@ function readPackageVersion() {
     }
 }
 
+// Resolve the canonical latest version of kolm. The canonical install is
+// `npm i -g github:sneaky-hippo/kolmogorov-stack` (NOT the unrelated `kolm`
+// npm package), so we read the version off the github main branch's
+// package.json. Falls back to null on any error.
 function fetchLatestNpmVersion(timeoutMs) {
     return new Promise((resolve) => {
-        const cmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-        // spawnSync supports a timeout natively. Pass --silent so we get just the
-        // version string on stdout when the package exists.
-        const r = spawnSync(cmd, ['view', 'kolm', 'version', '--silent'], {
-            encoding: 'utf8',
-            timeout: timeoutMs,
-            windowsHide: true,
-        });
-        if (r.error || r.status !== 0) return resolve(null);
-        const v = (r.stdout || '').trim();
-        if (!v) return resolve(null);
-        // Strip any stray output like warnings; take the first non-empty line.
-        const first = v.split(/\r?\n/).find(l => l.trim().length > 0) || '';
-        resolve(first.trim() || null);
+        const url = 'https://raw.githubusercontent.com/sneaky-hippo/kolmogorov-stack/main/package.json';
+        const controller = new AbortController();
+        const timer = setTimeout(() => { try { controller.abort(); } catch {} }, Math.max(500, Number(timeoutMs) || 5000));
+        fetch(url, { signal: controller.signal, headers: { 'accept': 'application/json' } })
+            .then(async (res) => {
+                clearTimeout(timer);
+                if (!res.ok) return resolve(null);
+                const text = await res.text();
+                try {
+                    const pkg = JSON.parse(text);
+                    if (pkg && typeof pkg.version === 'string' && pkg.version) return resolve(pkg.version);
+                } catch {}
+                resolve(null);
+            })
+            .catch(() => { clearTimeout(timer); resolve(null); });
     });
 }
 
@@ -4719,7 +5085,9 @@ async function cmdUpgrade(args) {
     if (status === 'outdated') {
         console.log(`a newer kolm release is available: ${latest}.`);
         console.log('upgrade with:');
-        console.log('  npm install -g kolm@latest');
+        console.log('  npm i -g github:sneaky-hippo/kolmogorov-stack');
+        console.log('  # or one-shot:');
+        console.log('  kolm update');
         console.log('');
         console.log('breaking changes for this release (if any) are listed at https://kolm.ai/changelog.');
         return;
@@ -4728,7 +5096,7 @@ async function cmdUpgrade(args) {
         console.log('kolm is up to date.');
         return;
     }
-    console.log('could not reach npm to check for updates.');
+    console.log('could not reach github to check for updates.');
     console.log('to upgrade manually:');
     console.log('  npm i -g github:sneaky-hippo/kolmogorov-stack');
 }
@@ -5952,14 +6320,14 @@ print(json.dumps(recipe, ensure_ascii=False))
   });
   if (proc.status !== 0) {
     const e = new Error(`instant synth failed:\n${proc.stderr || proc.stdout || ''}`);
-    e.exitCode = EXIT.GENERIC;
+    e.exitCode = EXIT.EXECUTION;
     throw e;
   }
   let recipe;
   try { recipe = JSON.parse(proc.stdout.trim().split('\n').pop()); }
   catch (err) {
     const e = new Error(`could not parse recipe JSON: ${err.message}\n${proc.stdout}`);
-    e.exitCode = EXIT.GENERIC;
+    e.exitCode = EXIT.EXECUTION;
     throw e;
   }
 
@@ -6069,13 +6437,18 @@ async function main() {
       case 'seeds':    await withErrorContext('seeds',    () => cmdSeeds(rest)); break;
       case 'improve':  await withErrorContext('improve',  () => cmdImprove(rest)); break;
       case 'instant':  await withErrorContext('instant',  () => cmdInstant(rest)); break;
-      case 'version':
+      case 'version':  await withErrorContext('version',  () => cmdVersion(rest)); break;
       case '--version':
-      case '-v':       await withErrorContext('version',  () => cmdVersion(rest)); break;
+      case '-v':       await withErrorContext('version',  () => cmdVersion(['--short', ...rest])); break;
       case 'help':
       case '--help':
       case '-h':
-      case undefined:  usage(rest && rest[0]); break;
+      case undefined:
+        // First-run banner before help so fresh installs see the welcome path
+        // (signup -> login -> compile) without having to know which verb to type.
+        if (!rest || !rest[0]) firstRunBannerIfNeeded();
+        usage(rest && rest[0]);
+        break;
       default:
         if (looksLikeNaturalLanguage(cmd, rest)) {
           await withErrorContext('ask', () => cmdAsk([cmd, ...rest]));

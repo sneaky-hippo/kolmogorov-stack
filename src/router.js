@@ -1381,6 +1381,13 @@ export function buildRouter() {
             return { error: String(e.message || e) };
           }
         },
+        // Tenant-scoped job lookup for the job_status intent. Admins can
+        // look up any job; tenants are scoped to their own. Returns null
+        // when not found so the assistant can surface a clean error.
+        lookupJob: ({ job_id }) => {
+          if (!job_id) return null;
+          return getJob(job_id, req.is_admin ? null : req.tenant);
+        },
         changePlan: async ({ tenant, target }) => {
           const meta = PLAN_CATALOG[target];
           if (!meta) return { error: 'invalid_plan' };

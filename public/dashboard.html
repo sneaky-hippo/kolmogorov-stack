@@ -64,6 +64,25 @@
 
   <script>
   (function () {
+    // Post-OAuth redirect cleanup. The callback at /v1/oauth/<provider>/callback
+    // 302s here with ?oauth=signup (new tenant) or ?oauth=signin (returning).
+    // Read the flag, fire any first-time UX, then rewrite the URL to /dashboard
+    // so refreshes and shares don't carry the slug. Some user-agents append a
+    // trailing '#' on 302 hops; replaceState below strips that too.
+    var oauthFlag = null;
+    try {
+      var qp = new URLSearchParams(window.location.search || '');
+      oauthFlag = qp.get('oauth');
+    } catch (e) {}
+    if (oauthFlag === 'signup') {
+      try { sessionStorage.setItem('kolm-just-signed-up', '1'); } catch (e) {}
+    }
+    if (oauthFlag || window.location.search || (window.location.hash === '' && window.location.href.indexOf('#') >= 0)) {
+      try {
+        window.history.replaceState(null, '', window.location.pathname);
+      } catch (e) {}
+    }
+
     var dismissed = false;
     try { dismissed = localStorage.getItem('kolm-welcome-dismissed') === '1'; } catch (e) {}
     function showWelcome() {
@@ -72,6 +91,10 @@
       if (el) el.hidden = false;
     }
     function isEmpty(m) { return !m || m === '...' || m === '0' || m === 0; }
+    // First-time signup is a stronger signal than "compiles_count is 0", so
+    // promote the welcome banner immediately on oauth=signup without waiting
+    // for the /v1/account round-trip.
+    if (oauthFlag === 'signup') showWelcome();
     fetch('/v1/account', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(j => { if (j && isEmpty(j.compiles_count)) showWelcome(); })
@@ -372,6 +395,15 @@
         return 'Job kicked off: <b>' + escapeHtml(data.job_id) + '</b><br>' +
                '<a href="' + escapeHtml(href) + '">View job &rarr;</a>';
       }
+      if (intent === 'job_status' && data.job_id) {
+        var stHref = data.poll || ('/v1/compile/' + encodeURIComponent(data.job_id));
+        var stStatus = data.status || 'unknown';
+        var stPct = (typeof data.progress === 'number') ? (' &middot; ' + Math.round(data.progress) + '%') : '';
+        var stK = (typeof data.k_score === 'number') ? (' &middot; K=' + data.k_score.toFixed(2)) : '';
+        return 'Job <b>' + escapeHtml(data.job_id) + '</b><br>' +
+               'Status: <b>' + escapeHtml(stStatus) + '</b>' + stPct + stK + '<br>' +
+               '<a href="' + escapeHtml(stHref) + '">View job &rarr;</a>';
+      }
       if (intent === 'list' && Array.isArray(data.items) && data.items.length) {
         var lines = data.items.slice(0, 6).map(function(it){
           var k = (typeof it.k_score === 'number') ? ' K=' + it.k_score.toFixed(2) : '';
@@ -435,7 +467,15 @@
 
         if (j.status === 'completed') {
           stopPolling();
-          var kStr = (typeof j.k_score === 'number') ? j.k_score.toFixed(4) : '-';
+          // k_score is either a number (legacy) or a breakdown object whose
+          // .composite is the headline number. Handle both so we don't print
+          // "K-score -" on completed jobs.
+          var kNum = (typeof j.k_score === 'number')
+            ? j.k_score
+            : (j.k_score && typeof j.k_score.composite === 'number')
+              ? j.k_score.composite
+              : null;
+          var kStr = kNum != null ? kNum.toFixed(4) : '-';
           var artifactUrl = j.artifact_url || ('/v1/compile/' + jobId + '/.kolm');
           updateTurnText(turnId, 'Done. K-score ' + kStr + '. Artifact ready.');
           setTurnNextSteps(turnId, [
@@ -529,14 +569,19 @@
         // Compile intent with job_id: poll the job and stream stages.
         if (intent === 'compile' && data.job_id) {
           var turn = appendTurn('kolm',
-            narration + ' Job ' + data.job_id + '. Watching ' + (data.poll || ('/v1/compile/' + data.job_id)) + '.',
+            'Compiling. Job ' + data.job_id + '. ' + (typeof data.progress === 'number' ? data.progress + '%.' : 'Queued.'),
             { card: card, nextSteps: nextSteps, stages: ['recall.start'] }
           );
           seenStages = { 'recall.start@init': true };
           // If server already finished synchronously, surface artifact immediately.
           if (data.status === 'completed' && data.artifact_url) {
+            var kCompNum1 = (typeof data.k_score === 'number')
+              ? data.k_score
+              : (data.k_score && typeof data.k_score.composite === 'number')
+                ? data.k_score.composite
+                : null;
             updateTurnText(turn.id, 'Done. K-score ' +
-              (typeof data.k_score === 'number' ? data.k_score.toFixed(4) : '-') + '. Artifact ready.');
+              (kCompNum1 != null ? kCompNum1.toFixed(4) : '-') + '. Artifact ready.');
             setTurnNextSteps(turn.id, [
               { label: 'Download .kolm', href: data.artifact_url },
               { label: 'Verify in browser', href: '/verify-prod' },
@@ -547,6 +592,66 @@
             polling = true;
             pollCompileJob(data.job_id, key, turn.id);
           }
+          return;
+        }
+
+        // Job-status intent: user pasted a Poll URL / bare job_id / asked
+        // for status. Surface live state and, if the job is still in flight,
+        // re-attach the same polling we use for fresh compiles.
+        if (intent === 'job_status' && data.job_id) {
+          if (data.status === 'completed' && data.artifact_url) {
+            var kCompNum2 = (typeof data.k_score === 'number')
+              ? data.k_score
+              : (data.k_score && typeof data.k_score.composite === 'number')
+                ? data.k_score.composite
+                : null;
+            var doneTurn = appendTurn('kolm',
+              'Done. Job ' + data.job_id + '. K-score ' +
+                (kCompNum2 != null ? kCompNum2.toFixed(4) : '-') + '. Artifact ready.',
+              { card: card, nextSteps: [
+                { label: 'Download .kolm', href: data.artifact_url },
+                { label: 'Verify in browser', href: '/verify-prod' },
+                { label: 'Open job', href: '/compile?job=' + encodeURIComponent(data.job_id) }
+              ] }
+            );
+            enableSend();
+            return;
+          }
+          if (data.status === 'failed') {
+            appendTurn('kolm',
+              'Job ' + data.job_id + ' failed: ' + (data.error || 'unknown error'),
+              { card: card, nextSteps: [
+                { label: 'Edit by hand', href: '/train' },
+                { label: 'Start over', prompt: 'compile a recipe that ...' }
+              ] }
+            );
+            enableSend();
+            return;
+          }
+          if (data.status === 'not_found') {
+            appendTurn('kolm', narration, { card: card, nextSteps: nextSteps });
+            enableSend();
+            return;
+          }
+          // Still queued / running. Start (or resume) polling.
+          var pTurn = appendTurn('kolm',
+            'Watching job ' + data.job_id + '. ' +
+              (typeof data.progress === 'number' ? data.progress + '%' : (data.status || 'queued')) + '.',
+            { card: card, nextSteps: nextSteps, stages: [] }
+          );
+          // Seed seenStages from the server's snapshot so we don't re-show
+          // stages that already completed.
+          seenStages = {};
+          if (Array.isArray(data.stages)) {
+            for (var si = 0; si < data.stages.length; si++) {
+              var sg = data.stages[si];
+              seenStages[(sg.name || '') + '@' + (sg.at || si)] = true;
+            }
+            updateTurnStages(pTurn.id, data.stages.map(function(s){ return s.name; }));
+          }
+          stopPolling();
+          polling = true;
+          pollCompileJob(data.job_id, key, pTurn.id);
           return;
         }
 

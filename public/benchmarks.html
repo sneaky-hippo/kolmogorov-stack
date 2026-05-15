@@ -79,14 +79,16 @@
   table.tbl td.row-h { color: var(--ink); font-weight: 500; font-family: var(--mono); font-size: 13px; text-transform: uppercase; letter-spacing: 0.02em; }
   table.tbl td.num { font-family: var(--mono); color: var(--ink); }
   table.tbl td.win { color: var(--good); font-family: var(--mono); }
+  .dim { color: var(--ink-faint); font-family: var(--mono); font-size: 12px; }
   @media (max-width: 720px) {
     table.tbl, table.tbl tbody, table.tbl tr, table.tbl td { display: block; width: 100%; }
     table.tbl thead { display: none; }
-    table.tbl tr { padding: 14px 0; border-bottom: 1px solid var(--line); }
-    table.tbl td { border: 0; padding: 4px 0; }
-    table.tbl td.row-h { font-size: 12px; margin-bottom: 6px; }
-    table.tbl td::before { display: block; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; margin-bottom: 2px; }
-    table.tbl td[data-l]::before { content: attr(data-l); }
+    table.tbl tr { padding: 14px 14px; margin: 0 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-elev); }
+    table.tbl td { border: 0; padding: 6px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 14px; }
+    table.tbl td.row-h { font-size: 13px; padding-bottom: 10px; margin-bottom: 6px; border-bottom: 1px solid var(--line); display: block; }
+    table.tbl td[data-l]::before { content: attr(data-l) ":"; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; flex: 0 0 auto; }
+    table.tbl td[data-l] > * { text-align: right; }
+    table.tbl td[data-l]:not(.row-h) { font-family: var(--mono); font-size: 13px; }
   }
 
   pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.55; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; overflow-x: auto; color: var(--ink); margin: 14px 0; white-space: pre; }
@@ -248,10 +250,10 @@
           <tr><th>k</th><th>accuracy</th><th>cost (relative)</th><th>note</th></tr>
         </thead>
         <tbody>
-          <tr><td class="row-h" data-l="k">1</td><td class="num" data-l="acc">91.0%</td><td class="num" data-l="cost">1?</td><td data-l="note">cold inference</td></tr>
-          <tr><td class="row-h" data-l="k">2</td><td class="num" data-l="acc">99.2%</td><td class="num" data-l="cost">2?</td><td data-l="note">first amplification</td></tr>
-          <tr><td class="row-h" data-l="k">4</td><td class="num" data-l="acc">99.99%</td><td class="num" data-l="cost">4?</td><td data-l="note">production gate</td></tr>
-          <tr><td class="row-h" data-l="k">8</td><td class="win" data-l="acc">99.9999%</td><td class="num" data-l="cost">8?</td><td data-l="note">labels-corpus mode</td></tr>
+          <tr><td class="row-h" data-l="k">1</td><td class="num" data-l="acc">91.0%</td><td class="num" data-l="cost">1x</td><td data-l="note">cold inference</td></tr>
+          <tr><td class="row-h" data-l="k">2</td><td class="num" data-l="acc">99.2%</td><td class="num" data-l="cost">2x</td><td data-l="note">first amplification</td></tr>
+          <tr><td class="row-h" data-l="k">4</td><td class="num" data-l="acc">99.99%</td><td class="num" data-l="cost">4x</td><td data-l="note">production gate</td></tr>
+          <tr><td class="row-h" data-l="k">8</td><td class="win" data-l="acc">99.9999%</td><td class="num" data-l="cost">8x</td><td data-l="note">labels-corpus mode</td></tr>
         </tbody>
       </table>
       <p class="footnote">The amplifier only fires when the verifier is sound (no false positives). For non-verifiable tasks (open-ended generation, judgment calls), <i>v</i> -1 and the amplifier collapses. We are explicit about which tasks fall in each bucket.</p>
@@ -309,10 +311,10 @@ kolm bench support.kolm --runs 10 --out report.json
           <tr><th>fixture</th><th>bytes</th><th>evals</th><th>accuracy</th><th>p50 us</th><th>p95 us</th><th>K-score</th><th>egress</th><th>signed</th></tr>
         </thead>
         <tbody>
-          <tr><td class="row-h" data-l="fixture"><b>sample.kolm</b><br><span class="dim">uppercase reference</span></td><td class="num">3,259</td><td class="num">4</td><td class="win">1.0</td><td class="num">286</td><td class="num">363</td><td class="num">424.57</td><td class="win">0</td><td class="win">true</td></tr>
-          <tr><td class="row-h" data-l="fixture"><b>redactor.kolm</b><br><span class="dim">PII / PHI redactor</span></td><td class="num">4,933</td><td class="num">6</td><td class="win">1.0</td><td class="num">288</td><td class="num">351</td><td class="num">362.96</td><td class="win">0</td><td class="win">true</td></tr>
-          <tr><td class="row-h" data-l="fixture"><b>extractor.kolm</b><br><span class="dim">structured-field extractor</span></td><td class="num">4,571</td><td class="num">5</td><td class="win">1.0</td><td class="num">256</td><td class="num">342</td><td class="num">373.48</td><td class="win">0</td><td class="win">true</td></tr>
-          <tr><td class="row-h" data-l="fixture"><b>classifier.kolm</b><br><span class="dim">rule-based classifier</span></td><td class="num">4,649</td><td class="num">5</td><td class="win">1.0</td><td class="num">269</td><td class="num">337</td><td class="num">371.00</td><td class="win">0</td><td class="win">true</td></tr>
+          <tr><td class="row-h" data-l="fixture"><b>sample.kolm</b><br><span class="dim">uppercase reference</span></td><td class="num" data-l="bytes">3,259</td><td class="num" data-l="evals">4</td><td class="win" data-l="accuracy">1.0</td><td class="num" data-l="p50 us">286</td><td class="num" data-l="p95 us">363</td><td class="num" data-l="K-score">424.57</td><td class="win" data-l="egress">0</td><td class="win" data-l="signed">true</td></tr>
+          <tr><td class="row-h" data-l="fixture"><b>redactor.kolm</b><br><span class="dim">PII / PHI redactor</span></td><td class="num" data-l="bytes">4,933</td><td class="num" data-l="evals">6</td><td class="win" data-l="accuracy">1.0</td><td class="num" data-l="p50 us">288</td><td class="num" data-l="p95 us">351</td><td class="num" data-l="K-score">362.96</td><td class="win" data-l="egress">0</td><td class="win" data-l="signed">true</td></tr>
+          <tr><td class="row-h" data-l="fixture"><b>extractor.kolm</b><br><span class="dim">structured-field extractor</span></td><td class="num" data-l="bytes">4,571</td><td class="num" data-l="evals">5</td><td class="win" data-l="accuracy">1.0</td><td class="num" data-l="p50 us">256</td><td class="num" data-l="p95 us">342</td><td class="num" data-l="K-score">373.48</td><td class="win" data-l="egress">0</td><td class="win" data-l="signed">true</td></tr>
+          <tr><td class="row-h" data-l="fixture"><b>classifier.kolm</b><br><span class="dim">rule-based classifier</span></td><td class="num" data-l="bytes">4,649</td><td class="num" data-l="evals">5</td><td class="win" data-l="accuracy">1.0</td><td class="num" data-l="p50 us">269</td><td class="num" data-l="p95 us">337</td><td class="num" data-l="K-score">371.00</td><td class="win" data-l="egress">0</td><td class="win" data-l="signed">true</td></tr>
         </tbody>
       </table>
       <p class="footnote">Each row is a 50-run benchmark. The fixtures sign under <code>RECIPE_RECEIPT_SECRET=kolm-public-fixture-v0-1-0</code>; this is also the secret the smoke battery and the e2e tests use. Each artifact ships its own embedded eval set, so the harness re-runs those evals offline with <code>fetch</code>/<code>http</code>/<code>https</code>/<code>net</code>/<code>tls</code>/<code>dns</code> all monitored. Latency varies with hardware; <code>evals.accuracy</code>, <code>privacy.runtime_egress_attempts</code>, and <code>integrity.signature_valid</code> do not. Reproducer notes at <a href="https://github.com/sneaky-hippo/kolmogorov-stack/blob/main/docs/benchmark-results-v0.1.0.md">docs/benchmark-results-v0.1.0.md</a>.</p>

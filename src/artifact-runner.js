@@ -24,12 +24,83 @@
 
 import AdmZip from 'adm-zip';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { compileJs } from './verifier.js';
 import { verifyManifestSignature, decodePack, decodeIndex } from './artifact.js';
 
 const MAX_INPUT_BYTES = 1024 * 1024;          // 1 MiB
 const DEFAULT_TIMEOUT_MS = 1000;              // 1 s per recipe
 const MAX_AUDIT_INPUT_PREVIEW = 200;
+
+// Cloud-trusted artifacts (HMAC verify workaround). Cloud-built .kolms are
+// signed with the server's RECIPE_RECEIPT_SECRET which the local CLI does not
+// possess - so local HMAC verify would fail with KOLM_E_SIGNATURE_INVALID.
+// When `kolm compile` (cloud path) downloads an artifact, it records the
+// downloaded file's sha256 in ~/.kolm/cloud-trusted.json. loadArtifact()
+// honors that trust list: structural integrity is still checked (manifest_hash
+// must bind to the signature payload's claimed manifest_hash, and the
+// signature must have the expected shape) but the HMAC step is skipped.
+// Users can re-verify any time via `kolm verify --remote` once that is wired.
+// Env override: KOLM_TRUST_CLOUD_ARTIFACTS=0 disables this fallback (strict
+// mode). KOLM_TRUST_CLOUD_ARTIFACTS=1 (default) keeps the fallback.
+const CLOUD_TRUST_PATH = path.join(os.homedir(), '.kolm', 'cloud-trusted.json');
+
+function loadCloudTrust() {
+  try {
+    if (!fs.existsSync(CLOUD_TRUST_PATH)) return { trusted: {} };
+    const j = JSON.parse(fs.readFileSync(CLOUD_TRUST_PATH, 'utf8'));
+    if (!j || typeof j !== 'object' || !j.trusted || typeof j.trusted !== 'object') return { trusted: {} };
+    return j;
+  } catch { return { trusted: {} }; }
+}
+
+export function recordCloudTrusted(artifactPath, meta = {}) {
+  try {
+    const buf = fs.readFileSync(artifactPath);
+    const sha = crypto.createHash('sha256').update(buf).digest('hex');
+    const j = loadCloudTrust();
+    j.trusted[sha] = {
+      path: artifactPath,
+      recorded_at: new Date().toISOString(),
+      bytes: buf.length,
+      ...meta,
+    };
+    fs.mkdirSync(path.dirname(CLOUD_TRUST_PATH), { recursive: true });
+    fs.writeFileSync(CLOUD_TRUST_PATH, JSON.stringify(j, null, 2));
+    try { fs.chmodSync(CLOUD_TRUST_PATH, 0o600); } catch {}
+    return sha;
+  } catch (e) {
+    return null;
+  }
+}
+
+function isCloudTrusted(artifactBuf) {
+  const flag = process.env.KOLM_TRUST_CLOUD_ARTIFACTS;
+  if (flag === '0' || flag === 'false') return null;
+  try {
+    const sha = crypto.createHash('sha256').update(artifactBuf).digest('hex');
+    const j = loadCloudTrust();
+    return j.trusted[sha] ? sha : null;
+  } catch { return null; }
+}
+
+// Structural-integrity check used when HMAC verification fails but the
+// artifact is in the cloud-trust list. Confirms the signature envelope is
+// shaped correctly and that manifest_hash inside it matches the actual
+// manifest bytes. This is NOT a cryptographic verification - it ensures the
+// artifact bytes you have on disk are the bytes whose sha256 was trusted.
+function structuralIntegrityOk(manifest_json, signature) {
+  try {
+    const sig = typeof signature === 'string' ? JSON.parse(signature) : signature;
+    if (!sig || typeof sig !== 'object') return { ok: false, reason: 'signature not an object' };
+    if (!sig.spec || !sig.hmac || !sig.manifest_hash) return { ok: false, reason: 'signature missing required fields' };
+    const manifest_hash = crypto.createHash('sha256').update(Buffer.from(manifest_json)).digest('hex');
+    if (manifest_hash !== sig.manifest_hash) return { ok: false, reason: 'manifest_hash mismatch' };
+    return { ok: true };
+  } catch (e) { return { ok: false, reason: String(e.message || e) }; }
+}
 
 function kolmError(code, message) {
   const e = new Error(message);
@@ -58,7 +129,8 @@ function sha256Hex(buf) {
 // Open a .kolm and return its contents as a structured bundle. Verifies the
 // signature; throws if mangled.
 export function loadArtifact(artifactPath) {
-  const zip = new AdmZip(artifactPath);
+  const fileBuf = fs.readFileSync(artifactPath);
+  const zip = new AdmZip(fileBuf);
   const entries = Object.fromEntries(zip.getEntries().map(e => [e.entryName, e.getData()]));
 
   const required = ['manifest.json', 'recipes.json', 'signature.sig'];
@@ -73,9 +145,29 @@ export function loadArtifact(artifactPath) {
   const receipt_json = entries['receipt.json']?.toString('utf8') || null;
   const model_pointer = entries['model.gguf']?.toString('utf8') || null;
 
+  // Verify HMAC locally first. This works for offline-compiled artifacts
+  // (signed with the per-user local_receipt_secret) and for fleet-shared
+  // artifacts (signed with the shared RECIPE_RECEIPT_SECRET both sides have).
   const verification = verifyManifestSignature(manifest_json, signature);
+  let signatureMode = 'hmac-local';
   if (!verification.valid) {
-    throw kolmError('KOLM_E_SIGNATURE_INVALID', `signature invalid: ${verification.reason}`);
+    // Cloud-trust fallback. When the artifact bytes match an entry recorded
+    // by `kolm compile` (cloud path), accept the artifact - the cloud signed
+    // it with RECIPE_RECEIPT_SECRET we don't have local access to, but we
+    // downloaded it ourselves over an authenticated channel and recorded its
+    // sha256. We still confirm structural integrity (signature envelope is
+    // well-formed and manifest_hash binds to the manifest we're about to
+    // execute) so a swapped-in malicious manifest is still rejected.
+    const trustedSha = isCloudTrusted(fileBuf);
+    if (trustedSha) {
+      const integrity = structuralIntegrityOk(manifest_json, signature);
+      if (!integrity.ok) {
+        throw kolmError('KOLM_E_SIGNATURE_INVALID', `signature invalid (cloud-trust set, but structural integrity failed: ${integrity.reason})`);
+      }
+      signatureMode = 'cloud-trusted';
+    } else {
+      throw kolmError('KOLM_E_SIGNATURE_INVALID', `signature invalid: ${verification.reason}. If this artifact was downloaded via \`kolm compile\` (cloud), make sure the download finished and re-run \`kolm compile\` to refresh the local trust entry. Set KOLM_TRUST_CLOUD_ARTIFACTS=0 to disable the cloud-trust fallback.`);
+    }
   }
 
   const manifest = JSON.parse(manifest_json);
@@ -102,6 +194,7 @@ export function loadArtifact(artifactPath) {
     pack,
     index,
     signature_valid: true,
+    signature_mode: signatureMode,
     artifact_path: artifactPath,
   };
 }
@@ -278,6 +371,7 @@ export function inspectArtifact(artifactPath) {
     pack_keys: bundle.pack ? Object.keys(bundle.pack).slice(0, 8) : [],
     index_keys: bundle.index ? Object.keys(bundle.index).slice(0, 8) : [],
     signature_valid: bundle.signature_valid,
+    signature_mode: bundle.signature_mode || 'hmac-local',
     recipe_names: (bundle.recipes.recipes || []).slice(0, 8).map(r => r.name),
   };
 }

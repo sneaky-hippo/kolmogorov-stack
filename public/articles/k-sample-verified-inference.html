@@ -145,13 +145,28 @@
   .toc li a:hover { color: var(--accent); }
 
   .compare-table { margin: 24px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg-elev); box-shadow: 0 18px 40px -22px rgba(0,0,0,0.55); }
-  .compare-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .compare-table .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .compare-table table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 14px; }
   .compare-table th { text-align: left; padding: 14px 16px; background: rgba(0,0,0,0.20); color: var(--ink); font-weight: 500; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; border-bottom: 1px solid var(--line); }
   .compare-table td { padding: 12px 16px; border-bottom: 1px solid var(--line); color: var(--ink-mute); }
   .compare-table tr:last-child td { border-bottom: 0; }
   .compare-table .acc { color: var(--accent); }
   .compare-table .good { color: var(--good); }
   .compare-table .bad { color: var(--bad); }
+  @media (max-width: 720px) {
+    .compare-table { background: transparent; border: 0; box-shadow: none; padding: 0; }
+    .compare-table table { display: none; }
+    .compare-table .m-cards { display: block; }
+    .compare-table .m-card { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev); padding: 14px 16px; margin: 0 0 10px; }
+    .compare-table .m-card .m-h { font-family: var(--mono); font-size: 12px; color: var(--ink); padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: 0.04em; }
+    .compare-table .m-card .m-row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 5px 0; font-family: var(--mono); font-size: 13px; }
+    .compare-table .m-card .m-row .lab { font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; flex: 0 0 auto; }
+    .compare-table .m-card .m-row .val { color: var(--ink); text-align: right; }
+    .compare-table .m-card .m-row .val.acc { color: var(--accent); }
+    .compare-table .m-card .m-row .val.good { color: var(--good); }
+    .compare-table .m-card .m-row .val.bad { color: var(--bad); }
+  }
+  .compare-table .m-cards { display: none; }
 
   footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--ink-faint); }
   footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
@@ -322,6 +337,7 @@ function score(input, output) {
     <p>Worked numbers for a verifiable coding task (Opus-4.7 on a HumanEval-shaped problem, <i>p</i>&approx;0.91, sound verifier <i>v</i>&approx;1.0):</p>
 
     <div class="compare-table">
+      <div class="scroll">
       <table>
         <tr><th>k</th><th>accuracy</th><th>cost vs k=1</th><th>note</th></tr>
         <tr><td>1</td><td>91.0%</td><td>1&times;</td><td>cold inference, no amplification</td></tr>
@@ -329,11 +345,19 @@ function score(input, output) {
         <tr><td>4</td><td class="acc">99.99%</td><td>4&times;</td><td>production gate</td></tr>
         <tr><td>8</td><td class="good">99.9999%</td><td>8&times;</td><td>labels-corpus mode default</td></tr>
       </table>
+      </div>
+      <div class="m-cards" aria-hidden="true">
+        <div class="m-card"><div class="m-h">k = 1</div><div class="m-row"><span class="lab">accuracy</span><span class="val">91.0%</span></div><div class="m-row"><span class="lab">cost</span><span class="val">1&times;</span></div><div class="m-row"><span class="lab">note</span><span class="val">cold inference</span></div></div>
+        <div class="m-card"><div class="m-h">k = 2</div><div class="m-row"><span class="lab">accuracy</span><span class="val acc">99.2%</span></div><div class="m-row"><span class="lab">cost</span><span class="val">2&times;</span></div><div class="m-row"><span class="lab">note</span><span class="val">first amplification</span></div></div>
+        <div class="m-card"><div class="m-h">k = 4</div><div class="m-row"><span class="lab">accuracy</span><span class="val acc">99.99%</span></div><div class="m-row"><span class="lab">cost</span><span class="val">4&times;</span></div><div class="m-row"><span class="lab">note</span><span class="val">production gate</span></div></div>
+        <div class="m-card"><div class="m-h">k = 8</div><div class="m-row"><span class="lab">accuracy</span><span class="val good">99.9999%</span></div><div class="m-row"><span class="lab">cost</span><span class="val">8&times;</span></div><div class="m-row"><span class="lab">note</span><span class="val">labels-corpus mode</span></div></div>
+      </div>
     </div>
 
     <p style="font-size:13px;color:var(--ink-faint);margin-top:-8px">The amplifier only fires when the verifier is sound (no false positives). For non-verifiable tasks (open-ended generation, judgment calls), <i>v</i> &lt; 1 and the amplifier collapses. The compile pipeline tells you which side of that line your task falls on.</p>
 
     <div class="compare-table">
+      <div class="scroll">
       <table>
         <tr><th>property</th><th>k=1 (raw)</th><th>k=8 verified</th><th>zk-ML proof</th></tr>
         <tr><td>cost vs raw</td><td class="good">1&times;</td><td class="acc">~8&times;</td><td class="bad">~10,000&times;</td></tr>
@@ -342,6 +366,12 @@ function score(input, output) {
         <tr><td>per-call latency</td><td>500 ms</td><td>3-5 sec</td><td>4-12 hr</td></tr>
         <tr><td>practical for live traffic</td><td class="good">yes</td><td class="acc">yes (compile-time)</td><td class="bad">no</td></tr>
       </table>
+      </div>
+      <div class="m-cards" aria-hidden="true">
+        <div class="m-card"><div class="m-h">k = 1 (raw)</div><div class="m-row"><span class="lab">cost vs raw</span><span class="val good">1&times;</span></div><div class="m-row"><span class="lab">auditable</span><span class="val bad">no</span></div><div class="m-row"><span class="lab">tamper-evident</span><span class="val bad">no</span></div><div class="m-row"><span class="lab">latency</span><span class="val">500 ms</span></div><div class="m-row"><span class="lab">live traffic</span><span class="val good">yes</span></div></div>
+        <div class="m-card"><div class="m-h">k = 8 verified</div><div class="m-row"><span class="lab">cost vs raw</span><span class="val acc">~8&times;</span></div><div class="m-row"><span class="lab">auditable</span><span class="val good">yes</span></div><div class="m-row"><span class="lab">tamper-evident</span><span class="val good">yes</span></div><div class="m-row"><span class="lab">latency</span><span class="val">3-5 sec</span></div><div class="m-row"><span class="lab">live traffic</span><span class="val acc">yes (compile-time)</span></div></div>
+        <div class="m-card"><div class="m-h">zk-ML proof</div><div class="m-row"><span class="lab">cost vs raw</span><span class="val bad">~10,000&times;</span></div><div class="m-row"><span class="lab">auditable</span><span class="val good">yes</span></div><div class="m-row"><span class="lab">tamper-evident</span><span class="val good">yes</span></div><div class="m-row"><span class="lab">latency</span><span class="val">4-12 hr</span></div><div class="m-row"><span class="lab">live traffic</span><span class="val bad">no</span></div></div>
+      </div>
     </div>
 
     <h2>What this buys you in production.</h2>

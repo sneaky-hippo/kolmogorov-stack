@@ -7,8 +7,10 @@
 //   status      - account snapshot (plan, quota, used)
 //   usage       - same as status but framed "how much have i used"
 //   list        - list compiled concepts / artifacts for this tenant
-//   compile     - REAL compile — creates and runs a compile job. Returns the
+//   compile     - REAL compile - creates and runs a compile job. Returns the
 //                 job id + poll URL + artifact URL when complete.
+//   job_status  - look up a known compile job by id (Poll /v1/compile/job_xxx,
+//                 "status of job_xxx", or bare "job_xxx"). Returns live state.
 //   run         - run a previously-compiled concept by id or name
 //   tune        - explain how to start a local tune loop (airgap CLI verb)
 //   evolve      - alias for tune
@@ -27,13 +29,29 @@ import { all, findOne } from './store.js';
 
 const PRO_PLANS = new Set(['starter', 'pro', 'teams', 'business', 'enterprise']);
 
+// `job_xxxxxxxxxxxx` is the shape createJob() emits (job_ + 12 hex chars).
+// Loosened to 6+ hex so older/test ids still match.
+const JOB_ID_RE = /\bjob_[0-9a-f]{6,}\b/i;
+
 function lc(s) { return String(s || '').toLowerCase(); }
 function trim(s) { return String(s || '').trim(); }
+
+// Pull a job_xxx id out of a prompt. Works on bare ids, "status of job_xxx",
+// "check job_xxx", and pasted poll URLs like "/v1/compile/job_xxx".
+function extractJobId(prompt) {
+  const m = String(prompt || '').match(JOB_ID_RE);
+  return m ? m[0] : null;
+}
 
 function detectIntent(prompt) {
   const p = lc(prompt);
   if (!p) return 'help';
   // Order matters: more specific first.
+  // A prompt containing a job_xxx id is ALWAYS a status query, never a new
+  // compile. This catches the dashboard's own poll-suggestion strings like
+  // "Poll /v1/compile/job_xxx for progress". Without this, every Poll
+  // copy-paste fires a fresh compile (the URL contains the word "compile").
+  if (JOB_ID_RE.test(p)) return 'job_status';
   if (/^(help|hi|hello|hey|what can you do|what do you do)\b/.test(p)) return 'help';
   if (/\b(doctor|debug|why( is| 's|s) it broken|whats wrong|health check)\b/.test(p)) return 'doctor';
   if (/\b(usage|how much (have i|did i)|left in (my )?quota|consumed|burning)\b/.test(p)) return 'usage';
@@ -142,6 +160,64 @@ export async function handleAssistant(req, _res, deps) {
       return { ok: true, intent, narration, data: { items } };
     }
 
+    case 'job_status': {
+      // Pasted poll URL, bare job id, or "status of job_xxx". Look up the
+      // job and return live state. Never creates a new job.
+      const jobId = extractJobId(prompt);
+      if (!jobId) {
+        return { ok: false, intent, narration: 'Could not parse a job id. Job ids look like job_abcdef123456.' };
+      }
+      const lookup = deps && typeof deps.lookupJob === 'function' ? deps.lookupJob : null;
+      const j = lookup ? lookup({ tenant, job_id: jobId }) : null;
+      if (!j) {
+        return {
+          ok: false,
+          intent,
+          narration: `Job ${jobId} not found in your account. Try "show my builds".`,
+          data: { job_id: jobId, status: 'not_found' },
+        };
+      }
+      const done = j.status === 'completed';
+      const failed = j.status === 'failed';
+      const pct = typeof j.progress === 'number' ? Math.round(j.progress) : null;
+      // k_score can be a plain number (legacy) or a breakdown object whose
+      // .composite is the real headline number. Handle both shapes.
+      const kNum = (typeof j.k_score === 'number')
+        ? j.k_score
+        : (j.k_score && typeof j.k_score.composite === 'number')
+          ? j.k_score.composite
+          : null;
+      const kStr = kNum != null ? kNum.toFixed(4) : null;
+      const artifactUrl = done ? `/v1/compile/${j.id}/.kolm` : null;
+      const narration = done
+        ? `Job ${j.id} done. K-score ${kStr || '-'}. Artifact ready at ${artifactUrl}.`
+        : failed
+          ? `Job ${j.id} failed: ${j.error || 'unknown error'}.`
+          : `Job ${j.id} is ${j.status}${pct != null ? ` (${pct}%)` : ''}. ${j.stages && j.stages.length ? `Last stage: ${j.stages[j.stages.length - 1].name}.` : ''}`;
+      const data = {
+        job_id: j.id,
+        status: j.status,
+        progress: j.progress || 0,
+        // Surface a flat numeric k_score so the dashboard chat dock's
+        // existing typeof-number check renders "K=0.84" rather than [object].
+        k_score: kNum,
+        k_score_full: j.k_score || null,
+        stages: j.stages || [],
+        artifact_url: artifactUrl,
+        poll: `/v1/compile/${j.id}`,
+        error: j.error || null,
+      };
+      const steps = done
+        ? [
+            { label: 'download .kolm', href: artifactUrl },
+            { label: 'view job',       href: '/dashboard#compile-' + j.id },
+          ]
+        : failed
+          ? [ { label: 'open /train', href: '/train' } ]
+          : [ { label: 'view job', href: `/v1/compile/${j.id}` } ];
+      return { ok: true, intent, narration, data, next_steps: steps };
+    }
+
     case 'compile': {
       const task = extractTask(prompt);
       if (!task || task.length < 4) {
@@ -155,9 +231,16 @@ export async function handleAssistant(req, _res, deps) {
       // fire-and-forget on long-running nodes). Caller polls `data.poll`.
       const out = await deps.compile({ task });
       const done = out.status === 'completed';
+      // k_score may arrive as a number (legacy) or breakdown object.
+      const outKNum = (typeof out.k_score === 'number')
+        ? out.k_score
+        : (out.k_score && typeof out.k_score.composite === 'number')
+          ? out.k_score.composite
+          : null;
+      const outKStr = outKNum != null ? outKNum.toFixed(4) : '-';
       const narration = done
-        ? `Compiled. job ${out.job_id} · K-score ${out.k_score ?? '—'}. Artifact ready at ${out.artifact_url}.`
-        : `Compile started. job ${out.job_id} · status: ${out.status}. Poll ${out.poll} for progress; the artifact link appears when it's done.`;
+        ? `Compiled. job ${out.job_id} · K-score ${outKStr}. Artifact ready at ${out.artifact_url}.`
+        : `Compile started. job ${out.job_id} · status: ${out.status}. Watching for progress.`;
       const steps = done
         ? [
             { label: 'download .kolm', href: out.artifact_url },
