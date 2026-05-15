@@ -3554,7 +3554,14 @@ function chatDetectIntent(prompt) {
   if (/\b(list|show|all my|what (have i|did i) (build|compile|ship))\b/.test(p)) return 'list';
   if (/\b(upgrade|go pro|move to pro|switch to|change plan)\b/.test(p)) return 'upgrade';
   if (/\b(install|wire up|hook up|claude code|cursor|continue|cline)\b/.test(p)) return 'install';
-  if (/\b(tune|train|evolve|fine ?tune|fine ?tuning)\b/.test(p)) return 'tune';
+  // Prefer compile when the prompt explicitly says "compile", even when a
+  // word like "train" appears as part of a filename ("compile a redactor
+  // using train.jsonl"). Mirrors src/assistant.js so airgap parity holds.
+  if (/\bcompile\b/.test(p)) return 'compile';
+  // Exclude filename matches like train.jsonl / tune.yaml via negative
+  // lookahead on dot-extension. Real tune verbs are followed by whitespace
+  // or end-of-string, not a file extension.
+  if (/\b(tune|train|evolve|fine ?tune|fine ?tuning)\b(?!\.\w)/.test(p)) return 'tune';
   if (/\b(run|execute|invoke|call)\b/.test(p)) return 'run';
   if (/\b(compile|build|make|create|new)\b/.test(p)) return 'compile';
   return 'help';
@@ -3972,10 +3979,29 @@ function chatPlanAction(prompt, reply) {
     // Otherwise treat it as a real cloud-compile task. Needs an account so
     // we mark it expensive (prompts unless --yes).
     if (task && task.length >= 4) {
+      // Sniff for a jsonl/json/csv examples file referenced in the prompt
+      // ("compile a redactor using train.jsonl as examples"). If we find
+      // one AND it exists in cwd, wire it as --examples so the cloud has
+      // real data to score against. We strip the filename + connector words
+      // from the task body so the task description is the actual goal,
+      // not "compile X using Y as examples".
+      const fileMatch = prompt.match(/\b([\w.\-/\\]+\.(?:jsonl|json|csv))\b/i);
+      const argv = [task];
+      let label = 'kolm compile "' + task + '"';
+      if (fileMatch && fs.existsSync(fileMatch[1])) {
+        const cleaned = task
+          .replace(/\s+using\s+\S+\.(?:jsonl|json|csv)\s*(?:as\s+(?:examples|the\s+dataset|training\s+data|seeds|data))?\s*$/i, '')
+          .replace(/\s+(?:from|with)\s+\S+\.(?:jsonl|json|csv)\s*$/i, '')
+          .trim();
+        const finalTask = cleaned && cleaned.length >= 4 ? cleaned : task;
+        argv.length = 0;
+        argv.push(finalTask, '--examples', fileMatch[1]);
+        label = 'kolm compile "' + finalTask + '" --examples ' + fileMatch[1];
+      }
       return {
         action: 'compile_cloud',
-        argv: [task],
-        label: 'kolm compile "' + task + '"',
+        argv: argv,
+        label: label,
         expensive: true,
       };
     }

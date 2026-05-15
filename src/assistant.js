@@ -59,7 +59,15 @@ function detectIntent(prompt) {
   if (/\b(list|show|all my|what (have i|did i) (build|compile|ship))\b/.test(p)) return 'list';
   if (/\b(upgrade|go pro|move to pro|switch to|change plan)\b/.test(p)) return 'upgrade';
   if (/\b(install|wire up|hook up|claude code|cursor|continue|cline)\b/.test(p)) return 'install';
-  if (/\b(tune|train|evolve|fine ?tune|fine ?tuning)\b/.test(p)) return 'tune';
+  // Prefer compile when the prompt explicitly says "compile", even if a word
+  // like "train" appears later in the same sentence (very common shape:
+  // "compile a redactor using train.jsonl"). Without this, the tune branch
+  // would steal compile prompts whenever the filename contains "train".
+  if (/\bcompile\b/.test(p)) return 'compile';
+  // Exclude filename matches like "train.jsonl" / "tune.yaml" via a negative
+  // lookahead on a dot-extension. Real tune verbs are followed by whitespace
+  // or end-of-string, not by a file extension.
+  if (/\b(tune|train|evolve|fine ?tune|fine ?tuning)\b(?!\.\w)/.test(p)) return 'tune';
   if (/\b(run|execute|invoke|call)\b/.test(p)) return 'run';
   if (/\b(compile|build|make|create|new)\b/.test(p)) return 'compile';
   return 'help';
