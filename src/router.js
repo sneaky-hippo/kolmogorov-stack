@@ -1308,7 +1308,11 @@ export function buildRouter() {
       insert('hub_artifacts', row);
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const fwdHost = req.headers['x-forwarded-host'];
+    const fwdProto = req.headers['x-forwarded-proto'];
+    const host = (typeof fwdHost === 'string' && fwdHost) ? fwdHost.split(',')[0].trim() : req.get('host');
+    const proto = (typeof fwdProto === 'string' && fwdProto) ? fwdProto.split(',')[0].trim() : req.protocol;
+    const baseUrl = `${proto}://${host}`;
     res.status(existing ? 200 : 201).json({
       handle: `${owner}/${name}@sha256:${sha256Hex.slice(0, 8)}`,
       owner,
@@ -1360,7 +1364,11 @@ export function buildRouter() {
       const reqOwner = hubSlug(req.tenant_record?.handle || req.tenant_record?.name || req.tenant_record?.id || req.tenant || '');
       if (reqOwner !== owner) return res.status(404).json({ error: 'not found' });
     }
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const fwdHost = req.headers['x-forwarded-host'];
+    const fwdProto = req.headers['x-forwarded-proto'];
+    const host = (typeof fwdHost === 'string' && fwdHost) ? fwdHost.split(',')[0].trim() : req.get('host');
+    const proto = (typeof fwdProto === 'string' && fwdProto) ? fwdProto.split(',')[0].trim() : req.protocol;
+    const baseUrl = `${proto}://${host}`;
     res.json({
       handle: `${row.owner}/${row.name}@sha256:${row.sha256.slice(0, 8)}`,
       owner: row.owner,
