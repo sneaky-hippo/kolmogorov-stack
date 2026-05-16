@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Verify a receipt &middot; signed compile + run records &middot; kolm</title>
+<meta name="description" content="Every kolm compile and run emits a signed receipt. Paste the receipt URL or hash to verify which artifact produced an output, on which device, with what K-score. No login. No PHI ever in a receipt by design.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="Verify a kolm receipt">
+<meta property="og:description" content="Signed records of every compile and run. Tamper-evident chain. Verifiable offline.">
+<meta property="og:url" content="https://kolm.ai/receipt">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/receipt">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;
+    --line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);
+    --ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;
+    --accent:#faf2e1;--good:#7ef0d2;--amber:#d6a65a;--bad:#e87878;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;
+  }
+  [data-theme=light]{--bg:#f7f4ec;--bg-elev:#ffffff;--bg-card:#fafaf6;--line:rgba(0,0,0,0.08);--line-strong:rgba(0,0,0,0.14);--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--accent:#1f2429;--good:#059669;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 32px}
+  .wrap-tight{max-width:760px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap,.wrap-tight{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .brand{font-family:var(--mono);font-size:13px;letter-spacing:0.04em;font-weight:600}
+  header.site nav{display:flex;gap:22px;font-family:var(--mono);font-size:12.5px;color:var(--ink-mute)}
+  header.site nav a:hover{color:var(--ink)}
+  @media(max-width:760px){header.site nav{display:none}}
+
+  section{padding:64px 0;border-bottom:1px solid var(--line)}
+  section.hero{padding:88px 0 64px}
+  h1{font-size:50px;line-height:1.05;letter-spacing:-0.02em;margin:0 0 18px;font-weight:600}
+  h2{font-size:30px;line-height:1.15;letter-spacing:-0.015em;margin:0 0 14px;font-weight:600}
+  h3{font-size:17px;line-height:1.3;margin:0 0 8px;font-weight:600}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:0.08em;color:var(--ink-faint);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:14px}
+  .eyebrow .num{color:var(--accent)}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border:1px solid var(--line-strong);border-radius:99px;font-family:var(--mono);font-size:11px;letter-spacing:0.04em;color:var(--ink-mute);background:var(--bg-elev)}
+  .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--good)}
+  .lede{font-size:20px;line-height:1.5;color:var(--ink-mute);max-width:600px;margin:22px 0 30px}
+
+  .verify-box{background:var(--bg-elev);border:1px solid var(--line-strong);padding:20px;margin:24px 0;display:flex;gap:10px;align-items:center}
+  .verify-box input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);font-family:var(--mono);font-size:13px;padding:10px 12px;outline:none}
+  .verify-box input:focus{border-color:var(--good)}
+  .verify-box button{background:var(--ink);color:var(--bg);border:none;font-family:var(--mono);font-size:12px;letter-spacing:0.04em;padding:10px 20px;cursor:pointer;font-weight:600;text-transform:uppercase}
+  [data-theme=light] .verify-box button{background:var(--ink);color:#fff}
+
+  .receipt{background:var(--bg-elev);border:1px solid var(--line-strong);margin:24px 0;font-family:var(--mono);font-size:13px}
+  .receipt .hdr{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--bg-card)}
+  .receipt .hdr .id{color:var(--ink-faint);font-size:11px;letter-spacing:0.04em}
+  .receipt .hdr .ok{color:var(--good);display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase}
+  .receipt .hdr .ok::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--good)}
+  .receipt .body{padding:20px}
+  .receipt .row{display:grid;grid-template-columns:160px 1fr;gap:14px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .receipt .row:last-child{border-bottom:none}
+  .receipt .row .lbl{color:var(--ink-faint);font-size:11px;letter-spacing:0.04em;text-transform:uppercase}
+  .receipt .row .val{color:var(--ink);word-break:break-all}
+  .receipt .row .val .k{color:var(--good)}
+
+  pre.code{background:var(--bg-elev);border:1px solid var(--line);padding:18px 20px;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink);overflow-x:auto;margin:16px 0}
+  pre.code .c{color:var(--ink-faint)}
+  pre.code .g{color:var(--good)}
+
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:32px 0}
+  .grid-3 .card{background:var(--bg-elev);border:1px solid var(--line);padding:22px 18px}
+  .grid-3 .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px}
+  .grid-3 h3{font-size:15px;margin:0 0 6px}
+  .grid-3 p{margin:0;font-size:13px;color:var(--ink-mute);line-height:1.55}
+  @media(max-width:760px){.grid-3{grid-template-columns:1fr}}
+
+  .never-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;border:1px solid var(--line);background:var(--bg-elev);margin:18px 0}
+  .never-table thead th{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line-strong);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-faint)}
+  .never-table tbody td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  .never-table tbody tr:last-child td{border-bottom:none}
+  .never-table .ok{color:var(--good)}
+  .never-table .no{color:var(--bad)}
+
+  footer.site{padding:60px 0 40px;background:var(--bg);border-top:1px solid var(--line)}
+  footer.site .row{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)}
+  footer.site a{color:var(--ink-mute)}
+  footer.site a:hover{color:var(--ink)}
+  @media(max-width:760px){footer.site .row{flex-direction:column;gap:18px}}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap row">
+    <a href="/" class="brand">kolm</a>
+    <nav>
+      <a href="/compile">Compile</a>
+      <a href="/benchmarks">Benchmarks</a>
+      <a href="/leaderboard">Leaderboard</a>
+      <a href="/compare">Compare</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/security">Security</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap-tight">
+    <span class="pill"><span class="dot"></span>HMAC-SHA-256 &middot; tamper-evident chain</span>
+    <h1 style="margin-top:24px">Verify a receipt.</h1>
+    <p class="lede">Every kolm compile and run emits a signed receipt. Paste a receipt URL or hash and we'll show you which artifact produced the output, on which device, with what K-score. No login. No payload data ever in a receipt by design.</p>
+
+    <div class="verify-box">
+      <input id="rcpt" type="text" placeholder="kolm.ai/r/abc123 &middot;or&middot; receipt hash (64 hex)" value="kolm.ai/r/e176bc2f720b94a8" autocomplete="off">
+      <button id="verifybtn" type="button" onclick="verifyReceipt()">Verify</button>
+    </div>
+
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin-top:8px">
+      Below is a sample receipt for <code>support-triage.kolm</code>. The verify button just renders it &mdash; production receipts hit <code>/v1/receipt/:hash</code> read-only.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">01</span><span>Sample receipt</span></div>
+
+    <div class="receipt" id="rcpt-view">
+      <div class="hdr">
+        <span class="id">kolm.ai/r/e176bc2f720b94a8 &middot; run record</span>
+        <span class="ok">Signature verified</span>
+      </div>
+      <div class="body">
+        <div class="row"><span class="lbl">Artifact</span><span class="val">kolm/support-triage@sha256:e176bc2f720b94a8c8e3...</span></div>
+        <div class="row"><span class="lbl">K-score</span><span class="val"><span class="k">0.94</span> &middot; gate &ge; 0.85 &middot; passed</span></div>
+        <div class="row"><span class="lbl">Compiled by</span><span class="val">acme-health (tenant 4f81)</span></div>
+        <div class="row"><span class="lbl">Compiled at</span><span class="val">2026-05-12T18:42:07Z</span></div>
+        <div class="row"><span class="lbl">Ran on</span><span class="val">macOS 14.4 &middot; arm64 &middot; M2 Air, 16 GB</span></div>
+        <div class="row"><span class="lbl">Run at</span><span class="val">2026-05-16T07:18:33Z</span></div>
+        <div class="row"><span class="lbl">Latency p50</span><span class="val">80 ms (256 output tokens)</span></div>
+        <div class="row"><span class="lbl">PHI mode</span><span class="val">on &middot; redactor applied &middot; assessment delta &le; 0.05</span></div>
+        <div class="row"><span class="lbl">Egress</span><span class="val">0 bytes &middot; harness enforced</span></div>
+        <div class="row"><span class="lbl">Ring 1 (compile)</span><span class="val">2bc4...a91d</span></div>
+        <div class="row"><span class="lbl">Ring 2 (eval)</span><span class="val">8e10...f2c7</span></div>
+        <div class="row"><span class="lbl">Ring 3 (run)</span><span class="val">a91d...e176</span></div>
+        <div class="row"><span class="lbl">Ring 4 (audit)</span><span class="val">e176...720b94a8</span></div>
+        <div class="row"><span class="lbl">Signed by</span><span class="val">HMAC-SHA-256, customer-managed key kms://arn:aws:kms:us-east-1:.../key/4f81</span></div>
+      </div>
+    </div>
+
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin-top:6px">
+      What the receipt does <i>not</i> contain: the input prompt, the model output, any PHI/PCI/privileged content. Payload bytes never leave the device. The chain proves <i>that</i> a run happened with the named artifact at the named K-score &mdash; not <i>what</i> was said.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">02</span><span>What a receipt proves</span></div>
+    <div class="grid-3">
+      <div class="card">
+        <div class="lbl">Provenance</div>
+        <h3>This artifact, not another.</h3>
+        <p>Receipt pins the SHA-256 of the .kolm. A swap to a different model or a tampered LoRA breaks the chain.</p>
+      </div>
+      <div class="card">
+        <div class="lbl">Quality gate</div>
+        <h3>K-score at run time.</h3>
+        <p>The compile-time K-score is signed into the artifact. The run-time receipt re-proves the gate held. Below-gate runs are refused.</p>
+      </div>
+      <div class="card">
+        <div class="lbl">No egress</div>
+        <h3>Stayed on this device.</h3>
+        <p>Runtime harness counts bytes-out per run. A run that exfiltrated would have ring-3 bytes-out non-zero. Auditors can scan for that.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">03</span><span>What a receipt is not</span></div>
+    <table class="never-table">
+      <thead><tr><th>Asked for</th><th>In a receipt?</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>The input prompt</td><td class="no">No</td><td>Payload-free by design. Run inputs may be PHI/PCI/privileged.</td></tr>
+        <tr><td>The model output</td><td class="no">No</td><td>Same reason. The chain proves a run happened, not what was said.</td></tr>
+        <tr><td>User identity</td><td class="no">No</td><td>Receipts pin tenant + device fingerprint only. PII never recorded.</td></tr>
+        <tr><td>Artifact hash</td><td class="ok">Yes</td><td>Auditor can verify against the registry the team uses.</td></tr>
+        <tr><td>K-score + gate</td><td class="ok">Yes</td><td>Quality gate held at compile and at run.</td></tr>
+        <tr><td>Device class</td><td class="ok">Yes</td><td>OS + arch + memory class for the auditor &mdash; not a serial number.</td></tr>
+        <tr><td>Wall-clock timestamps</td><td class="ok">Yes</td><td>So the chain orders. Times are run-issued, not authoritative.</td></tr>
+        <tr><td>Egress counter</td><td class="ok">Yes</td><td>Harness-measured bytes-out per run. Used in compliance proofs.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">04</span><span>Verify offline</span></div>
+    <h2>The chain checks without us.</h2>
+    <p style="color:var(--ink-mute);max-width:580px">Hand the receipt JSON to a clean machine, point at the .kolm, run <code> kolm inspect</code>. No network call to kolm.ai. The chain checks the artifact SHA, the K-score signature, and the ring HMACs against the customer-managed key.</p>
+
+<pre class="code"><span class="c"># 1) Fetch receipt JSON (or paste it from email/Slack/an auditor)</span>
+curl https://kolm.ai/v1/receipt/e176bc2f720b94a8 &gt; receipt.json
+
+<span class="c"># 2) Verify against the local artifact + key</span> kolm inspect receipt.json --artifact support-triage.kolm --key kms://...
+<span class="c">## prints: <span class="g">OK</span></span>
+<span class="c">##         chain ok, artifact sha matches, K=0.94 at gate 0.85</span>
+<span class="c">##         all four rings cross-link, latest ring signed 2026-05-16T07:18:33Z</span></pre>
+
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin-top:6px">
+      The verify path is the same the compliance package export at <a href="/v1/account/compliance-package" style="color:var(--good)">/v1/account/compliance-package</a> runs over the last 90 days of run-records, so the audit packet you hand to a privacy officer is the same bytes they can re-check on their own machine.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">05</span><span>Receipts as a public artifact</span></div>
+    <h2>Drop one in an email.</h2>
+    <p style="color:var(--ink-mute);max-width:600px">Every run can produce a public-shareable receipt link. Paste it under an output, drop it in a model-card on Hugging Face, attach it to a PR &mdash; the receipt is a one-line proof that the bytes came from a named, signed, gated artifact.</p>
+
+<pre class="code"><span class="c"># In a sales email or a model-card</span>
+This response was generated by kolm/support-triage@sha256:e176bc2f,
+K=0.94, on device, no egress.
+Verify: <span class="g">kolm.ai/r/e176bc2f720b94a8</span></pre>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap row">
+    <div>&copy; 2026 kolm</div>
+    <div><a href="/spec/kolm-format-v1">spec</a> &middot; <a href="/security">security</a> &middot; <a href="/research/receipt-chains">research</a> &middot; <a href="/pricing">pricing</a></div>
+  </div>
+</footer>
+
+<script>
+function verifyReceipt(){
+  var v = document.getElementById('rcpt').value.trim();
+  if (!v) return;
+  var rv = document.getElementById('rcpt-view');
+  rv.scrollIntoView({behavior:'smooth', block:'start'});
+  var hdr = rv.querySelector('.hdr .id');
+  if (v.indexOf('/r/') > -1) {
+    hdr.textContent = v.replace(/^https?:\/\//,'') + ' · run record';
+  } else if (/^[0-9a-f]{16,64}$/i.test(v)) {
+    hdr.textContent = 'kolm.ai/r/' + v.slice(0,16) + ' · run record';
+  } else {
+    hdr.textContent = 'kolm.ai/r/' + v + ' · run record';
+  }
+}
+document.getElementById('rcpt').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') { e.preventDefault(); verifyReceipt(); }
+});
+</script>
+
+</body>
+</html>

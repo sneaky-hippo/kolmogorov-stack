@@ -129,6 +129,7 @@
   footer.site{padding:56px 0 40px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
   footer.site .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
 </style>
+<link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
@@ -138,9 +139,10 @@
     <div class="left">
       <a href="/" class="brand"><span>kolm</span></a>
       <nav>
-        <a href="/use-cases">Solutions</a>
-        <a href="/docs">Developers</a>
+        <a href="/use-cases">Use cases</a>
+        <a href="/docs">Docs</a>
         <a href="/research">Research</a>
+        <a href="/enterprise">Enterprise</a>
         <a href="/pricing">Pricing</a>
       </nav>
     </div>
@@ -199,7 +201,7 @@
 
     <p>The catalog row, the manifest, and the receipt body together are usually under 32 KB. That is two orders of magnitude smaller than the artifact bytes. The economics of paying for the small thing centrally and pushing the big thing to the edge is the same economics that made the original APT/Debian mirror network work. We did not invent it; we are reusing it.</p>
 
-    <p><b>Artifact bytes storage</b> can be free or paid depending on the publisher's choice. A small artifact hosted on a personal GitHub release costs the publisher nothing in additional fees. A 3.8 GB artifact pulled by thousands of downloaders a month from a personal S3 bucket can be expensive; the publisher might point the registry record at a paid mirror (Cloudflare R2, Backblaze B2, IPFS pinning service) and pay the marginal storage cost there. The registry record is agnostic; it carries one or more URLs and the downloader picks the first one that resolves.</p>
+    <p><b>Artifact bytes storage</b> can be free or paid depending on the publisher's choice. A small artifact hosted on a personal GitHub release costs the publisher nothing in additional fees. A 3.8 GB artifact pulled by thousands of downloaders a month from a personal S3 bucket can be expensive; the publisher might point the registry record at a paid mirror (tenant-controlled object storage, Backblaze B2, IPFS pinning service) and pay the marginal storage cost there. The registry record is agnostic; it carries one or more URLs and the downloader picks the first one that resolves.</p>
 
     <h2 id="why">Why this split.</h2>
     <p>The split between metadata and bytes is deliberate. It avoids three categories of failure that have plagued centralized package registries.</p>
@@ -230,7 +232,7 @@
 
     <p>None of these checks requires a network call to kolm.ai. The CID can be looked up against kolm.ai's <code>/v1/cid/&lt;cid&gt;</code> endpoint if the downloader wants to confirm the catalog still references the same CID, but the local verification works without the lookup. An air-gapped deployment that copies <code>.kolm</code> files in over a thumb drive can verify them without any external service.</p>
 
-    <pre><span class="kw">$</span> kolm verify ./ticket-router.kolm
+    <pre><span class="kw">$</span> kolm inspect ./ticket-router.kolm
 <span class="arg">[verify]</span>     manifest hashes:       ok (5/5 slots)
 <span class="arg">[verify]</span>     receipt body HMAC:     ok
 <span class="arg">[verify]</span>     content identifier:    ok (cidv1:sha256:9d3e&hellip;)
@@ -321,6 +323,7 @@ verification: passed</pre>
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/registry">Registry</a>
         <a href="/case-studies">Case studies</a>
       </div>

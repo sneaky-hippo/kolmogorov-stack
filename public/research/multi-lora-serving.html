@@ -66,6 +66,7 @@
   .cite a{opacity:.78}
   footer.site{border-top:1px solid var(--line);margin-top:72px;padding:28px 24px;font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);text-align:center}
 </style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <header class="site">
@@ -99,12 +100,12 @@
   <p>The hard part is the kernel. A single batch may have requests bound to different adapters. You cannot run one matmul for the whole batch; you need a kernel that applies <code>x · W_base + x · (A_i · B_i)</code> where <code>i</code> varies row by row. S-LoRA wrote that kernel. Punica (Chen 2023) wrote a sibling kernel optimized for the heterogeneous case.</p>
 
   <h2>The math</h2>
-  <p>For a base of size B and adapter of size a (where a ≈ 0.01·B):</p>
+  <p>For a base of size B and adapter of size a (where a ??0.01·B):</p>
   <table>
     <tr><th>Strategy</th><th>VRAM (N adapters)</th><th>Time-to-first-token</th></tr>
     <tr><td>One server per adapter</td><td>N·B</td><td>0 (always warm)</td></tr>
     <tr><td>Pre-merge on demand</td><td>1·B + warm copies</td><td>seconds (full merge)</td></tr>
-    <tr><td>S-LoRA / Punica</td><td>1·B + Σa_i (~1.01·B)</td><td>milliseconds (adapter stream)</td></tr>
+    <tr><td>S-LoRA / Punica</td><td>1·B + 峉a_i (~1.01·B)</td><td>milliseconds (adapter stream)</td></tr>
   </table>
   <p>For 1,000 adapters on Qwen2.5-7B (14 GB base, ~80 MB per adapter), the math is 14,000 GB versus 94 GB. The latter is one A100. The former is a cluster.</p>
 
@@ -155,7 +156,7 @@ pool.serve(request, adapter_cid="cidv1:sha256:...")</code></pre>
   <p class="cite">Hu et al. 2021. <em>LoRA: Low-Rank Adaptation of Large Language Models</em>. <a href="https://arxiv.org/abs/2106.09685">arXiv:2106.09685</a></p>
 
   <div class="meta-line" style="margin-top:48px">
-    <span><a href="/research">← back to research</a></span>
+    <span><a href="/research">??back to research</a></span>
     <span>kolm.ai/research/multi-lora-serving</span>
   </div>
 </main>
@@ -184,6 +185,7 @@ pool.serve(request, adapter_cid="cidv1:sha256:...")</code></pre>
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/registry">Registry</a>
         <a href="/case-studies">Case studies</a>
       </div>

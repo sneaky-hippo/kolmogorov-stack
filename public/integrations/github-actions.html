@@ -44,6 +44,7 @@
   footer{padding:32px 0;color:var(--ink-faint);font-size:13px}
   footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
 </style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/quickstart">quickstart</a><a href="/docs">docs</a><a href="/integrations">integrations</a></nav></div></header>
@@ -62,7 +63,7 @@
     <p class="stepno">Workflow 1 . verify on PR</p>
     <h2>Block merges on K-score regression.</h2>
     <p>Drop this in `.github/workflows/kolm-verify.yml`. When someone opens a PR that touches a recipe, the workflow compiles, signs, verifies, and comments the receipt on the PR. The merge button is blocked if any artifact misses its K-score floor.</p>
-    <pre><span class="k">name</span>: kolm verify
+    <pre><span class="k">name</span>: kolm inspect
 <span class="k">on</span>:
   pull_request:
     paths: [<span class="g">'recipes/**'</span>]
@@ -81,7 +82,7 @@
         run: |
           for r in recipes/*.recipe.json; do
             kolm compile --from "$r" --out "artifacts/$(basename $r .recipe.json).kolm"
-            kolm verify "artifacts/$(basename $r .recipe.json).kolm"
+            kolm inspect "artifacts/$(basename $r .recipe.json).kolm"
           done
       - uses: actions/github-script@v7
         with:
@@ -120,7 +121,7 @@
           for r in recipes/*.recipe.json; do
             base=$(basename $r .recipe.json)
             kolm compile --from "$r" --out "out/${base}.kolm"
-            kolm verify "out/${base}.kolm" --binder "out/${base}.binder.pdf"
+            kolm inspect "out/${base}.kolm" --binder "out/${base}.binder.pdf"
           done
       - uses: softprops/action-gh-release@v2
         with:
@@ -149,7 +150,7 @@
       - run: npm install -g kolm
       - run: |
           for art in releases/**/*.kolm; do
-            kolm verify "$art" || { echo "FAIL: $art" >&2; exit 1; }
+            kolm inspect "$art" || { echo "FAIL: $art" >&2; exit 1; }
           done</pre>
     <div class="checkpoint"><b>Checkpoint</b><span>If the verifier rejects an old artifact, that is the moment to investigate before the artifact ever reaches an auditor or a customer.</span></div>
     <div class="actions"><a class="btn primary" href="/tutorials/ci-verify">Walkthrough tutorial &rarr;</a><a class="btn" href="/spec/rs-1">RS-1 spec &rarr;</a></div>
@@ -181,6 +182,7 @@
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/registry">Registry</a>
         <a href="/case-studies">Case studies</a>
       </div>

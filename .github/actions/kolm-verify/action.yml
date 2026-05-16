@@ -1,0 +1,55 @@
+name: kolm verify
+description: Verify a .kolm artifact's receipt chain offline. Fails the job if the seal is broken.
+author: Kolmogorov
+
+inputs:
+  artifact:
+    description: Path to a .kolm file relative to the workspace root
+    required: true
+  fail-on-warn:
+    description: Treat verification warnings as fatal (default false)
+    required: false
+    default: "false"
+
+outputs:
+  hash:
+    description: Manifest hash of the verified artifact
+    value: ${{ steps.verify.outputs.hash }}
+  k-score:
+    description: K-score from the manifest
+    value: ${{ steps.verify.outputs.k_score }}
+  signer:
+    description: Signer identity from ring 04 seal
+    value: ${{ steps.verify.outputs.signer }}
+
+runs:
+  using: composite
+  steps:
+    - name: install kolm CLI
+      shell: bash
+      run: npm i -g github:sneaky-hippo/kolmogorov-stack
+
+    - name: verify
+      id: verify
+      shell: bash
+      env:
+        KOLM_FAIL_ON_WARN: ${{ inputs.fail-on-warn }}
+      run: |
+        out=$(kolm verify "${{ inputs.artifact }}" --json)
+        echo "$out"
+        hash=$(echo "$out" | jq -r '.hash // empty')
+        score=$(echo "$out" | jq -r '.k_score // empty')
+        signer=$(echo "$out" | jq -r '.signer // empty')
+        ok=$(echo "$out" | jq -r '.ok')
+        warn=$(echo "$out" | jq -r '.warnings | length // 0')
+        echo "hash=$hash" >> "$GITHUB_OUTPUT"
+        echo "k_score=$score" >> "$GITHUB_OUTPUT"
+        echo "signer=$signer" >> "$GITHUB_OUTPUT"
+        if [ "$ok" != "true" ]; then
+          echo "::error::kolm verify failed for ${{ inputs.artifact }}"
+          exit 1
+        fi
+        if [ "$KOLM_FAIL_ON_WARN" = "true" ] && [ "$warn" != "0" ]; then
+          echo "::error::kolm verify produced $warn warning(s) and fail-on-warn=true"
+          exit 1
+        fi

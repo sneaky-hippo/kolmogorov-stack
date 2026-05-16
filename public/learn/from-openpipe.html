@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>From OpenPipe to .kolm: migration guide | kolm</title>
+<meta name="description" content="Move your fine-tuned models from OpenPipe to a signed, offline .kolm artifact. Export the dataset, compile, verify K-score, deploy. One afternoon, zero lock-in.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/learn/from-openpipe">
+<meta property="og:title" content="From OpenPipe to .kolm">
+<meta property="og:description" content="Export your OpenPipe dataset and compile it into a signed offline .kolm artifact.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/learn/from-openpipe">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="From OpenPipe to .kolm" />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "HowTo",
+      "@id": "https://kolm.ai/learn/from-openpipe#howto",
+      "name": "Migrate from OpenPipe to .kolm",
+      "description": "Export an OpenPipe fine-tune dataset, normalize to JSONL, compile a signed .kolm, verify K-score.",
+      "totalTime": "PT45M",
+      "estimatedCost": {"@type":"MonetaryAmount","currency":"USD","value":"0"},
+      "tool": [
+        {"@type":"HowToTool","name":"Node.js 20+"},
+        {"@type":"HowToTool","name":"OpenPipe account"}
+      ],
+      "step": [
+        {"@type":"HowToStep","position":1,"name":"Export dataset","text":"Pull JSONL from OpenPipe dashboard or API","url":"https://kolm.ai/learn/from-openpipe#step-1"},
+        {"@type":"HowToStep","position":2,"name":"Normalize shape","text":"OpenPipe messages -> kolm {input, output} pairs","url":"https://kolm.ai/learn/from-openpipe#step-2"},
+        {"@type":"HowToStep","position":3,"name":"Compile","text":"kolm compile --spec spec.json --examples train.jsonl","url":"https://kolm.ai/learn/from-openpipe#step-3"},
+        {"@type":"HowToStep","position":4,"name":"Verify and ship","text":"kolm verify; kolm publish","url":"https://kolm.ai/learn/from-openpipe#step-4"}
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type":"ListItem","position":1,"name":"kolm","item":"https://kolm.ai/"},
+        {"@type":"ListItem","position":2,"name":"Learn","item":"https://kolm.ai/learn"},
+        {"@type":"ListItem","position":3,"name":"From OpenPipe","item":"https://kolm.ai/learn/from-openpipe"}
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669}
+  body{background:var(--bg);color:var(--ink);font:16.5px/1.7 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .paper{padding:64px 0 48px}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 16px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:38px;line-height:1.12;font-weight:500;letter-spacing:-0.02em;margin:0 0 12px;max-width:680px}
+  .subtitle{font-size:16.5px;color:var(--ink-mute);margin:0 0 14px;line-height:1.55;max-width:640px}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:8px 0 0;letter-spacing:0.04em}
+  .promise{margin:32px 0 0;padding:20px 24px;border-left:2px solid var(--accent);background:rgba(16,185,129,0.04);font-size:15.5px;line-height:1.65;color:var(--ink-mute)}
+  .promise b{color:var(--ink);font-weight:500}
+  h2{font-size:21px;font-weight:500;letter-spacing:-0.01em;margin:48px 0 12px;color:var(--ink)}
+  .step-head{display:flex;align-items:baseline;gap:14px;margin:48px 0 12px}
+  .step-num{font-family:var(--mono);font-size:12px;color:var(--ink-faint);letter-spacing:0.16em;text-transform:uppercase;border:1px solid var(--line);padding:4px 10px;border-radius:4px;flex-shrink:0}
+  .step-head h2{margin:0;flex:1}
+  .step-time{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:0.04em;white-space:nowrap}
+  p{color:var(--ink-mute);margin:0 0 14px}
+  p b{color:var(--ink);font-weight:500}
+  ul,ol{color:var(--ink-mute);margin:0 0 16px;padding-left:24px}
+  li{margin:0 0 6px}
+  li b{color:var(--ink);font-weight:500}
+  code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  pre{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px 18px;overflow:auto;font-family:var(--mono);font-size:13px;line-height:1.55;margin:0 0 14px;color:var(--ink);position:relative}
+  pre code{background:transparent;border:0;padding:0}
+  pre.cmd::before{content:"$";color:var(--accent);margin-right:10px;user-select:none}
+  pre.out{background:transparent;border-style:dashed;border-color:rgba(16,185,129,0.18);color:var(--ink-mute);font-size:12.5px}
+  pre.out::before{display:none}
+  .checkpoint{margin:14px 0 24px;padding:12px 16px;background:rgba(16,185,129,0.05);border-left:2px solid var(--accent);font-family:var(--mono);font-size:12.5px;color:var(--ink-mute);line-height:1.55}
+  .checkpoint b{color:var(--accent);font-weight:500;margin-right:10px}
+  table{width:100%;border-collapse:collapse;margin:0 0 22px;font-size:14px}
+  th,td{border-bottom:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top;color:var(--ink-mute)}
+  th{color:var(--ink);font-weight:500;font-family:var(--mono);font-size:11.5px;letter-spacing:0.08em;text-transform:uppercase}
+  .actions{display:flex;gap:12px;margin:36px 0 0;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms;background:var(--bg-elev)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:32px 0;border-top:1px solid var(--line);color:var(--ink-faint);font-size:13px;margin-top:64px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:var(--ink-mute);text-decoration:none}
+  footer.site a:hover{color:var(--ink)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr);gap:18px}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500;margin:0 0 10px}
+  .footer-grid a{display:block;padding:3px 0;font-size:13px}
+  .footer-tag{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:18px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11.5px}
+  .footer-tag span{color:var(--ink-faint)}
+</style>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/use-cases">Use cases</a><a href="/docs">Docs</a><a href="/research">Research</a><a href="/enterprise">Enterprise</a><a href="/pricing">Pricing</a><a href="/signup" class="cta">Get API key &rarr;</a></nav></div></header>
+<main>
+<section class="paper">
+<div class="wrap">
+
+<p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/learn">learn</a> &nbsp;/&nbsp; from openpipe</p>
+
+<h1>From OpenPipe to .kolm.</h1>
+<p class="subtitle">Your dataset is the asset, not the fine-tune. This guide pulls your OpenPipe training data, compiles it into a signed offline <code>.kolm</code>, and verifies the K-score against the same held-out cases. Forty-five minutes end to end.</p>
+<p class="stamp">migration guide . v1.0 . valid for OpenPipe export format 2024+</p>
+
+<div class="promise">
+<b>What changes.</b> OpenPipe serves your fine-tuned LoRA from their cloud; you pay per token and your traffic is round-tripped through their API. <code>.kolm</code> is a 30 KB file on your disk that runs locally, has a K-score, is HMAC-signed, and unzips into plain JavaScript recipes. You own the artifact; you can host it; you can ship it on hardware that never touches the internet.
+</div>
+
+<h2 style="margin-top:48px">Mental model</h2>
+<table>
+  <thead>
+    <tr><th>OpenPipe</th><th>.kolm equivalent</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Fine-tune (LoRA on hosted base)</td><td><code>kolm compile</code> output: <code>recipe + base ref</code></td></tr>
+    <tr><td>Dataset (uploaded JSONL)</td><td><code>kolm compile --examples</code></td></tr>
+    <tr><td>Eval set</td><td><code>kolm eval --examples holdout.jsonl</code></td></tr>
+    <tr><td>API endpoint</td><td><code>kolm run my.kolm</code> (local) or <code>kolm serve</code> (HTTP)</td></tr>
+    <tr><td>Per-token billing</td><td>Zero. Artifact runs on your hardware.</td></tr>
+    <tr><td>Cloud-only inference</td><td>Local-first, optional cloud rent through <code>kolm</code> servers.</td></tr>
+  </tbody>
+</table>
+
+<div class="step-head">
+  <span class="step-num">step 1</span>
+  <h2 id="step-1">Export the dataset.</h2>
+  <span class="step-time">5 min</span>
+</div>
+<p>OpenPipe stores your training data as chat-format JSONL. Pull the latest snapshot of your dataset:</p>
+<ul>
+  <li><b>Dashboard:</b> Datasets &rarr; pick the dataset &rarr; <code>Download JSONL</code></li>
+  <li><b>API:</b> <code>GET /api/v1/datasets/{id}/export</code> with your OpenPipe API key</li>
+</ul>
+
+<pre class="cmd">curl -H "Authorization: Bearer $OPENPIPE_KEY" \
+  https://app.openpipe.ai/api/v1/datasets/your-dataset-id/export \
+  &gt; openpipe-export.jsonl</pre>
+
+<pre class="cmd">wc -l openpipe-export.jsonl</pre>
+<pre class="out">  4287 openpipe-export.jsonl</pre>
+
+<div class="checkpoint"><b>checkpoint</b> the file should be valid JSONL; each line is <code>{"messages":[...]}</code>.</div>
+
+<div class="step-head">
+  <span class="step-num">step 2</span>
+  <h2 id="step-2">Normalize to .kolm shape.</h2>
+  <span class="step-time">10 min</span>
+</div>
+<p>OpenPipe emits OpenAI chat messages; kolm expects <code>{input, output}</code> pairs. Convert with a 12-line script. The pattern: the last assistant turn becomes <code>output</code>, everything before it becomes <code>input</code>.</p>
+
+<pre class="cmd">cat &gt; convert.mjs &lt;&lt;'EOF'
+import fs from 'node:fs';
+const lines = fs.readFileSync('openpipe-export.jsonl','utf8').split('\n').filter(Boolean);
+const out = lines.map(line =&gt; {
+  const row = JSON.parse(line);
+  const msgs = row.messages || [];
+  const lastAssistant = [...msgs].reverse().find(m =&gt; m.role === 'assistant');
+  const prompt = msgs.filter(m =&gt; m.role !== 'assistant').map(m =&gt; m.content).join('\n');
+  return JSON.stringify({ input: prompt, output: (lastAssistant && lastAssistant.content) || '' });
+}).join('\n');
+fs.writeFileSync('train.jsonl', out + '\n');
+console.log('wrote train.jsonl with', lines.length, 'rows');
+EOF
+node convert.mjs</pre>
+<pre class="out">wrote train.jsonl with 4287 rows</pre>
+
+<p>Split 90/10 into train and held-out eval so you can measure regression honestly:</p>
+
+<pre class="cmd">head -n 3858 train.jsonl &gt; train-90.jsonl
+tail -n 429 train.jsonl &gt; holdout-10.jsonl</pre>
+
+<p>Validate the shape:</p>
+<pre class="cmd">kolm seeds validate train-90.jsonl</pre>
+<pre class="out">ok. 3858 rows, shape {input, output}</pre>
+
+<div class="checkpoint"><b>checkpoint</b> if <code>kolm seeds validate</code> reports <code>parse error</code> or <code>CSV detected</code>, fix the source format before continuing.</div>
+
+<div class="step-head">
+  <span class="step-num">step 3</span>
+  <h2 id="step-3">Write the spec.</h2>
+  <span class="step-time">10 min</span>
+</div>
+<p>OpenPipe inferred the task from your dataset. kolm wants you to state it explicitly so the K-score is honest. Start from a template that matches the shape of your OpenPipe fine-tune.</p>
+
+<table>
+  <thead><tr><th>If your OpenPipe model is doing&hellip;</th><th>Use template</th></tr></thead>
+  <tbody>
+    <tr><td>Customer-support routing, tagging, intent classification</td><td><code>classifier</code></td></tr>
+    <tr><td>Pulling structured fields from forms or documents</td><td><code>extractor</code></td></tr>
+    <tr><td>Long-form summary or rewriting</td><td><code>summarizer</code></td></tr>
+    <tr><td>PII removal, content filtering</td><td><code>redactor</code></td></tr>
+    <tr><td>Anything else</td><td><code>blank</code></td></tr>
+  </tbody>
+</table>
+
+<pre class="cmd">kolm new my-migration --from classifier
+# edit my-migration.spec.json: set task, categories, gates
+$EDITOR my-migration.spec.json</pre>
+
+<p>A minimal spec for a 5-class router (mirrors OpenPipe's chat-format training shape):</p>
+
+<pre><code>{
+  "task": "route incoming customer messages to a category",
+  "shape": { "input": "string", "output": { "label": "string" } },
+  "labels": ["billing","bug","auth","feature_request","how_to"],
+  "gates": { "K_min": 0.85, "size_max_kb": 200, "p50_ms_max": 50 }
+}</code></pre>
+
+<div class="step-head">
+  <span class="step-num">step 4</span>
+  <h2 id="step-4">Compile.</h2>
+  <span class="step-time">5 min</span>
+</div>
+<p>Compile against your normalized data. The compiler will fit a recipe, score it on the held-out set, and sign the artifact.</p>
+
+<pre class="cmd">kolm compile \
+  --spec my-migration.spec.json \
+  --examples train-90.jsonl \
+  --eval holdout-10.jsonl \
+  --out my-migration.kolm</pre>
+<pre class="out">compiling . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+K-score for my-migration.kolm: 0.911  (gate &gt;= 0.85 - pass)
+size:        47.2 KB
+p50 latency: 8 ms
+verifying signature . ok
+artifact written: my-migration.kolm</pre>
+
+<div class="checkpoint"><b>checkpoint</b> if K-score is below the gate, run <code>kolm eval my-migration.kolm --examples holdout-10.jsonl --trace</code> to see which cases regressed; the trace lists every miss with expected vs got.</div>
+
+<div class="step-head">
+  <span class="step-num">step 5</span>
+  <h2 id="step-5">Compare to OpenPipe head-to-head.</h2>
+  <span class="step-time">10 min</span>
+</div>
+<p>Run both on the same held-out cases. This is the only fair benchmark.</p>
+
+<pre class="cmd">kolm eval my-migration.kolm --examples holdout-10.jsonl --json &gt; kolm-results.json
+node compare-openpipe.mjs # your existing OpenPipe eval script
+diff &lt;(jq -r '.cases[].got' kolm-results.json) &lt;(jq -r '.got' openpipe-results.jsonl)</pre>
+
+<p>Latency comparison on the same machine:</p>
+<table>
+  <thead><tr><th>Metric</th><th>OpenPipe</th><th>.kolm (local)</th></tr></thead>
+  <tbody>
+    <tr><td>p50 latency</td><td>~300 ms (network)</td><td>&lt;10 ms</td></tr>
+    <tr><td>p99 latency</td><td>~1.2 s</td><td>~25 ms</td></tr>
+    <tr><td>Per-1k cost</td><td>$0.10 - $1.50</td><td>$0</td></tr>
+    <tr><td>Offline</td><td>No</td><td>Yes</td></tr>
+    <tr><td>Audit chain</td><td>Vendor logs</td><td>HMAC chain, your control</td></tr>
+  </tbody>
+</table>
+
+<div class="step-head">
+  <span class="step-num">step 6</span>
+  <h2 id="step-6">Ship.</h2>
+  <span class="step-time">5 min</span>
+</div>
+<p>Three deploy paths, pick one:</p>
+
+<p><b>Local CLI</b> for batch jobs:</p>
+<pre class="cmd">echo {"input":"reset my password please"} | kolm run my-migration.kolm</pre>
+
+<p><b>HTTP server</b> as a drop-in OpenPipe API replacement:</p>
+<pre class="cmd">kolm serve my-migration.kolm --port 8080</pre>
+<pre class="out">listening on http://127.0.0.1:8080
+POST /v1/run    runs the artifact against {input: ...}</pre>
+
+<p><b>Hub publish</b> for team sharing with a verifiable SHA-pinned download URL:</p>
+<pre class="cmd">kolm publish my-migration.kolm --private</pre>
+
+<h2 style="margin-top:48px">Things that change</h2>
+<ul>
+  <li><b>Latency drops 10-50x.</b> You stop paying the network round-trip.</li>
+  <li><b>Cost goes to zero per inference.</b> The fixed cost is one <code>kolm compile</code> and the laptop you already own.</li>
+  <li><b>Data stops leaving your boundary.</b> The artifact runs where you put it. No third-party log retention.</li>
+  <li><b>You get a K-score and a signature.</b> OpenPipe gives you a fine-tune ID; kolm gives you a number you can put in a security review.</li>
+</ul>
+
+<h2>Things that stay the same</h2>
+<ul>
+  <li><b>Your dataset is still the source of truth.</b> You moved it, you did not rebuild it.</li>
+  <li><b>Your evaluation discipline.</b> Same held-out set, same metric, same definition of <i>better</i>.</li>
+  <li><b>Your model selection.</b> If your OpenPipe fine-tune was based on a particular open model, you can pin the same base in your kolm spec.</li>
+</ul>
+
+<h2>If something went wrong</h2>
+<ul>
+  <li><b>OpenPipe export is OpenAI chat-completion format with <code>tools</code> calls:</b> map each tool call to a JSON output field in your spec's <code>shape.output</code>; the included convert.mjs assumes plain text output.</li>
+  <li><b>K-score below 0.85:</b> your spec is under-constrained or the data is noisier than expected. Try <code>kolm tune my-migration.kolm --examples train-90.jsonl</code> to fit recipe parameters automatically.</li>
+  <li><b>Latency higher than expected:</b> <code>kolm inspect my-migration.kolm</code> shows runtime mode; switch <code>"runtime": "local"</code> in the spec for offline execution.</li>
+</ul>
+
+<div class="actions">
+  <a href="/learn/first-kolm-in-5-minutes" class="btn primary">Start: first .kolm in 5 min &rarr;</a>
+  <a href="/learn/from-predibase" class="btn">Migrate from Predibase</a>
+  <a href="/learn/from-raw-lora" class="btn">Migrate from raw LoRA</a>
+</div>
+
+</div>
+</section>
+</main>
+<footer class="site">
+<div class="wrap">
+<div class="footer-grid">
+<div><h4>Product</h4><a href="/">Home</a><a href="/quickstart">Quickstart</a><a href="/learn">Learn</a><a href="/pricing">Pricing</a><a href="/hub">Hub</a></div>
+<div><h4>Spec</h4><a href="/spec">Spec</a><a href="/spec/rs-1">RS-1</a><a href="/spec/codebase">Codebase</a><a href="/spec/kolm-format-v1">.kolm v1</a></div>
+<div><h4>Verticals</h4><a href="/healthcare">Healthcare</a><a href="/finance">Finance</a><a href="/legal">Legal</a><a href="/edge">Edge</a><a href="/enterprise">Enterprise</a></div>
+<div><h4>Docs</h4><a href="/docs/api">API</a><a href="/docs/k-score-methodology">K-score</a><a href="/cookbook">Cookbook</a></div>
+<div><h4>Company</h4><a href="/manifesto">Manifesto</a><a href="mailto:hello@kolm.ai">Contact</a><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></div>
+</div>
+<div class="footer-tag"><span>kolm . an AI compiler . one file you own</span><span>Apache-2.0 . 2026</span></div>
+</div>
+</footer>
+</body>
+</html>

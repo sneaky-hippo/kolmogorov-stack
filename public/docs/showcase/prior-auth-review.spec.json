@@ -1,0 +1,36 @@
+{
+  "job_id": "job_prior_auth_review_v1",
+  "task": "Review medical-necessity documentation and output a structured prior-auth recommendation. Redact all PHI before inference. Output { recommendation, criteria_met, criteria_unmet, redacted_summary, confidence }.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_prior_auth_v1",
+      "name": "prior-auth-review",
+      "source": "function generate(input, lib){ var req = (input && typeof input === 'object') ? input : {}; var notes = String(req.clinical_notes || '').toLowerCase(); var trials = Array.isArray(req.prior_treatments) ? req.prior_treatments : []; var rules = (lib.pack && lib.pack.criteria) || {}; var cpts = Array.isArray(req.requested_cpt) ? req.requested_cpt : []; var met = []; var unmet = []; var threshold = 2; for (var i=0;i<cpts.length;i++){ var rule = rules[String(cpts[i])] || []; for (var j=0;j<rule.length;j++){ var crit = rule[j]; var hit = false; if (crit.requires_trials){ for (var k=0;k<crit.requires_trials.length;k++){ if (trials.indexOf(crit.requires_trials[k]) >= 0) { hit = true; break; } } } if (crit.note_keyword && notes.indexOf(String(crit.note_keyword).toLowerCase()) >= 0) hit = true; if (hit) met.push(crit.id); else unmet.push(crit.id); } } var recommendation = met.length >= threshold && unmet.length === 0 ? 'Approve' : (met.length === 0 ? 'Deny' : 'Request more info'); return { recommendation: recommendation, criteria_met: met, criteria_unmet: unmet, redacted_summary: 'PHI redacted; criteria match summarized.', confidence: met.length / Math.max(1, met.length + unmet.length), requires_md_review: recommendation === 'Request more info' }; }",
+      "tags": ["health-insurance", "prior-auth", "review"],
+      "schema": {
+        "input": { "auth_request_id": "string", "requested_cpt": "array", "clinical_notes": "string", "prior_treatments": "array" },
+        "output": { "recommendation": "string", "criteria_met": "array", "criteria_unmet": "array", "confidence": "number" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "Starter medical-necessity criteria. Tenants extend criteria via params per plan.",
+    "criteria": {
+      "70553": [
+        { "id": "PA-MRI-BRAIN-3.1", "requires_trials": ["trial_NSAID", "trial_triptan"] },
+        { "id": "PA-MRI-BRAIN-3.4", "note_keyword": "refractory" }
+      ]
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      { "id": "approve_mri_refractory", "input": { "requested_cpt": ["70553"], "clinical_notes": "patient refractory to first-line", "prior_treatments": ["trial_NSAID", "trial_triptan"] }, "expected": { "recommendation": "Approve" } },
+      { "id": "deny_no_trial",          "input": { "requested_cpt": ["70553"], "clinical_notes": "first visit", "prior_treatments": [] }, "expected": { "recommendation": "Deny" } }
+    ],
+    "coverage": 1.0
+  }
+}

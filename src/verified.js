@@ -21,10 +21,18 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 // Call any Anthropic model k times in parallel. Returns array of completions.
 // We sample with temperature > 0 deliberately — the whole point is independent draws.
+//
+// Prompt cache: the system prelude is wrapped as a cache-controlled block so a
+// tenant replaying the same artifact within Anthropic's 5-min ephemeral window
+// pays ~10% of input cost on hit (reads) and ~125% on the first call (writes).
+// Anthropic silently ignores cache_control when content falls below the minimum
+// cacheable size (1024 tokens for sonnet/opus), so this is safe for short prompts.
 async function sampleAnthropic({ prompt, system, model, k, temperature, max_tokens }) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('ANTHROPIC_API_KEY required for verified-inference');
   model = model || process.env.ANTHROPIC_MODEL || 'claude-opus-4-7';
+  const systemText = system || 'You are a code generator. Respond with ONLY runnable JavaScript: a single anonymous function expression `function (...) { ... }` and nothing else. No markdown fences, no commentary.';
+  const systemBlocks = [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }];
   const sample = async (i) => {
     const res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
@@ -37,7 +45,7 @@ async function sampleAnthropic({ prompt, system, model, k, temperature, max_toke
         model,
         max_tokens: max_tokens || 2048,
         temperature: temperature ?? 0.7,
-        system: system || 'You are a code generator. Respond with ONLY runnable JavaScript: a single anonymous function expression `function (...) { ... }` and nothing else. No markdown fences, no commentary.',
+        system: systemBlocks,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -129,10 +137,15 @@ export async function verifiedInference({ prompt, system, signature, test_cases,
   const elapsed_ms = Math.round(Number(process.hrtime.bigint() - t0) / 1e6);
   const verified = best.passes === test_cases.length;
 
-  // Cost accounting — Opus 4.7 input $15/Mtok, output $75/Mtok. Approximate.
+  // Cost accounting — Opus 4.7 input $15/Mtok, output $75/Mtok.
+  // Prompt cache: writes $18.75/Mtok (1.25x input), reads $1.50/Mtok (0.1x input).
   const total_input_tokens = samples.reduce((s, x) => s + (x.usage.input_tokens || 0), 0);
   const total_output_tokens = samples.reduce((s, x) => s + (x.usage.output_tokens || 0), 0);
-  const cost_usd = total_input_tokens * 15e-6 + total_output_tokens * 75e-6;
+  const cache_creation_tokens = samples.reduce((s, x) => s + (x.usage.cache_creation_input_tokens || 0), 0);
+  const cache_read_tokens = samples.reduce((s, x) => s + (x.usage.cache_read_input_tokens || 0), 0);
+  const cost_usd = total_input_tokens * 15e-6 + total_output_tokens * 75e-6 + cache_creation_tokens * 18.75e-6 + cache_read_tokens * 1.5e-6;
+  const cache_savings_usd = cache_read_tokens * (15e-6 - 1.5e-6); // what reads would have cost at full input rate, minus what they did cost
+  const cache_hit = cache_read_tokens > 0;
 
   // Receipt: hash the verifier (the test cases), the chosen candidate, and the result.
   const receipt = {
@@ -146,6 +159,10 @@ export async function verifiedInference({ prompt, system, signature, test_cases,
     passes: best.passes || 0,
     total: test_cases.length,
     verified,
+    cache_hit,
+    cache_read_tokens,
+    cache_creation_tokens,
+    cache_savings_usd: Number(cache_savings_usd.toFixed(6)),
     issued_at: new Date().toISOString(),
   };
 
@@ -176,6 +193,9 @@ export async function recipeAsJudge({ prompt, system, verifier_concept_id, verif
     return { index: s.index, text, label, accepted: deepEqual(label, expected) };
   });
   const winner = scored.find(x => x.accepted) || scored[0];
+  const cache_creation_tokens = samples.reduce((s, x) => s + (x.usage?.cache_creation_input_tokens || 0), 0);
+  const cache_read_tokens = samples.reduce((s, x) => s + (x.usage?.cache_read_input_tokens || 0), 0);
+  const cache_savings_usd = cache_read_tokens * (15e-6 - 1.5e-6);
   return {
     verified: !!winner.accepted,
     chosen: { text: winner.text, label: winner.label },
@@ -188,6 +208,10 @@ export async function recipeAsJudge({ prompt, system, verifier_concept_id, verif
       verifier_source_hash: found.version.evaluation?.source_hash || null,
       expected,
       k,
+      cache_hit: cache_read_tokens > 0,
+      cache_read_tokens,
+      cache_creation_tokens,
+      cache_savings_usd: Number(cache_savings_usd.toFixed(6)),
       issued_at: new Date().toISOString(),
     },
   };

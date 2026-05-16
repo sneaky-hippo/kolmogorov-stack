@@ -8,8 +8,8 @@
 //   { "mcpServers": { "recipe": { "command": "recipe-mcp" } } }
 //
 // Env:
-//   RECIPE_API_KEY    bearer token (or KOLMOGOROV_API_KEY)
-//   RECIPE_BASE_URL   override API base
+//   KOLM_API_KEY      bearer token (preferred; also RECIPE_API_KEY, KOLMOGOROV_API_KEY)
+//   KOLM_BASE_URL     override API base (also RECIPE_BASE_URL); default https://kolm.ai
 //
 // Implementation note: this server speaks the MCP stdio protocol directly
 // (line-delimited JSON-RPC) so it has zero runtime dependencies beyond the
@@ -20,7 +20,7 @@ import { createInterface } from 'node:readline';
 import RecipeClient from '@kolmogorov/recipe';
 
 const client = new RecipeClient();
-const SERVER_INFO = { name: 'recipe', version: '0.1.0' };
+const SERVER_INFO = { name: 'recipe', version: '0.2.0' };
 
 // --- Tool definitions (JSON Schema) ---------------------------------------
 const TOOLS = [

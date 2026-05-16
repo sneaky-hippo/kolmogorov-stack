@@ -1,0 +1,155 @@
+{
+  "job_id": "job_kolm_code_issue_v1",
+  "task": "code review issue classifier — routes review comments into security / performance / style / test / docs / refactor",
+  "base_model": "none",
+  "recipes": [
+    {
+      "id": "rcp_code_issue_v1",
+      "name": "code issue classifier",
+      "source": "function generate(input, lib) {\n  var text = (typeof input === 'string') ? input : (input && input.text) || '';\n  if (typeof text !== 'string') text = String(text);\n  var cats = [];\n  var packCats = (lib.pack && lib.pack.categories) || [];\n  for (var i=0;i<packCats.length;i++) cats.push(packCats[i]);\n  var tenantCats = (lib.params && lib.params.extra_categories) || [];\n  for (var j=0;j<tenantCats.length;j++) cats.push(tenantCats[j]);\n  var lower = text.toLowerCase();\n  var scores = {};\n  for (var k=0;k<cats.length;k++){ var c=cats[k]; if (!c||!c.name||!Array.isArray(c.keywords)) continue;\n    var weight = (typeof c.weight==='number'&&c.weight>0) ? c.weight : 1;\n    var score = 0; for (var n=0;n<c.keywords.length;n++){ var kw=String(c.keywords[n]||'').toLowerCase(); if (!kw) continue; var idx=0,hits=0; while ((idx=lower.indexOf(kw,idx))!==-1){ hits++; idx+=kw.length; } score += hits*weight; }\n    if (score>0) scores[c.name] = (scores[c.name]||0) + score;\n  }\n  var sortedNames = Object.keys(scores).sort(function(a,b){ if (scores[b]!==scores[a]) return scores[b]-scores[a]; return a<b?-1:1; });\n  var fallback = (lib.pack && lib.pack.fallback_label) || 'other';\n  var top = sortedNames.length ? sortedNames[0] : fallback;\n  return { label: top, score: scores[top]||0, scores: scores };\n}",
+      "tags": [
+        "classification",
+        "code",
+        "review",
+        "devtools"
+      ],
+      "schema": {
+        "input": {
+          "text": "string"
+        },
+        "output": {
+          "label": "string",
+          "score": "number",
+          "scores": "object"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "code review comment categories",
+    "fallback_label": "other",
+    "categories": [
+      {
+        "name": "security",
+        "keywords": [
+          "sql injection",
+          "xss",
+          "csrf",
+          "auth bypass",
+          "secret leak",
+          "plaintext password",
+          "hardcoded token",
+          "cve",
+          "rce",
+          "unsafe deserialization",
+          "token in url"
+        ]
+      },
+      {
+        "name": "performance",
+        "keywords": [
+          "n+1",
+          "o(n^2)",
+          "slow query",
+          "unbounded loop",
+          "allocates",
+          "memory leak",
+          "blocking call",
+          "sync in async",
+          "redundant fetch",
+          "cpu hot path"
+        ]
+      },
+      {
+        "name": "style",
+        "keywords": [
+          "naming",
+          "snake_case",
+          "camelcase",
+          "inconsistent",
+          "lint",
+          "prettier",
+          "unused import",
+          "whitespace",
+          "trailing comma"
+        ]
+      },
+      {
+        "name": "test",
+        "keywords": [
+          "missing test",
+          "no coverage",
+          "flaky",
+          "mock the",
+          "assertion",
+          "expect(",
+          "unit test",
+          "integration test",
+          "jest",
+          "pytest"
+        ]
+      },
+      {
+        "name": "docs",
+        "keywords": [
+          "docstring",
+          "comment",
+          "unclear",
+          "readme",
+          "jsdoc",
+          "document this",
+          "update docs",
+          "changelog"
+        ]
+      },
+      {
+        "name": "refactor",
+        "keywords": [
+          "extract helper",
+          "duplicate",
+          "split this function",
+          "magic number",
+          "rename",
+          "dead code",
+          "inline this",
+          "split file"
+        ]
+      }
+    ]
+  },
+  "index": {
+    "spec": "kolm-index-1",
+    "by_keyword": {
+      "classify": "rcp_code_issue_v1",
+      "code": "rcp_code_issue_v1"
+    },
+    "by_recipe": {
+      "rcp_code_issue_v1": [
+        "classify",
+        "code",
+        "devtools"
+      ]
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "n": 1,
+    "cases": [
+      {
+        "id": "sec",
+        "input": {
+          "text": "this looks like a sql injection vector"
+        },
+        "expected": {
+          "label": "security"
+        }
+      }
+    ],
+    "coverage": 1
+  },
+  "training_stats": {
+    "pass_rate_positive": 1,
+    "latency_p50_us": 85
+  }
+}

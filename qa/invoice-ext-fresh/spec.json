@@ -1,0 +1,57 @@
+{
+  "job_id": "job_invoice_ext_v1",
+  "task": "extract invoice line items (description, quantity, unit_price, total) from a free-text line",
+  "recipes": [
+    {
+      "id": "rcp_invoice_ext",
+      "name": "invoice-line-item-extractor",
+      "source_file": "./recipe.js"
+    }
+  ],
+  "evals": {
+    "spec": "rs-1-evals",
+    "n": 8,
+    "cases": [
+      {
+        "id": "widget-x3",
+        "input": { "text": "Widget x 3 @ $4.99 = $14.97" },
+        "expected": { "description": "Widget", "quantity": 3, "unit_price": 4.99, "total": 14.97 }
+      },
+      {
+        "id": "hours-billable",
+        "input": { "text": "5 hours billable, $120/hr, $600.00" },
+        "expected": { "quantity": 5, "unit_price": 120, "total": 600 }
+      },
+      {
+        "id": "consulting-hrs",
+        "input": { "text": "Consulting - 4 hrs @ $150/hr" },
+        "expected": { "quantity": 4, "unit_price": 150, "total": 600 }
+      },
+      {
+        "id": "three-widgets-at",
+        "input": { "text": "3 widgets at $4.99 each = $14.97" },
+        "expected": { "quantity": 3, "unit_price": 4.99, "total": 14.97 }
+      },
+      {
+        "id": "item-2x950",
+        "input": { "text": "Item: 2 x $9.50" },
+        "expected": { "description": "Item", "quantity": 2, "unit_price": 9.5, "total": 19 }
+      },
+      {
+        "id": "widget-x5-only",
+        "input": { "text": "Widget x 5 @ $2.00" },
+        "expected": { "description": "Widget", "quantity": 5, "unit_price": 2, "total": 10 }
+      },
+      {
+        "id": "monitor-line",
+        "input": { "text": "Monitor 27in x 2 @ $349.00 = $698.00" },
+        "expected": { "description": "Monitor 27in", "quantity": 2, "unit_price": 349, "total": 698 }
+      },
+      {
+        "id": "ten-hours",
+        "input": { "text": "10 hours of QA, $85/hr, $850.00" },
+        "expected": { "quantity": 10, "unit_price": 85, "total": 850 }
+      }
+    ]
+  }
+}

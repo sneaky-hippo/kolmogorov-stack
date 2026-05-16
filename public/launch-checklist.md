@@ -84,7 +84,7 @@ A fresh tenant must complete this gauntlet before launch goes live:
 3. Make 1000 calls through the proxy with the customer's own Anthropic key.
 4. `kolm capture status` shows ≥1000 verified pairs.
 5. `kolm distill dev --base phi-3-mini --out support.kolm` returns a signed `.kolm`.
-6. `kolm verify support.kolm` walks the receipt chain green.
+6. `kolm inspect support.kolm` walks the receipt chain green.
 7. `kolm bench --reproduce swebench-lite-n150 --seed 42 --n 5` finishes ≤90 minutes for ≤$30.
 8. Upgrade to Team via Stripe checkout (test mode); plan flip lands via webhook.
 9. Cancel; tenant downgrades to free after grace period.

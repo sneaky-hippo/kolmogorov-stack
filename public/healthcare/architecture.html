@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Healthcare reference architecture &middot; PHI stays inside the customer-hosted bridge &middot; kolm</title>
+<meta name="description" content="The deployment diagram a privacy officer needs. PHI stays in the customer VPC, the compile bridge runs inside, the .kolm artifact ships out without payloads, audit chain anchors to a customer-managed key. Same diagram the BAA references.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/healthcare/architecture">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#faf2e1;--good:#7ef0d2;--amber:#d6a65a;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif}
+  [data-theme=light]{--bg:#f7f4ec;--bg-elev:#ffffff;--bg-card:#fafaf6;--line:rgba(0,0,0,0.08);--line-strong:rgba(0,0,0,0.14);--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--accent:#1f2429;--good:#059669;}
+  *{box-sizing:border-box}html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 32px}.wrap-tight{max-width:760px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap,.wrap-tight{padding:0 20px}}
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .brand{font-family:var(--mono);font-size:13px;letter-spacing:0.04em;font-weight:600}
+  header.site nav{display:flex;gap:22px;font-family:var(--mono);font-size:12.5px;color:var(--ink-mute)}
+  header.site nav a:hover{color:var(--ink)}
+  @media(max-width:760px){header.site nav{display:none}}
+  section{padding:64px 0;border-bottom:1px solid var(--line)}
+  section.hero{padding:84px 0 60px}
+  h1{font-size:46px;line-height:1.06;letter-spacing:-0.02em;margin:0 0 18px;font-weight:600}
+  h2{font-size:28px;line-height:1.18;letter-spacing:-0.012em;margin:0 0 14px;font-weight:600}
+  h3{font-size:16px;line-height:1.35;margin:0 0 6px;font-weight:600}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:0.08em;color:var(--ink-faint);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:14px}
+  .eyebrow .num{color:var(--accent)}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border:1px solid var(--line-strong);border-radius:99px;font-family:var(--mono);font-size:11px;letter-spacing:0.04em;color:var(--ink-mute);background:var(--bg-elev)}
+  .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--good)}
+  .lede{font-size:19px;line-height:1.5;color:var(--ink-mute);max-width:620px;margin:22px 0 28px}
+
+  .diagram{background:var(--bg-elev);border:1px solid var(--line-strong);padding:28px 24px;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--ink);white-space:pre;overflow-x:auto;margin:24px 0}
+  @media(max-width:760px){.diagram{font-size:10.5px;padding:18px 14px}}
+
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:28px 0}
+  .grid-3 .card{background:var(--bg-elev);border:1px solid var(--line);padding:20px 18px}
+  .grid-3 .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px}
+  .grid-3 p{margin:6px 0 0;font-size:13px;color:var(--ink-mute);line-height:1.55}
+  @media(max-width:760px){.grid-3{grid-template-columns:1fr}}
+
+  table.bom{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;border:1px solid var(--line);background:var(--bg-elev);margin:20px 0}
+  table.bom thead th{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line-strong);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-faint)}
+  table.bom tbody td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  table.bom tbody tr:last-child td{border-bottom:none}
+  table.bom .ok{color:var(--good)}
+
+  ol.steps{counter-reset:s;padding:0;list-style:none;margin:18px 0}
+  ol.steps li{counter-increment:s;padding:14px 0 14px 48px;border-bottom:1px solid var(--line);position:relative}
+  ol.steps li:last-child{border-bottom:none}
+  ol.steps li::before{content:counter(s,decimal-leading-zero);position:absolute;left:0;top:14px;font-family:var(--mono);font-size:11px;color:var(--good);letter-spacing:0.04em}
+  ol.steps li b{display:block;font-size:14px;margin-bottom:4px;font-weight:600}
+  ol.steps li span{color:var(--ink-mute);font-size:13.5px}
+
+  footer.site{padding:60px 0 40px;background:var(--bg);border-top:1px solid var(--line)}
+  footer.site .row{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)}
+  footer.site a{color:var(--ink-mute)}
+  @media(max-width:760px){footer.site .row{flex-direction:column;gap:18px}}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap row">
+    <a href="/" class="brand">kolm</a>
+    <nav>
+      <a href="/health-insurance">Health insurance</a>
+      <a href="/baa">BAA</a>
+      <a href="/security#hipaa-mapping">HIPAA mapping</a>
+      <a href="/subprocessors">Subprocessors</a>
+      <a href="/pricing">Pricing</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap-tight">
+    <span class="pill"><span class="dot"></span>BAA-aligned &middot; PHI stays inside the customer-hosted bridge &middot; auditor-ready</span>
+    <h1 style="margin-top:24px">Healthcare reference architecture.</h1>
+    <p class="lede">The deployment diagram a privacy officer needs. PHI stays inside the customer environment, the compile bridge runs locally, the .kolm artifact ships out without payloads. Same diagram <a href="/baa" style="color:var(--good)">Schedule 1 of the BAA</a> references.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">01</span><span>Trust boundary</span></div>
+    <h2>What crosses the line, what doesn't.</h2>
+
+<div class="diagram">  +======================================================================+
+  |  CUSTOMER VPC  (us-east-1 &middot; CMK = kms://customer-managed)             |
+  |                                                                        |
+  |  +-----------------+      +----------------------+      +-----------+  |
+  |  |   Seed store    | ---&gt; |  kolm compile bridge | ---&gt; |  .kolm    |  |
+  |  |   (PHI, EHR)    |      |  (LoRA train + eval) |      |  artifact |  |
+  |  +-----------------+      +----------------------+      +-----------+  |
+  |          ^                          |                        |         |
+  |          |                          | redactor pre-pass       |         |
+  |          |                          v                        v         |
+  |  +-----------------+      +----------------------+      +-----------+  |
+  |  |   Audit log     | &lt;--- |    PHI redactor      |      | Inference |  |
+  |  |   (HMAC chain)  |      |    (18 identifiers)  |      | (offline) |  |
+  |  +-----------------+      +----------------------+      +-----------+  |
+  |          ^                                                   |         |
+  +==========|===================================================|=========+
+             |                                                   |
+             | receipts only (no payload, no PHI)                | runs on
+             v                                                   | provider
+  +======================================================================+
+  |  KOLM.AI    (us-east-1)                                              |
+  |                                                                       |
+  |  +-----------+   +----------------+   +---------------------------+   |
+  |  | Receipt   |   | Compliance pkg |   |  Public registry          |   |
+  |  | chain     |   |  export        |   |  (artifact metadata only) |   |
+  |  +-----------+   +----------------+   +---------------------------+   |
+  |                                                                       |
+  +=======================================================================+
+
+  Legend:  ---&gt;  data flow      &lt;---  audit echo      ====  trust boundary</div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="lbl">Crosses the boundary</div>
+        <h3>Signed receipts only.</h3>
+        <p>Artifact SHA, K-score, run timestamps, ring HMACs. No prompts, no outputs, no PHI ever. <a href="/receipt" style="color:var(--good)">see a receipt</a></p>
+      </div>
+      <div class="card">
+        <div class="lbl">Stays inside</div>
+        <h3>PHI, EHR, seed JSONL.</h3>
+        <p>Encrypted at rest with customer KMS key. Bridge process reads, redacts, distills &mdash; never phones home with bytes.</p>
+      </div>
+      <div class="card">
+        <div class="lbl">Ships out (optional)</div>
+        <h3>The .kolm itself.</h3>
+        <p>The artifact carries LoRA weights + recipes + evals + manifest. No PHI inside. Customer chooses to push to hub or keep private.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">02</span><span>Bill of materials</span></div>
+    <table class="bom">
+      <thead><tr><th>Component</th><th>Where it runs</th><th>Owns PHI?</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Compile bridge (Docker / Helm)</td><td>Customer VPC</td><td class="ok">Yes &mdash; never leaves</td><td>One-click deploy from <a href="/enterprise/console" style="color:var(--good)">enterprise console</a></td></tr>
+        <tr><td>PHI redactor (18 identifiers)</td><td>Customer VPC</td><td>Pre-pass on every compile</td><td>Stable placeholders <code>[PATIENT]</code>, <code>[DATE-1]</code>, <code>[MRN-1]</code></td></tr>
+        <tr><td>LoRA train + eval</td><td>Customer VPC</td><td>Uses redacted seeds</td><td>K-score gate &ge; 0.95 enforced in PHI mode</td></tr>
+        <tr><td>Customer KMS key</td><td>Customer VPC</td><td>Encrypts seeds + receipts</td><td>AWS KMS &middot; Azure Key Vault &middot; HashiCorp Vault</td></tr>
+        <tr><td>HMAC receipt chain</td><td>Customer VPC</td><td>Payload-free</td><td>4 rings: compile, eval, run, audit &mdash; <a href="/spec/kolm-format-v1" style="color:var(--good)">spec</a></td></tr>
+        <tr><td>Audit log query</td><td>Customer VPC (read) + kolm.ai (write-only)</td><td>Pointer + hash only</td><td>30-day retention or customer-controlled</td></tr>
+        <tr><td>.kolm runtime</td><td>Any device the customer authorizes</td><td>Receives no PHI from kolm.ai</td><td>macOS / Linux / Windows / iOS / Android</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">03</span><span>Day-zero deploy</span></div>
+    <h2>The first compile inside a regulated environment.</h2>
+
+    <ol class="steps">
+      <li><b>Sign the BAA (10 minutes)</b><span>E-sign at <a href="/upgrade?plan=enterprise" style="color:var(--good)">/upgrade?plan=enterprise</a>. PHI Schedule auto-populated with the company name. Countersigned at click.</span></li>
+      <li><b>Deploy the bridge (20 minutes)</b><span>Enterprise console renders Docker Compose + Helm chart + Terraform. Paste into the customer's IaC repo. Bridge phones home once with a heartbeat &mdash; not PHI.</span></li>
+      <li><b>Wire the KMS key (5 minutes)</b><span>IAM role JSON generated in the console. Customer creates the role, pastes the ARN. Receipts henceforth sign with the customer-managed key.</span></li>
+      <li><b>Run the redactor cookbook (12 minutes)</b><span>Pull <a href="/cookbook/soap-redactor" style="color:var(--good)">cookbook/soap-redactor</a>, point it at 50 anonymised SOAP notes, compile. K=0.97 in our internal seed; the customer's seeds may differ.</span></li>
+      <li><b>Export the compliance package</b><span>One click in <a href="/enterprise/console" style="color:var(--good)">/enterprise/console</a> &rarr; receipts + audit log + control mapping + BAA + subprocessors in a single JSON the privacy officer can hand to an auditor.</span></li>
+    </ol>
+
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin-top:8px">Total: under 60 minutes from BAA-signed to first signed compile, on a fresh AWS account, on a Friday afternoon.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">04</span><span>Failure modes the auditor will ask about</span></div>
+    <table class="bom">
+      <thead><tr><th>What if&hellip;</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>Bridge tries to phone home with PHI</td><td class="ok">Egress harness drops the packet, ring-3 records bytes-out &gt; 0, run refuses to sign.</td></tr>
+        <tr><td>Customer KMS key is revoked</td><td class="ok">Signing fails closed. No artifact written. No run executes against the artifact &mdash; gate check requires fresh ring signature.</td></tr>
+        <tr><td>Redactor misses an identifier</td><td class="ok">Verifier <code>placeholder_consistency</code> fails. K-score below 0.95 in PHI mode. Gate refuses, artifact not produced.</td></tr>
+        <tr><td>Someone swaps the artifact</td><td class="ok">Manifest SHA in the receipt no longer matches the artifact bytes. <code> kolm inspect</code> exits 5 CHECKSUM_FAIL.</td></tr>
+        <tr><td>Auditor asks for run history</td><td class="ok">Compliance package export at <code>/v1/account/compliance-package</code> returns 90 days of receipts + chain + control mapping. Same bytes you can re-verify locally.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">05</span><span>Paperwork the privacy officer wants</span></div>
+    <div class="grid-3">
+      <div class="card"><div class="lbl">BAA + PHI Schedule</div><h3><a href="/baa" style="color:var(--ink)">/baa</a></h3><p>10-row Schedule 1: Purpose, Permitted Uses, Safeguards, Breach Notification 10 business days, Subprocessors flow-down, Return/Destruction 30 days, Audit Rights, HIPAA Security Rule Mapping, Survival.</p></div>
+      <div class="card"><div class="lbl">HIPAA Security Rule</div><h3><a href="/security#hipaa-mapping" style="color:var(--ink)">/security#hipaa-mapping</a></h3><p>22-row table: each CFR citation (&sect;164.308&ndash;&sect;164.316) mapped to the kolm control that satisfies it. Required vs Addressable flagged.</p></div>
+      <div class="card"><div class="lbl">Subprocessors</div><h3><a href="/subprocessors" style="color:var(--ink)">/subprocessors</a></h3><p>7-row table with PHI-status pills. 30-day notice for change. <a href="mailto:subprocessors@kolm.ai" style="color:var(--good)">subprocessors@kolm.ai</a> for objections.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap row">
+    <div>&copy; 2026 kolm</div>
+    <div><a href="/healthcare">healthcare</a> &middot; <a href="/health-insurance">insurance</a> &middot; <a href="/baa">baa</a> &middot; <a href="/security">security</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

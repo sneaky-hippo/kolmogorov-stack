@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#050607;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#050607;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Enterprise inquiry, structured intake &middot; kolm</title>
+<meta name="description" content="Structured intake for enterprise teams evaluating kolm. Tell us about your team and your use case. Founder-direct reply within one business day with a scoped proposal, draft BAA where applicable, and a Calendly link.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:title" content="Enterprise inquiry, structured intake &middot; kolm">
+<meta property="og:description" content="Structured intake for enterprise teams evaluating kolm. Founder-direct reply within one business day.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/enterprise/inquiry">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:title" content="Enterprise inquiry, structured intake &middot; kolm">
+<meta name="twitter:description" content="Structured intake for enterprise teams evaluating kolm. Founder-direct reply within one business day.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/enterprise/inquiry">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #faf2e1; --accent-strong: #c9c2b2;
+    --good: #7ef0d2; --warn: #d6a65a; --stop: #d77;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .inq-wrap { background:var(--bg-elev); border:1px solid var(--line); border-radius:12px; padding:32px; margin-top:8px }
+  .inq-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px 22px }
+  @media (max-width:720px){ .inq-grid{ grid-template-columns:1fr } .inq-wrap{ padding:22px } }
+  .inq-field { display:flex; flex-direction:column; gap:6px; min-width:0 }
+  .inq-field.span2 { grid-column:span 2 }
+  @media (max-width:720px){ .inq-field.span2 { grid-column:auto } }
+  .inq-field label { font-family:var(--mono); font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint); display:flex; justify-content:space-between; gap:8px }
+  .inq-field label .opt { color:var(--ink-faint); text-transform:none; letter-spacing:0; font-size:10px }
+  .inq-field label .req { color:var(--good); text-transform:none; letter-spacing:0; font-size:10px }
+  .inq-field input, .inq-field select, .inq-field textarea {
+    appearance:none; -webkit-appearance:none;
+    background:var(--bg-card); color:var(--ink); border:1px solid var(--line); border-radius:8px;
+    padding:11px 13px; font-size:14px; line-height:1.4; font-family:inherit;
+    width:100%; box-sizing:border-box; min-width:0;
+    transition:border-color 120ms, background 120ms;
+  }
+  .inq-field textarea { min-height:96px; resize:vertical; font-family:inherit }
+  .inq-field input::placeholder, .inq-field textarea::placeholder { color:var(--ink-faint) }
+  .inq-field input:focus, .inq-field select:focus, .inq-field textarea:focus {
+    outline:none; border-color:var(--ink-mute); background:#131a18;
+  }
+  .inq-field select { background-image:linear-gradient(45deg, transparent 50%, var(--ink-mute) 50%), linear-gradient(135deg, var(--ink-mute) 50%, transparent 50%); background-position:calc(100% - 16px) 18px, calc(100% - 11px) 18px; background-size:5px 5px, 5px 5px; background-repeat:no-repeat; padding-right:34px }
+  .inq-field .hint { font-size:11.5px; color:var(--ink-faint); line-height:1.5 }
+  .inq-field .count { font-family:var(--mono); font-size:10px; color:var(--ink-faint); text-align:right; margin-top:2px; min-height:1em }
+  .inq-actions { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-top:24px; padding-top:24px; border-top:1px solid var(--line) }
+  .inq-submit { appearance:none; border:1px solid rgba(236,231,220,0.44); background:var(--ink); color:#0b0d10; font-family:inherit; font-size:14px; font-weight:500; padding:11px 22px; border-radius:8px; cursor:pointer; letter-spacing:0.01em; transition:filter 120ms, transform 120ms }
+  .inq-submit:hover:not(:disabled) { filter:brightness(1.04); transform:translateY(-1px) }
+  .inq-submit:disabled { opacity:0.55; cursor:wait }
+  .inq-foot-note { font-size:12px; color:var(--ink-faint); line-height:1.5 }
+  .inq-msg { margin-top:18px; padding:14px 18px; border-radius:8px; font-size:13.5px; line-height:1.55; display:none }
+  .inq-msg.show { display:block }
+  .inq-msg.err { background:rgba(221,119,119,0.06); border:1px solid rgba(221,119,119,0.30); color:var(--stop) }
+  .inq-msg.ok  { background:rgba(126,240,210,0.05); border:1px solid rgba(126,240,210,0.28); color:var(--good) }
+  .inq-success { display:none; background:var(--bg-elev); border:1px solid var(--line); border-radius:12px; padding:32px; margin-top:8px }
+  .inq-success.show { display:block }
+  .inq-success h3 { margin:0 0 10px; font-size:20px; font-weight:500; color:var(--ink); letter-spacing:-0.01em }
+  .inq-success p { margin:0 0 14px; font-size:14px; line-height:1.55; color:var(--ink-mute) }
+  .inq-success p:last-of-type { margin:0 }
+  .inq-success .actions { display:flex; gap:12px; flex-wrap:wrap; margin-top:20px }
+  .inq-success .actions a { display:inline-block; font-size:13.5px; padding:10px 18px; border-radius:8px; border:1px solid var(--line); color:var(--ink); text-decoration:none; transition:border-color 120ms, background 120ms }
+  .inq-success .actions a.primary { background:var(--ink); color:#0b0d10; border-color:rgba(236,231,220,0.44); font-weight:500 }
+  .inq-success .actions a:hover { border-color:var(--ink-mute) }
+  .inq-success .actions a.primary:hover { filter:brightness(1.04) }
+  .inq-success .id { font-family:var(--mono); font-size:11px; color:var(--ink-faint); margin-top:18px; word-break:break-all }
+  .inq-pillrow { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px }
+  .inq-pill { font-family:var(--mono); font-size:10.5px; letter-spacing:0.04em; padding:5px 9px; border:1px solid var(--line); border-radius:5px; color:var(--ink-mute); background:var(--bg-card) }
+  .inq-noscript { background:rgba(214,166,90,0.05); border:1px solid rgba(214,166,90,0.28); color:var(--warn); padding:14px 18px; border-radius:8px; font-size:13.5px; line-height:1.55; margin-top:8px }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "name": "Enterprise inquiry, structured intake",
+      "description": "Structured intake form for enterprise teams evaluating kolm. Founder-direct reply within one business day with a scoped proposal and draft BAA where applicable.",
+      "url": "https://kolm.ai/enterprise/inquiry",
+      "dateModified": "2026-05-16",
+      "publisher": { "@type": "Organization", "name": "Kolmogorov", "url": "https://kolm.ai" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "Enterprise", "item": "https://kolm.ai/enterprise" },
+        { "@type": "ListItem", "position": 3, "name": "Inquiry", "item": "https://kolm.ai/enterprise/inquiry" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><span>kolm</span></a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
+      <a href="/research">Research</a>
+      <a href="/enterprise">Enterprise</a>
+      <a href="/pricing">Pricing</a>
+    </nav>
+    <div class="site-actions">
+      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
+      <a href="/signin">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero frontier-bg">
+    <div class="wrap">
+      <div class="hero-copy">
+        <div class="hero-eyebrow"><span class="he-dot"></span>Enterprise &middot; structured intake &middot; founder-direct</div>
+        <h1>Enterprise inquiry. <span class="tone">Structured intake.</span></h1>
+        <p class="lede">Tell us about your team and your use case. We will reply within one business day with a scoped proposal, draft BAA where applicable, and a Calendly link for the right founder. No spam, no funnel automation. The form posts directly into a founder inbox; no SDR sees it before we do.</p>
+        <div class="actions">
+          <a href="/security" class="btn ghost">Security posture</a>
+          <a href="/baa" class="btn ghost">BAA / DPA template</a>
+          <a href="/subprocessors" class="btn ghost">Subprocessors</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap" style="max-width: 920px;">
+      <div class="eyebrow"><span class="num">01</span>intake form &middot; six required fields, one optional</div>
+      <h2>Tell us what you are building.</h2>
+      <p class="sec-lede">We use the seven structured fields below to route to the right founder, scope an honest proposal, and prepare paperwork before the first call. Plain English notes welcome; specifics save a round.</p>
+
+      <noscript>
+        <div class="inq-noscript">JavaScript is required to submit this form. If you have JS disabled, mail <a href="mailto:sales@kolm.ai?subject=kolm%20enterprise%20inquiry" style="color:var(--accent)">sales@kolm.ai</a> with your company, role, team size, vertical, intended use, target start date, and any notes.</div>
+      </noscript>
+
+      <form id="inquiry-form" class="inq-wrap" autocomplete="on" novalidate>
+        <div class="inq-grid">
+
+          <div class="inq-field">
+            <label for="f-company">Company <span class="req">required</span></label>
+            <input type="text" id="f-company" name="company" maxlength="120" required placeholder="Memorial Health Network" autocomplete="organization">
+            <div class="hint">Legal name preferred for paperwork; trade name fine for first contact.</div>
+          </div>
+
+          <div class="inq-field">
+            <label for="f-role">Your role <span class="req">required</span></label>
+            <input type="text" id="f-role" name="role" maxlength="80" required placeholder="VP Engineering, Security Officer, etc." autocomplete="organization-title">
+            <div class="hint">So we can route to the founder who owns that conversation.</div>
+          </div>
+
+          <div class="inq-field">
+            <label for="f-employees">Team size <span class="req">required</span></label>
+            <select id="f-employees" name="employees" required>
+              <option value="">Select range</option>
+              <option value="1-10">1-10</option>
+              <option value="11-50">11-50</option>
+              <option value="51-200">51-200</option>
+              <option value="201-1000">201-1000</option>
+              <option value="1000+">1000+</option>
+            </select>
+            <div class="hint">Total employees, not seats. Drives plan recommendation.</div>
+          </div>
+
+          <div class="inq-field">
+            <label for="f-vertical">Vertical <span class="req">required</span></label>
+            <select id="f-vertical" name="vertical" required>
+              <option value="">Select vertical</option>
+              <option value="Healthcare">Healthcare</option>
+              <option value="Insurance">Insurance</option>
+              <option value="Finance">Finance</option>
+              <option value="Legal">Legal</option>
+              <option value="Defense">Defense</option>
+              <option value="Edge">Edge</option>
+              <option value="Other">Other</option>
+            </select>
+            <div class="hint">Drives BAA, DPA, and subprocessor disclosures we prep up front.</div>
+          </div>
+
+          <div class="inq-field span2">
+            <label for="f-intended-use">Intended use <span class="req">required</span></label>
+            <textarea id="f-intended-use" name="intended_use" maxlength="600" required placeholder="What workflow do you want kolm to compile? e.g. SOAP-note redaction at intake, prior-auth review for two payers, fraud detection on inbound claims."></textarea>
+            <div class="count" id="c-intended-use">0 / 600</div>
+          </div>
+
+          <div class="inq-field">
+            <label for="f-target-start">Target start <span class="req">required</span></label>
+            <input type="text" id="f-target-start" name="target_start" maxlength="60" required placeholder="Q3 2026, ASAP, exploring">
+            <div class="hint">Honest dates beat aspirational ones. "Exploring" is a valid answer.</div>
+          </div>
+
+          <div class="inq-field">
+            <label for="f-email">Work email <span class="req">required</span></label>
+            <input type="email" id="f-email" name="email" maxlength="200" required placeholder="you@company.com" autocomplete="email" inputmode="email">
+            <div class="hint">Where the reply goes. We do not add this to any list.</div>
+          </div>
+
+          <div class="inq-field span2">
+            <label for="f-notes">Anything else <span class="opt">optional</span></label>
+            <textarea id="f-notes" name="notes" maxlength="1000" placeholder="Procurement gating, existing AI tooling, regulatory constraints, internal champions, or anything else that helps us scope a useful first call."></textarea>
+            <div class="count" id="c-notes">0 / 1000</div>
+          </div>
+
+        </div>
+
+        <div class="inq-actions">
+          <button type="submit" class="inq-submit" id="inq-submit">Send to founders</button>
+          <span class="inq-foot-note">Posts to <code style="font-family:var(--mono);font-size:11.5px">/v1/lead/enterprise</code>. Reply within one business day. Founder direct, no SDR.</span>
+        </div>
+
+        <div class="inq-msg" id="inq-msg" role="status" aria-live="polite"></div>
+      </form>
+
+      <div class="inq-success" id="inq-success" aria-live="polite">
+        <h3>Got it. We will reply within one business day.</h3>
+        <p>Reply lands at <span id="ok-email" style="color:var(--ink); font-family:var(--mono); font-size:13px">your inbox</span>. While you wait: book a faster path on Calendly, or read the documents your privacy team will ask for next.</p>
+        <p>Calendly is the faster path; the founder reading the form will join the call directly.</p>
+        <div class="actions">
+          <a class="primary" href="https://calendly.com/kolm-founders/enterprise" target="_blank" rel="noopener">Book founder call &rarr;</a>
+          <a href="/security">Security posture</a>
+          <a href="/baa">BAA &amp; PHI Schedule</a>
+          <a href="/subprocessors">Subprocessors</a>
+        </div>
+        <div class="id" id="ok-id"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap" style="max-width: 920px;">
+      <div class="eyebrow"><span class="num">02</span>what happens after submit</div>
+      <h2>The next 48 hours.</h2>
+      <p class="sec-lede">A short, honest sequence. No automation pretending to be a human, no nurture cadence, no SDR triage queue.</p>
+
+      <div class="inq-pillrow">
+        <span class="inq-pill">T+0 form posted to founders</span>
+        <span class="inq-pill">T+1 business day founder reply</span>
+        <span class="inq-pill">T+2 days draft BAA / DPA where applicable</span>
+        <span class="inq-pill">T+3 days founder call &middot; scoped proposal</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/badge">Embed badge</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai &middot; Made with .kolm &middot; Apache-2.0</span>
+      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+<script>
+(function(){
+  var form = document.getElementById('inquiry-form');
+  var msg = document.getElementById('inq-msg');
+  var btn = document.getElementById('inq-submit');
+  var success = document.getElementById('inq-success');
+  if (!form) return;
+
+  function show(kind, text){
+    msg.className = 'inq-msg show ' + (kind === 'ok' ? 'ok' : 'err');
+    msg.textContent = text;
+  }
+  function clear(){ msg.className = 'inq-msg'; msg.textContent = ''; }
+
+  // Live char counters
+  function wireCount(inputId, counterId, max){
+    var i = document.getElementById(inputId);
+    var c = document.getElementById(counterId);
+    if (!i || !c) return;
+    function tick(){ var n = (i.value || '').length; c.textContent = n + ' / ' + max; }
+    i.addEventListener('input', tick); tick();
+  }
+  wireCount('f-intended-use', 'c-intended-use', 600);
+  wireCount('f-notes', 'c-notes', 1000);
+
+  function emailLooksValid(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim()); }
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    clear();
+    var fd = new FormData(form);
+    var payload = {
+      company: String(fd.get('company') || '').trim(),
+      role: String(fd.get('role') || '').trim(),
+      employees: String(fd.get('employees') || '').trim(),
+      vertical: String(fd.get('vertical') || '').trim(),
+      intended_use: String(fd.get('intended_use') || '').trim(),
+      target_start: String(fd.get('target_start') || '').trim(),
+      email: String(fd.get('email') || '').trim(),
+      notes: String(fd.get('notes') || '').trim()
+    };
+    var required = ['company','role','employees','vertical','intended_use','target_start','email'];
+    for (var i = 0; i < required.length; i++) {
+      if (!payload[required[i]]) {
+        show('err', 'Please fill the ' + required[i].replace(/_/g, ' ') + ' field.');
+        var el = document.getElementById('f-' + required[i].replace(/_/g, '-'));
+        if (el) el.focus();
+        return;
+      }
+    }
+    if (!emailLooksValid(payload.email)) {
+      show('err', 'That email does not look right. Use the form work@yourcompany.com.');
+      document.getElementById('f-email').focus();
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    fetch('/v1/lead/enterprise', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'accept': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function(res){
+      return res.json().then(function(j){ return { status: res.status, body: j }; }).catch(function(){ return { status: res.status, body: {} }; });
+    }).then(function(r){
+      btn.disabled = false;
+      btn.textContent = 'Send to founders';
+      if (r.status === 200 && r.body && r.body.ok) {
+        form.style.display = 'none';
+        document.getElementById('ok-email').textContent = payload.email;
+        document.getElementById('ok-id').textContent = r.body.id ? 'ref: ' + r.body.id : '';
+        success.classList.add('show');
+        try { window.scrollTo({ top: success.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' }); } catch(e) {}
+        return;
+      }
+      if (r.status === 429) { show('err', 'Slow down, try again in a minute.'); return; }
+      if (r.status === 400 || r.status === 422) {
+        show('err', (r.body && (r.body.error || r.body.detail)) || 'Validation failed. Check the fields and try again.');
+        return;
+      }
+      show('err', 'Something broke on our side. Mail sales@kolm.ai with the same payload and we will reply.');
+    }).catch(function(){
+      btn.disabled = false;
+      btn.textContent = 'Send to founders';
+      show('err', 'Network error. Mail sales@kolm.ai with the same payload and we will reply.');
+    });
+  });
+})();
+</script>
+</body>
+</html>

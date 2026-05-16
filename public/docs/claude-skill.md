@@ -16,7 +16,7 @@ four verbs:
 kolm compile <task> · produce a signed .kolm artifact from a task + examples
 kolm run <file> <input> · execute a .kolm artifact locally
 kolm query <query> · query the multimodal index inside an artifact
-kolm verify <output> · verify an output's HMAC receipt against an artifact
+kolm inspect <output> · verify an output's HMAC receipt against an artifact
 ```
 
 ## When to invoke
@@ -62,7 +62,7 @@ If `k_score < 0.70`, do NOT ship. Report the failing dimension:
 After `kolm run`, every output ships with a receipt. To prove integrity:
 
 ```bash
-kolm verify ./output.txt --against ./task.kolm
+kolm inspect ./output.txt --against ./task.kolm
 # expected: ok signature=valid root=<sha256>
 ```
 

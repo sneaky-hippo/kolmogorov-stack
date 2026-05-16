@@ -5,11 +5,11 @@ import crypto from 'node:crypto';
 import rateLimit from 'express-rate-limit';
 import { synthesize, synthesizeStream } from './synthesis.js';
 import { handleAssistant } from './assistant.js';
-import { effectiveReceiptSecret, isProductionRuntime, runtimeReadiness } from './env.js';
+import { effectiveReceiptSecret, isProductionRuntime, runtimeReadiness, tenantReceiptVerificationKeys } from './env.js';
 import * as registry from './registry.js';
 import * as runtime from './runtime.js';
 import * as cache from './cache.js';
-import { authMiddleware, provisionTenant, provisionAnonTenant, claimAnonTenant, chargeUsage, rotateTenantKey, rotateTenantReceiptSecret, adminApiKey, findTenantByApiKey, findTenantByEmail, constantTimeEqual as constantTimeEq, requirePlan } from './auth.js';
+import { authMiddleware, provisionTenant, provisionAnonTenant, claimAnonTenant, chargeUsage, rotateTenantKey, rotateTenantReceiptSecret, listTenantReceiptSecrets, pruneTenantReceiptSecret, adminApiKey, findTenantByApiKey, findTenantByEmail, constantTimeEqual as constantTimeEq, requirePlan } from './auth.js';
 import { mountOAuth, oauthConfigured } from './oauth.js';
 import { sendWelcome, sendBillingActivated, sendBillingFailed, emailConfigured } from './email.js';
 import { compileJs, verify } from './verifier.js';
@@ -131,6 +131,26 @@ const publishLimiter = rateLimit({
   message: { error: 'rate-limited — publish/verify caps at 20/min/ip' },
   validate: { trustProxy: false },
 });
+
+// Enterprise inquiry intake (KOLM-102). Public form on /enterprise/inquiry.
+// 5 hits per IP per hour is enough for a real buyer to make typos and retry,
+// but blocks form-spammer scripts. ipKey() coalesces /24 to survive Vercel
+// rotating egress IPs within a subnet.
+const enterpriseLeadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'rate-limited — enterprise inquiries cap at 5/hour/ip' },
+  keyGenerator: ipKey,
+  validate: { trustProxy: false },
+});
+
+// In-memory store for enterprise leads. The richer canonical store layer
+// (src/store.js) is reserved for tenant-owned records; lead intake is
+// stateless from the buyer's perspective and email is the source of truth.
+// Process-restart resets the array; Resend has the durable record.
+const enterpriseLeads = [];
 
 const PRICING = {
   synthesis_small: 0.10,   // < 1 KB generator
@@ -427,7 +447,10 @@ export function buildRouter() {
     // Email/password is reserved for the future; today only api_key works.
     if (!api_key || typeof api_key !== 'string') {
       if (email || password) {
-        return res.status(501).json({ error: 'email/password signin not implemented', hint: 'pass api_key in the body' });
+        return res.status(400).json({
+          error: 'PASSWORD_AUTH_NOT_SUPPORTED',
+          hint: 'Sign in with your ks_ API key (paste it from /signup) or use Google OAuth at /v1/oauth/google / GitHub OAuth at /v1/oauth/github.',
+        });
       }
       return res.status(400).json({ error: 'api_key required' });
     }
@@ -633,6 +656,112 @@ export function buildRouter() {
     if (output !== undefined) checks.output_match = sha256(canonicalJson(output)) === receipt.output_hash;
     const allOk = Object.values(checks).every(Boolean);
     res.json({ verified: allOk, valid: allOk, checks, receipt, reasons: allOk ? [] : ['input/output mismatch'] });
+  });
+
+  // KOLM-109: Public receipt-by-hash lookup. Anyone with the hash can verify
+  // a receipt was issued, when, and that the HMAC chain is intact, without
+  // auth. Tenant identity is hidden by default; tenants opt into showing
+  // their handle by setting tenant.public_receipts = true. The hash can be
+  // any of: artifact_hash, cid, receipt_id, or signature (since all four are
+  // unique identifiers and a buyer might paste any of them).
+  r.get('/v1/receipts/:hash/public', (req, res) => {
+    const raw = String(req.params.hash || '').trim();
+    if (!raw || !/^[A-Za-z0-9._\-]{8,128}$/.test(raw)) {
+      return res.status(400).json({ error: 'invalid hash format', code: 'INVALID_HASH' });
+    }
+    // Find a compile_job whose receipt or artifact matches this hash. Search
+    // is O(N) over compile_jobs but bounded by tenant data and well below
+    // the cost of an HMAC verify, so no separate index is needed yet.
+    const matches = (j) => {
+      if (!j || j._deleted || j._bootstrap) return false;
+      const r = j.receipt || {};
+      return j.artifact_hash === raw
+        || j.cid === raw
+        || r.artifact_hash === raw
+        || r.cid === raw
+        || r.receipt_id === raw
+        || r.signature === raw;
+    };
+    let job = null;
+    try { job = (all('compile_jobs') || []).find(matches) || null; } catch (_) { job = null; }
+    if (!job || !job.receipt) {
+      return res.status(404).json({ error: 'receipt not found', code: 'RECEIPT_NOT_FOUND' });
+    }
+    const receipt = job.receipt;
+    // Re-verify the chain using the global receipt secret. Receipts signed
+    // with a per-tenant key are verified against the tenant's full key list
+    // (current + previous + global fallback), so a rotated tenant key still
+    // verifies older receipts.
+    const tenant = (job.tenant_id || job.tenant)
+      ? findOne('tenants', x => !x._deleted && (
+          (job.tenant_id && x.id === job.tenant_id) ||
+          (job.tenant && x.name === job.tenant)
+        ))
+      : null;
+    const candidates = tenant ? tenantReceiptVerificationKeys(tenant) : [];
+    if (!candidates.length && RECEIPT_SECRET) candidates.push({ secret: RECEIPT_SECRET, key_id: 'global' });
+    if (!candidates.length) {
+      return res.status(503).json({ error: 'receipt secret not configured on this server', code: 'SECRET_UNAVAILABLE' });
+    }
+    let chainValid = false;
+    let signatureValid = false;
+    const reasons = [];
+    for (const { secret } of candidates) {
+      // v0.1 chain. Each link seals {step, input_hash, output_hash}.
+      let chainOk = Array.isArray(receipt.chain) && receipt.chain.length > 0;
+      if (chainOk) {
+        for (let i = 0; i < receipt.chain.length; i++) {
+          const link = receipt.chain[i];
+          const expected = crypto.createHmac('sha256', secret)
+            .update(canonicalJson({ step: link.step, input_hash: link.input_hash, output_hash: link.output_hash }))
+            .digest('hex');
+          if (link.hmac !== expected) { chainOk = false; break; }
+          if (i > 0 && link.input_hash !== receipt.chain[i - 1].output_hash) { chainOk = false; break; }
+        }
+      }
+      // Body signature seals the receipt minus its own .signature field.
+      const { signature, ...bodyNoSig } = receipt;
+      const expectedBody = crypto.createHmac('sha256', secret).update(canonicalJson(bodyNoSig)).digest('hex');
+      const sigOk = !!signature && signature.length === expectedBody.length && (() => {
+        let d = 0;
+        for (let i = 0; i < expectedBody.length; i++) d |= signature.charCodeAt(i) ^ expectedBody.charCodeAt(i);
+        return d === 0;
+      })();
+      if (chainOk && sigOk) { chainValid = true; signatureValid = true; break; }
+    }
+    if (!chainValid) reasons.push('chain hmac did not verify with any known key');
+    if (!signatureValid) reasons.push('body signature did not verify with any known key');
+    // Manifest summary. Only fields safe to share publicly. No tenant data,
+    // no eval set rows, no PHI surfaces (manifests never carry any).
+    const m = job.manifest || {};
+    const manifestSummary = {
+      base_model: m.base_model || null,
+      tier: m.tier || null,
+      runtime: m.runtime || null,
+      target_device: m.target_device || null,
+      train_device: m.train_device || null,
+      task: typeof m.task === 'string' ? m.task.slice(0, 200) : null,
+    };
+    const tenantPublic = !!(tenant && tenant.public_receipts === true);
+    const tenantHandle = tenantPublic ? (tenant.name || null) : null;
+    res.json({
+      hash: raw,
+      receipt_id: receipt.receipt_id || null,
+      cid: receipt.cid || null,
+      artifact_hash: receipt.artifact_hash || job.artifact_hash || null,
+      signed_at: receipt.signed_at || job.completed_at || job.created_at || null,
+      ring_count: Array.isArray(receipt.chain) ? receipt.chain.length : 0,
+      chain_valid: chainValid && signatureValid,
+      reasons: chainValid && signatureValid ? [] : reasons,
+      k_score: typeof job.k_score === 'number' ? job.k_score : (typeof m.k_score === 'number' ? m.k_score : null),
+      eval_score: typeof receipt.eval_score === 'number' ? receipt.eval_score : null,
+      tenant_handle: tenantHandle,
+      recipe_count: m.recipes && typeof m.recipes.n === 'number' ? m.recipes.n : null,
+      manifest_summary: manifestSummary,
+      signature_alg: receipt.signature_alg || 'hmac-sha256',
+      signed_by: receipt.signed_by || null,
+      kolm_version: receipt.kolm_version || null,
+    });
   });
 
   // Public RS-1 spec document — open standard, no auth required.
@@ -1613,9 +1742,10 @@ export function buildRouter() {
   r.get('/v1/account', (req, res) => {
     if (!req.tenant_record) return res.json({ admin: !!req.is_admin, tenant: req.tenant });
     const t = req.tenant_record;
-    // Resolve the raw key — tenants post-migration store only api_key_hash,
-    // so prefer the request-verified key (req.api_key set by authMiddleware).
-    const rawKey = req.api_key || t.api_key || null;
+    // req.api_key is set by authMiddleware (auth.js:376) for every AUTHED request,
+    // so it's the authoritative raw-key source. Tenants post-migration store only
+    // api_key_hash; the plain t.api_key column is no longer read here.
+    const rawKey = req.api_key || null;
     // Sliding session: refresh the kolm_session cookie on every authenticated
     // /v1/account hit so an active user keeps a fresh 30-day expiry. Stale
     // sessions still expire on schedule when the user goes quiet.
@@ -1630,14 +1760,17 @@ export function buildRouter() {
         });
       } catch (_) {}
     }
-    // Expose api_key on /v1/account so cookie-authed clients (OAuth users)
-    // can mirror it to localStorage for legacy pages that gate on it.
-    // This is the user's own key and requires a valid session to obtain.
+    // Do not leak the raw api_key in the response body — the httpOnly cookie
+    // (kolm_session, refreshed above) carries all subsequent auth. Expose only
+    // a prefix for display. Removes XSS exfil surface for zero functional cost.
+    const apiKeyPrefix = typeof rawKey === 'string' && rawKey.length > 0
+      ? rawKey.slice(0, 8) + '...'
+      : (t.api_key_prefix || null);
     res.json({
       id: t.id,
       name: t.name,
       email: t.email || null,
-      api_key: rawKey,
+      api_key_prefix: apiKeyPrefix,
       plan: t.plan,
       quota: t.quota,
       used: t.used,
@@ -1684,6 +1817,40 @@ export function buildRouter() {
         payload: { kind: 'receipt_secret', key_id: result.key_id, previous_count: result.previous_count },
       });
       res.json({ ok: true, ...result, note: 'new receipts are signed with this key_id; older artifacts still verify with the preserved previous key' });
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+
+  // List receipt-signing key metadata for the calling tenant. Secrets are
+  // never returned — only the key_id, status, and rotation timestamps.
+  r.get('/v1/account/receipt-secrets', (req, res) => {
+    if (!req.tenant_record) return res.status(403).json({ error: 'admin tokens cannot read tenant receipt keys' });
+    try {
+      const out = listTenantReceiptSecrets(req.tenant_record.id);
+      res.json(out);
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+
+  // Drop a specific previous key from the verification ring. Receipts signed
+  // with that key will no longer verify against this tenant after this call.
+  // The current key cannot be pruned — rotate first to retire it.
+  r.post('/v1/account/receipt-secret/prune', (req, res) => {
+    if (!req.tenant_record) return res.status(403).json({ error: 'admin tokens cannot prune' });
+    const key_id = String((req.body || {}).key_id || '').trim();
+    if (!key_id) return res.status(400).json({ error: 'key_id is required' });
+    try {
+      const result = pruneTenantReceiptSecret(req.tenant_record.id, key_id);
+      tryAppendAudit({
+        tenant_id: req.tenant_record.id,
+        tenant_name: req.tenant_record.name || null,
+        actor: 'tenant',
+        op: AUDIT_OPS.KEY_ROTATED,
+        payload: { kind: 'receipt_secret_pruned', key_id, remaining_count: result.remaining_count },
+      });
+      res.json({ ok: true, ...result });
     } catch (e) {
       res.status(400).json({ error: String(e.message || e) });
     }
@@ -1745,6 +1912,124 @@ export function buildRouter() {
       billing_url: billingUrl,
       billing_required: true,
       message: `Complete payment at ${billingUrl} to activate the ${meta.label} tier.`,
+    });
+  });
+
+  // ---------- Admin console endpoints ----------
+  // Read-only admin surface for the founder console at /admin. Gated by
+  // req.is_admin (ADMIN_KEY in env). Returns scrubbed views — no raw api_keys,
+  // no per-tenant secrets — just operational shape: who, what plan, how much
+  // they've used, what they're running. Cross-tenant by design.
+  r.get('/v1/admin/tenants', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
+    const q = String(req.query.q || '').toLowerCase().trim();
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 200, 1000));
+    const rows = all('tenants')
+      .filter(t => !q || (String(t.name || '').toLowerCase().includes(q) || String(t.email || '').toLowerCase().includes(q)))
+      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+      .slice(0, limit)
+      .map(t => ({
+        id: t.id,
+        name: t.name,
+        email: t.email || null,
+        plan: t.plan || 'free',
+        quota: t.quota || 0,
+        used: t.used || 0,
+        remaining: Math.max(0, (t.quota || 0) - (t.used || 0)),
+        seats: t.seats || 1,
+        auth_provider: t.auth_provider || 'apikey',
+        billing_status: t.billing_status || (t.plan === 'free' ? 'free' : 'active'),
+        created_at: t.created_at || null,
+        last_used_at: t.last_used_at || null,
+        kind: t.kind || 'real',
+        api_key_prefix: t.api_key_prefix || null,
+      }));
+    res.json({ total: rows.length, tenants: rows });
+  });
+
+  r.get('/v1/admin/stats', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
+    const tenants = all('tenants');
+    const planDist = tenants.reduce((acc, t) => { const p = t.plan || 'free'; acc[p] = (acc[p] || 0) + 1; return acc; }, {});
+    const totalUsed = tenants.reduce((acc, t) => acc + (t.used || 0), 0);
+    const totalQuota = tenants.reduce((acc, t) => acc + (t.quota || 0), 0);
+    const now = Date.now();
+    const since24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+    const since7d = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const since30d = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const signups24h = tenants.filter(t => t.created_at && t.created_at >= since24h).length;
+    const signups7d = tenants.filter(t => t.created_at && t.created_at >= since7d).length;
+    const signups30d = tenants.filter(t => t.created_at && t.created_at >= since30d).length;
+    const compileJobs = (() => { try { return all('compile_jobs'); } catch (_) { return []; } })();
+    const compiles24h = compileJobs.filter(j => j.created_at && j.created_at >= since24h).length;
+    const compiles7d = compileJobs.filter(j => j.created_at && j.created_at >= since7d).length;
+    const auditRows = (() => { try { return all('audit_events'); } catch (_) { return []; } })();
+    const audit24h = auditRows.filter(a => a.at && a.at >= since24h).length;
+    res.json({
+      tenants: { total: tenants.length, plan_dist: planDist, signups_24h: signups24h, signups_7d: signups7d, signups_30d: signups30d },
+      usage: { total_used: totalUsed, total_quota: totalQuota },
+      compile: { total: compileJobs.length, last_24h: compiles24h, last_7d: compiles7d },
+      audit: { total: auditRows.length, last_24h: audit24h },
+      generated_at: new Date().toISOString(),
+    });
+  });
+
+  r.get('/v1/admin/audit', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 200, 1000));
+    const rows = (() => { try { return all('audit_events'); } catch (_) { return []; } })()
+      .slice()
+      .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+      .slice(0, limit)
+      .map(r => ({
+        id: r.id,
+        at: r.at,
+        op: r.op,
+        actor: r.actor || null,
+        tenant_id: r.tenant_id,
+        tenant_name: r.tenant_name || null,
+        payload: r.payload || {},
+      }));
+    res.json({ total: rows.length, events: rows });
+  });
+
+  r.get('/v1/admin/compile-jobs', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 100, 500));
+    const rows = (() => { try { return all('compile_jobs'); } catch (_) { return []; } })()
+      .slice()
+      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+      .slice(0, limit)
+      .map(j => ({
+        id: j.id,
+        tenant: j.tenant,
+        task: j.task,
+        status: j.status,
+        k_score: (j.result && j.result.k_score) || null,
+        created_at: j.created_at,
+        completed_at: j.completed_at || null,
+      }));
+    res.json({ total: rows.length, jobs: rows });
+  });
+
+  r.get('/v1/admin/health', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
+    let store_stats = null;
+    try { store_stats = storeStats(); } catch (_) {}
+    res.json({
+      now: new Date().toISOString(),
+      region: process.env.REGION || process.env.RAILWAY_REGION || 'unknown',
+      node_version: process.version,
+      uptime_sec: Math.floor(process.uptime()),
+      store: store_stats,
+      memory: process.memoryUsage(),
+      env: {
+        anthropic_configured: !!process.env.ANTHROPIC_API_KEY,
+        stripe_configured: !!process.env.STRIPE_SECRET_KEY,
+        email_configured: !!process.env.RESEND_API_KEY,
+        oauth_google: !!process.env.GOOGLE_OAUTH_CLIENT_ID,
+        oauth_github: !!process.env.GITHUB_OAUTH_CLIENT_ID,
+      },
     });
   });
 
@@ -1951,6 +2236,106 @@ export function buildRouter() {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="kolm-export-${t.id}-${today}.json"`);
     res.send(JSON.stringify(bundle, null, 2));
+  });
+
+  // Compliance package: a single bundle a privacy officer / auditor / regulator
+  // can read end-to-end. Tenant metadata + signed receipts + audit log +
+  // BAA-ready org details + control mapping snapshot. JSON only (no PHI ever
+  // transits this endpoint — receipts are payload-free by design). Auditors
+  // who want a literal ZIP can pipe `curl ... | jq -r .b64_zip | base64 -d`,
+  // but the JSON shape is the canonical artifact.
+  r.get('/v1/account/compliance-package', (req, res) => {
+    if (!req.tenant_record) return res.status(403).json({ error: 'admin tokens cannot export — use a tenant key' });
+    const t = req.tenant_record;
+    const matches = (row) => {
+      if (!row) return false;
+      return row.tenant === t.id
+        || row.tenant === t.name
+        || row.tenant_id === t.id
+        || (t.email && row.tenant === t.email);
+    };
+    const jobs = all('compile_jobs').filter(j => !j._bootstrap && !j._deleted && matches(j));
+    const auditEvents = all('audit_log').filter(matches);
+    const concepts = all('concepts').filter(c => matches(c) && !c._deleted);
+    const receiptRecords = jobs
+      .filter(j => j.receipt_sha || j.receipt_hmac || j.artifact_sha)
+      .map(j => ({
+        job_id: j.id,
+        recipe: j.recipe || j.concept_id,
+        artifact_sha: j.artifact_sha,
+        receipt_sha: j.receipt_sha,
+        receipt_hmac: j.receipt_hmac,
+        k_score: j.k_score,
+        phi_mode: !!j.phi_mode,
+        created_at: j.created_at,
+      }));
+    const today = new Date().toISOString().slice(0, 10);
+    const pkg = {
+      spec: 'kolm-compliance-package-v1',
+      generated_at: new Date().toISOString(),
+      bundle_id: `cpkg-${t.id}-${today}`,
+      tenant: {
+        id: t.id,
+        name: t.name,
+        email: t.email,
+        plan: t.plan,
+        region: t.region || 'us-west2',
+        created_at: t.created_at,
+      },
+      controls: {
+        phi_redactor: 'enforced before any frontier-model call when phi_mode=true',
+        k_score_gate_default: 0.85,
+        k_score_gate_phi: 0.95,
+        receipt_chain: 'HMAC-SHA256, 4 rings (compile, run, eval, audit)',
+        encryption_at_rest: 'AES-256, customer-managed keys on request',
+        encryption_in_transit: 'TLS 1.3',
+        rbac: 'role-based access control, quarterly review',
+        breach_notification_sla_business_days: 10,
+        subprocessor_change_notice_days: 30,
+        return_or_destroy_days: 30,
+      },
+      baa: {
+        status: t.plan === 'business' || t.plan === 'enterprise' ? 'eligible' : 'available on Business or Enterprise plan',
+        execution_path: 'mailto:founders@kolm.ai with org + signatory; 48-hour countersign target',
+        phi_schedule: 'https://kolm.ai/baa#phi-schedule',
+      },
+      subprocessors: [
+        { name: 'Vercel', purpose: 'CDN', phi: false },
+        { name: 'Railway', purpose: 'control plane', phi: false },
+        { name: 'Stripe', purpose: 'billing', phi: false },
+        { name: 'Resend', purpose: 'transactional email', phi: false },
+        { name: 'Cloudflare', purpose: 'DNS/DDoS', phi: false },
+        { name: 'GitHub', purpose: 'source hosting', phi: false },
+        { name: 'Frontier (Anthropic/OpenAI/Google)', purpose: 'compile-time teacher', phi: 'opt-in only, customer key' },
+      ],
+      compliance: {
+        hipaa: { baa_available: true, security_rule_mapping: 'https://kolm.ai/security#hipaa-mapping' },
+        soc2: { type1: 'scoping completed 2026-04', type2: 'in progress, target Q4 2026' },
+        hitrust: { csf: 'scoping in progress, target r2 Q2 2027' },
+        gdpr: { dpa_available: true, sccs: 'EU SCCs Module 2 by reference' },
+      },
+      counts: {
+        recipes: concepts.length,
+        compile_jobs: jobs.length,
+        receipts_signed: receiptRecords.length,
+        audit_events: auditEvents.length,
+      },
+      receipts: receiptRecords,
+      audit_log: auditEvents.map(e => ({
+        ts: e.ts || e.at,
+        actor: e.actor,
+        kind: e.kind,
+        target: e.target,
+      })),
+      attestation: {
+        statement: `This compliance package was generated from kolm production data for tenant ${t.id}. All receipt hashes are reproducible from the artifacts they reference. No PHI is included.`,
+        contact: 'founders@kolm.ai',
+        signed_at: new Date().toISOString(),
+      },
+    };
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="kolm-compliance-${t.id}-${today}.json"`);
+    res.send(JSON.stringify(pkg, null, 2));
   });
 
   // Self-serve account delete. Soft-delete the tenant; receipts and artifacts
@@ -2426,10 +2811,7 @@ export function buildRouter() {
     res.json(t);
   });
 
-  r.get('/v1/admin/tenants', (req, res) => {
-    if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
-    res.json({ tenants: all('tenants') });
-  });
+  // /v1/admin/tenants — defined above with rich q/limit/scrub. Keep diagnostics here.
 
   r.get('/v1/admin/diagnostics', async (req, res) => {
     if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
@@ -2630,6 +3012,116 @@ export function buildRouter() {
     };
     insert('waitlist', entry);
     res.json({ position, message: 'reserved — first 50 teams get a Specialist trained on us', email });
+  });
+
+  // ---------- Enterprise inquiry intake (KOLM-102) ----------
+  // Public POST from /enterprise/inquiry. Validates 7 required fields, persists
+  // to in-memory enterpriseLeads, and emails sales@kolm.ai via Resend (best
+  // effort — sendMail() returns { skipped: true } when RESEND_API_KEY is unset).
+  r.post('/v1/lead/enterprise', enterpriseLeadLimiter, async (req, res) => {
+    const b = req.body || {};
+    const FIELD_LIMITS = {
+      company: 120,
+      role: 80,
+      employees: 20,
+      vertical: 40,
+      intended_use: 600,
+      target_start: 60,
+      email: 200,
+      notes: 1000,
+    };
+    const REQUIRED = ['company', 'role', 'employees', 'vertical', 'intended_use', 'target_start', 'email'];
+
+    const cleaned = {};
+    for (const k of Object.keys(FIELD_LIMITS)) {
+      const v = b[k];
+      if (v === undefined || v === null) { cleaned[k] = ''; continue; }
+      if (typeof v !== 'string') {
+        return res.status(400).json({ error: `invalid_field`, detail: `${k} must be a string` });
+      }
+      cleaned[k] = v.trim();
+      if (cleaned[k].length > FIELD_LIMITS[k]) {
+        return res.status(400).json({ error: 'field_too_long', detail: `${k} exceeds ${FIELD_LIMITS[k]} chars` });
+      }
+    }
+    for (const k of REQUIRED) {
+      if (!cleaned[k]) {
+        return res.status(400).json({ error: 'missing_field', detail: `${k} is required` });
+      }
+    }
+    const ALLOWED_EMPLOYEES = new Set(['1-10', '11-50', '51-200', '201-1000', '1000+']);
+    if (!ALLOWED_EMPLOYEES.has(cleaned.employees)) {
+      return res.status(400).json({ error: 'invalid_employees', detail: 'must be one of 1-10, 11-50, 51-200, 201-1000, 1000+' });
+    }
+    const ALLOWED_VERTICALS = new Set(['Healthcare', 'Insurance', 'Finance', 'Legal', 'Defense', 'Edge', 'Other']);
+    if (!ALLOWED_VERTICALS.has(cleaned.vertical)) {
+      return res.status(400).json({ error: 'invalid_vertical', detail: 'must be Healthcare, Insurance, Finance, Legal, Defense, Edge, or Other' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned.email)) {
+      return res.status(400).json({ error: 'invalid_email', detail: 'email shape is not valid' });
+    }
+
+    const id = 'lead_' + Date.now().toString(36) + '_' + crypto.randomBytes(4).toString('hex');
+    const ip = ipKey(req);
+    const ua = String(req.headers['user-agent'] || '').slice(0, 240);
+    const ts = Date.now();
+    const record = { id, ts, ...cleaned, ip, ua };
+    enterpriseLeads.push(record);
+
+    // Best-effort email to sales@kolm.ai. Never block the response on it.
+    const subject = `Enterprise inquiry: ${cleaned.company} (${cleaned.vertical})`;
+    const lines = [
+      `New enterprise inquiry from ${cleaned.company}.`,
+      ``,
+      `Company:        ${cleaned.company}`,
+      `Role:           ${cleaned.role}`,
+      `Team size:      ${cleaned.employees}`,
+      `Vertical:       ${cleaned.vertical}`,
+      `Target start:   ${cleaned.target_start}`,
+      `Email:          ${cleaned.email}`,
+      ``,
+      `Intended use:`,
+      cleaned.intended_use,
+      ``,
+    ];
+    if (cleaned.notes) {
+      lines.push(`Notes:`, cleaned.notes, ``);
+    }
+    lines.push(`---`, `Lead id: ${id}`, `Submitted: ${new Date(ts).toISOString()}`, `IP key:    ${ip}`, `UA:        ${ua || '(none)'}`, ``, `Reply within one business day. Founder direct, no SDR.`);
+    const text = lines.join('\n');
+
+    let emailResult = { skipped: true, reason: 'unknown' };
+    try {
+      const { sendMail } = await import('./email.js');
+      emailResult = await sendMail({
+        to: process.env.SALES_EMAIL || 'sales@kolm.ai',
+        subject,
+        text,
+        replyTo: cleaned.email,
+        tags: [{ name: 'kind', value: 'enterprise_lead' }, { name: 'vertical', value: cleaned.vertical.toLowerCase() }],
+      });
+      if (emailResult.skipped) {
+        // TODO: configure RESEND_API_KEY + EMAIL_FROM to actually deliver.
+        // Until then, log the payload so a founder tailing logs sees the lead.
+        console.log('[lead/enterprise] email skipped, payload follows:');
+        console.log(text);
+      } else if (!emailResult.ok) {
+        console.error('[lead/enterprise] email send failed', emailResult);
+      }
+    } catch (err) {
+      console.error('[lead/enterprise] email threw', err);
+    }
+
+    res.json({ ok: true, id, queued: true });
+  });
+
+  // Admin-only read of a single enterprise lead. Useful for ops triage and
+  // for verifying the in-memory store after a submit during e2e checks.
+  r.get('/v1/lead/enterprise/:id', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin only' });
+    const rec = enterpriseLeads.find(x => x.id === req.params.id);
+    if (!rec) return res.status(404).json({ error: 'not found' });
+    res.json(rec);
   });
 
   r.post('/v1/specialists/train', (req, res) => {
@@ -3569,8 +4061,15 @@ export function buildRouter() {
 
   // Public-facing tunnel URL. Anything posted/sent to /r/<token>/* is queued
   // for the agent and the agent's response is returned to the caller.
-  function handleTunnelProxy(req, res) {
+  function handleTunnelProxy(req, res, next) {
     const token = req.params.token;
+    // wave 104: collision with public receipt route /r/:hash (vercel.json:200 →
+    // /r.html?hash=:hash). On Vercel the rewrite fires first so this handler
+    // only ever sees real tunnel tokens, but Railway-direct and self-host hit
+    // Express straight and would 502 every receipt URL. Fall through when the
+    // token isn't a known tunnel so the receipt handler in server.js can serve
+    // public/r.html.
+    if (!tunnel.getTunnelByToken(token)) return next();
     const subPath = req.params[0] ? '/' + req.params[0] : '/';
     const headers = {};
     for (const [k, v] of Object.entries(req.headers || {})) {

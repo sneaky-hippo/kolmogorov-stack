@@ -22,7 +22,8 @@
   .ob-pill.done { color: var(--accent); }
   .ob-step { display: none; }
   .ob-step.active { display: block; }
-  .ob-step h1 { font-size: 28px; margin: 4px 0 8px; line-height: 1.2; }
+  .ob-step h2 { font-size: 28px; margin: 4px 0 8px; line-height: 1.2; }
+  .ob-title { font-size: 14px; font-family: var(--mono); color: var(--ink-mute); margin: 0 0 18px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; }
   .ob-step .sub { color: var(--ink-mute); font-size: 15px; margin: 0 0 20px; line-height: 1.5; }
   .ob-card { border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; background: var(--bg-card); margin-bottom: 14px; }
   .ob-card h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); font-family: var(--mono); margin: 0 0 10px; }
@@ -61,7 +62,7 @@
     <a href="/" class="brand" aria-label="kolm home">kolm</a>
     <nav class="site-nav" aria-label="Primary">
       <a href="/dashboard">Dashboard</a>
-      <a href="/docs">Developers</a>
+      <a href="/docs">Docs</a>
       <a href="/quickstart">Quickstart</a>
     </nav>
     <div class="site-actions">
@@ -71,6 +72,7 @@
 </header>
 
 <main class="ob-wrap">
+  <h1 class="ob-title">Get set up in 5 steps</h1>
   <div class="ob-progress" role="tablist" aria-label="Onboarding progress">
     <div class="ob-pill active" data-step="1">01 . key</div>
     <div class="ob-pill" data-step="2">02 . install</div>
@@ -80,7 +82,7 @@
   </div>
 
   <section class="ob-step active" data-step="1">
-    <h1>Your API key</h1>
+    <h2>Your API key</h2>
     <p class="sub">This key authenticates the CLI. Keep it secret. You can rotate it any time from your account page.</p>
 
     <div class="ob-card">
@@ -104,26 +106,15 @@
   </section>
 
   <section class="ob-step" data-step="2">
-    <h1>Install the CLI</h1>
+    <h2>Install the CLI</h2>
     <p class="sub">One binary. Pick the install path that matches your shell.</p>
 
-    <div class="ob-tabs" role="tablist">
-      <button class="ob-tab active" data-target="ob-npm">npm</button>
-      <button class="ob-tab" data-target="ob-brew">brew</button>
-      <button class="ob-tab" data-target="ob-curl">curl</button>
-    </div>
     <div class="ob-term" id="ob-npm">npm i -g github:sneaky-hippo/kolmogorov-stack
 kolm --version
 <span class="c"># kolm 0.1.0</span>
 
 kolm login
 <span class="c"># paste your ks_... key when prompted</span>
-<span class="ok"># OK saved to ~/.kolm/config.json</span></div>
-    <div class="ob-term" id="ob-brew" hidden>brew install sneaky-hippo/kolm/kolm
-kolm login
-<span class="ok"># OK saved to ~/.kolm/config.json</span></div>
-    <div class="ob-term" id="ob-curl" hidden>curl -fsSL https://kolm.ai/install.sh | bash
-kolm login
 <span class="ok"># OK saved to ~/.kolm/config.json</span></div>
 
     <div class="ob-actions">
@@ -134,7 +125,7 @@ kolm login
   </section>
 
   <section class="ob-step" data-step="3">
-    <h1>Compile your first .kolm</h1>
+    <h2>Compile your first .kolm</h2>
     <p class="sub">Pick a starter. We will spec the recipe, fit a small specialist, gate on K-score, and sign the artifact. Average: 90 seconds.</p>
 
     <div class="ob-tpl-grid">
@@ -169,7 +160,7 @@ kolm compile spec.json --base qwen2.5-3b --preset lora-fast --k-gate 0.92
   </section>
 
   <section class="ob-step" data-step="4">
-    <h1>Run + verify</h1>
+    <h2>Run + verify</h2>
     <p class="sub">The .kolm runs locally. Every call emits an HMAC receipt over (artifact CID, input, output, K-score). You can verify months from now without our servers.</p>
 
     <div class="ob-term">kolm run ~/.kolm/artifacts/phi-redactor-9a3f.kolm \
@@ -177,7 +168,7 @@ kolm compile spec.json --base qwen2.5-3b --preset lora-fast --k-gate 0.92
 <span class="c"># output:</span>
 Patient [NAME_1], DOB [DATE_1], SSN [SSN_1]
 
-kolm verify ~/.kolm/artifacts/phi-redactor-9a3f.kolm
+kolm inspect ~/.kolm/artifacts/phi-redactor-9a3f.kolm
 <span class="ok"># OK signature OK, K=0.982, receipt chain intact</span></div>
 
     <div class="ob-receipt">{
@@ -197,7 +188,7 @@ kolm verify ~/.kolm/artifacts/phi-redactor-9a3f.kolm
   </section>
 
   <section class="ob-step" data-step="5">
-    <h1>You are wired up</h1>
+    <h2>You are wired up</h2>
     <p class="sub">Pick a follow-on. All four work without leaving your machine.</p>
 
     <div class="ob-next-grid">
@@ -247,14 +238,7 @@ kolm verify ~/.kolm/artifacts/phi-redactor-9a3f.kolm
   document.querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', () => setStep(b.dataset.next)));
   document.querySelectorAll('[data-prev]').forEach(b => b.addEventListener('click', () => setStep(b.dataset.prev)));
 
-  document.querySelectorAll('.ob-tab').forEach(t => t.addEventListener('click', () => {
-    var group = t.parentElement;
-    group.querySelectorAll('.ob-tab').forEach(x => x.classList.toggle('active', x === t));
-    var targets = ['ob-npm','ob-brew','ob-curl'];
-    targets.forEach(id => { var el = document.getElementById(id); if (el) el.hidden = id !== t.dataset.target; });
-  }));
-
-  document.querySelectorAll('.ob-tpl').forEach(b => b.addEventListener('click', () => {
+document.querySelectorAll('.ob-tpl').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('.ob-tpl').forEach(x => x.classList.toggle('active', x === b));
     var term = document.getElementById('ob-compile-term');
     var name = b.dataset.tpl;
@@ -303,5 +287,6 @@ kolm verify ~/.kolm/artifacts/phi-redactor-9a3f.kolm
   } catch (e) {}
 })();
 </script>
+<script src="/nav.js" defer></script>
 </body>
 </html>

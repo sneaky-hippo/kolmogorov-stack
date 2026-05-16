@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#050607;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#050607;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Engineering tickets, in public &middot; kolm</title>
+<meta name="description" content="Twelve open tickets the kolm engineering team is working through over the next 60-90 days. Goal, motivation, acceptance, estimate, owner, status. Public because the work is the marketing.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:title" content="Engineering tickets, in public &middot; kolm">
+<meta property="og:description" content="Twelve open tickets the kolm engineering team is working through over the next 60-90 days. Goal, motivation, acceptance, estimate, owner, status.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/docs/tickets">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:title" content="Engineering tickets, in public &middot; kolm">
+<meta name="twitter:description" content="Twelve open tickets the kolm engineering team is working through over the next 60-90 days. Goal, motivation, acceptance, estimate, owner, status.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/docs/tickets">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #faf2e1; --accent-strong: #c9c2b2;
+    --good: #7ef0d2; --warn: #d6a65a; --stop: #d77;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .tk-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:8px }
+  @media (max-width:860px){ .tk-grid{ grid-template-columns:1fr } }
+  .tk-card { background:var(--bg-elev); border:1px solid var(--line); border-radius:10px; padding:22px 22px 20px; display:flex; flex-direction:column; gap:10px; min-width:0 }
+  .tk-card .row { display:flex; justify-content:space-between; align-items:baseline; gap:14px; flex-wrap:wrap }
+  .tk-card .id { font-family:var(--mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint) }
+  .tk-card .st { font-family:var(--mono); font-size:10.5px; letter-spacing:0.04em }
+  .tk-card .st.open { color:var(--good) }
+  .tk-card .st.review { color:var(--warn) }
+  .tk-card .st.backlog { color:var(--ink-faint) }
+  .tk-card .st.shipped { color:#9bd2ff }
+  .tk-card h3 { margin:0; font-size:17px; line-height:1.3; font-weight:500; color:var(--ink); letter-spacing:-0.01em }
+  .tk-card .blk { margin:0 }
+  .tk-card .lbl { font-family:var(--mono); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 4px }
+  .tk-card .blk p { margin:0; font-size:13.5px; line-height:1.55; color:var(--ink-mute) }
+  .tk-card .blk ul { margin:0; padding:0 0 0 18px; color:var(--ink-mute); font-size:13.5px; line-height:1.55 }
+  .tk-card .blk ul li { margin:0 0 4px }
+  .tk-card .blk ul li:last-child { margin:0 }
+  .tk-card .blk code { font-family:var(--mono); font-size:11.5px; background:var(--bg-card); border:1px solid var(--line); border-radius:4px; padding:1px 5px; color:var(--ink); overflow-wrap:anywhere }
+  .tk-card .meta-row { display:flex; gap:18px; flex-wrap:wrap; padding-top:8px; border-top:1px solid var(--line); margin-top:4px }
+  .tk-card .meta-row .mi { font-family:var(--mono); font-size:11px; color:var(--ink-mute); letter-spacing:0.04em }
+  .tk-card .meta-row .mi b { color:var(--ink); font-weight:500 }
+  .tk-card .meta-row .mi span.faint { color:var(--ink-faint) }
+  .grp-eyebrow { display:flex; align-items:baseline; gap:14px; margin:8px 0 14px; flex-wrap:wrap }
+  .grp-eyebrow .gnum { font-family:var(--mono); font-size:11px; color:var(--ink-faint); letter-spacing:0.08em; text-transform:uppercase }
+  .grp-eyebrow .gcount { font-family:var(--mono); font-size:11px; color:var(--ink-faint); letter-spacing:0.04em; margin-left:auto }
+  .grp-eyebrow .gdot { display:inline-block; width:6px; height:6px; border-radius:50%; vertical-align:middle; margin-right:6px }
+  .grp-eyebrow .gdot.open { background:var(--good) }
+  .grp-eyebrow .gdot.review { background:var(--warn) }
+  .grp-eyebrow .gdot.backlog { background:var(--ink-faint) }
+  .grp-eyebrow .gdot.shipped { background:#9bd2ff }
+  .tk-foot-note { background:var(--bg-elev); border:1px solid var(--line); border-radius:10px; padding:22px; margin-top:8px }
+  .tk-foot-note p { margin:0 0 8px; font-size:13.5px; line-height:1.55; color:var(--ink-mute) }
+  .tk-foot-note p:last-child { margin:0 }
+  .tk-foot-note p a { color:var(--accent); border-bottom:1px solid var(--line-strong) }
+  @media (max-width:480px){
+    .tk-card { padding:18px }
+    .tk-card h3 { font-size:15.5px }
+  }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "name": "Engineering tickets, in public",
+      "description": "Twelve open tickets the kolm engineering team is working through over the next 60-90 days. Goal, motivation, acceptance, estimate, owner, status.",
+      "url": "https://kolm.ai/docs/tickets",
+      "dateModified": "2026-05-16",
+      "publisher": { "@type": "Organization", "name": "Kolmogorov", "url": "https://kolm.ai" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "Docs", "item": "https://kolm.ai/docs" },
+        { "@type": "ListItem", "position": 3, "name": "Tickets", "item": "https://kolm.ai/docs/tickets" }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><span>kolm</span></a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
+      <a href="/research">Research</a>
+      <a href="/enterprise">Enterprise</a>
+      <a href="/pricing">Pricing</a>
+    </nav>
+    <div class="site-actions">
+      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
+      <a href="/signin">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero frontier-bg">
+    <div class="wrap">
+      <div class="hero-copy">
+        <div class="hero-eyebrow"><span class="he-dot"></span>Engineering &middot; ticket board snapshot &middot; 2026-05-16</div>
+        <h1>Engineering tickets, <span class="tone">in public.</span></h1>
+        <p class="lede">Twelve open tickets we are working through over the next 60-90 days. Each ticket has the goal, the motivation, what "done" looks like, the estimate, and the team that owns it. Public because the work is the marketing. If you want to contribute or sponsor a ticket, email <a href="mailto:founders@kolm.ai">founders@kolm.ai</a>. Last refresh 2026-05-16.</p>
+        <div class="actions">
+          <a href="mailto:founders@kolm.ai?subject=Sponsor%20a%20kolm%20ticket" class="btn primary electric">Sponsor a ticket &rarr;</a>
+          <a href="/roadmap" class="btn ghost">Roadmap</a>
+          <a href="/changelog" class="btn ghost">Changelog</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">01</span>shipped &middot; landed in production</div>
+      <h2>Shipped.</h2>
+      <p class="sec-lede">Recently closed tickets, kept here so the page is honest about what moved. Each one is verifiable: open the linked surface and the acceptance bar should be visible.</p>
+      <div class="grp-eyebrow"><span class="gnum"><span class="gdot shipped"></span>Status: Shipped</span><span class="gcount">4 of 12</span></div>
+      <div class="tk-grid">
+
+        <div class="tk-card" id="KOLM-104">
+          <div class="row"><span class="id">KOLM-104</span><span class="st shipped">Shipped</span></div>
+          <h3>/health-insurance vertical landing, second pass.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>Move <code>/health-insurance</code> from "vertical microsite" to "decision-stage landing" with case-study slot, ROI calculator validation, and BAA fast-track CTA.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>Page exists but reads as informational. External review wants conversion: scheduled demo above 5 percent, BAA started above 2 percent.</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li>Hero CTA changed from "Get API key" to "Start BAA fast-track" routing to <code>/enterprise/inquiry?vertical=health-insurance</code>.</li>
+            <li>ROI calculator persists inputs in URL hash for share-back.</li>
+            <li>One placeholder case-study card with "be the first" affordance.</li>
+            <li>Three outbound links to <code>/healthcare/assessment</code>, <code>/baa</code>, <code>/cookbook/soap-redactor</code>.</li>
+            <li>Testimonial slot for design partner; meta description updated.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>1d</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>frontend</b></div>
+          </div>
+        </div>
+
+        <div class="tk-card" id="KOLM-102">
+          <div class="row"><span class="id">KOLM-102</span><span class="st shipped">Shipped</span></div>
+          <h3>Enterprise plan inquiry funnel.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>Capture enterprise leads with a structured intake at <code>/enterprise/inquiry</code> that posts to <code>/v1/lead/enterprise</code> and emails sales@kolm.ai.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>Previously the <code>/enterprise</code> CTA routed to <code>mailto:</code>. Lost about 40 percent of intent signal because the lead did not know what to write. Structured intake closes that.</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li>Form with seven required fields plus optional notes (company, role, employees, vertical, intended use, target start, email; notes optional).</li>
+            <li>POSTs to <code>/v1/lead/enterprise</code>; rate-limited to 5/hour/IP.</li>
+            <li>Persists to in-process <code>enterpriseLeads</code> array; admin GET <code>/v1/lead/enterprise/:id</code> for triage.</li>
+            <li>Emails <code>sales@kolm.ai</code> via Resend with structured payload and <code>Reply-To</code> set to the lead's email.</li>
+            <li>Inline success message with Calendly link and links to <code>/security</code>, <code>/baa</code>, <code>/subprocessors</code>.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>2d</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>frontend + backend/router</b></div>
+          </div>
+        </div>
+
+        <div class="tk-card" id="KOLM-109">
+          <div class="row"><span class="id">KOLM-109</span><span class="st shipped">Shipped</span></div>
+          <h3>Verifiable receipt rendering at /r/:hash.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>Public URL renders any receipt by hash with full chain verification, no auth required.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>External review noted that receipts are claimed but no one outside the tenant can see one. A public receipt URL is social proof plus an audit trail external observers can verify.</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li><code>GET /r/:hash</code> returns rendered HTML showing receipt fields, HMAC chain status (valid or broken), ring depth, signed-at timestamp, source artifact hash.</li>
+            <li>Tenant identity redacted by default unless the customer opts public.</li>
+            <li>OG card auto-generated for share previews.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>2d</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>frontend + backend/router</b></div>
+          </div>
+        </div>
+
+        <div class="tk-card" id="KOLM-105">
+          <div class="row"><span class="id">KOLM-105</span><span class="st shipped">Shipped</span></div>
+          <h3>BAA PHI Schedule v1.1, subprocessor flow-down clarification.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>Clarify that customer opt-in subprocessors (Anthropic, OpenAI, Google) flow down per tenant via the customer's contracted BAA with that vendor, not via kolm.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>A privacy officer DD round identified ambiguity in current Schedule 1 row 5 (Subprocessor flow-down).</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li>Schedule 1 row 5 expanded with three sentences.</li>
+            <li>New clarifying note at the end of Schedule 1 with an example flow: "Acme uses kolm + Anthropic. Acme has BAA with Anthropic directly. kolm passes Acme's PHI through redactor before relay."</li>
+            <li><code>/baa</code> version bumped to 1.1 in the changelog footer.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>0.5d</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>legal review + frontend update</b></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">02</span>open &middot; in flight or starting this sprint</div>
+      <h2>Open.</h2>
+      <p class="sec-lede">Three tickets actively scheduled. Each one has a clear acceptance bar and a named owner. If you want to pair on any of these or supply real-world test cases, write us.</p>
+      <div class="grp-eyebrow"><span class="gnum"><span class="gdot open"></span>Status: Open</span><span class="gcount">3 of 12</span></div>
+      <div class="tk-grid">
+
+        <div class="tk-card" id="KOLM-101">
+          <div class="row"><span class="id">KOLM-101</span><span class="st open">Open</span></div>
+          <h3>Self-serve Business plan upgrade flow.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>Customer can upgrade from Pro to Business in <code>/enterprise/console</code> without contacting sales.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>Buyer review surfaced friction. Business plan currently requires email back and forth. Self-serve unlocks roughly $6K to $12K MRR per month at current funnel rate.</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li>Stripe Checkout flow for $999/mo Business plan reachable from the enterprise console.</li>
+            <li>Webhook updates plan tier in <code>tenant_record</code>.</li>
+            <li>Gated <code>/v1/*</code> endpoints respect the new tier within 60 seconds of webhook receipt.</li>
+            <li>Receipt sent via Resend.</li>
+            <li>Onboarding checklist surfaced post-upgrade.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>3d</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>backend/router + frontend</b></div>
+          </div>
+        </div>
+
+        <div class="tk-card" id="KOLM-106">
+          <div class="row"><span class="id">KOLM-106</span><span class="st open">Open</span></div>
+          <h3>Six insurance template detail pages.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>Each of the six health-insurance template cards on <code>/health-insurance</code> gets its own <code>/cookbook/health-insurance/&lt;slug&gt;</code> page with exact prompt, eval-set excerpt, K-score result, and a "fork this" affordance.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>Today the cards are blurbs. A buyer reviewing claims adjudication needs to see the actual prompt and spec to validate fit.</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li>Six new pages: claims-adjudication, prior-auth-review, fraud-detector, member-support-triage, risk-adjustment-coder, provider-credentialing.</li>
+            <li>Each around 150 to 200 lines.</li>
+            <li>Each linked from its <code>/health-insurance</code> card and from the <code>/cookbook</code> index.</li>
+            <li>Each carries a <code>kolm pull insurance/&lt;slug&gt;</code> CLI snippet.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>4d</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>devrel + content</b></div>
+          </div>
+        </div>
+
+        <div class="tk-card" id="KOLM-111">
+          <div class="row"><span class="id">KOLM-111</span><span class="st open">Open</span></div>
+          <h3>GitHub Actions composite, kolm verify on PR.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>Composite action <code>kolm-ai/verify-action@v1</code> that on PR runs <code>kolm inspect</code> on every changed <code>.kolm</code> and posts a K-score diff as a check.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>Customer feedback: "I want CI to fail if a teammate degrades a model." Automated K-score gate makes the artifact in the repo trustworthy.</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li>Composite action at <code>github.com/kolm-ai/verify-action</code>.</li>
+            <li>Reads <code>.kolm</code> changes from the PR; runs <code>kolm inspect</code>.</li>
+            <li>Posts K-score table as a PR comment.</li>
+            <li>Sets check status (pass if all artifacts at or above the configured floor).</li>
+            <li>README with quickstart YAML.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>1w</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>devrel + backend/router</b></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">03</span>in review &middot; awaiting sign-off</div>
+      <h2>In review.</h2>
+      <p class="sec-lede">No tickets currently awaiting sign-off. Drafted tickets land here before they ship.</p>
+      <div class="grp-eyebrow"><span class="gnum"><span class="gdot review"></span>Status: In review</span><span class="gcount">0 of 12</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">04</span>backlog &middot; queued, not yet scheduled</div>
+      <h2>Backlog.</h2>
+      <p class="sec-lede">Five tickets sized but not yet pulled into a sprint. Order is approximate; reach out if one of these would unblock you and we will reprioritize.</p>
+      <div class="grp-eyebrow"><span class="gnum"><span class="gdot backlog"></span>Status: Backlog</span><span class="gcount">5 of 12</span></div>
+      <div class="tk-grid">
+
+        <div class="tk-card" id="KOLM-103">
+          <div class="row"><span class="id">KOLM-103</span><span class="st backlog">Backlog</span></div>
+          <h3>Browser-only playground at /playground/web.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>Run a pre-built <code>.kolm</code> artifact in-browser via WebAssembly with no install.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>Founder feedback called the install-CLI step a friction wall for evaluators. A web playground is zero-friction first kolm output in 30 seconds.</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li>WASM build of the inference path under 4 MB.</li>
+            <li>Loads <code>phi-redactor.kolm</code> from <code>/registry-pack</code>.</li>
+            <li>User pastes input, sees output plus K-score plus receipt hash.</li>
+            <li>"Copy as curl" button shows the equivalent CLI invocation.</li>
+            <li>Works in Chrome, Safari, Firefox, Edge latest.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>2w</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>frontend (heavy WASM)</b></div>
+          </div>
+        </div>
+
+        <div class="tk-card" id="KOLM-107">
+          <div class="row"><span class="id">KOLM-107</span><span class="st backlog">Backlog</span></div>
+          <h3>Compliance package signing key rotation.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>HMAC key for <code>/v1/account/compliance-package</code> signatures rotates quarterly with verification preservation.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>SOC 2 Type II observation window starts Q4 2026. Key rotation evidence is required for the cryptographic-control criterion.</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li><code>KOLM_COMPLIANCE_HMAC_V2</code> env var added.</li>
+            <li>Key version embedded in JWS header (<code>kid</code> field).</li>
+            <li>Previous key kept active for 90 days post-rotation.</li>
+            <li>Compliance package fetcher accepts both keys during rollover.</li>
+            <li>Rotation runbook documented; quarterly cron suggested but not auto-rotated.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>1.5d</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>backend/router + security</b></div>
+          </div>
+        </div>
+
+        <div class="tk-card" id="KOLM-108">
+          <div class="row"><span class="id">KOLM-108</span><span class="st backlog">Backlog</span></div>
+          <h3>Observability dashboard at /admin/observability.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>Internal-only dashboard showing K-score distribution, compile latency p50/p95/p99, audit-log volume, top-10 tenants by usage, error rate by endpoint.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>We read these via ad hoc PostgreSQL queries today. A self-serve view means faster ops decisions.</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li>New page gated on admin-key <code>sessionStorage</code> (same pattern as <code>/admin</code>).</li>
+            <li>Reads from a new <code>/v1/admin/metrics</code> endpoint.</li>
+            <li>Six widgets above the fold.</li>
+            <li>Auto-refresh every 30 seconds; dark only (no light mode).</li>
+            <li>CSV export per widget.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>1w</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>frontend + backend/router</b></div>
+          </div>
+        </div>
+
+        <div class="tk-card" id="KOLM-110">
+          <div class="row"><span class="id">KOLM-110</span><span class="st backlog">Backlog</span></div>
+          <h3>VS Code extension MVP, kolm inspect inline.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>VS Code extension that on open of any <code>.kolm</code> file shows manifest, K-score, and receipt status in a side panel.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>About 60 percent of design partners are in VS Code or Cursor. Inline preview is a stickier integration than the CLI.</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li>Extension published to the VS Code marketplace under <code>@kolm-ai/kolm-vscode</code>.</li>
+            <li>Opens a <code>.kolm</code> and parses the ZIP locally (no upload).</li>
+            <li>Shows K-score breakdown, recipe list, receipt chain.</li>
+            <li>"Verify" button runs offline.</li>
+            <li>Cookbook templates accessible via the command palette.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>2w</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>frontend (TypeScript ext)</b></div>
+          </div>
+        </div>
+
+        <div class="tk-card" id="KOLM-112">
+          <div class="row"><span class="id">KOLM-112</span><span class="st backlog">Backlog</span></div>
+          <h3>HITRUST CSF r2 scoping kickoff.</h3>
+          <div class="blk"><div class="lbl">Goal</div><p>Engage a HITRUST-authorized External Assessor to scope the r2 assessment and identify SOC 2 Type II inheritance.</p></div>
+          <div class="blk"><div class="lbl">Why now</div><p>Healthcare buyers ask for HITRUST as a tier-2 signal. Scoping in Q1 2027 keeps the Q2 2027 attestation target on track.</p></div>
+          <div class="blk"><div class="lbl">Acceptance</div><ul>
+            <li>Assessor selected (target: HITRUST-listed firm, fixed-fee under $80K).</li>
+            <li>Scoping kickoff scheduled.</li>
+            <li>Inheritance map drafted: which SOC 2 Type II controls satisfy which HITRUST requirements.</li>
+            <li>Revised <code>/security#in-progress</code> copy with concrete dates.</li>
+          </ul></div>
+          <div class="meta-row">
+            <div class="mi"><span class="faint">Estimate</span> <b>1d planning &middot; $40K to $80K cost</b></div>
+            <div class="mi"><span class="faint">Owner</span> <b>security + finance</b></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">05</span>contract &middot; how to read this page</div>
+      <h2>Tickets are aspirational.</h2>
+      <div class="tk-foot-note">
+        <p>Dates and scopes change as the team learns. The ticket is the contract; estimates are not. We move the date before we move the scope.</p>
+        <p>If a ticket here is load-bearing for your evaluation, write <a href="mailto:founders@kolm.ai?subject=Sponsor%20a%20ticket">founders@kolm.ai</a> and we will tell you honestly whether it will land in the window you need. Sponsored tickets jump the queue and ship under a public acknowledgement on the <a href="/hall-of-fame">hall of fame</a> if the contributor opts in.</p>
+        <p>For shipped work see the <a href="/changelog">changelog</a>. For directional bets that are not yet tickets see the <a href="/roadmap">roadmap</a>. For paid bounties open to anyone see <a href="/bounties">/bounties</a>.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/spec/kolm-format-v1">.kolm format</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/byoc">BYOC</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <a href="/security">Security</a>
+        <a href="/baa">BAA &amp; DPA</a>
+        <a href="/subprocessors">Subprocessors</a>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/.well-known/security.txt">security.txt</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/health-insurance">Health insurance</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/manifesto">Manifesto</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai &middot; Made with .kolm &middot; Apache-2.0</span>
+      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

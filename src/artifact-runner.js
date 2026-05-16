@@ -404,5 +404,6 @@ export function inspectArtifact(artifactPath) {
     signature_valid: bundle.signature_valid,
     signature_mode: bundle.signature_mode || 'hmac-local',
     recipe_names: (bundle.recipes.recipes || []).slice(0, 8).map(r => r.name),
+    license: bundle.manifest.license || null,
   };
 }

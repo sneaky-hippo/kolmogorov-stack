@@ -1,0 +1,75 @@
+name: kolm CI pipeline (compile → test → publish)
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Task description
+        required: true
+        default: "answer support tickets in our brand voice"
+      examples:
+        description: Examples JSONL path
+        required: false
+        default: examples/tickets.jsonl
+      threshold:
+        description: Minimum K-score to publish
+        required: false
+        default: "0.92"
+      visibility:
+        description: public / team / private
+        required: false
+        default: team
+  push:
+    paths:
+      - "examples/**.jsonl"
+      - ".github/workflows/kolm-ci-pipeline.yml"
+
+jobs:
+  compile-test-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Compile
+        id: compile
+        uses: ./.github/actions/kolm-compile
+        with:
+          task: ${{ github.event.inputs.task || 'answer support tickets in our brand voice' }}
+          examples: ${{ github.event.inputs.examples || 'examples/tickets.jsonl' }}
+          base: qwen2.5-7b-instruct
+          api-key: ${{ secrets.KOLM_KEY }}
+          artifact-name: ${{ github.sha }}.kolm
+
+      - name: Test (regression + adversarial)
+        id: test
+        uses: ./.github/actions/kolm-test
+        with:
+          artifact: ${{ steps.compile.outputs.artifact-path }}
+          adversarial: "true"
+          threshold: ${{ github.event.inputs.threshold || '0.92' }}
+          api-key: ${{ secrets.KOLM_KEY }}
+
+      - name: Verify (final seal check)
+        uses: ./.github/actions/kolm-verify
+        with:
+          artifact: ${{ steps.compile.outputs.artifact-path }}
+          fail-on-warn: "true"
+
+      - name: Publish
+        if: github.ref == 'refs/heads/main' && steps.test.outputs.passed == 'true'
+        uses: ./.github/actions/kolm-publish
+        with:
+          artifact: ${{ steps.compile.outputs.artifact-path }}
+          visibility: ${{ github.event.inputs.visibility || 'team' }}
+          api-key: ${{ secrets.KOLM_KEY }}
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## kolm CI run" >> $GITHUB_STEP_SUMMARY
+          echo "- Task: ${{ github.event.inputs.task || 'answer support tickets in our brand voice' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- K-score: ${{ steps.test.outputs.k-score || steps.compile.outputs.k-score }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Job ID: ${{ steps.compile.outputs.job-id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Artifact: ${{ steps.compile.outputs.artifact-path }}" >> $GITHUB_STEP_SUMMARY

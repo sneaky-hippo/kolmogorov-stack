@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>The .kolm file format, v1 | kolm</title>
+<meta name="description" content="The .kolm file format spec, v1. A deterministic, content-addressable ZIP container for compiled task recipes. Versioned, citeable, community-feedback open. Apache-2.0.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/spec/kolm-format-v1">
+<meta property="og:title" content="The .kolm file format, v1">
+<meta property="og:description" content="A deterministic, content-addressable ZIP container for compiled task recipes. Versioned, citeable, community-feedback open.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/spec/kolm-format-v1">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="The .kolm file format, v1" />
+<meta name="twitter:description" content="Deterministic ZIP container, content-addressable, HMAC-signed receipt chain, K-score gated." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "The .kolm file format, v1",
+  "description": "Public spec for the .kolm container: ZIP layout, canonical JSON, HMAC receipt chain, K-score gate. Community feedback open.",
+  "url": "https://kolm.ai/spec/kolm-format-v1",
+  "author": {"@type": "Organization", "name": "Kolmogorov"},
+  "publisher": {"@type": "Organization", "name": "Kolmogorov", "url": "https://kolm.ai"},
+  "datePublished": "2026-05-16",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0"
+}
+</script>
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669}
+  body{background:var(--bg);color:var(--ink);font:16.5px/1.7 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1080px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .paper{padding:80px 0 64px}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 16px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:34px;line-height:1.15;font-weight:500;letter-spacing:-0.018em;margin:0 0 8px;max-width:680px}
+  .subtitle{font-size:16.5px;color:var(--ink-mute);margin:0 0 14px;font-style:italic;line-height:1.55}
+  .authors{font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin:0 0 6px;letter-spacing:0.04em}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:6px 0 0;letter-spacing:0.04em}
+  .abstract{margin:32px 0 0;padding:20px 24px;border-left:2px solid var(--accent);background:rgba(16,185,129,0.04);font-size:15.5px;line-height:1.65;color:var(--ink-mute)}
+  .abstract b{color:var(--ink);font-weight:500}
+  h2{font-size:22px;font-weight:500;letter-spacing:-0.012em;margin:48px 0 12px;color:var(--ink)}
+  h3{font-size:17px;font-weight:500;margin:24px 0 8px;color:var(--ink)}
+  p{color:var(--ink-mute);margin:0 0 16px}
+  p b{color:var(--ink);font-weight:500}
+  ul,ol{color:var(--ink-mute);margin:0 0 16px;padding-left:24px}
+  li{margin:0 0 6px}
+  li b{color:var(--ink);font-weight:500}
+  code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  pre{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px 18px;overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;margin:0 0 16px;color:var(--ink)}
+  pre code{background:transparent;border:0;padding:0}
+  table{width:100%;border-collapse:collapse;margin:0 0 16px;font-size:14px}
+  th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500}
+  td code{font-size:12.5px}
+  .tbl-wrap{border:1px solid var(--line);border-radius:8px;overflow-x:auto;margin:0 0 16px}
+  .feedback{margin:48px 0 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);font-size:14.5px}
+  .feedback h3{margin:0 0 6px;font-size:16px}
+  .feedback p{margin:0 0 8px;color:var(--ink-mute)}
+  .feedback ul{margin:8px 0 0}
+  .pill-row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 18px}
+  .pill-row .p{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:3px 8px;color:var(--ink-mute);letter-spacing:0.02em}
+  .pill-row .p.live{color:var(--accent);border-color:rgba(16,185,129,0.4)}
+  footer.site{padding:32px 0;border-top:1px solid var(--line);color:var(--ink-faint);font-size:13px;margin-top:64px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:var(--ink-mute);text-decoration:none}
+  footer.site a:hover{color:var(--ink)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr);gap:18px}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500;margin:0 0 10px}
+  .footer-grid a{display:block;padding:3px 0;font-size:13px}
+  .footer-tag{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:18px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11.5px}
+  .footer-tag span{color:var(--ink-faint)}
+</style>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/quickstart">quickstart</a><a href="/spec">spec</a><a href="/hub">hub</a><a href="/learn">learn</a></nav></div></header>
+<main>
+<section class="paper">
+<div class="wrap">
+
+<p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/spec">spec</a> &nbsp;/&nbsp; kolm-format v1</p>
+
+<h1>The <code>.kolm</code> file format, v1.</h1>
+<p class="subtitle">A deterministic, content-addressable ZIP container for a compiled task recipe. Versioned, citeable, community-feedback open. Apache-2.0.</p>
+<p class="authors">kolm engineering . hello@kolm.ai</p>
+<p class="stamp">v1.0 . 2026-05-16 . citeable as <code>kolm.ai/spec/kolm-format-v1</code> . feedback <a href="https://github.com/sneaky-hippo/kolmogorov-stack/issues/new?labels=spec-feedback&amp;title=.kolm+v1+feedback" style="color:inherit">github issue</a></p>
+
+<div class="pill-row">
+  <span class="p live">status: in production</span>
+  <span class="p">version: 1.0</span>
+  <span class="p">container: zip-store</span>
+  <span class="p">signing: hmac-sha256</span>
+  <span class="p">gate: K &gt;= 0.85</span>
+</div>
+
+<div class="abstract">
+<b>Why a file format.</b> A <code>.kolm</code> is everything a compiled task needs to run, verify, and reproduce, packed into a single byte-addressable blob. It is not a model. It is not a prompt. It is a <b>signed, gated, hash-addressed package</b> that any kolm runtime &mdash; CLI, server, MCP, edge SDK, or air-gapped enclave &mdash; can load and execute identically. Determinism is load-bearing: byte-for-byte the same inputs produce byte-for-byte the same artifact, so receipts compare cleanly across machines and across time. This spec freezes v1.0 at <b>2026-05-16</b>. Breaking changes will bump the major version and ship a side-by-side spec page.
+</div>
+
+<h2>1. Container</h2>
+<p>A <code>.kolm</code> is a standard ZIP archive (PKWARE APPNOTE 6.3.10, store-only compression) holding text-only members. The compression is fixed at <code>STORE</code> (no DEFLATE) so the inner bytes are directly verifiable without re-decompressing.</p>
+
+<p><b>Why ZIP.</b> Every operating system already has a working unzip implementation. <code>kolm eject &lt;art&gt;.kolm</code> uses <code>adm-zip</code> on Node; a curious operator can run <code>unzip -l my.kolm</code> on Linux/macOS or open it in Windows Explorer. There is no proprietary container.</p>
+
+<div class="tbl-wrap">
+<table>
+<thead><tr><th>Entry</th><th>Required</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>manifest.json</code></td><td>yes</td><td>Canonical JSON, file-list with sha256 per member. Index of the artifact.</td></tr>
+<tr><td><code>spec.json</code></td><td>yes</td><td>Original input spec. Captures task, base_model, recipes[*].schema, pack, evals.</td></tr>
+<tr><td><code>recipes/&lt;id&gt;.js</code></td><td>yes (&ge;1)</td><td>One or more recipe bodies. Plain JS function <code>generate(input, lib)</code>.</td></tr>
+<tr><td><code>pack.json</code></td><td>optional</td><td>Bundled patterns/rules/categories. Available at runtime as <code>lib.pack</code>.</td></tr>
+<tr><td><code>index.json</code></td><td>optional</td><td>Keyword to recipe routing index. <code>lib.index</code> at runtime.</td></tr>
+<tr><td><code>evals.json</code></td><td>recommended</td><td>The eval set used at compile-time. Replayable for K-score recomputation.</td></tr>
+<tr><td><code>k_score.json</code></td><td>yes</td><td>Composite K and the five axis scores (A,S,L,C,V). Gate boolean.</td></tr>
+<tr><td><code>receipt.json</code></td><td>yes</td><td>HMAC-SHA256 chain over the prior six fields, four rings.</td></tr>
+<tr><td><code>SKILL.md</code></td><td>optional</td><td>Claude-Code sidecar prose for agent discovery.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Order in the archive central directory MUST be <b>lexicographic</b>. File mtimes MUST be set to <code>1980-01-01 00:00:00 UTC</code> (the ZIP epoch) so two compiles of the same spec at different times produce byte-identical archives.</p>
+
+<h2>2. Canonical JSON</h2>
+<p>Every JSON entry in the archive uses a canonical encoding: <b>UTF-8 without BOM</b>, object keys sorted ASCII-ascending at every depth, <b>no trailing whitespace</b>, no comments, numeric form <code>integer | decimal | -decimal</code> without exponent. The pseudocode:</p>
+
+<pre><code>function canonicalize(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(canonicalize).join(',') + ']';
+  const keys = Object.keys(value).sort();
+  return '{' + keys.map(function (k) {
+    return JSON.stringify(k) + ':' + canonicalize(value[k]);
+  }).join(',') + '}';
+}</code></pre>
+
+<p>This is the same canonicalization RFC 8785 prescribes for JCS; we deliberately match it so external tooling (HSM signing, blockchain anchoring, third-party verifiers) can reuse off-the-shelf JCS implementations.</p>
+
+<h2>3. <code>manifest.json</code></h2>
+<p>The manifest enumerates every other entry and binds them by content hash. A consuming runtime MUST recompute each entry's <code>sha256</code> before trusting the artifact.</p>
+
+<pre><code>{
+  "spec": "kolm-manifest-1",
+  "artifact_id": "phi-redactor",
+  "version": "1.0.0",
+  "created_at": "2026-05-16T00:00:00Z",
+  "files": [
+    {"path": "spec.json",       "sha256": "&lt;hex&gt;", "size": 4831},
+    {"path": "recipes/rcp_phi_redactor_v1.js", "sha256": "&lt;hex&gt;", "size": 1422},
+    {"path": "pack.json",       "sha256": "&lt;hex&gt;", "size": 612},
+    {"path": "index.json",      "sha256": "&lt;hex&gt;", "size": 188},
+    {"path": "evals.json",      "sha256": "&lt;hex&gt;", "size": 2204},
+    {"path": "k_score.json",    "sha256": "&lt;hex&gt;", "size": 322},
+    {"path": "receipt.json",    "sha256": "&lt;hex&gt;", "size": 491}
+  ]
+}</code></pre>
+
+<h2>4. Recipes</h2>
+<p>A recipe is a JavaScript function with the signature <code>generate(input, lib)</code>. The runtime evaluates it inside a sandbox with no access to <code>require</code>, <code>fs</code>, <code>net</code>, <code>process</code>, or globalThis &mdash; only the <code>lib</code> object kolm injects (defined in <code>src/library.js</code>).</p>
+
+<pre><code>function generate(input, lib) {
+  // 'input' is whatever the caller passed:  { text: string } by convention,
+  // but arbitrary JSON is accepted.
+  // 'lib' is a small fixed dictionary:
+  //   lib.patterns    regex primitives (email, phone, url, date, ipv4, price)
+  //   lib.pack        the artifact's bundled pack.json (may be undefined)
+  //   lib.params      caller-supplied extras (params.extra_categories, etc.)
+  //   lib.parseFloatSafe   helper that returns NaN instead of 0 on bad input
+  //   lib.zscore, lib.vote, lib.any, lib.all   small stat helpers
+  // Recipes return any JSON-serializable value.
+}</code></pre>
+
+<p><b>Determinism rule.</b> A recipe MUST be a pure function of <code>(input, lib)</code>. No <code>Date.now()</code>, no <code>Math.random()</code> (unless seeded through <code>lib.params</code>), no syscalls. The K-score loop runs each eval case 3x and rejects non-determinism with a score-zero penalty.</p>
+
+<h2>5. K-score</h2>
+<p>The K-score is the gate. Compiles that fall below the gate (default <code>0.85</code>) emit a <code>.kolm</code> with <code>k_score.gate_passed: false</code> AND exit non-zero from <code>kolm compile</code>, so CI fails. The five axes:</p>
+
+<div class="tbl-wrap">
+<table>
+<thead><tr><th>Axis</th><th>Weight</th><th>What it measures</th></tr></thead>
+<tbody>
+<tr><td><b>A</b> &mdash; accuracy</td><td>0.40</td><td>Subset-equal match rate against the eval set.</td></tr>
+<tr><td><b>S</b> &mdash; size</td><td>0.15</td><td>1 / (1 + log(artifact_bytes / 5KB)). Smaller artifacts win.</td></tr>
+<tr><td><b>L</b> &mdash; latency</td><td>0.15</td><td>1 / (1 + p50_latency_ms / 2). Microsecond recipes get a full point.</td></tr>
+<tr><td><b>C</b> &mdash; coverage</td><td>0.15</td><td>Fraction of eval cases that hit the recipe (vs hitting a fallback).</td></tr>
+<tr><td><b>V</b> &mdash; verifiability</td><td>0.15</td><td>1 if the receipt chain verifies, else 0. No fractional credit.</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Composite: <code>K = 0.40A + 0.15S + 0.15L + 0.15C + 0.15V</code>. The <a href="/k-score" style="color:var(--accent)">k-score</a> page has worked examples; the <a href="/docs/k-score-methodology" style="color:var(--accent)">methodology doc</a> defines edge cases.</p>
+
+<h2>6. <code>receipt.json</code> &mdash; the HMAC chain</h2>
+<p>Every <code>.kolm</code> ships a four-ring HMAC chain that re-signs as you reach inward: manifest -&gt; spec -&gt; recipes -&gt; pack. The outer ring binds the artifact identity; the inner rings let a verifier prove which subset they checked. Verification uses <code>crypto.timingSafeEqual</code> to defeat timing oracles.</p>
+
+<pre><code>{
+  "spec": "rs-1-receipt",
+  "version": 1,
+  "rings": [
+    {"name": "manifest", "hmac_sha256": "&lt;64-hex&gt;", "covers": ["manifest.json"]},
+    {"name": "spec",     "hmac_sha256": "&lt;64-hex&gt;", "covers": ["spec.json", "k_score.json"]},
+    {"name": "recipes",  "hmac_sha256": "&lt;64-hex&gt;", "covers": ["recipes/*"]},
+    {"name": "pack",     "hmac_sha256": "&lt;64-hex&gt;", "covers": ["pack.json", "index.json", "evals.json"]}
+  ],
+  "signer": {"kid": "&lt;tenant-key-id&gt;", "alg": "HMAC-SHA256"},
+  "issued_at": "2026-05-16T00:00:00Z"
+}</code></pre>
+
+<p>The HMAC key defaults to a per-user secret at <code>~/.kolm/config.json</code>. Teams sharing a signing key set <code>RECIPE_RECEIPT_SECRET</code> in env so receipts verify across machines without trusting any individual user.</p>
+
+<h2>7. Loading and running</h2>
+<p>Any conforming runtime (the kolm CLI, the kolm server, the MCP adapter, the edge SDK, a third-party port) MUST execute these steps in order before producing a result:</p>
+
+<ol>
+<li>Open the ZIP; refuse if compression method != STORE on any entry.</li>
+<li>Read <code>manifest.json</code>; recompute sha256 over every listed file; refuse on mismatch.</li>
+<li>Read <code>receipt.json</code>; verify the four-ring HMAC chain with <code>timingSafeEqual</code>; refuse on mismatch.</li>
+<li>Read <code>k_score.json</code>; refuse if <code>gate_passed === false</code> AND caller did not pass <code>--allow-failing</code>.</li>
+<li>Read <code>spec.json</code>; load each <code>recipes/&lt;id&gt;.js</code>; sandbox-instantiate.</li>
+<li>Bind <code>lib.pack = pack.json</code> if present; <code>lib.index = index.json</code> if present.</li>
+<li>Call <code>recipe.generate(input, lib)</code>. Return the value.</li>
+</ol>
+
+<p>Failures at steps 1-4 return <b>exit 5</b> (<code>CHECKSUM_FAIL</code>). Failures at step 5-7 return <b>exit 2</b> (<code>RUNTIME</code>). The CLI also surfaces a one-line diagnostic on stderr so an operator does not have to grep the JSON for "why".</p>
+
+<h2>8. Stability guarantees</h2>
+<p>v1.0 is frozen against the following promises through at least <b>2027-12-31</b>:</p>
+<ul>
+<li><b>No breaking changes to manifest layout.</b> Entries may be added but existing keys keep their meaning.</li>
+<li><b>Canonical JSON stays RFC 8785-compatible.</b> A v1 reader will keep verifying v1 artifacts forever.</li>
+<li><b>K-score formula is fixed.</b> The 0.40 / 0.15 x 4 weighting will not move within v1. A new weighting ships as v2.</li>
+<li><b>Receipt chain remains HMAC-SHA256 + four rings.</b> Ed25519 receipts are planned for v2 as a side-by-side option, not a replacement.</li>
+<li><b>Apache-2.0 licensed.</b> The spec is free to implement; the reference implementation is free to fork.</li>
+</ul>
+
+<h2>9. What this format is not</h2>
+<p>Honesty section. <code>.kolm</code> is explicitly out of scope for:</p>
+<ul>
+<li><b>Model weights.</b> If a recipe wraps a base model, the model weights ship separately. <code>.kolm</code> stores the spec, the recipe code, and the receipt; it does not store gigabytes of tensor data.</li>
+<li><b>Prompt history.</b> The artifact has no notion of conversation. Distillation captures live elsewhere (see <a href="/learn/distill-openai-usage" style="color:var(--accent)">/learn/distill-openai-usage</a>).</li>
+<li><b>Telemetry.</b> A loaded <code>.kolm</code> never phones home. The runtime decides whether to ship a receipt to a hub; the artifact itself has no network surface.</li>
+<li><b>Encryption.</b> Files inside the ZIP are plaintext. If the contents are sensitive, encrypt the ZIP itself or the storage medium. Receipts and HMAC chain do not equal confidentiality.</li>
+</ul>
+
+<h2>10. Reference implementation</h2>
+<p>The reference implementation lives in this repo:</p>
+<ul>
+<li><b>Writer:</b> <code>src/artifact.js</code> &mdash; takes a spec + eval results, emits a <code>.kolm</code> file.</li>
+<li><b>Reader:</b> <code>src/artifact-runner.js</code> &mdash; loads a <code>.kolm</code> from disk, verifies, evaluates.</li>
+<li><b>Receipt:</b> <code>src/receipt.js</code> &mdash; canonical-JSON HMAC-SHA256 with timing-safe verify.</li>
+<li><b>Library injected at runtime:</b> <code>src/library.js</code> &mdash; the <code>lib</code> object recipes receive.</li>
+<li><b>CLI surface:</b> <code>cli/kolm.js</code> &mdash; <code>compile</code>, <code>inspect</code>, <code>run</code>, <code>eject</code>, <code>verify</code>, <code>publish</code>, <code>pull</code>.</li>
+</ul>
+
+<p>A third-party reader in Go, Rust, or Python is on the roadmap for v1.1; community ports are welcome and will be linked from this page once they pass the v1 conformance suite (under <code>scripts/conformance/</code> in the repo).</p>
+
+<h2>11. Worked example</h2>
+<p>The <code>kolm-verified/phi-redactor</code> artifact from <a href="/hub" style="color:var(--accent)">/hub</a> is the canonical reference example. <b>5.4 KB</b>, K-score <b>0.988</b>, gate <b>0.85</b>, license <b>Apache-2.0</b>. To inspect it byte-for-byte:</p>
+
+<pre><code>curl -fLO https://kolm.ai/registry-pack/phi-redactor.kolm
+shasum -a 256 phi-redactor.kolm
+# sha256 here matches the manifest entry on /hub
+
+kolm inspect phi-redactor.kolm
+# K-score: 0.988  base: none  gate: 0.85  recipes: 1
+
+kolm eject phi-redactor.kolm --out ./phi-extracted
+ls phi-extracted/
+# manifest.json  spec.json  recipes/  pack.json  receipt.json  k_score.json  EJECT_README.md</code></pre>
+
+<div class="feedback">
+<h3>Community feedback &mdash; open through v1.1</h3>
+<p>This spec is a working document. We are explicitly soliciting feedback on:</p>
+<ul>
+<li><b>Optional fields.</b> Should <code>SBOM.json</code> be required for compliance-heavy verticals? Defaults to optional for v1.</li>
+<li><b>Receipt algorithm.</b> v2 is queueing Ed25519 alongside HMAC. Implementation preferences?</li>
+<li><b>Recipe sandbox.</b> Currently V8 isolate-style. Open to a WASM target for non-Node runtimes.</li>
+<li><b>Quantization metadata.</b> When a recipe wraps a model, where does the quantization dictionary live? In <code>pack.json</code>? A new <code>quant.json</code>?</li>
+</ul>
+<p>Open issues at <a href="https://github.com/sneaky-hippo/kolmogorov-stack/issues?q=label%3Aspec-feedback" style="color:var(--accent)">github &middot; spec-feedback</a> or email <a href="mailto:hello@kolm.ai" style="color:var(--accent)">hello@kolm.ai</a>. Substantive contributions land in the v1.1 spec with credit.</p>
+</div>
+
+</div>
+</section>
+</main>
+<footer class="site"><div class="wrap">
+<div class="footer-grid">
+  <div><h4>Build</h4><a href="/quickstart">Quickstart</a><a href="/docs">Docs</a><a href="/hub">Hub</a><a href="/registry">Registry</a></div>
+  <div><h4>Spec</h4><a href="/spec/rs-1">RS-1</a><a href="/spec/codebase">Codebase</a><a href="/spec/kolm-format-v1">Format v1</a><a href="/k-score">K-score</a></div>
+  <div><h4>Learn</h4><a href="/learn">All paths</a><a href="/learn/first-kolm-in-5-minutes">First .kolm</a><a href="/learn/distill-openai-usage">Distill OpenAI</a><a href="/learn/deploy-to-phone">Deploy to phone</a></div>
+  <div><h4>Compare</h4><a href="/compare/kolm-vs-openpipe">vs OpenPipe</a><a href="/compare/kolm-vs-predibase">vs Predibase</a><a href="/compare/kolm-vs-rag">vs RAG</a></div>
+  <div><h4>Company</h4><a href="/pricing">Pricing</a><a href="/changelog">Changelog</a><a href="/community">Community</a></div>
+</div>
+<div class="footer-tag"><span>kolm.ai . Made with .kolm . Apache-2.0</span><span>Format v1.0 . frozen 2026-05-16</span></div>
+</div></footer>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Legal reference architecture &middot; privilege preserved on device &middot; kolm</title>
+<meta name="description" content="Deployment diagram for law firms, in-house counsel, and legal-tech vendors. Privileged content never crosses a third-party boundary. Compile + run inside the firm. Every output produces a signed receipt admissible as a chain-of-custody record.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/legal/architecture">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#faf2e1;--good:#7ef0d2;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif}
+  [data-theme=light]{--bg:#f7f4ec;--bg-elev:#ffffff;--bg-card:#fafaf6;--line:rgba(0,0,0,0.08);--line-strong:rgba(0,0,0,0.14);--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--accent:#1f2429;--good:#059669;}
+  *{box-sizing:border-box}html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 32px}.wrap-tight{max-width:760px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap,.wrap-tight{padding:0 20px}}
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .brand{font-family:var(--mono);font-size:13px;letter-spacing:0.04em;font-weight:600}
+  header.site nav{display:flex;gap:22px;font-family:var(--mono);font-size:12.5px;color:var(--ink-mute)}
+  @media(max-width:760px){header.site nav{display:none}}
+  section{padding:64px 0;border-bottom:1px solid var(--line)}
+  section.hero{padding:84px 0 60px}
+  h1{font-size:46px;line-height:1.06;letter-spacing:-0.02em;margin:0 0 18px;font-weight:600}
+  h2{font-size:28px;line-height:1.18;letter-spacing:-0.012em;margin:0 0 14px;font-weight:600}
+  h3{font-size:16px;line-height:1.35;margin:0 0 6px;font-weight:600}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:0.08em;color:var(--ink-faint);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:14px}
+  .eyebrow .num{color:var(--accent)}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border:1px solid var(--line-strong);border-radius:99px;font-family:var(--mono);font-size:11px;letter-spacing:0.04em;color:var(--ink-mute);background:var(--bg-elev)}
+  .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--good)}
+  .lede{font-size:19px;line-height:1.5;color:var(--ink-mute);max-width:620px;margin:22px 0 28px}
+  .diagram{background:var(--bg-elev);border:1px solid var(--line-strong);padding:28px 24px;font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--ink);white-space:pre;overflow-x:auto;margin:24px 0}
+  @media(max-width:760px){.diagram{font-size:10.5px;padding:18px 14px}}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:28px 0}
+  .grid-3 .card{background:var(--bg-elev);border:1px solid var(--line);padding:20px 18px}
+  .grid-3 .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px}
+  .grid-3 p{margin:6px 0 0;font-size:13px;color:var(--ink-mute);line-height:1.55}
+  @media(max-width:760px){.grid-3{grid-template-columns:1fr}}
+  table.bom{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;border:1px solid var(--line);background:var(--bg-elev);margin:20px 0}
+  table.bom thead th{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line-strong);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-faint)}
+  table.bom tbody td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  table.bom tbody tr:last-child td{border-bottom:none}
+  table.bom .ok{color:var(--good)}
+  ol.steps{counter-reset:s;padding:0;list-style:none;margin:18px 0}
+  ol.steps li{counter-increment:s;padding:14px 0 14px 48px;border-bottom:1px solid var(--line);position:relative}
+  ol.steps li:last-child{border-bottom:none}
+  ol.steps li::before{content:counter(s,decimal-leading-zero);position:absolute;left:0;top:14px;font-family:var(--mono);font-size:11px;color:var(--good);letter-spacing:0.04em}
+  ol.steps li b{display:block;font-size:14px;margin-bottom:4px;font-weight:600}
+  ol.steps li span{color:var(--ink-mute);font-size:13.5px}
+  footer.site{padding:60px 0 40px;background:var(--bg);border-top:1px solid var(--line)}
+  footer.site .row{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)}
+  footer.site a{color:var(--ink-mute)}
+  @media(max-width:760px){footer.site .row{flex-direction:column;gap:18px}}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap row">
+    <a href="/" class="brand">kolm</a>
+    <nav>
+      <a href="/legal">Legal</a>
+      <a href="/security">Security</a>
+      <a href="/baa">BAA</a>
+      <a href="/pricing">Pricing</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap-tight">
+    <span class="pill"><span class="dot"></span>Privilege preserved &middot; chain of custody &middot; offline</span>
+    <h1 style="margin-top:24px">Legal reference architecture.</h1>
+    <p class="lede">For law firms, in-house counsel, and legal-tech vendors. Privileged documents never touch a third-party model. The compile bridge and the runtime both live inside the firm. Every output produces a signed receipt admissible as a chain-of-custody record.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">01</span><span>Trust boundary</span></div>
+
+<div class="diagram">  +========================================================================+
+  |  FIRM ENVIRONMENT  (matter rooms &middot; DMS &middot; firm-managed KMS)              |
+  |                                                                          |
+  |  +-----------------+      +----------------------+      +-------------+  |
+  |  | DMS / matter    | ---&gt; |  kolm compile bridge | ---&gt; |  .kolm      |  |
+  |  | (iManage, NetD) |      |  (LoRA + verifiers)  |      |  artifact   |  |
+  |  +-----------------+      +----------------------+      +-------------+  |
+  |          ^                          |                        |           |
+  |          |                          | privilege guard         |           |
+  |          |                          v                        v           |
+  |  +-----------------+      +----------------------+      +-------------+  |
+  |  |  Ethical wall   | &lt;--- |  Conflict + matter   |      |  Run on     |  |
+  |  |  enforcement    |      |  scope checker       |      |  partner    |  |
+  |  +-----------------+      +----------------------+      +-------------+  |
+  |          ^                                                   |           |
+  +==========|===================================================|===========+
+             | receipt + chain-of-custody (no document bytes)    |
+             v                                                   v
+  +========================================================================+
+  |  KOLM.AI    &middot;  receipts + compliance pkg + format spec only             |
+  +========================================================================+
+
+  Legend:  ---&gt;  data flow    &lt;---  audit echo    ====  trust boundary</div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="lbl">Crosses the boundary</div>
+        <h3>Receipt + chain-of-custody.</h3>
+        <p>Artifact SHA, K-score, run timestamps, matter scope tag. No document bytes, no client text, no metadata that identifies a matter.</p>
+      </div>
+      <div class="card">
+        <div class="lbl">Stays inside</div>
+        <h3>Every privileged byte.</h3>
+        <p>DMS &rarr; bridge &rarr; artifact &rarr; on-prem runtime. The firm's IT controls the keys; we never see the work product.</p>
+      </div>
+      <div class="card">
+        <div class="lbl">Ethical wall</div>
+        <h3>Matter scope on every run.</h3>
+        <p>The artifact carries its matter scope tag. Run-time guard refuses outputs that would cross a wall the firm maintains.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">02</span><span>What this protects</span></div>
+    <table class="bom">
+      <thead><tr><th>Concern</th><th>How kolm addresses it</th></tr></thead>
+      <tbody>
+        <tr><td>Attorney-client privilege</td><td class="ok">Privileged bytes never leave the firm's environment. Receipts are payload-free; subpoena-ing kolm.ai gets you hashes, not content.</td></tr>
+        <tr><td>Work-product doctrine</td><td class="ok">Mental impressions encoded in the model live in the artifact, which lives in the firm. Distribution is the firm's choice.</td></tr>
+        <tr><td>Conflict checks</td><td class="ok">Artifact carries matter scope. Cross-matter runs flagged; the firm's existing conflict system stays authoritative.</td></tr>
+        <tr><td>Outside-counsel guidelines</td><td class="ok">Client OCGs that ban third-party AI on their files are satisfied by definition; the third party (us) never receives bytes.</td></tr>
+        <tr><td>Chain of custody (e-discovery)</td><td class="ok">Receipt chain proves which model produced which output when, and that the model was the named artifact at the named K-score.</td></tr>
+        <tr><td>State-bar AI disclosure rules</td><td class="ok">Lawyer can recite: which artifact, what K-score, what verifiers, on what device, signed by which key. All on the receipt.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">03</span><span>Day-zero deploy at a firm</span></div>
+
+    <ol class="steps">
+      <li><b>Risk committee approval (paper trail only)</b><span>Hand the committee: <a href="/security" style="color:var(--good)">/security</a>, this page, <a href="/spec/kolm-format-v1" style="color:var(--good)">/spec/kolm-format-v1</a>, <a href="/subprocessors" style="color:var(--good)">/subprocessors</a>. No vendor call required.</span></li>
+      <li><b>Bridge on a firm-managed VM</b><span>Single Docker compose file. Runs inside the firm's network. Bridge cannot reach the public internet except for receipt heartbeats (HTTPS, payload-free).</span></li>
+      <li><b>DMS connector</b><span>Read-only OAuth into iManage / NetDocs / SharePoint. Seeds are matter-scoped from the start.</span></li>
+      <li><b>First task: clause extractor (60 min)</b><span>50 anonymised NDAs from the closed matter store &rarr; <code>clause-extractor.kolm</code> at K&ge;0.95. Recipe in <a href="/cookbook" style="color:var(--good)">/cookbook</a>.</span></li>
+      <li><b>Ethical wall test</b><span>Run the artifact against a different matter scope. Verifier refuses, receipt records the refusal, the firm's wall is preserved by the model, not by a checklist.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">04</span><span>What a litigator can say in a deposition</span></div>
+    <p style="color:var(--ink-mute);max-width:620px">"The output was produced by artifact <code>kolm/clause-extractor@sha256:a91d4f0c</code> at K-score 0.95 in matter scope MATTER-1428, signed by the firm's KMS key <code>kms://arn:...</code>, on 2026-05-12T14:02:11Z. Run record <code>kolm.ai/r/a91d4f0c</code> can be re-verified by opposing counsel offline."</p>
+    <p style="color:var(--ink-mute);max-width:620px;margin-top:10px">Compare to a hosted-model output: "We sent the brief to OpenAI. They tell us they don't retain. Trust us." The chain-of-custody comparison is most of the sale.</p>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap row">
+    <div>&copy; 2026 kolm</div>
+    <div><a href="/legal">legal</a> &middot; <a href="/spec/kolm-format-v1">spec</a> &middot; <a href="/security">security</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

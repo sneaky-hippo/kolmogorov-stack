@@ -20,6 +20,14 @@
 <meta name="twitter:image" content="https://kolm.ai/og-card.svg">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://kolm.ai/docs">
+<link rel="alternate" hreflang="en" href="https://kolm.ai/docs">
+<link rel="alternate" hreflang="ja" href="https://kolm.ai/docs/ja">
+<link rel="alternate" hreflang="zh" href="https://kolm.ai/docs/zh">
+<link rel="alternate" hreflang="es" href="https://kolm.ai/docs/es">
+<link rel="alternate" hreflang="fr" href="https://kolm.ai/docs/fr">
+<link rel="alternate" hreflang="de" href="https://kolm.ai/docs/de">
+<link rel="alternate" hreflang="ko" href="https://kolm.ai/docs/ko">
+<link rel="alternate" hreflang="x-default" href="https://kolm.ai/docs">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/brand-refresh.css">
@@ -78,9 +86,9 @@
 
   /* v7.11.3 docs hero re-frame  - quiet, devs read code not marketing */
   .docs-main h1{font-weight: 500;letter-spacing:-0.035em;margin-bottom:22px}
-  .docs-main h1 .tone{background:linear-gradient(170deg,#faf2e1 0%,#7dd3fc 50%,#faf2e1 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .docs-main h1 .tone{background:linear-gradient(170deg,#faf2e1 0%,#7ef0d2 50%,#faf2e1 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
   .docs-main .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:24px;border:1px solid var(--line-strong);border-radius:999px;padding:6px 14px;background:rgba(8,9,8,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  .docs-main .eyebrow .pulse{display:inline-block;width:6px;height:6px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 10px #7dd3fc;animation:pulse-dot 2.4s ease-in-out infinite}
+  .docs-main .eyebrow .pulse{display:inline-block;width:6px;height:6px;border-radius:50%;background:#7ef0d2;box-shadow:0 0 10px #7ef0d2;animation:pulse-dot 2.4s ease-in-out infinite}
   @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(1.3)}}
 
   /* v7.21 golden-path tutorial cards. Three full-bleed tutorials anchored above the API reference. */
@@ -156,6 +164,14 @@
     footer.site .footer-grid a { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 0; line-height: 1.3; }
     pre.code-block { font-size: 11.5px; padding: 12px 14px; }
   }
+
+  /* Language switcher for translated docs (wave 100). */
+  .lang-switch{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:0.04em;margin:0 0 24px;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:rgba(255,255,255,0.01);max-width:62ch;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
+  .lang-switch .lbl{color:var(--ink-faint);text-transform:uppercase;margin-right:4px;font-size:10.5px}
+  .lang-switch a{color:var(--ink-mute);text-decoration:none;border-bottom:1px solid transparent}
+  .lang-switch a:hover{color:var(--ink);border-bottom-color:var(--accent)}
+  .lang-switch a.on{color:var(--ink);border-bottom-color:var(--accent)}
+  .lang-switch .sep{color:var(--ink-faint);opacity:0.5}
 </style>
 <script type="application/ld+json">
 {
@@ -184,8 +200,8 @@
   <div class="wrap">
     <a href="/" class="brand"><span>kolm</span></a>
     <nav class="site-nav" aria-label="Primary">
-      <a href="/use-cases">Solutions</a>
-      <a href="/docs">Developers</a>
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
       <a href="/research">Research</a>
       <a href="/enterprise">Enterprise</a>
       <a href="/pricing">Pricing</a>
@@ -275,6 +291,17 @@
   </aside>
 
   <article class="docs-main">
+
+    <nav class="lang-switch" aria-label="Language">
+      <span class="lbl">lang</span>
+      <a href="/docs" class="on">EN</a><span class="sep">·</span>
+      <a href="/docs/ja">日本語</a><span class="sep">·</span>
+      <a href="/docs/zh">中文</a><span class="sep">·</span>
+      <a href="/docs/es">ES</a><span class="sep">·</span>
+      <a href="/docs/fr">FR</a><span class="sep">·</span>
+      <a href="/docs/de">DE</a><span class="sep">·</span>
+      <a href="/docs/ko">한국어</a>
+    </nav>
 
     <div class="eyebrow"><span class="pulse"></span>docs . v0.7.8 . build kit</div>
     <h1>Build with kolm in <span class="tone">60 seconds.</span></h1>
@@ -643,6 +670,27 @@ const payload = [r.spec, r.source_hash, r.input_hash, r.output_hash,
 const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
 console.log(expected === r.hmac ? "ok" : "tamper");</code></pre>
 
+    <h2 id="verify">Verify a receipt offline</h2>
+    <p><b>CLI:</b> the verify subcommand (full invocation shown in the block below) re-runs the HMAC chain on a local <code>.kolm</code> artifact and reports <code>ok</code> / <code>tamper</code> without phoning home. <b>Public web view:</b> <code>GET /v1/receipts/&lt;hash&gt;/public</code> returns the verification fields for any receipt by hash, no auth required; <code>/r/&lt;hash&gt;</code> renders the same payload with a chain-valid badge. Tenants opt into showing their handle in the public view via the <code>public_receipts</code> flag on their account.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code># Offline verification on a local artifact:
+kolm verify --hash &lt;sha256-of-receipt&gt;
+
+# Public web verification:
+curl -s "https://kolm.ai/v1/receipts/&lt;hash&gt;/public" | jq .chain_valid
+# returns true or false; no API key required</code></pre>
+
+    <h2 id="audit">Audit log</h2>
+    <p><b>Endpoint:</b> <code>GET /v1/audit/log?limit=N</code> returns the tenant-scoped 4-ring receipt-chain entries (compile, run, eval, audit). Each entry carries HMAC-SHA256 signature, sha256 of the artifact, K-score at the moment of the action, and an issued_at timestamp. Payload-free by design, so no PHI or PII ever lands in the log itself. Tenant-scoped: a key for tenant A never reads tenant B's log, verified by a cross-tenant 400 test.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -H "Authorization: Bearer $KOLM_API_KEY" \
+  "https://kolm.ai/v1/audit/log?limit=50"
+# returns { entries: [...], cursor: "..." }</code></pre>
+
+    <h2 id="compliance-package">Compliance package</h2>
+    <p><b>Endpoint:</b> <code>GET /v1/account/compliance-package</code> returns a single signed JSON bundle suitable for an auditor: tenant identity, controls list, BAA status, subprocessor inventory, HIPAA / SOC 2 / HITRUST / GDPR posture, receipt-record hashes, audit-log summary, and a signed_at timestamp. The response includes <code>Content-Disposition: attachment</code> so a browser hitting the endpoint downloads the JSON directly. See <a href="/security" style="color:var(--accent)">/security</a> for the program around it.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -H "Authorization: Bearer $KOLM_API_KEY" \
+  "https://kolm.ai/v1/account/compliance-package" \
+  -o kolm-compliance-$(date +%Y%m%d).json</code></pre>
+
     <h2 id="kolm-format">.kolm format</h2>
     <p>A signed zip with five files: <code>spec.json</code> (the recipe), <code>policy.json</code> (gates), <code>recall/</code> (optional sidecar), <code>verifier.js</code> (cheap output check), <code>receipt.json</code> (the HMAC chain). Full schema at <a href="/spec" style="color:var(--accent)">/spec</a>.</p>
 
@@ -756,7 +804,7 @@ training:
     <h2 id="sdks">SDKs. embed in 4 platforms</h2>
     <p>Each SDK is a thin wrapper around the runtime loader. <code>load()</code> returns a callable; <code>predict()</code> runs the artifact; receipts emit on every call. No vendor-specific glue; the artifact is the contract.</p>
 
-    <h3 id="sdk-python">Python. <code>pip install kolm</code></h3>
+    <h3 id="sdk-python">Python. <code>npm i -g github:sneaky-hippo/kolmogorov-stack</code></h3>
     <pre class="code-block"><button class="copy" type="button">copy</button><code>from kolm import load
 
 model = load("phi-redactor.kolm", verify="on")
@@ -886,6 +934,7 @@ console.log(out.text);</code></pre>
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/hub">Hub</a>
         <a href="/registry">Registry</a>
         <a href="/case-studies">Case studies</a>

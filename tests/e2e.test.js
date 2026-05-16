@@ -61,7 +61,9 @@ test('e2e: synthesize → register → run → search → compose', async (t) =>
 
   // boot server
   proc = spawn(process.execPath, ['server.js'], {
-    env: { ...process.env, PORT: String(PORT), DEFAULT_TENANT: 'test', ANTHROPIC_API_KEY: '', KOLM_DATA_DIR: testDataDir },
+    // KOLM_STORE_DRIVER=json: assertions below read tenants.json directly, so the file-shape contract
+    // must hold even when .env defaults the deploy driver to sqlite.
+    env: { ...process.env, PORT: String(PORT), DEFAULT_TENANT: 'test', ANTHROPIC_API_KEY: '', KOLM_DATA_DIR: testDataDir, KOLM_STORE_DRIVER: 'json' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   proc.stdout.on('data', () => {});

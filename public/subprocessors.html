@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm subprocessors — full transparency</title>
+<meta name="description" content="The complete, live list of third-party services kolm uses, what each one handles, and whether they touch PHI. Updated on every change.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/subprocessors">
+<meta property="og:title" content="kolm subprocessors">
+<meta property="og:description" content="Every third-party service kolm uses, what each one handles, and whether they touch PHI.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .sp-table{width:100%;border-collapse:collapse;font-size:13.5px;margin:22px 0}
+  .sp-table th,.sp-table td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  .sp-table th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-mute);font-weight:500;background:var(--bg-card)}
+  .sp-table td.phi-no{font-family:var(--mono);font-size:11px;color:#7ec486}
+  .sp-table td.phi-conditional{font-family:var(--mono);font-size:11px;color:#dab552}
+  .sp-table td.phi-yes{font-family:var(--mono);font-size:11px;color:#d77}
+  .sp-pill{display:inline-block;padding:2px 8px;border:1px solid var(--line);border-radius:99px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.06em}
+  .sp-pill.no{border-color:#4f8a55;color:#7ec486}
+  .sp-pill.opt{border-color:#9b8a4a;color:#dab552}
+  .sp-changelog{margin-top:24px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--bg-card);font-family:var(--mono);font-size:12px;color:var(--ink-mute)}
+  .sp-changelog ul{margin:6px 0 0;padding-left:18px}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand">kolm</a>
+    <nav class="site-nav"><a href="/security">Security</a><a href="/baa">BAA</a><a href="/subprocessors" aria-current="page">Subprocessors</a><a href="/trust">Trust</a></nav>
+    <div class="site-actions"><a href="/signin">sign in</a></div>
+  </div>
+</header>
+
+<main class="page-main">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow"><span class="pulse"></span>Transparency</div>
+      <h1>Subprocessors.</h1>
+      <p class="lede">Every third-party service kolm uses. What each one handles. Whether they touch PHI by default. Last updated 2026-05-16.</p>
+    </div>
+    <div class="page-actions">
+      <a class="btn ghost" href="/baa">BAA &amp; PHI Schedule</a>
+      <a class="btn ghost" href="/security">Security posture</a>
+    </div>
+  </section>
+
+  <p class="lede">Customers on Business and Enterprise plans receive 30-days' notice before any new subprocessor is added that could touch tenant data. Email subscription &rarr; <a href="mailto:subprocessors@kolm.ai">subprocessors@kolm.ai</a>.</p>
+
+  <table class="sp-table">
+    <thead>
+      <tr><th>Subprocessor</th><th>Purpose</th><th>Data handled</th><th>PHI?</th><th>Location</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Vercel</b><br><span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute)">vercel.com</span></td>
+        <td>Static asset CDN &middot; edge routing for kolm.ai</td>
+        <td>HTTP request logs, IP addresses (truncated after 24h)</td>
+        <td class="phi-no"><span class="sp-pill no">never</span></td>
+        <td>US-east, US-west, EU</td>
+      </tr>
+      <tr>
+        <td><b>Railway</b><br><span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute)">railway.app</span></td>
+        <td>Compute backend &middot; control plane (signup, compile orchestration, billing)</td>
+        <td>Tenant metadata, API keys (hashed), compile job records</td>
+        <td class="phi-no"><span class="sp-pill no">never</span></td>
+        <td>US-west (us-west2)</td>
+      </tr>
+      <tr>
+        <td><b>Stripe</b><br><span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute)">stripe.com</span></td>
+        <td>Billing &middot; subscription management &middot; tax</td>
+        <td>Name, email, billing address, payment method (Stripe-tokenized)</td>
+        <td class="phi-no"><span class="sp-pill no">never</span></td>
+        <td>US (Stripe-managed)</td>
+      </tr>
+      <tr>
+        <td><b>Resend</b><br><span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute)">resend.com</span></td>
+        <td>Transactional email &middot; signup, billing, security notifications</td>
+        <td>Email address, message body (no PHI)</td>
+        <td class="phi-no"><span class="sp-pill no">never</span></td>
+        <td>US</td>
+      </tr>
+      <tr>
+        <td><b>Anthropic / OpenAI / Google</b><br><span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute)">your frontier vendor</span></td>
+        <td>Teacher model during compile only &middot; called from <em>your</em> bridge with <em>your</em> key. Customer-opt-in only. Covered Entity executes its own BAA directly with this vendor where PHI may be involved. kolm does not act as an intermediary BAA conduit for this subprocessor.</td>
+        <td>Whatever you send as seed examples &middot; redact PHI before passing</td>
+        <td class="phi-conditional"><span class="sp-pill opt">opt-in only</span></td>
+        <td>Your choice of vendor &middot; kolm never proxies</td>
+      </tr>
+      <tr>
+        <td><b>Cloudflare</b><br><span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute)">cloudflare.com</span></td>
+        <td>DNS &middot; DDoS protection at the edge</td>
+        <td>IP address, request metadata (no payload)</td>
+        <td class="phi-no"><span class="sp-pill no">never</span></td>
+        <td>Global</td>
+      </tr>
+      <tr>
+        <td><b>GitHub</b><br><span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute)">github.com</span></td>
+        <td>Source-code hosting &middot; CI for our own build</td>
+        <td>Our code only &middot; no tenant data</td>
+        <td class="phi-no"><span class="sp-pill no">never</span></td>
+        <td>US</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 style="font-size:18px;margin:34px 0 6px">By design, the following never receive PHI</h2>
+  <p class="lede">In a properly configured deployment, PHI is redacted by the kolm runtime <em>before</em> any subprocessor is contacted. The customer-hosted compile bridge (BYOC) ensures PHI doesn't leave your VPC at all. See <a href="/byoc">BYOC architecture</a> and <a href="/security#data-flow">data-flow diagram</a> for the exact boundaries.</p>
+
+  <h2 style="font-size:18px;margin:34px 0 6px">Customer-controlled subprocessors</h2>
+  <p class="lede">When you bring your own frontier-model key (Anthropic, OpenAI, Google, Together, Groq), kolm calls that vendor directly from your bridge using your key. Those vendor relationships are yours, not ours. We do not store, proxy, or observe those calls. Their privacy policy, their data-residency, their BAA (if applicable).</p>
+
+  <div class="sp-changelog">
+    <b>Change log</b>
+    <ul>
+      <li>2026-05-16 &middot; initial publication of subprocessor list</li>
+    </ul>
+  </div>
+
+</main>
+
+<footer style="border-top:1px solid var(--line);padding:24px 0;margin-top:60px;color:var(--ink-mute);font-size:12px;text-align:center">
+  <div class="wrap"><span>Subscribe to subprocessor change notifications &rarr; <a href="mailto:subprocessors@kolm.ai?subject=subscribe">subprocessors@kolm.ai</a></span></div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

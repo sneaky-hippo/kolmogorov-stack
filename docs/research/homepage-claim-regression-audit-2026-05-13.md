@@ -4,7 +4,7 @@
 
 The current claim gate is doing useful work, but the homepage surface has drifted again.
 
-The focused site test now fails because local `public/index.html` contains the forbidden regulated-healthcare phrase `PHI never leaves`. That is only the visible symptom. The same file also contains metadata, structured data, FAQ answers, demo copy, and use-case cards that imply shipped model-bearing artifacts, phone/on-device execution, VPC/local deployment, zero-egress behavior, automatic improvement, and commercial/compliance entitlements.
+The focused site test now fails because local `public/index.html` contains the forbidden regulated-healthcare phrase `PHI stays inside the customer-hosted bridge`. That is only the visible symptom. The same file also contains metadata, structured data, FAQ answers, demo copy, and use-case cards that imply shipped model-bearing artifacts, phone/on-device execution, VPC/local deployment, zero-egress behavior, automatic improvement, and commercial/compliance entitlements.
 
 The live site is a different risk. As of this review, live `https://kolm.ai/` still presents an older model-artifact story: a model compiled from user data, multi-GB artifact, phone support, public-key-looking signature language, public registry anchoring, on-chain receipt language, and mobile/enterprise packaging. Live `https://kolm.ai/docs` also remains on the older recipe-era API and package surface. That means there are two claim surfaces to control:
 
@@ -15,11 +15,11 @@ The safest release rule is simple: the homepage should only claim what the artif
 
 ## Primary Evidence
 
-- `node --test .\tests\site.test.js` failed on May 13 with one claim-gate failure: `public\index.html` contains `PHI never leaves`.
+- `node --test .\tests\site.test.js` failed on May 13 with one claim-gate failure: `public\index.html` contains `PHI stays inside the customer-hosted bridge`.
 - The same local homepage includes meta/OG/Twitter descriptions saying the artifact contains model plus examples plus evaluator plus receipts and runs on a laptop or phone while data never moves.
 - Local JSON-LD in `public/index.html` describes a signed artifact running on a laptop, phone, or inside a network, on-device runtime with zero egress, optional Sigstore co-signature, BAA availability, and optional VPC peering.
 - Local homepage FAQ text says each compile is strictly better than the last and that the `.kolm` file contains a small model.
-- Local use-case cards say Kolm builds a signed local model, healthcare data does not leave the network, phone inference runs with zero network, and a single signed file runs on an air-gapped box.
+- Local use-case cards say Kolm builds a signed local model, healthcare data does not leave the network, phone inference runs with zero network, and a single signed file runs on an on-device deployment.
 - Local scripted demo text says the compile specializes a model, stamps K-score, writes a patient-intake artifact, and returns a run result with host set to on-device.
 - Live `https://kolm.ai/` returned HTTP 200 and still says Kolm compiles data into a model, returns an artifact that can run offline, shows a multi-GB artifact, uses public-key-looking signature copy, mentions model/LoRA/draft pack/index, phone support, public registry anchoring, and on-chain receipts.
 - Live `https://kolm.ai/docs` returned HTTP 200 and remains on the older docs surface: it says 21 endpoints, uses legacy package/install guidance, points examples at the old hosted API, and ends with old brand positioning.
@@ -36,7 +36,7 @@ The codebase has strong enough proof to support a homepage, but not the homepage
 
 ## Main Gaps
 
-The claim gate is exact-string based. It blocks `PHI never leaves`, but it does not block equivalent phrases such as data never moves, zero network, inference on the phone, VPC boundary, on-device runtime with zero egress, or strictly better compiles. Those phrases create the same buyer expectation as the blocked phrase.
+The claim gate is exact-string based. It blocks `PHI stays inside the customer-hosted bridge`, but it does not block equivalent phrases such as data never moves, zero network, inference on the phone, VPC boundary, on-device runtime with zero egress, or strictly better compiles. Those phrases create the same buyer expectation as the blocked phrase.
 
 The local homepage has risky structured data. Search engines and link previews can consume metadata and JSON-LD even when visible body copy is later corrected. The homepage currently embeds claims about model contents, on-device runtime, zero egress, BAA, VPC, Sigstore, and pricing/entitlements in machine-readable fields.
 

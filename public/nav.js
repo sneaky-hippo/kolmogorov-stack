@@ -15,10 +15,17 @@
   if (!nav || !actions) return;
 
   // Active state only. Path-driven; idempotent; never rewrites innerHTML.
+  // wave 101: /enterprise is its own top-level tab in the 5-item nav
+  // (Use cases | Docs | Research | Enterprise | Pricing). Removing
+  // `enterprise|customers|roi` from solRe stops /enterprise highlighting
+  // the Use cases tab. Same for `baa|teams|tunnels|byoc|airgap` — those
+  // belong under Enterprise routing, not Use cases. The Enterprise tab
+  // itself uses entRe as an exact top-level match.
   var path = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
   var devRe = /^\/(docs|compile|run|recall|serve|evolve|anatomy|k-score|spec|api|sdk|build-your-own|quickstart|integrations|articles|cookbook|architecture|launch|troubleshooting|faq|press|changelog)(\/|$)/;
-  var solRe = /^\/(use-cases|healthcare|finance|legal|defense|edge|enterprise|customers|roi|whitepaper|motion|baa|teams|tunnels|byoc|airgap)(\/|$)/;
-  var resRe = /^\/(research|benchmarks|leaderboard|whitepaper)(\/|$)/;
+  var solRe = /^\/(use-cases|healthcare|finance|legal|defense|edge|insure|health-insurance|whitepaper|motion)(\/|$)/;
+  var resRe = /^\/(research|benchmarks|leaderboard)(\/|$)/;
+  var entRe = /^\/(enterprise|customers|roi|baa|teams|tunnels|byoc|airgap|hipaa-mapping|soc2|security|subprocessors|trust|threat-model|slsa|sbom|compliance|compliance-packs|self-host|cloud)(\/|$)/;
   var prRe  = /^\/pricing(\/|$)/;
   var anchors = nav.querySelectorAll('a');
   for (var i = 0; i < anchors.length; i++) {
@@ -28,6 +35,7 @@
       (href === '/use-cases' && solRe.test(path)) ||
       (href === '/docs'      && devRe.test(path)) ||
       (href === '/research'  && resRe.test(path)) ||
+      (href === '/enterprise'&& entRe.test(path)) ||
       (href === '/pricing'   && prRe.test(path));
     if (isActive) {
       a.classList.add('active');
@@ -47,13 +55,19 @@
   // falsely render "signed in"). Single source of truth = /v1/account 200
   // with api_key in the payload. Cookie session OR x-api-key header
   // authenticates the call; on 401 we wipe stale keys so the pill stays off.
-  var KEY_NAMES = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
+  //
+  // wave 100 P1-3: writes go to ks_api_key only (cuts XSS exfil surface 75%);
+  // reads still scan READ_FALLBACK so users who logged in pre-migration work,
+  // and every successful auth proactively drains the LEGACY_KEYS aliases.
+  var WRITE_KEY = 'ks_api_key';
+  var READ_FALLBACK = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
+  var LEGACY_KEYS = ['kolm_api_key', 'apiKey', 'recipeApiKey'];
   function readKey() {
-    try { for (var i = 0; i < KEY_NAMES.length; i++) { var v = localStorage.getItem(KEY_NAMES[i]); if (v) return v; } } catch (e) {}
+    try { for (var i = 0; i < READ_FALLBACK.length; i++) { var v = localStorage.getItem(READ_FALLBACK[i]); if (v) return v; } } catch (e) {}
     return '';
   }
   function clearKeys() {
-    try { KEY_NAMES.forEach(function (n) { localStorage.removeItem(n); }); } catch (e) {}
+    try { READ_FALLBACK.forEach(function (n) { localStorage.removeItem(n); }); } catch (e) {}
   }
   var existingPill = actions.querySelector('.kolm-auth-pill');
   if (existingPill && existingPill.parentNode) existingPill.parentNode.removeChild(existingPill);
@@ -83,7 +97,10 @@
           // an authenticated real tenant.
           if (j && j.id) {
             if (j.api_key) {
-              try { KEY_NAMES.forEach(function (n) { localStorage.setItem(n, j.api_key); }); } catch (e) {}
+              try {
+                localStorage.setItem(WRITE_KEY, j.api_key);
+                LEGACY_KEYS.forEach(function (n) { localStorage.removeItem(n); });
+              } catch (e) {}
             }
             renderPill();
           } else if (localKey) {

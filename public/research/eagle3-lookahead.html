@@ -66,6 +66,7 @@
   .cite a{opacity:.78}
   footer.site{border-top:1px solid var(--line);margin-top:72px;padding:28px 24px;font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);text-align:center}
 </style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <header class="site">
@@ -91,7 +92,7 @@
   </div>
 
   <h2>The cost of draft models</h2>
-  <p>Leviathan 2022 and Chen 2023 (DeepMind speculative sampling) established the pattern: run a small draft model to propose K tokens, run the target model once to verify K+1 positions in parallel, accept the longest matching prefix. Wall-clock speedup is 2-3× when the draft model is 10-20× smaller and well-aligned.</p>
+  <p>Leviathan 2022 and Chen 2023 (DeepMind speculative sampling) established the pattern: run a small draft model to propose K tokens, run the target model once to verify K+1 positions in parallel, accept the longest matching prefix. Wall-clock speedup is 2-3? when the draft model is 10-20? smaller and well-aligned.</p>
   <p>The problem with this pattern at the kolm scale: each tenant's adapter changes what the target predicts. A generic draft for Qwen-7B is well-aligned in pretraining distribution but drifts on a refund-flagger adapter that has been distilled into a specific tone. You end up needing a draft model per adapter, which is the same cardinality problem multi-LoRA serving solved on the target side.</p>
 
   <h2>EAGLE-3</h2>
@@ -101,7 +102,7 @@ hidden_l = target.layers[L].output     # mid-layer hidden state
 draft_logits = eagle_head(hidden_l)    # tiny head, ~100M params for a 7B base
 draft_tokens = sample(draft_logits, k=4)
 # verify draft_tokens with one more target forward pass</code></pre>
-  <p>EAGLE-3's incremental contribution over EAGLE-2 is multi-layer feature aggregation and a sharper training objective that explicitly conditions on later-layer features. Reported speedups on Llama-3-70B: 3.05× (EAGLE) → 4.26× (EAGLE-2) → 5.62× (EAGLE-3) at temperature 0, while matching greedy output exactly.</p>
+  <p>EAGLE-3's incremental contribution over EAGLE-2 is multi-layer feature aggregation and a sharper training objective that explicitly conditions on later-layer features. Reported speedups on Llama-3-70B: 3.05? (EAGLE) ??4.26? (EAGLE-2) ??5.62? (EAGLE-3) at temperature 0, while matching greedy output exactly.</p>
 
   <h2>Lookahead decoding</h2>
   <p>Fu 2024 (Lookahead) takes a different angle: skip the draft model entirely. Use the Jacobi-iteration trick: at each step, generate candidate n-grams from existing context tokens by running the target model in parallel with multiple guessed positions, then collect the n-grams that the model agrees with itself on.</p>
@@ -109,10 +110,10 @@ draft_tokens = sample(draft_logits, k=4)
 guesses = [token_i, sample_at_position_i+1, sample_at_position_i+2, ...]
 target_check = target(prompt + guesses)  # one forward pass
 accepted = longest prefix where target_check matches guesses</code></pre>
-  <p>Lookahead requires no extra parameters and no extra training. It scales naturally with longer contexts, where the n-gram bank grows. Speedups are typically 1.5-2.5× on conversation-style workloads and degrade on highly unpredictable outputs (e.g., open creative writing). It is the right pick for high-cardinality multi-tenant settings where the cost of training one EAGLE head per base does not pay back.</p>
+  <p>Lookahead requires no extra parameters and no extra training. It scales naturally with longer contexts, where the n-gram bank grows. Speedups are typically 1.5-2.5? on conversation-style workloads and degrade on highly unpredictable outputs (e.g., open creative writing). It is the right pick for high-cardinality multi-tenant settings where the cost of training one EAGLE head per base does not pay back.</p>
 
   <h2>REST</h2>
-  <p>He 2023 (REST) is a third draft-free method that retrieves draft sequences from a corpus rather than generating them. For RAG-style workloads where the same passages appear repeatedly across queries, REST hits 2-3× speedup with zero additional parameters. Kolm uses REST in the retrieval-heavy paths (long-context QA) and EAGLE-3 in everything else.</p>
+  <p>He 2023 (REST) is a third draft-free method that retrieves draft sequences from a corpus rather than generating them. For RAG-style workloads where the same passages appear repeatedly across queries, REST hits 2-3? speedup with zero additional parameters. Kolm uses REST in the retrieval-heavy paths (long-context QA) and EAGLE-3 in everything else.</p>
 
   <h2>Which to pick</h2>
   <table>
@@ -151,7 +152,7 @@ runtime.serve(request, spec_decode=cfg)</code></pre>
   <p><code>verified_identical_to_off</code> is the contract: speculative decoding must produce token-for-token identical output to non-speculative at the same temperature and seed. If it deviates, the runtime halts and reports. This is enforceable and we enforce it.</p>
 
   <h2>Edge cases</h2>
-  <p><strong>Temperature.</strong> Speculation pays off most at T=0 (greedy), where acceptance rates are highest. At T=0.7, expect ~70% of the T=0 speedup. At T &gt; 1.0, expect speedup near 1× and disable speculation.</p>
+  <p><strong>Temperature.</strong> Speculation pays off most at T=0 (greedy), where acceptance rates are highest. At T=0.7, expect ~70% of the T=0 speedup. At T &gt; 1.0, expect speedup near 1? and disable speculation.</p>
   <p><strong>Adapter compatibility.</strong> An EAGLE-3 head trained on the bare base generalizes to most LoRA adapters but degrades for high-rank or wide-coverage adapters. We K-score the head against a sample of adapters each release; if acceptance drops below 0.5, we retrain.</p>
   <p><strong>Long generations.</strong> Lookahead's overhead scales with the size of the n-gram cache. We cap at 64 entries by default; beyond that, eviction churn eats the speedup. EAGLE-3 is the better pick for outputs &gt; 2k tokens.</p>
   <p><strong>Determinism.</strong> Speculation is verifier-bound, so any speedup must verify identical. Acceptance is the only thing that changes between runs; outputs match bit-for-bit at the same seed. This is a load-bearing property for the kolm receipt chain.</p>
@@ -164,7 +165,7 @@ runtime.serve(request, spec_decode=cfg)</code></pre>
   <p class="cite">Leviathan et al. 2022. <em>Fast Inference from Transformers via Speculative Decoding</em>. <a href="https://arxiv.org/abs/2211.17192">arXiv:2211.17192</a></p>
 
   <div class="meta-line" style="margin-top:48px">
-    <span><a href="/research">← back to research</a></span>
+    <span><a href="/research">??back to research</a></span>
     <span>kolm.ai/research/eagle3-lookahead</span>
   </div>
 </main>
@@ -193,6 +194,7 @@ runtime.serve(request, spec_decode=cfg)</code></pre>
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/registry">Registry</a>
         <a href="/case-studies">Case studies</a>
       </div>

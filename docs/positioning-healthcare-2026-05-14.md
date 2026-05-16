@@ -29,7 +29,7 @@ unfilled slot. kolm's healthcare positioning lives there.
 
 ## 30 SEO queries to win
 
-**Awareness (head + problem-aware):** private LLM for hospitals · HIPAA compliant LLM fine tuning · on premise medical AI · air gapped clinical AI · how to fine tune a medical LLM · clinical AI without sending PHI to cloud · own your healthcare AI model · self hosted ambient scribe · LLM that runs inside hospital VPC · medical AI BAA boundary
+**Awareness (head + problem-aware):** private LLM for hospitals · HIPAA compliant LLM fine tuning · on premise medical AI · air gapped clinical AI · how to fine tune a medical LLM · clinical AI without sending PHI to cloud · own your healthcare AI model · self hosted ambient scribe · LLM that runs inside hospital VPC · medical AI BAA scope
 
 **Consideration (long-tail, vs-style):** Abridge vs self hosted alternative · Hippocratic AI vs on premise alternative · Nabla on premise deployment · Suki AI HIPAA architecture · Dragon Copilot on premise · Epic Cosmos external alternative · open source medical scribe self hosted · fine tune Llama for clinical notes · signed evaluation healthcare AI · specialty AI scribe rad onc · behavioral health LLM self hosted · on prem AI for VA hospitals · medical LLM evaluation framework
 
@@ -53,7 +53,7 @@ unfilled slot. kolm's healthcare positioning lives there.
 - **CTAs:** Read the whitepaper · Compile a model now · Talk to the founders
 
 ### finance.html
-- **Positioning (15w):** Trading-floor AI that never leaks alpha. Compiled inside your VPC, signed end to end.
+- **Positioning (15w):** Trading-floor AI that never leaks alpha. Compiled in your environment, signed end to end.
 - **Proofs:** (1) zero outbound calls; (2) signed audit receipt per decision (SOX/MiFID II/FINRA-friendly); (3) sub-100ms local inference.
 - **CTAs:** Request a desk pilot · See the audit-log spec · Talk to a quant ops lead
 
@@ -70,7 +70,7 @@ unfilled slot. kolm's healthcare positioning lives there.
 4. kolm vs Hippocratic AI — hosted agents vs owned artifacts
 5. kolm vs Dragon Copilot — on-prem vs Microsoft cloud
 6. kolm vs Nabla — bring-your-own-model vs vendor-locked scribe
-7. kolm vs OpenEvidence — evidence retrieval inside your VPC
+7. kolm vs OpenEvidence — evidence retrieval in your environment
 8. How [reference customer] compiled an ED triage AI in 11 days
 9. A radiation-oncology specialist scribe in 600 lines of compile spec
 10. The signed-receipt format your compliance officer should demand

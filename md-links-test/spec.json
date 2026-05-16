@@ -1,0 +1,67 @@
+{
+  "job_id": "job_md_links_v1",
+  "task": "Extract markdown links (inline, reference, autolink) into a structured list.",
+  "recipes": [
+    {
+      "id": "rcp_md_links",
+      "name": "md-links",
+      "source_file": "./recipe.js"
+    }
+  ],
+  "evals": {
+    "spec": "rs-1-evals",
+    "n": 8,
+    "cases": [
+      {
+        "id": "inline-1",
+        "input": "See the [docs](https://example.com/docs) for details.",
+        "expected": { "links": [ { "text": "docs", "href": "https://example.com/docs", "type": "inline" } ] }
+      },
+      {
+        "id": "inline-2-multi",
+        "input": "Visit [Google](https://google.com) and [GitHub](https://github.com).",
+        "expected": { "links": [
+          { "text": "Google", "href": "https://google.com", "type": "inline" },
+          { "text": "GitHub", "href": "https://github.com", "type": "inline" }
+        ] }
+      },
+      {
+        "id": "autolink-1",
+        "input": "Email <mailto:hi@example.com> or visit <https://kolm.ai>.",
+        "expected": { "links": [
+          { "text": "mailto:hi@example.com", "href": "mailto:hi@example.com", "type": "autolink" },
+          { "text": "https://kolm.ai", "href": "https://kolm.ai", "type": "autolink" }
+        ] }
+      },
+      {
+        "id": "reference-1",
+        "input": "See the [docs][d] page.\n\n[d]: https://example.com/docs",
+        "expected": { "links": [ { "text": "docs", "href": "https://example.com/docs", "type": "reference" } ] }
+      },
+      {
+        "id": "reference-2-shortcut",
+        "input": "Read the [manual][] for setup.\n\n[manual]: https://example.com/manual",
+        "expected": { "links": [ { "text": "manual", "href": "https://example.com/manual", "type": "reference" } ] }
+      },
+      {
+        "id": "mixed",
+        "input": "[home](https://example.com) and <https://other.com> plus [api][a].\n\n[a]: https://example.com/api",
+        "expected": { "links": [
+          { "text": "home", "href": "https://example.com", "type": "inline" },
+          { "text": "api", "href": "https://example.com/api", "type": "reference" },
+          { "text": "https://other.com", "href": "https://other.com", "type": "autolink" }
+        ] }
+      },
+      {
+        "id": "no-links",
+        "input": "This paragraph has no links at all, just plain text.",
+        "expected": { "links": [] }
+      },
+      {
+        "id": "title-attr",
+        "input": "Check [the site](https://example.com \"My Title\") today.",
+        "expected": { "links": [ { "text": "the site", "href": "https://example.com", "type": "inline" } ] }
+      }
+    ]
+  }
+}

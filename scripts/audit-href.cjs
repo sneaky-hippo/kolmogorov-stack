@@ -36,11 +36,15 @@ for (const f of walk("public", [], ".html")) {
     const url = m[1];
     const u = url.length > 1 && url.endsWith("/") ? url.slice(0, -1) : url;
     if (valid.has(u) || valid.has(url)) { ok++; continue; }
-    // wildcard rewrites
+    // wildcard rewrites — match both /path/(.*) and /path/:param[*] (Vercel path params)
     let wc = false;
     for (const r of v.rewrites || []) {
       const w = r.source.match(/^(\/[^()]+)\/\(\.\*\)$/);
       if (w && url.startsWith(w[1] + "/")) { wc = true; break; }
+      if (r.source.includes("/:")) {
+        const prefix = r.source.split("/:")[0];
+        if (prefix && url.startsWith(prefix + "/")) { wc = true; break; }
+      }
     }
     if (wc) { ok++; continue; }
     // /v1/ are API routes

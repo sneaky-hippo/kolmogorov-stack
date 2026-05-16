@@ -1,0 +1,59 @@
+{
+  "job_id": "job_zh_greeter_v1",
+  "task": "english to mandarin chinese phrasebook. exact-match lookup with case-fold and trim. returns {chinese, pinyin, exact} or null when unknown.",
+  "base_model": "none",
+  "recipes": [{
+    "id": "rcp_zh_greeter_v1",
+    "name": "english -> mandarin phrasebook",
+    "source": "function generate(input, lib) {\n  var text = (typeof input === 'string') ? input : (input && input.text) || '';\n  var q = String(text).trim().toLowerCase().replace(/[!?.,]+$/, '');\n  var book = (lib.pack && lib.pack.phrasebook) || {};\n  var extra = (lib.params && lib.params.extra_phrases) || {};\n  var entry = extra[q] || book[q];\n  if (entry) return { chinese: entry.zh, pinyin: entry.py, exact: true };\n  return { chinese: null, pinyin: null, exact: false, _hint: 'unknown phrase. extend pack.phrasebook or pass params.extra_phrases' };\n}",
+    "tags": ["translation", "chinese", "mandarin", "phrasebook"],
+    "schema": { "input": { "text": "string" }, "output": { "chinese": "string", "pinyin": "string", "exact": "boolean" } }
+  }],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "starter english->mandarin phrasebook (15 common greetings + courtesies)",
+    "phrasebook": {
+      "hello":           { "zh": "你好",       "py": "nǐ hǎo" },
+      "hi":              { "zh": "嗨",         "py": "hāi" },
+      "good morning":    { "zh": "早上好",     "py": "zǎo shang hǎo" },
+      "good evening":    { "zh": "晚上好",     "py": "wǎn shang hǎo" },
+      "good night":      { "zh": "晚安",       "py": "wǎn ān" },
+      "goodbye":         { "zh": "再见",       "py": "zài jiàn" },
+      "thank you":       { "zh": "谢谢",       "py": "xiè xie" },
+      "thanks":          { "zh": "谢谢",       "py": "xiè xie" },
+      "you're welcome":  { "zh": "不客气",     "py": "bú kè qi" },
+      "sorry":           { "zh": "对不起",     "py": "duì bù qǐ" },
+      "excuse me":       { "zh": "打扰一下",   "py": "dǎ rǎo yí xià" },
+      "yes":             { "zh": "是",         "py": "shì" },
+      "no":              { "zh": "不是",       "py": "bú shì" },
+      "how are you":     { "zh": "你好吗",     "py": "nǐ hǎo ma" },
+      "i'm fine":        { "zh": "我很好",     "py": "wǒ hěn hǎo" },
+      "what's your name":{ "zh": "你叫什么名字","py": "nǐ jiào shén me míng zì" },
+      "my name is kolm": { "zh": "我叫kolm",   "py": "wǒ jiào kolm" },
+      "i don't understand":{ "zh": "我不明白", "py": "wǒ bù míng bai" },
+      "please":          { "zh": "请",         "py": "qǐng" },
+      "cheers":          { "zh": "干杯",       "py": "gān bēi" }
+    }
+  },
+  "index": {
+    "spec": "kolm-index-1",
+    "by_keyword": { "translate": "rcp_zh_greeter_v1", "chinese": "rcp_zh_greeter_v1", "mandarin": "rcp_zh_greeter_v1" },
+    "by_recipe": { "rcp_zh_greeter_v1": ["translate", "chinese", "mandarin"] }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "n": 2,
+    "cases": [
+      { "id": "hello",        "input": { "text": "hello" },         "expected": { "chinese": "你好",     "exact": true } },
+      { "id": "thanks",       "input": { "text": "thank you" },     "expected": { "chinese": "谢谢",     "exact": true } },
+      { "id": "goodbye",      "input": { "text": "goodbye" },       "expected": { "chinese": "再见",     "exact": true } },
+      { "id": "morning",      "input": { "text": "Good Morning!" }, "expected": { "chinese": "早上好",   "exact": true } },
+      { "id": "how-are-you",  "input": { "text": "how are you" },   "expected": { "chinese": "你好吗",   "exact": true } },
+      { "id": "name-q",       "input": { "text": "what's your name" }, "expected": { "chinese": "你叫什么名字", "exact": true } },
+      { "id": "name-a",       "input": { "text": "my name is kolm" }, "expected": { "chinese": "我叫kolm",   "exact": true } },
+      { "id": "unknown",      "input": { "text": "supercalifragilistic" }, "expected": { "chinese": null,    "exact": false } }
+    ],
+    "coverage": 1.0
+  },
+  "training_stats": { "pass_rate_positive": 1.0, "latency_p50_us": 35 }
+}

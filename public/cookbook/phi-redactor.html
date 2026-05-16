@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>PHI redactor recipe &middot; kolm cookbook</title>
+<meta name="description" content="Compile a signed local model that strips the 18 HIPAA identifiers from any free-text input. Verifier-gated, no upstream calls, audit-receipt on every run.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:title" content="PHI redactor recipe">
+<meta property="og:description" content="Strip the 18 HIPAA identifiers from any text. Local, signed, receipt on every call.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="PHI redactor recipe" />
+<meta name="twitter:description" content="Strip the 18 HIPAA identifiers from any text. Local, signed, receipt on every call." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<meta property="og:url" content="https://kolm.ai/cookbook/phi-redactor">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/cookbook/phi-redactor">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "HowTo",
+      "name": "PHI redactor recipe",
+      "description": "Strip the 18 HIPAA identifiers from any free-text input. Local, signed, verifier-gated.",
+      "url": "https://kolm.ai/cookbook/phi-redactor",
+      "totalTime": "PT5M",
+      "tool": [
+        {
+          "@type": "HowToTool",
+          "name": "kolm CLI"
+        }
+      ],
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Install",
+          "text": "npm i -g github:sneaky-hippo/kolmogorov-stack"
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Compile",
+          "text": "kolm compile phi-redactor.toml"
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Run",
+          "text": "kolm run phi-redactor.kolm"
+        }
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "kolm",
+          "item": "https://kolm.ai/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Cookbook",
+          "item": "https://kolm.ai/cookbook"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "PHI redactor recipe",
+          "item": "https://kolm.ai/cookbook/phi-redactor"
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/use-cases">Use cases</a>
+        <a href="/docs">Docs</a>
+        <a href="/research">Research</a>
+        <a href="/enterprise">Enterprise</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; phi-redactor</div>
+    <span class="pill">Recipe &middot; vertical</span>
+    <h1>Eighteen HIPAA identifiers, <span class="tone">none of them out.</span></h1>
+    <p class="lede">A local <code>.kolm</code> that takes any free-text input and returns the same text with the 18 HIPAA Safe-Harbor identifiers removed: names, dates, phones, MRNs, SSNs, plate numbers, biometrics, full-face photos, device IDs, URLs, IPs, geo data finer than the first three ZIP digits, and the catch-all "any other unique identifying number." Verifier rejects any output that reintroduces a PHI token; runs ship with a signed receipt logging the K-score and the input hash.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-3b-instruct</span></div>
+      <div class="item"><span class="label">gold pairs</span><span class="value">1,200 (840 train / 360 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.90</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">42 MB</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~28 min</span></div>
+      <div class="item"><span class="label">spec source</span><span class="value">redactor + verifier</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>Anywhere free-text touches PHI &mdash; intake messages, EHR-adjacent notes, support tickets, voice transcripts, OCR output &mdash; you need a deterministic redactor before that text leaves the audited boundary. This recipe compiles one. The spec is generic by design: it does not assume a clinical structure (use <code>hipaa-summarizer</code> for SOAP) and does not assume a single document type.</p>
+      <p>The verifier holds a frozen regex bundle covering the 18 Safe-Harbor identifiers, plus a learned classifier head for the harder long-tail cases: surnames adjacent to titles, dates phrased as "two weeks before her birthday," and license plates inside narrative prose. Any output token that matches a banned pattern breaks the receipt chain and is rejected.</p>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"text"</span>,
+  <span class="k">"verifier"</span>: {
+    <span class="k">"banned_token_regex"</span>: <span class="k">"./hipaa-18.regex"</span>,
+    <span class="k">"banned_classifier"</span>: <span class="k">"./hipaa-long-tail.cls"</span>,
+    <span class="k">"max_edit_distance"</span>: 0.35,
+    <span class="k">"preserve_semantics_floor"</span>: 0.92
+  },
+  <span class="k">"redact_token"</span>: <span class="k">"[REDACTED]"</span>
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile</h2>
+      <pre class="code">kolm compile <span class="k">"strip 18 HIPAA identifiers, preserve clinical meaning"</span> \
+  --base qwen2.5-3b-instruct \
+  --pairs ./phi-gold/*.jsonl \
+  --verifier hipaa-18-regex,hipaa-long-tail-cls,semantics-92 \
+  --k-floor 0.90 \
+  --output phi-redactor.kolm
+
+<span class="ok">ok</span> wrote <span class="k">phi-redactor.kolm</span>
+   k_score=0.93  signature=hmac-sha256
+   0/360 held-out outputs leaked a Safe-Harbor identifier
+   semantic-faithful 0.94 (held-out mean)</pre>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.93</span>
+        <span class="k-detail">held-out 360 inputs &middot; PHI-leak 0% &middot; semantic-faithful 94% &middot; over-redact 3%</span>
+      </div>
+      <p>PHI-leak is the load-bearing metric; it is exact (regex + classifier) and any non-zero value fails the build. Over-redact tracks when the model removes a non-PHI token by mistake (rare but tracked).</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">Hosted bridge</div><div class="v">410<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">68<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Mac mini</div><div class="v">305<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">CPU x86</div><div class="v">590<span class="u">ms</span></div></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c"># Belt-and-suspenders: even on already-de-identified data, run this</span>
+<span class="c"># as a final pass before anything crosses the audited boundary.</span>
+on_request = (msg) =&gt; {
+  const safe = kolm.run(<span class="k">'phi-redactor.kolm'</span>, msg.body);
+  msg.body = safe.text;
+  audit.log({
+    artifact: <span class="k">'phi-redactor.kolm'</span>,
+    request_id: msg.id,
+    k_score: safe.receipt.k_score,
+    receipt_hash: safe.receipt.hash
+  });
+};</pre>
+    </div>
+
+    <div class="group">
+      <h2>When to use this vs other redactors</h2>
+      <ul>
+        <li><b>phi-redactor (this recipe)</b> &mdash; generic free-text in, free-text out. Use when you do not know the document shape upfront.</li>
+        <li><b>hipaa-summarizer</b> &mdash; clinical note in, structured SOAP out. PHI is redacted as part of the summarization; do not run both.</li>
+        <li><b>drug-name-redact</b> &mdash; strips proprietary drug names while preserving generic equivalents. Different problem; not a PHI redactor.</li>
+        <li><b>soap-redactor</b> &mdash; takes a SOAP-formatted note and redacts each section in place, preserving the SOAP structure.</li>
+      </ul>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/hipaa-summarizer"><div class="h">HIPAA summarizer</div><div class="d">Clinical note to structured SOAP with PHI removed in one pass.</div></a>
+        <a href="/cookbook/soap-redactor"><div class="h">SOAP redactor</div><div class="d">In-place redaction over an existing SOAP-formatted note.</div></a>
+        <a href="/cookbook/drug-name-redact"><div class="h">Drug-name redact</div><div class="d">Strip proprietary drug names; preserve generic equivalents.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/badge">Embed badge</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/health-insurance">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/manifesto">Manifesto</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai &middot; Made with .kolm &middot; Apache-2.0</span>
+      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

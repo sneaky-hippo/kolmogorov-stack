@@ -1,0 +1,101 @@
+{
+  "job_id": "job_kolm_phi_redactor_v1",
+  "task": "PHI redactor for clinical notes — strips SSN, phone, email, dates, MRN, DOB, and Hollywood-reserved phone ranges",
+  "base_model": "none",
+  "recipes": [
+    {
+      "id": "rcp_phi_redactor_v1",
+      "name": "PHI redactor (healthcare)",
+      "source": "function generate(input, lib) {\n  var text = (typeof input === 'string') ? input : (input && input.text) || '';\n  if (typeof text !== 'string') return { redacted: '', hits: [] };\n  var patterns = [];\n  // pack patterns run BEFORE builtins so DOB/MRN/NPI dont get shadowed by\n  // generic date/phone matches on the same digit run.\n  var packPats = (lib.pack && lib.pack.default_patterns) || [];\n  for (var j=0;j<packPats.length;j++){ var p=packPats[j]; try { patterns.push({name:p.name,regex:new RegExp(p.regex,p.flags||'g'),replacement:p.replacement||('['+p.name+']')}); } catch(e){} }\n  var enabled = (lib.pack && lib.pack.enabled_builtins) || ['email','phone','url','date'];\n  for (var i=0;i<enabled.length;i++){ var k=enabled[i]; if (lib.patterns[k]) patterns.push({name:k.toUpperCase(),regex:lib.patterns[k],replacement:\"[\"+k.toUpperCase()+\"]\"}); }\n  var extras = (lib.params && lib.params.extra_patterns) || [];\n  for (var x=0;x<extras.length;x++){ var e=extras[x]; try { patterns.push({name:e.name,regex:new RegExp(e.regex,e.flags||'g'),replacement:e.replacement||('['+e.name+']')}); } catch(err){} }\n  var hits = {}, redacted = text;\n  for (var n=0;n<patterns.length;n++){ var pat=patterns[n], count=0; redacted = redacted.replace(pat.regex, function(){ count++; return pat.replacement; }); if (count>0) hits[pat.name]=(hits[pat.name]||0)+count; }\n  var hitList = []; for (var key in hits) hitList.push({name:key,count:hits[key]});\n  hitList.sort(function(a,b){ return a.name<b.name?-1:a.name>b.name?1:0; });\n  return { redacted: redacted, hits: hitList };\n}",
+      "tags": [
+        "redaction",
+        "healthcare",
+        "phi",
+        "hipaa"
+      ],
+      "schema": {
+        "input": {
+          "text": "string"
+        },
+        "output": {
+          "redacted": "string",
+          "hits": "array"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "healthcare PHI patterns: SSN, MRN, DOB, NPI, phone, email, dates",
+    "enabled_builtins": [
+      "email",
+      "phone",
+      "date"
+    ],
+    "default_patterns": [
+      {
+        "name": "SSN",
+        "regex": "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+        "replacement": "[SSN]"
+      },
+      {
+        "name": "MRN",
+        "regex": "\\bMRN[: ]?\\d{6,9}\\b",
+        "flags": "gi",
+        "replacement": "[MRN]"
+      },
+      {
+        "name": "DOB",
+        "regex": "\\bDOB[: ]?\\d{4}-\\d{2}-\\d{2}\\b",
+        "flags": "gi",
+        "replacement": "[DOB]"
+      },
+      {
+        "name": "NPI",
+        "regex": "\\bNPI[: ]?\\d{10}\\b",
+        "flags": "gi",
+        "replacement": "[NPI]"
+      }
+    ]
+  },
+  "index": {
+    "spec": "kolm-index-1",
+    "by_keyword": {
+      "redact": "rcp_phi_redactor_v1",
+      "phi": "rcp_phi_redactor_v1"
+    },
+    "by_recipe": {
+      "rcp_phi_redactor_v1": [
+        "redact",
+        "phi",
+        "hipaa"
+      ]
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "n": 2,
+    "cases": [
+      {
+        "id": "ssn",
+        "input": {
+          "text": "patient ssn 555-44-3333."
+        },
+        "expected": {
+          "redacted": "patient ssn [SSN].",
+          "hits": [
+            {
+              "name": "SSN",
+              "count": 1
+            }
+          ]
+        }
+      }
+    ],
+    "coverage": 1
+  },
+  "training_stats": {
+    "pass_rate_positive": 1,
+    "latency_p50_us": 60
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "job_id": "job_kolm_legal_clause_v1",
+  "task": "legal clause extractor — pulls governing_law, parties, term_months, and effective_date from NDA-style contracts",
+  "base_model": "none",
+  "recipes": [
+    {
+      "id": "rcp_legal_clause_v1",
+      "name": "legal clause extractor",
+      "source": "function generate(input, lib) {\n  var text = (typeof input === 'string') ? input : (input && input.text) || '';\n  if (typeof text !== 'string') return { fields: {}, raw: '' };\n  var rules = [];\n  var packRules = (lib.pack && lib.pack.default_rules) || [];\n  for (var i=0;i<packRules.length;i++) rules.push(packRules[i]);\n  var tenantRules = (lib.params && lib.params.extra_rules) || [];\n  for (var j=0;j<tenantRules.length;j++) rules.push(tenantRules[j]);\n  var fields = {};\n  for (var k=0;k<rules.length;k++){ var r=rules[k]; if (!r||!r.name||!r.regex) continue;\n    var re; try { re = new RegExp(r.regex, r.flags||''); } catch(err){ fields[r.name]=null; continue; }\n    var m = text.match(re); if (!m) { fields[r.name]=null; continue; }\n    var raw = (typeof r.group==='number'&&r.group>=0) ? (m[r.group]!=null?m[r.group]:null) : m[0];\n    if (raw==null) { fields[r.name]=null; continue; }\n    if (r.transform==='upper') raw=String(raw).toUpperCase();\n    else if (r.transform==='lower') raw=String(raw).toLowerCase();\n    else if (r.transform==='trim') raw=String(raw).trim();\n    else if (r.transform==='number') { var n=lib.parseFloatSafe(raw); raw=isNaN(n)?null:n; }\n    fields[r.name] = raw;\n  }\n  return { fields: fields, raw: text };\n}",
+      "tags": [
+        "extraction",
+        "legal",
+        "nda",
+        "contracts"
+      ],
+      "schema": {
+        "input": {
+          "text": "string"
+        },
+        "output": {
+          "fields": "object",
+          "raw": "string"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "NDA / contract clause patterns",
+    "default_rules": [
+      {
+        "name": "governing_law",
+        "regex": "governed by the laws of (?:the )?(?:State of )?([A-Z][a-zA-Z]+(?:[ ][A-Z][a-zA-Z]+)?)",
+        "group": 1
+      },
+      {
+        "name": "term_months",
+        "regex": "term of (?:this agreement )?(?:shall be |is )?(\\d{1,3})\\s*(?:\\([^)]+\\)\\s*)?months",
+        "flags": "i",
+        "group": 1,
+        "transform": "number"
+      },
+      {
+        "name": "effective_date",
+        "regex": "\\beffective (?:as of |on )?(\\d{4}-\\d{2}-\\d{2})\\b",
+        "flags": "i",
+        "group": 1
+      },
+      {
+        "name": "party_disclosing",
+        "regex": "disclosing party[\\s\\S]{0,40}?[\"“]?([A-Z][\\w &.,']{2,60}?)[\"”]?(?=\\s*[,()\\.])",
+        "group": 1,
+        "transform": "trim"
+      }
+    ]
+  },
+  "index": {
+    "spec": "kolm-index-1",
+    "by_keyword": {
+      "extract": "rcp_legal_clause_v1",
+      "clause": "rcp_legal_clause_v1"
+    },
+    "by_recipe": {
+      "rcp_legal_clause_v1": [
+        "extract",
+        "clause",
+        "legal"
+      ]
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "n": 1,
+    "cases": [
+      {
+        "id": "law",
+        "input": {
+          "text": "governed by the laws of Delaware"
+        },
+        "expected": {
+          "fields": {
+            "governing_law": "Delaware"
+          }
+        }
+      }
+    ],
+    "coverage": 1
+  },
+  "training_stats": {
+    "pass_rate_positive": 1,
+    "latency_p50_us": 80
+  }
+}

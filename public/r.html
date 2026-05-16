@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#050607;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#050607;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Receipt verification &middot; kolm</title>
+<meta name="description" content="Public verification for any kolm receipt. Paste or share a hash and anyone can confirm the HMAC chain is intact, when the receipt was signed, and what artifact it covers. No login required.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="Receipt verification &middot; kolm">
+<meta property="og:description" content="Public, no-login verification for any kolm receipt. Anyone with the hash can verify the HMAC chain is intact.">
+<meta property="og:url" content="https://kolm.ai/r">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/r">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --bg:#050607; --bg-elev:#0b0f10; --bg-card:#101514;
+    --line:rgba(255,255,255,0.06); --line-strong:rgba(255,255,255,0.12);
+    --ink:#faf2e1; --ink-mute:#b5bdb1; --ink-faint:#737c73;
+    --accent:#faf2e1; --good:#7ef0d2; --warn:#d6a65a; --bad:#e87878;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;
+  }
+  [data-theme=light]{--bg:#f7f4ec;--bg-elev:#ffffff;--bg-card:#fafaf6;--line:rgba(0,0,0,0.08);--line-strong:rgba(0,0,0,0.14);--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--accent:#1f2429;--good:#059669;--warn:#b9831e;--bad:#b03a3a}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:760px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  [data-theme=light] header.site{background:rgba(247,244,236,0.82)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:58px;gap:24px;max-width:1080px;margin:0 auto;padding:0 32px}
+  header.site .brand{font-family:var(--mono);font-size:13px;letter-spacing:0.04em;font-weight:600}
+  header.site nav{display:flex;gap:22px;font-family:var(--mono);font-size:12.5px;color:var(--ink-mute)}
+  header.site nav a:hover{color:var(--ink)}
+  @media(max-width:760px){header.site nav{display:none}}
+
+  section.hero{padding:72px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 16px}
+  .crumbs a{color:inherit;border-bottom:1px dashed var(--line)}
+  h1{font-size:42px;line-height:1.1;font-weight:500;letter-spacing:-0.02em;margin:0 0 16px}
+  .lede{font-size:17.5px;line-height:1.55;color:var(--ink-mute);margin:0 0 22px;max-width:600px}
+
+  section.body{padding:36px 0;border-bottom:1px solid var(--line)}
+  h2{margin:0 0 14px;font-size:22px;font-weight:500;letter-spacing:-0.012em}
+  p{color:var(--ink-mute);margin:0 0 14px}
+
+  .badge-row{display:flex;align-items:center;gap:14px;margin:6px 0 22px;flex-wrap:wrap}
+  .badge{display:inline-flex;align-items:center;gap:10px;padding:10px 18px;border-radius:99px;font-family:var(--mono);font-size:13px;letter-spacing:0.04em;border:1px solid var(--line-strong);background:var(--bg-elev)}
+  .badge .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-faint)}
+  .badge.ok{color:var(--good);border-color:rgba(126,240,210,0.35)}
+  .badge.ok .dot{background:var(--good);box-shadow:0 0 0 4px rgba(126,240,210,0.10)}
+  .badge.bad{color:var(--bad);border-color:rgba(232,120,120,0.35)}
+  .badge.bad .dot{background:var(--bad);box-shadow:0 0 0 4px rgba(232,120,120,0.10)}
+  .badge.warn{color:var(--warn);border-color:rgba(214,166,90,0.35)}
+  .badge.warn .dot{background:var(--warn);box-shadow:0 0 0 4px rgba(214,166,90,0.10)}
+  .badge.idle{color:var(--ink-faint)}
+
+  .receipt{border:1px solid var(--line-strong);background:var(--bg-elev);border-radius:10px;font-family:var(--mono);font-size:13px}
+  .receipt .body{padding:6px 22px}
+  .receipt .row{display:grid;grid-template-columns:170px 1fr;gap:14px;padding:14px 0;border-bottom:1px solid var(--line);align-items:baseline}
+  .receipt .row:last-child{border-bottom:none}
+  .receipt .row .lbl{color:var(--ink-faint);font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase}
+  .receipt .row .val{color:var(--ink);overflow-wrap:anywhere;word-break:break-all}
+  .receipt .row .val .k{color:var(--good)}
+  .receipt .row .val .private{color:var(--ink-faint);font-style:italic}
+  .receipt .row .val.copyable{cursor:pointer}
+  .receipt .row .val .copy-hint{color:var(--ink-faint);font-size:10.5px;margin-left:8px;letter-spacing:0.04em;text-transform:uppercase}
+  .receipt .row .val.copied{color:var(--good)}
+  @media(max-width:560px){.receipt .row{grid-template-columns:1fr;gap:4px}.receipt .row .lbl{font-size:10px}}
+
+  .proves{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0 0}
+  .proves .c{padding:18px 18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev)}
+  .proves .c h3{font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 8px;font-weight:500}
+  .proves .c p{margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-mute)}
+  @media(max-width:720px){.proves{grid-template-columns:1fr}}
+
+  .cta-block{background:var(--bg-elev);border:1px solid var(--line);border-radius:10px;padding:22px 24px;margin:0}
+  .cta-block h3{margin:0 0 8px;font-size:15px;font-weight:500;color:var(--ink)}
+  .cta-block p{margin:0 0 12px;font-size:13.5px}
+  .cta-block .cmd{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 14px;font-family:var(--mono);font-size:12.5px;color:var(--ink);overflow-x:auto;cursor:pointer;transition:border-color .15s}
+  .cta-block .cmd:hover{border-color:var(--line-strong)}
+  .cta-block .cmd .prompt{color:var(--ink-faint)}
+  .cta-block .cmd.copied{border-color:var(--good);color:var(--good)}
+  .cta-block .docs{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin-top:10px;letter-spacing:0.04em;text-transform:uppercase}
+  .cta-block .docs a{color:var(--ink-mute);border-bottom:1px dashed var(--line)}
+
+  .empty{padding:48px 22px;text-align:center;border:1px dashed var(--line-strong);border-radius:10px;background:var(--bg-elev)}
+  .empty .icon{font-size:18px;color:var(--ink-faint);margin-bottom:10px;font-family:var(--mono)}
+  .empty .big{font-size:17px;color:var(--ink);margin:0 0 6px}
+  .empty .sub{color:var(--ink-mute);font-size:14px;max-width:480px;margin:0 auto}
+  .empty .sub code{font-family:var(--mono);font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+
+  footer.site{padding:36px 0 60px;color:var(--ink-faint);font-family:var(--mono);font-size:12px;border-top:1px solid var(--line);margin-top:24px}
+  footer.site .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:1080px;margin:0 auto;padding:0 32px}
+  footer.site a{color:inherit;border-bottom:1px dashed var(--line)}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="row">
+    <a href="/" class="brand">kolm</a>
+    <nav>
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
+      <a href="/research">Research</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/security">Security</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero"><div class="wrap">
+  <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; receipt</p>
+  <h1>Receipt verification.</h1>
+  <p class="lede">Anyone with this hash can verify a receipt was issued, when, and that the HMAC chain is intact. No login. No payload data leaves a receipt by design. Tenant identity is hidden unless the customer opts in.</p>
+  <div class="badge-row" id="badge-row" aria-live="polite">
+    <span class="badge idle"><span class="dot"></span>Looking up receipt</span>
+  </div>
+</div></section>
+
+<section class="body"><div class="wrap">
+  <div id="result"></div>
+</div></section>
+
+<section class="body"><div class="wrap">
+  <h2>The 4-ring chain</h2>
+  <p class="lede" style="max-width:680px;margin:0 0 28px;color:var(--ink-mute)">Each ring is an HMAC-SHA256 over the previous ring plus the new payload. Break any byte anywhere in the chain and every ring downstream stops verifying. This is what "tamper-evident" actually means in code.</p>
+
+  <figure class="ring-graph" aria-label="4-ring receipt chain: pre-image, derived, execution, seal">
+    <svg viewBox="0 0 880 200" role="img" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:var(--mono,ui-monospace);overflow:visible">
+      <defs>
+        <marker id="rg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <g class="rg-rings">
+        <g transform="translate(80,100)">
+          <circle r="56" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.85"/>
+          <text y="-72" text-anchor="middle" font-size="10" letter-spacing="0.14em" fill="currentColor" opacity="0.55">RING 01</text>
+          <text y="4" text-anchor="middle" font-size="14" fill="currentColor" font-weight="500">pre-image</text>
+          <text y="22" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">task &middot; seeds &middot; recipe</text>
+          <text y="78" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.45">sha256(payload)</text>
+        </g>
+        <g transform="translate(280,100)">
+          <circle r="56" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.85"/>
+          <text y="-72" text-anchor="middle" font-size="10" letter-spacing="0.14em" fill="currentColor" opacity="0.55">RING 02</text>
+          <text y="4" text-anchor="middle" font-size="14" fill="currentColor" font-weight="500">derived</text>
+          <text y="22" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">weights &middot; LoRA &middot; recipe</text>
+          <text y="78" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.45">hmac(prev, model_hash)</text>
+        </g>
+        <g transform="translate(480,100)">
+          <circle r="56" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.85"/>
+          <text y="-72" text-anchor="middle" font-size="10" letter-spacing="0.14em" fill="currentColor" opacity="0.55">RING 03</text>
+          <text y="4" text-anchor="middle" font-size="14" fill="currentColor" font-weight="500">execution</text>
+          <text y="22" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.55">eval &middot; K-gate &middot; metrics</text>
+          <text y="78" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.45">hmac(prev, eval_result)</text>
+        </g>
+        <g transform="translate(680,100)">
+          <circle r="56" fill="none" stroke="#10b981" stroke-width="1.8" opacity="0.95"/>
+          <text y="-72" text-anchor="middle" font-size="10" letter-spacing="0.14em" fill="#10b981" opacity="0.85">RING 04</text>
+          <text y="4" text-anchor="middle" font-size="14" fill="#10b981" font-weight="600">seal</text>
+          <text y="22" text-anchor="middle" font-size="9.5" fill="#10b981" opacity="0.7">signature &middot; CID</text>
+          <text y="78" text-anchor="middle" font-size="9" fill="#10b981" opacity="0.6">hmac(prev, tenant_key)</text>
+          <circle r="3" cy="-46" cx="40" fill="#10b981"/>
+        </g>
+      </g>
+      <g class="rg-arrows" style="color:currentColor;opacity:0.45">
+        <line x1="142" y1="100" x2="218" y2="100" stroke="currentColor" stroke-width="1.2" marker-end="url(#rg-arrow)"/>
+        <line x1="342" y1="100" x2="418" y2="100" stroke="currentColor" stroke-width="1.2" marker-end="url(#rg-arrow)"/>
+        <line x1="542" y1="100" x2="618" y2="100" stroke="currentColor" stroke-width="1.2" marker-end="url(#rg-arrow)"/>
+      </g>
+      <g class="rg-arrow-labels" font-size="9.5" letter-spacing="0.08em" text-anchor="middle" fill="currentColor" opacity="0.55">
+        <text x="180" y="94">HMAC</text>
+        <text x="380" y="94">HMAC</text>
+        <text x="580" y="94">HMAC</text>
+      </g>
+    </svg>
+    <figcaption style="font-family:var(--mono,ui-monospace);font-size:11.5px;color:var(--ink-faint);text-align:center;margin-top:14px;letter-spacing:0.04em">
+      pre-image &rarr; derived &rarr; execution &rarr; seal &nbsp;&middot;&nbsp; tamper-evident by construction
+    </figcaption>
+  </figure>
+  <style>
+    .ring-graph { color: var(--ink); margin: 32px 0 8px; }
+    [data-theme=light] .ring-graph { color: #18171a; }
+    @media (max-width: 720px) {
+      .ring-graph svg { min-width: 640px; }
+      .ring-graph { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    }
+  </style>
+
+  <h2 style="margin-top:48px">What this proves</h2>
+  <div class="proves">
+    <div class="c"><h3>01 . issued</h3><p>The receipt was signed by kolm at the timestamp shown. The signing key is on file with our compliance package.</p></div>
+    <div class="c"><h3>02 . chain intact</h3><p>HMAC-SHA256 across every ring of the chain re-verified server-side. A single byte change in the artifact, eval set, or receipt body would break it.</p></div>
+    <div class="c"><h3>03 . artifact unchanged</h3><p>The artifact_hash above is the sha256 of the bytes in the .kolm at sign-time. Anyone can recompute it from a copy and confirm a match.</p></div>
+  </div>
+</div></section>
+
+<section class="body"><div class="wrap">
+  <div class="cta-block">
+    <h3>Verify offline</h3>
+    <p>Same checks, in your terminal, against your local copy of the artifact. No network call, no kolm involvement.</p>
+    <div class="cmd" id="copy-cmd" title="Click to copy"><span class="prompt">$</span> <span id="cmd-text"><span class="cli-verb">kolm</span> verify --hash &lt;hash&gt;</span></div>
+    <div class="docs"><a href="/docs#verify">Read the verify docs &rarr;</a> &nbsp;&middot;&nbsp; <a href="/spec/kolm-format-v1">Read the .kolm spec &rarr;</a> &nbsp;&middot;&nbsp; <a href="/verify-prod">Drop a .kolm to verify in browser &rarr;</a></div>
+  </div>
+</div></section>
+
+<footer class="site"><div class="row">
+  <div>kolm &middot; portable AI behavior with cryptographic receipts</div>
+  <div><a href="/security">Security</a> &nbsp;&middot;&nbsp; <a href="/baa">BAA</a> &nbsp;&middot;&nbsp; <a href="/spec">Spec</a> &nbsp;&middot;&nbsp; <a href="/docs">Docs</a></div>
+</div></footer>
+
+<script>
+(function(){
+  // The hash arrives via the ?hash= query param after Vercel rewrites
+  // /r/<hash> to /r.html?hash=<hash>. Path fallback covers direct loads.
+  function getHashFromLocation(){
+    var qs = new URLSearchParams(location.search);
+    var fromQuery = qs.get('hash');
+    if (fromQuery) return fromQuery.trim();
+    var m = location.pathname.match(/^\/r\/([A-Za-z0-9._\-]+)\/?$/);
+    if (m && m[1]) return m[1];
+    return '';
+  }
+
+  var hash = getHashFromLocation();
+  var badgeRow = document.getElementById('badge-row');
+  var result = document.getElementById('result');
+  var cmdText = document.getElementById('cmd-text');
+  var copyCmd = document.getElementById('copy-cmd');
+
+  function setBadge(kind, label){
+    badgeRow.innerHTML = '<span class="badge ' + kind + '"><span class="dot"></span>' + label + '</span>';
+  }
+
+  function shorten(h){
+    if (!h) return '';
+    return h.length > 16 ? h.slice(0, 16) + String.fromCharCode(0x2026) : h;
+  }
+
+  function relTime(iso){
+    if (!iso) return '';
+    var t = new Date(iso).getTime();
+    if (isNaN(t)) return '';
+    var diff = Date.now() - t;
+    if (diff < 0) return '';
+    var sec = Math.floor(diff / 1000);
+    if (sec < 60) return sec + 's ago';
+    var min = Math.floor(sec / 60);
+    if (min < 60) return min + 'm ago';
+    var hr = Math.floor(min / 60);
+    if (hr < 24) return hr + 'h ago';
+    var day = Math.floor(hr / 24);
+    if (day < 30) return day + ' day' + (day === 1 ? '' : 's') + ' ago';
+    var mo = Math.floor(day / 30);
+    if (mo < 12) return mo + ' month' + (mo === 1 ? '' : 's') + ' ago';
+    var yr = Math.floor(mo / 12);
+    return yr + ' year' + (yr === 1 ? '' : 's') + ' ago';
+  }
+
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  function copyableCell(full){
+    if (!full) return '<span class="private">not available</span>';
+    var safe = escapeHtml(full);
+    return '<span data-full="' + safe + '" onclick="copyFull(this)">' + escapeHtml(shorten(full)) + '<span class="copy-hint">click to copy</span></span>';
+  }
+
+  window.copyFull = function(el){
+    var full = el.getAttribute('data-full') || '';
+    if (!full) return;
+    var done = function(){
+      el.classList.add('copied');
+      var hint = el.querySelector('.copy-hint');
+      if (hint) hint.textContent = 'copied';
+      setTimeout(function(){ el.classList.remove('copied'); if (hint) hint.textContent = 'click to copy'; }, 1400);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(full).then(done, function(){});
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = full; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (_) {}
+      document.body.removeChild(ta);
+    }
+  };
+
+  function renderEmpty(message, hint){
+    setBadge('warn', 'Receipt not found');
+    result.innerHTML =
+      '<div class="empty">' +
+        '<div class="icon">404</div>' +
+        '<p class="big">' + escapeHtml(message) + '</p>' +
+        '<p class="sub">' + hint + '</p>' +
+      '</div>';
+  }
+
+  function renderError(message){
+    setBadge('bad', 'Lookup error');
+    result.innerHTML =
+      '<div class="empty">' +
+        '<div class="icon">err</div>' +
+        '<p class="big">' + escapeHtml(message) + '</p>' +
+        '<p class="sub">Try again or paste the hash directly into the URL: <code>/r/&lt;hash&gt;</code></p>' +
+      '</div>';
+  }
+
+  function renderReceipt(j){
+    if (j.chain_valid) {
+      setBadge('ok', 'Chain valid');
+    } else {
+      setBadge('bad', 'Chain broken');
+    }
+    var rows = [];
+    rows.push(['Receipt hash', copyableCell(j.hash)]);
+    rows.push(['Receipt id',   copyableCell(j.receipt_id)]);
+    rows.push(['Signed at',    j.signed_at ? (escapeHtml(j.signed_at) + ' &nbsp; <span style="color:var(--ink-faint)">' + escapeHtml(relTime(j.signed_at)) + '</span>') : '<span class="private">unknown</span>']);
+    rows.push(['Ring count',   (j.ring_count != null ? escapeHtml(String(j.ring_count)) : '0') + ' <span style="color:var(--ink-faint)">HMAC-chained steps</span>']);
+    rows.push(['K-score',      (typeof j.k_score === 'number') ? '<span class="k">K = ' + j.k_score.toFixed(3) + '</span>' : '<span class="private">not recorded</span>']);
+    rows.push(['Eval score',   (typeof j.eval_score === 'number') ? escapeHtml(j.eval_score.toFixed(3)) : '<span class="private">not recorded</span>']);
+    rows.push(['Artifact hash',copyableCell(j.artifact_hash)]);
+    rows.push(['CID',          copyableCell(j.cid)]);
+    rows.push(['Tenant',       j.tenant_handle ? escapeHtml(j.tenant_handle) : '<span class="private">tenant private</span>']);
+    rows.push(['Recipe count', (j.recipe_count != null ? escapeHtml(String(j.recipe_count)) : '<span class="private">unknown</span>')]);
+    var ms = j.manifest_summary || {};
+    var manifestParts = [];
+    if (ms.base_model)    manifestParts.push('model = <span style="color:var(--ink)">' + escapeHtml(ms.base_model) + '</span>');
+    if (ms.tier)          manifestParts.push('tier = ' + escapeHtml(ms.tier));
+    if (ms.runtime)       manifestParts.push('runtime = ' + escapeHtml(ms.runtime));
+    if (ms.target_device) manifestParts.push('target = ' + escapeHtml(ms.target_device));
+    rows.push(['Manifest',     manifestParts.length ? manifestParts.join(' &middot; ') : '<span class="private">no manifest summary</span>']);
+    if (ms.task)          rows.push(['Task',         escapeHtml(ms.task)]);
+    rows.push(['Signature',    escapeHtml(j.signature_alg || 'hmac-sha256') + (j.signed_by ? ' &nbsp; <span style="color:var(--ink-faint)">key = ' + escapeHtml(j.signed_by) + '</span>' : '')]);
+    // Prompt-cache attribution (present on inference receipts; absent on compile/sign receipts).
+    if (typeof j.cache_hit === 'boolean' || typeof j.cache_read_tokens === 'number') {
+      var cacheMark = j.cache_hit
+        ? '<span style="color:var(--good)">cache hit</span>'
+        : '<span style="color:var(--ink-faint)">no cache hit</span>';
+      var cacheParts = [cacheMark];
+      if (typeof j.cache_read_tokens === 'number' && j.cache_read_tokens > 0) {
+        cacheParts.push('read = ' + j.cache_read_tokens.toLocaleString() + ' tok');
+      }
+      if (typeof j.cache_creation_tokens === 'number' && j.cache_creation_tokens > 0) {
+        cacheParts.push('write = ' + j.cache_creation_tokens.toLocaleString() + ' tok');
+      }
+      if (typeof j.cache_savings_usd === 'number' && j.cache_savings_usd > 0) {
+        cacheParts.push('saved $' + j.cache_savings_usd.toFixed(4));
+      }
+      rows.push(['Prompt cache', cacheParts.join(' &middot; ')]);
+    }
+    if (!j.chain_valid && Array.isArray(j.reasons) && j.reasons.length) {
+      rows.push(['Why broken',   '<span style="color:var(--bad)">' + escapeHtml(j.reasons.join('; ')) + '</span>']);
+    }
+    var html = '<div class="receipt"><div class="body">';
+    rows.forEach(function(r){
+      var lbl = r[0];
+      var val = r[1];
+      var copyable = (typeof val === 'string' && val.indexOf('data-full') !== -1) ? ' copyable' : '';
+      html += '<div class="row"><div class="lbl">' + escapeHtml(lbl) + '</div><div class="val' + copyable + '">' + val + '</div></div>';
+    });
+    html += '</div></div>';
+    result.innerHTML = html;
+    if (j.hash) cmdText.textContent = 'kolm verify --hash ' + j.hash;
+  }
+
+  copyCmd.addEventListener('click', function(){
+    var text = cmdText.textContent;
+    var done = function(){
+      copyCmd.classList.add('copied');
+      setTimeout(function(){ copyCmd.classList.remove('copied'); }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function(){});
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (_) {}
+      document.body.removeChild(ta);
+    }
+  });
+
+  if (!hash) {
+    renderEmpty('No receipt hash supplied.', 'Open this page as <code>/r/&lt;hash&gt;</code> with a valid receipt hash. Receipts are produced by every <code>kolm build</code> and <code>kolm run</code>.');
+    return;
+  }
+  if (!/^[A-Za-z0-9._\-]{8,128}$/.test(hash)) {
+    renderEmpty('Hash format invalid.', 'Receipt hashes are 8 to 128 hex characters. Double-check the link you were given.');
+    return;
+  }
+
+  setBadge('idle', 'Verifying …');
+  fetch('/v1/receipts/' + encodeURIComponent(hash) + '/public', { headers: { 'accept': 'application/json' } })
+    .then(function(r){ return r.json().then(function(body){ return { status: r.status, body: body }; }); })
+    .then(function(out){
+      if (out.status === 404) {
+        renderEmpty('Receipt not found for hash ' + shorten(hash) + '.', 'The receipt may have been issued by a tenant whose data has expired, the hash may be mistyped, or this kolm runtime does not hold a copy. Drop the .kolm file at <a href="/verify-prod">/verify-prod</a> for offline verification.');
+        return;
+      }
+      if (out.status === 400) {
+        renderEmpty('Hash format rejected.', escapeHtml((out.body && out.body.error) || 'invalid hash format'));
+        return;
+      }
+      if (out.status === 503) {
+        renderError('Server is missing its receipt secret. This route returns 503 until the operator configures RECIPE_RECEIPT_SECRET.');
+        return;
+      }
+      if (out.status !== 200) {
+        renderError('Unexpected status ' + out.status + ' from /v1/receipts/.../public');
+        return;
+      }
+      renderReceipt(out.body);
+    })
+    .catch(function(err){
+      renderError('Network error during verification: ' + (err && err.message ? err.message : 'unknown'));
+    });
+})();
+</script>
+</body>
+</html>

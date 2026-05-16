@@ -66,6 +66,7 @@
   .cite a{opacity:.78}
   footer.site{border-top:1px solid var(--line);margin-top:72px;padding:28px 24px;font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);text-align:center}
 </style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <header class="site">
@@ -95,7 +96,7 @@
   <p>Worse, if the judge is the same family as the model being evaluated, the eval becomes a tautology. Kolm artifacts get distilled into Llama and Qwen. If the judge is also Llama, the eval shows up generous on Llama-trained artifacts and harsh on Mistral ones, and there is no good reason for the difference.</p>
 
   <h2>What PoLL changed</h2>
-  <p>Verga 2024 proposed: run three smaller judges from different model families, take the majority vote (for binary preference) or the mean (for scalar scores). They reported that 3× Haiku-class judges matched 1× Opus-class judge on agreement-with-humans, at a fraction of the cost and with measurably less family bias.</p>
+  <p>Verga 2024 proposed: run three smaller judges from different model families, take the majority vote (for binary preference) or the mean (for scalar scores). They reported that 3? Haiku-class judges matched 1? Opus-class judge on agreement-with-humans, at a fraction of the cost and with measurably less family bias.</p>
   <p>The kolm implementation uses three judges by default: a Claude Haiku-class, a GPT-mini-class, and a Llama-3-70B-class. Each scores the same item. We log all three scores and the aggregate.</p>
 
   <h2>The kolm call</h2>
@@ -122,7 +123,7 @@ result = mix.score(
 output: P(this step is correct | context)</code></pre>
   <p>For an N-step chain, a PRM produces N scores. Aggregation strategies:</p>
   <ul>
-    <li><strong>Product:</strong> <code>P_total = Π P_i</code>. Conservative; one bad step kills the chain.</li>
+    <li><strong>Product:</strong> <code>P_total = ? P_i</code>. Conservative; one bad step kills the chain.</li>
     <li><strong>Min:</strong> <code>P_total = min(P_i)</code>. Same intuition, less spiky.</li>
     <li><strong>Mean:</strong> <code>P_total = mean(P_i)</code>. Lenient; lets early errors get rescued.</li>
   </ul>
@@ -141,7 +142,7 @@ trainer.train(captures="math/step_preferences.jsonl")</code></pre>
 
   <h2>Where this fits in the K-score gate</h2>
   <p>The K-score is <code>K = 0.40·A + 0.15·S + 0.15·L + 0.15·C + 0.15·V</code>. The judges-mix is what produces the <em>A</em> term (Accuracy) for tasks where there is no exact verifier. The PRM is what produces the per-step component when the task is multi-step (math, planning, agentic). For coding tasks with unit tests, neither shows up; the test suite is the verifier.</p>
-  <p>The gate is <code>K ≥ 0.85 AND pass_rate ≥ 0.85</code>. The judges-mix votes go into the pass_rate side: a response "passes" only if at least 2 of 3 judges score it ≥ rubric_threshold.</p>
+  <p>The gate is <code>K ??0.85 AND pass_rate ??0.85</code>. The judges-mix votes go into the pass_rate side: a response "passes" only if at least 2 of 3 judges score it ??rubric_threshold.</p>
 
   <h2>What the receipt records</h2>
   <pre><code>{
@@ -168,7 +169,7 @@ trainer.train(captures="math/step_preferences.jsonl")</code></pre>
   <h2>Edge cases</h2>
   <p><strong>Judge collusion.</strong> If all three judges are trained on overlapping data (e.g., all use RLHF datasets from the same vendor), they fail in correlated ways. Mitigation: pick judges from genuinely different families, and audit judge agreement quarterly.</p>
   <p><strong>PRM staleness.</strong> A PRM trained on 2024 math data may underweight novel notation. K-score the PRM itself on a held-out current set; refresh when its accuracy drops below 0.85.</p>
-  <p><strong>Cost.</strong> Three Haiku-class judges per item is roughly 3× cheaper than one Opus-class judge, with better agreement and traceability. We log <code>judge_cost_usd</code> on every eval so buyers see the spend.</p>
+  <p><strong>Cost.</strong> Three Haiku-class judges per item is roughly 3? cheaper than one Opus-class judge, with better agreement and traceability. We log <code>judge_cost_usd</code> on every eval so buyers see the spend.</p>
   <p><strong>Pairwise vs pointwise.</strong> Pointwise (score from 1-10) has higher variance and worse agreement than pairwise (A vs B). Default to pairwise; fall back to pointwise only when no comparison set exists.</p>
 
   <h2>Citations</h2>
@@ -178,7 +179,7 @@ trainer.train(captures="math/step_preferences.jsonl")</code></pre>
   <p class="cite">Lai et al. 2024. <em>Step-DPO: Step-wise Preference Optimization for Long-chain Reasoning</em>. <a href="https://arxiv.org/abs/2406.18629">arXiv:2406.18629</a></p>
 
   <div class="meta-line" style="margin-top:48px">
-    <span><a href="/research">← back to research</a></span>
+    <span><a href="/research">??back to research</a></span>
     <span>kolm.ai/research/mixture-of-judges-and-prm</span>
   </div>
 </main>
@@ -207,6 +208,7 @@ trainer.train(captures="math/step_preferences.jsonl")</code></pre>
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/registry">Registry</a>
         <a href="/case-studies">Case studies</a>
       </div>

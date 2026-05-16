@@ -1,13 +1,277 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background:#050607;color-scheme:dark">
 <head>
 <meta charset="UTF-8">
-<title>Redirecting to /research</title>
-<link rel="canonical" href="https://kolm.ai/research">
-<meta http-equiv="refresh" content="0;url=/research">
-<script>location.replace('/research');</script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#050607;color:#faf2e1}html{color-scheme:dark}</style>
+<title>The frontier stack &middot; every technique kolm uses, at every step</title>
+<meta name="description" content="The complete list of techniques kolm runs at each compile step. Synthetic data, alignment objectives, evaluation gates, signing, and inference runtimes. Current as of the build.">
+<meta property="og:title" content="The frontier stack | kolm">
+<meta property="og:description" content="Every SOTA technique kolm uses at every compile step. The full inventory.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/frontier-stack">
+<meta property="og:image" content="https://kolm.ai/og.png">
+<meta property="og:image:alt" content="kolm frontier stack inventory">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The frontier stack | kolm">
+<meta name="twitter:description" content="Every SOTA technique kolm uses at every compile step.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://kolm.ai/frontier-stack">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --good: #7ef0d2;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; margin: 0; -webkit-font-smoothing: antialiased }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px }
+  a { color: inherit; text-decoration: none }
+  .crumbs { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px }
+  .crumbs a { color: inherit; border-bottom: 1px dashed var(--line) }
+  h1 { font-size: 36px; line-height: 1.12; font-weight: 500; letter-spacing: -0.02em; margin: 0 0 14px; max-width: 880px }
+  h2 { font-size: 22px; line-height: 1.25; font-weight: 500; letter-spacing: -0.01em; margin: 56px 0 14px }
+  .lede { font-size: 17px; line-height: 1.5; color: var(--ink-mute); max-width: 760px; margin: 0 0 28px }
+  .hero { padding: 64px 0 28px; border-bottom: 1px solid var(--line) }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0 0 }
+  .cta { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 8px; font-family: var(--mono); font-size: 13px; letter-spacing: 0.02em; border: 1px solid var(--line); transition: border-color 120ms, background 120ms }
+  .cta.primary { background: var(--ink); color: var(--bg); border-color: var(--ink) }
+  .cta.primary:hover { background: var(--good); border-color: var(--good); color: var(--bg) }
+  .cta:not(.primary):hover { border-color: var(--ink-mute) }
+  .pcap { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 12px }
+
+  /* step cards */
+  .steps { padding: 40px 0 16px }
+  .step { padding: 36px 0; border-bottom: 1px solid var(--line) }
+  .step:last-child { border-bottom: none }
+  .step-head { display: grid; grid-template-columns: 64px 1fr; gap: 22px; align-items: baseline }
+  .step-num { font-family: var(--mono); font-size: 13px; color: var(--ink-faint); letter-spacing: 0.16em }
+  .step-title { font-size: 22px; line-height: 1.2; font-weight: 500; margin: 0 0 8px; color: var(--ink) }
+  .step-sub { color: var(--ink-mute); margin: 0 0 18px; max-width: 680px; font-size: 14.5px; line-height: 1.55 }
+
+  .tech-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 22px; margin: 12px 0 0; grid-column: 2 }
+  @media (max-width: 760px) {
+    .step-head { grid-template-columns: 1fr; gap: 4px }
+    .tech-grid { grid-column: 1 / -1; grid-template-columns: 1fr }
+  }
+  .tech { padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev) }
+  .tech h4 { margin: 0 0 4px; font-size: 14.5px; font-weight: 500; color: var(--ink); display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap }
+  .tech h4 .tag { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); border: 1px solid var(--line); padding: 1px 6px; border-radius: 999px }
+  .tech p { margin: 4px 0 8px; font-size: 13px; color: var(--ink-mute); line-height: 1.5 }
+  .tech .ref { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); border-bottom: 1px dashed var(--line); display: inline-block }
+  .tech .ref:hover { color: var(--ink-mute) }
+  .tech.on { border-color: var(--good); background: linear-gradient(180deg, rgba(126,240,210,0.03), transparent) }
+  .tech.on h4 .tag { color: var(--good); border-color: rgba(126,240,210,0.35) }
+
+  .legend { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); margin: 22px 0 0 }
+  .legend span { display: inline-block; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; margin-right: 8px }
+  .legend .on { color: var(--good); border-color: rgba(126,240,210,0.35) }
+
+  .footer-cta { padding: 56px 0 80px; border-top: 1px solid var(--line) }
+  .footer-cta h2 { margin: 0 0 8px }
+  .footer-cta p { font-size: 14px; color: var(--ink-mute); margin: 0 0 18px; max-width: 680px }
+  code { font-family: var(--mono); font-size: 12.5px; background: var(--bg-elev); padding: 1px 6px; border-radius: 3px; color: var(--ink); border: 1px solid var(--line) }
+
+  /* light theme */
+  [data-theme=light] body { background: #f7f4ec; color: #1c1d1c }
+  [data-theme=light] { --bg: #f7f4ec; --bg-elev: #efeae0; --bg-card: #efeae0; --line: rgba(0,0,0,0.08); --line-strong: rgba(0,0,0,0.12); --ink: #1c1d1c; --ink-mute: #585a55; --ink-faint: #8b8d86; --good: #1f9a7c }
+  [data-theme=light] .tech.on { background: linear-gradient(180deg, rgba(31,154,124,0.04), transparent) }
+</style>
 </head>
 <body>
-<p>Redirecting to <a href="/research">/research</a>.</p>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand">kolm</a>
+    <nav class="site-nav">
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
+      <a href="/research">Research</a>
+      <a href="/enterprise">Enterprise</a>
+      <a href="/pricing">Pricing</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/signin">Sign in</a>
+      <a class="cta-btn" href="/train">Compile &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; frontier stack</p>
+    <h1>Every technique kolm uses, at every step.</h1>
+    <p class="lede">The list below is the working inventory of methods the compiler reaches for. Each technique has a one-sentence purpose and a link to the implementation or the paper. The ones tagged <code>default</code> run unless you override them; the rest are opt-in. Stack revs continuously; this page tracks it.</p>
+    <div class="cta-row">
+      <a class="cta primary" href="/train">Start a compile &rarr;</a>
+      <a class="cta" href="/research">Read the research</a>
+      <a class="cta" href="/spec/rs-1">.kolm spec</a>
+    </div>
+    <p class="legend"><span class="on">default</span><span>opt-in</span><span>last revised 2026-05-16</span></p>
+  </div>
+</section>
+
+<section class="steps">
+  <div class="wrap">
+
+    <article class="step">
+      <div class="step-head">
+        <div class="step-num">01 &middot; DESCRIBE</div>
+        <div>
+          <h3 class="step-title">Tell kolm what you want, in plain english.</h3>
+          <p class="step-sub">The compile starts from a written spec. We translate it into a structured task graph, a tool schema if there are tools, and an output spec the K-score gate will hold the artifact to.</p>
+        </div>
+        <div class="tech-grid">
+          <div class="tech on"><h4>Spec parser <span class="tag">default</span></h4><p>Natural-language description &rarr; structured task graph with input shape, output shape, and acceptance rules.</p><a class="ref" href="/research/honest-data-generation">/research/honest-data-generation</a></div>
+          <div class="tech on"><h4>Tool schema synthesis <span class="tag">default</span></h4><p>If the task uses tools we infer JSON-schema signatures from the description and validate at compile time and at every call.</p><a class="ref" href="/research/function-calling-training">/research/function-calling-training</a></div>
+          <div class="tech on"><h4>Output spec extraction <span class="tag">default</span></h4><p>Structured outputs are pulled from the spec into a JSON-schema the gate uses for shape conformance scoring.</p><a class="ref" href="/research/output-specs">/research/output-specs</a></div>
+          <div class="tech"><h4>Guarded prompts <span class="tag">opt-in</span></h4><p>Insert constitutional clauses, refusal templates, or persona constraints before distillation. Stored on the recipe, not the prompt.</p><a class="ref" href="/research/guarded-prompts">/research/guarded-prompts</a></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="step">
+      <div class="step-head">
+        <div class="step-num">02 &middot; DISTILL</div>
+        <div>
+          <h3 class="step-title">Borrow knowledge from a frontier teacher.</h3>
+          <p class="step-sub">A teacher model writes the data the student will learn from. The cheapest and most predictable lever in the whole pipeline; the rest of the stack is largely consequence of doing this part well.</p>
+        </div>
+        <div class="tech-grid">
+          <div class="tech on"><h4>Teacher trace <span class="tag">default</span></h4><p>Teacher solves seed prompts with rationales. Both the answers and the reasoning are kept.</p><a class="ref" href="/research/teacher-trace">/research/teacher-trace</a></div>
+          <div class="tech on"><h4>Synthetic expansion <span class="tag">default</span></h4><p>Seed prompts get rephrased, recombined, and stretched by the teacher into a balanced, deduplicated training corpus.</p><a class="ref" href="/research/synthetic-data">/research/synthetic-data</a></div>
+          <div class="tech on"><h4>Response distillation <span class="tag">default</span></h4><p>Soft-label distillation against teacher logits where the teacher exposes them; falls back to hard-label SFT otherwise.</p><a class="ref" href="/research/response-distill">/research/response-distill</a></div>
+          <div class="tech on"><h4>Frontier prompt cache <span class="tag">default</span></h4><p>Distillation calls re-use the teacher prompt cache. Reads cost about 10% of writes. Surfaces as cache_hit on every receipt.</p><a class="ref" href="/research/prompt-cache">/research/prompt-cache</a></div>
+          <div class="tech"><h4>Rationale distillation <span class="tag">opt-in</span></h4><p>Student is trained to reproduce the teacher reasoning as well as the answer. Larger compute, better OOD.</p><a class="ref" href="/research/rationale-distill">/research/rationale-distill</a></div>
+          <div class="tech"><h4>Tool-call traces <span class="tag">opt-in</span></h4><p>Teacher records full tool dialogues; student learns the agent loop, not just the final response.</p><a class="ref" href="/research/tool-traces">/research/tool-traces</a></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="step">
+      <div class="step-head">
+        <div class="step-num">03 &middot; ALIGN</div>
+        <div>
+          <h3 class="step-title">Align the student to the spec, not just the corpus.</h3>
+          <p class="step-sub">Supervised fine-tuning gives capability; preference alignment gives behavior. We pick the objective by task: pairwise preferences for classifiers, KTO for sparse-reward, GRPO for multi-step reasoning, online-DPO when judges are fast.</p>
+        </div>
+        <div class="tech-grid">
+          <div class="tech on"><h4>SFT <span class="tag">default</span></h4><p>Standard cross-entropy fine-tuning on the distilled corpus. Always the first pass.</p><a class="ref" href="/research/sft">/research/sft</a></div>
+          <div class="tech on"><h4>DPO <span class="tag">default</span></h4><p>Direct preference optimization on pairwise teacher comparisons. Stable, cheap, well-understood.</p><a class="ref" href="/research/dpo">/research/dpo</a></div>
+          <div class="tech"><h4>ORPO <span class="tag">opt-in</span></h4><p>Reference-free preference loss. Lower VRAM. Useful when reference model checkpoints would not fit.</p><a class="ref" href="/research/orpo">/research/orpo</a></div>
+          <div class="tech"><h4>GRPO <span class="tag">opt-in</span></h4><p>Group-relative policy optimization for multi-step tasks. Used when the K-score includes a per-step component.</p><a class="ref" href="/research/grpo">/research/grpo</a></div>
+          <div class="tech"><h4>KTO <span class="tag">opt-in</span></h4><p>Kahneman-Tversky objective. Works on unpaired "good/bad" labels when you cannot afford pairwise comparisons.</p><a class="ref" href="/research/kto">/research/kto</a></div>
+          <div class="tech"><h4>Online-DPO <span class="tag">opt-in</span></h4><p>Preferences are sampled from a live judge during training. Higher cost, sharper alignment, used on K-score-critical tasks.</p><a class="ref" href="/research/online-dpo">/research/online-dpo</a></div>
+          <div class="tech"><h4>LoRA / QLoRA adapters <span class="tag">opt-in</span></h4><p>Parameter-efficient training when the base model is shared across tasks or when GPU minutes matter more than fidelity.</p><a class="ref" href="/research/adapter-merging">/research/adapter-merging</a></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="step">
+      <div class="step-head">
+        <div class="step-num">04 &middot; EVALUATE</div>
+        <div>
+          <h3 class="step-title">Hold the artifact to the spec.</h3>
+          <p class="step-sub">Every compile ends with a gate. K-score is the headline number; underneath it is a mixture of judges, a process-reward model when sequences matter, and an eval-set drift check that catches when the holdout has aged out.</p>
+        </div>
+        <div class="tech-grid">
+          <div class="tech on"><h4>K-score <span class="tag">default</span></h4><p>Composite quality score in [0,1]. Mix of pairwise judge wins, output-spec conformance, and OOD generalization. Per-artifact, never global.</p><a class="ref" href="/k-score">/k-score</a></div>
+          <div class="tech on"><h4>Mixture of judges <span class="tag">default</span></h4><p>Three frontier judges score every eval sample. We use median to filter judge bias; tied votes go to a fourth.</p><a class="ref" href="/research/judges">/research/judges</a></div>
+          <div class="tech on"><h4>Held-out task split <span class="tag">default</span></h4><p>A fraction of the seed prompts is held back from distillation and used only at gate time. Replenished at every compile.</p><a class="ref" href="/research/holdout">/research/holdout</a></div>
+          <div class="tech on"><h4>Eval-set drift <span class="tag">default</span></h4><p>If the holdout starts looking too much like the corpus, the gate refuses to grade and asks for fresh seeds.</p><a class="ref" href="/research/eval-drift">/research/eval-drift</a></div>
+          <div class="tech"><h4>Process reward model <span class="tag">opt-in</span></h4><p>For multi-step reasoning we train a per-step reward and score sequences, not endpoints. Adds compile time, catches silent partial credit.</p><a class="ref" href="/research/prm">/research/prm</a></div>
+          <div class="tech"><h4>Adversarial probes <span class="tag">opt-in</span></h4><p>Red-team prompts for safety, jailbreaks, prompt injection, leakage. Pass-rate is a gate component when configured.</p><a class="ref" href="/research/probes">/research/probes</a></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="step">
+      <div class="step-head">
+        <div class="step-num">05 &middot; SIGN</div>
+        <div>
+          <h3 class="step-title">Pack and seal.</h3>
+          <p class="step-sub">The artifact is one signed file. The signature anchors the recipe, the weights, the gate result, and an SBOM so the operator can prove what they are running and where every byte came from.</p>
+        </div>
+        <div class="tech-grid">
+          <div class="tech on"><h4>.kolm wire format <span class="tag">default</span></h4><p>Deterministic zip of recipe, weights or adapter, gate result, SBOM, and license. Fully described in the spec.</p><a class="ref" href="/spec/rs-1">/spec/rs-1</a></div>
+          <div class="tech on"><h4>4-ring HMAC receipt <span class="tag">default</span></h4><p>Pre-image &rarr; derived &rarr; execution &rarr; seal. Each ring depends on the previous. Verifier checks all four offline.</p><a class="ref" href="/research/receipt-chain">/research/receipt-chain</a></div>
+          <div class="tech on"><h4>SBOM <span class="tag">default</span></h4><p>Source corpus hashes, model base, library versions, and license posture, embedded in the .kolm and downloadable.</p><a class="ref" href="/research/sbom">/research/sbom</a></div>
+          <div class="tech on"><h4>Tenant-rotated key <span class="tag">default</span></h4><p>HMAC secret is per tenant. Rotated on schedule with a 90-day verify-only window for old receipts.</p><a class="ref" href="/research/receipt-chains">/research/receipt-chains</a></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="step">
+      <div class="step-head">
+        <div class="step-num">06 &middot; RUN</div>
+        <div>
+          <h3 class="step-title">Inference, anywhere.</h3>
+          <p class="step-sub">The artifact does not assume a runtime. Pick the one that fits the deployment. The bridge produces the same receipt regardless of the engine underneath.</p>
+        </div>
+        <div class="tech-grid">
+          <div class="tech on"><h4>vLLM <span class="tag">default</span></h4><p>The default server for CUDA-capable hosts. Paged-attention KV cache, continuous batching, sharded tensor parallel.</p><a class="ref" href="https://github.com/vllm-project/vllm">vllm-project</a></div>
+          <div class="tech"><h4>sglang <span class="tag">opt-in</span></h4><p>RadixAttention prefix cache and structured-output decoding. We reach for it when sequence outputs are dominant.</p><a class="ref" href="https://github.com/sgl-project/sglang">sgl-project</a></div>
+          <div class="tech"><h4>TensorRT-LLM <span class="tag">opt-in</span></h4><p>NVIDIA TRT-LLM kernels for high-throughput single-host serving. Used when latency budget is tightest.</p><a class="ref" href="https://github.com/NVIDIA/TensorRT-LLM">NVIDIA/TensorRT-LLM</a></div>
+          <div class="tech"><h4>MLX <span class="tag">opt-in</span></h4><p>Apple Silicon serving. The artifact is the same; the runtime is local.</p><a class="ref" href="https://github.com/ml-explore/mlx">ml-explore/mlx</a></div>
+          <div class="tech"><h4>llama.cpp <span class="tag">opt-in</span></h4><p>GGUF on CPU or edge GPU. Slower; the choice when there is no other choice.</p><a class="ref" href="https://github.com/ggerganov/llama.cpp">ggerganov/llama.cpp</a></div>
+          <div class="tech on"><h4>Customer-hosted bridge <span class="tag">default</span></h4><p>The runtime that talks to your tenants. Produces the receipt, enforces the gate, holds your HMAC key.</p><a class="ref" href="/research/byoc-deploy-modes">/research/byoc-deploy-modes</a></div>
+        </div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<section class="footer-cta">
+  <div class="wrap">
+    <h2>This list lives in the codebase, not in marketing.</h2>
+    <p>Each entry above corresponds to an implementation file in the bridge or the compile worker. If you find one that links to a 404, that technique was either removed or has not landed yet. Either way: open an issue or check the research feed.</p>
+    <div class="cta-row">
+      <a class="cta primary" href="/train">Compile your first artifact &rarr;</a>
+      <a class="cta" href="/research">Research feed</a>
+      <a class="cta" href="/docs">Docs</a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-cols">
+      <div>
+        <p class="brand-mark">kolm</p>
+        <p class="muted">Compile a frontier model into one signed file. Recipe, gate, receipt. Run it where you put it.</p>
+      </div>
+      <div>
+        <p class="col-head">Product</p>
+        <a href="/train">Compile</a>
+        <a href="/distill">Distill</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/cookbook">Cookbook</a>
+      </div>
+      <div>
+        <p class="col-head">Reference</p>
+        <a href="/research">Research</a>
+        <a href="/frontier-stack">Frontier stack</a>
+        <a href="/k-score">K-score</a>
+        <a href="/spec/rs-1">.kolm spec</a>
+      </div>
+      <div>
+        <p class="col-head">Company</p>
+        <a href="/enterprise">Enterprise</a>
+        <a href="/security">Security</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/community">Community</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>

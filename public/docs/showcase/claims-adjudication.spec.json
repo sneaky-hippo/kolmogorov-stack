@@ -1,0 +1,38 @@
+{
+  "job_id": "job_claims_adjudication_v1",
+  "task": "Classify health insurance claim as Approved / Denied / Pending with concise clinical and policy reasoning. Redact all PHI before inference. Output { decision, reason, confidence, policy_refs }.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_claims_adj_v1",
+      "name": "claims-adjudication",
+      "source": "function generate(input, lib){ var claim = (input && typeof input === 'object') ? input : {}; var cpts = Array.isArray(claim.cpt_codes) ? claim.cpt_codes : []; var rules = (lib.pack && lib.pack.rules) || {}; var requires_auth = false; var refs = []; for (var i=0;i<cpts.length;i++){ var c = String(cpts[i]); if (rules.requires_prior_auth && rules.requires_prior_auth[c]) { requires_auth = true; refs.push('PA-CPT-' + c); } } var decision = 'Pending'; var reason = 'Default routing pending policy match.'; var confidence = 0.5; if (requires_auth && !claim.prior_auth_ref) { decision = 'Denied'; reason = 'CPT ' + cpts.join(',') + ' requires prior authorization; none provided.'; confidence = 0.92; } else if (!requires_auth) { decision = 'Approved'; reason = 'CPT codes in scope of plan benefits with no prior-auth requirement.'; confidence = 0.9; refs.push('PLAN-RULES-DEFAULT'); } return { decision: decision, reason: reason, confidence: confidence, policy_refs: refs, redaction_count: 0, requires_review: confidence < 0.85 }; }",
+      "tags": ["health-insurance", "claims", "adjudication"],
+      "schema": {
+        "input": { "claim_id": "string", "cpt_codes": "array", "billed_amount": "number", "prior_auth_ref": "string|null" },
+        "output": { "decision": "string", "reason": "string", "confidence": "number", "policy_refs": "array" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "Starter rules for claims adjudication. Tenants extend rules.requires_prior_auth at run time via params.",
+    "rules": {
+      "requires_prior_auth": {
+        "70553": true,
+        "70551": true,
+        "27447": true
+      }
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      { "id": "approve_office_visit", "input": { "claim_id": "X1", "cpt_codes": ["99214"], "billed_amount": 189.4 }, "expected": { "decision": "Approved" } },
+      { "id": "deny_mri_no_auth",      "input": { "claim_id": "X2", "cpt_codes": ["70553"], "billed_amount": 1840.0 }, "expected": { "decision": "Denied" } },
+      { "id": "approve_mri_with_auth", "input": { "claim_id": "X3", "cpt_codes": ["70553"], "billed_amount": 1840.0, "prior_auth_ref": "PA12345" }, "expected": { "decision": "Approved" } }
+    ],
+    "coverage": 1.0
+  }
+}

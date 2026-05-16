@@ -39,7 +39,7 @@ for (const f of fs.readdirSync(ROOT)) {
     totalTime: 'PT5M',
     tool: [{ '@type': 'HowToTool', name: 'kolm CLI' }],
     step: [
-      { '@type': 'HowToStep', name: 'Install', text: 'npm i -g @kolmogorov/kolm' },
+      { '@type': 'HowToStep', name: 'Install', text: 'npm i -g github:sneaky-hippo/kolmogorov-stack' },
       { '@type': 'HowToStep', name: 'Compile', text: 'kolm compile ' + path.basename(f, '.html') + '.toml' },
       { '@type': 'HowToStep', name: 'Run', text: 'kolm run ' + path.basename(f, '.html') + '.kolm' },
     ],

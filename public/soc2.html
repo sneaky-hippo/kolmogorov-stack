@@ -36,15 +36,30 @@
   .row .what h3{margin:0 0 6px;font-size:16px;font-weight:500;color:var(--ink)}
   .row .what p{margin:0;font-size:14px;color:var(--ink-mute);line-height:1.55}
   .row.done .date{color:var(--ink-faint)}
-  .row.done .what h3::after{content:" ✓";color:var(--accent);font-size:13px}
+  .row.done .what h3::after{content:" ??;color:var(--accent);font-size:13px}
   .tsc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:18px 0}
   .tsc{padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:var(--bg-elev)}
   .tsc h4{margin:0 0 6px;font-family:var(--mono);font-size:11.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);font-weight:500}
   .tsc p{margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-mute)}
   pre{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px 18px;overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;margin:0 0 16px;color:var(--ink)}
+  .ref-table{width:100%;border-collapse:collapse;margin:18px 0;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .ref-table th,.ref-table td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top;line-height:1.5}
+  .ref-table th{font-family:var(--mono);font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-faint);font-weight:500;background:rgba(0,0,0,0.20)}
+  .ref-table td:first-child{color:var(--ink);font-weight:500;width:28%}
+  .ref-table td{color:var(--ink-mute)}
+  .ref-table tr:last-child td{border-bottom:none}
+  .ref-table code{font-family:var(--mono);font-size:11.5px;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  .ref-table a{color:var(--accent);text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ev-list{margin:14px 0 0;padding:0;list-style:none}
+  .ev-list li{padding:12px 0;border-bottom:1px solid var(--line);font-size:14px;color:var(--ink-mute);line-height:1.55}
+  .ev-list li:last-child{border-bottom:none}
+  .ev-list li strong{color:var(--ink);font-weight:500;display:block;margin-bottom:2px}
+  .ev-list li code{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  .ev-list li a{color:var(--accent);text-decoration:none;border-bottom:1px dashed var(--line)}
   footer{padding:32px 0;color:var(--ink-faint);font-size:13px}
   footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
 </style>
+<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/quickstart">quickstart</a><a href="/docs">docs</a><a href="/security">security</a></nav></div></header>
@@ -89,6 +104,83 @@
 
 <section class="body">
   <div class="wrap">
+    <h2>What Type 2 actually examines</h2>
+    <p>Type 1 and Type 2 differ in scope and effort. Type 1 is a snapshot, Type 2 is a film. The four lines below are the substance of that difference; they govern what evidence we collect, how often, and what we have to disclose.</p>
+    <table class="ref-table">
+      <thead>
+        <tr><th>Element</th><th>What the auditor verifies</th><th>Cadence</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Control design (Type 1)</td><td>The control exists, is documented, and would work if operated as designed. The narrative, the policy, the system description match.</td><td>Point-in-time</td></tr>
+        <tr><td>Control operation (Type 2)</td><td>The auditor samples evidence over the observation window and verifies the control actually ran each time it should have. Design is necessary, operation is the bar.</td><td>Continuous, 6 months minimum</td></tr>
+        <tr><td>Population sampling</td><td>The auditor selects roughly 10 to 25 percent of in-scope events for each control and requests the evidence record for each one. Stratified random across the window.</td><td>Stratified random</td></tr>
+        <tr><td>Exception reporting</td><td>Any control failure during the observation window is disclosed in the report, even if remediated the same day. Type 2 reports do not airbrush.</td><td>Required even if remediated</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="body">
+  <div class="wrap">
+    <h2>How we collect Type 2 evidence today</h2>
+    <p>Evidence collection is already running. The observation window starts in Q4 2026; what changes on day one is the auditor's sampling, not the instrumentation. Each line below is wired into production today and will keep emitting through the window.</p>
+    <ul class="ev-list">
+      <li><strong>Vanta agents on every laptop and CI runner</strong>Continuous control monitoring across logical access, MFA enrollment, disk encryption, and patch level. Drift alerts within 24 hours.</li>
+      <li><strong>HMAC-SHA-256 receipt chain on every .kolm compile</strong>Processing-integrity evidence is automatic. Every artifact carries a signed receipt over manifest, recipes, eval set, and body; tamper breaks verification.</li>
+      <li><strong>Audit log endpoint <code>/v1/audit/log</code></strong>Every privileged action is persisted, tenant-scoped, and queryable. Sampling for Type 2 reads from this endpoint; the integrity is HMAC-protected.</li>
+      <li><strong>Compliance package endpoint <code>/v1/account/compliance-package</code></strong>The auditor can pull a signed JSON bundle for any tenant on demand: controls, BAA status, subprocessor inventory, framework posture, receipt records, signed-at timestamp.</li>
+      <li><strong>Quarterly access review</strong>Every human and service account is reviewed against the role mapping. Orphans are dispositioned; the review minutes are kept as evidence.</li>
+      <li><strong>Annual third-party penetration test</strong>Halborn, last completed Q1 2026, next engagement scheduled Q1 2027. Report shared on MNDA.</li>
+      <li><strong>Background checks on workforce</strong>HireRight, conducted at hire for every employee with production access. Re-verification on role change to elevated access.</li>
+      <li><strong>Vendor risk assessment per subprocessor</strong>Each subprocessor reviewed against its current security posture and SOC 2 letter. Inventory and change history at <a href="/subprocessors">/subprocessors</a>.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="body">
+  <div class="wrap">
+    <h2>Common Type 2 findings we have pre-empted</h2>
+    <p>The most common Type 2 exceptions across SaaS vendors are predictable. We mapped each one to a control already in production. Open items below are tracked publicly so the disclosure is honest before the window opens.</p>
+    <table class="ref-table">
+      <thead>
+        <tr><th>Finding pattern</th><th>How we address it today</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Orphaned access</td><td>Vanta detects orphan accounts within 7 days of offboarding. Quarterly access review provides formal disposition with a written record.</td><td>Closed</td></tr>
+        <tr><td>Untracked subprocessors</td><td>Subprocessor inventory maintained at <a href="/subprocessors">/subprocessors</a> with a 30-day change notice on every addition or removal.</td><td>Closed</td></tr>
+        <tr><td>Missing change-management evidence</td><td>Every production change goes through a GitHub pull request with required review. The merge commit, with reviewer and timestamp, is the evidence.</td><td>Closed</td></tr>
+        <tr><td>Inadequate vendor monitoring</td><td>Each subprocessor's security posture is reviewed quarterly and the review is posted internally with sign-off from the security owner.</td><td>Closed</td></tr>
+        <tr><td>Logging gaps</td><td>All privileged actions hit <code>/v1/audit/log</code>. Log integrity is protected by the HMAC chain; missing entries break the chain and surface in CI.</td><td>Closed</td></tr>
+        <tr><td>Backup-restore not tested</td><td>Not applicable. The kolm runtime is stateless; customer artifacts live in the customer's own storage. There is no central backup of customer data to restore.</td><td>N/A</td></tr>
+        <tr><td>Incident response plan untested</td><td>Tabletop exercise scheduled Q3 2026, before the observation window opens. Findings will be remediated and the run book updated before window day one.</td><td>Open</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="body">
+  <div class="wrap">
+    <h2>What you can rely on before the letter posts</h2>
+    <p>The artifacts below carry weight today. They are not a substitute for the Type 2 letter, but each one proves a specific claim a procurement reviewer can verify without taking our word.</p>
+    <ul class="ev-list">
+      <li><strong>CAIQ-Lite</strong>Vendor security questionnaire, filled and signed. Type-1-equivalent evidence that the controls exist and are documented. Most procurement teams accept it as the primary artifact for pre-attestation diligence.</li>
+      <li><strong>Penetration test report (Halborn, Q1 2026)</strong>Third-party validation of network and application security posture. Available under NDA. Findings closed; remediation evidence on request.</li>
+      <li><strong>Vanta readiness scan</strong>Continuous-monitoring evidence at a point in time. Demonstrates Type-1-readiness across logical access, MFA, encryption, and patch coverage. Shareable as a PDF snapshot.</li>
+      <li><strong>Architecture review with founder</strong>30-minute call. Email <a href="mailto:security@kolm.ai?subject=architecture%20review">security@kolm.ai</a>; we sign an NDA first. Most procurement questions resolve in the call faster than they resolve in the questionnaire.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="body">
+  <div class="wrap">
+    <h2>Subprocessor inheritance for Type 2</h2>
+    <p>The kolm runtime is stateless. PHI never reaches Vercel, Railway, Stripe, Resend, Cloudflare, or GitHub; this is verified at <a href="/subprocessors" style="color:var(--accent)">/subprocessors</a>. Only customer-opt-in inference providers (Anthropic, OpenAI, Google) ever receive customer payloads, and only with the customer's own API key.</p>
+    <p>The practical consequence: the Type 2 observation window scope is limited to the kolm compile pipeline, the audit log endpoint, and the compliance package endpoint. Subprocessor SOC 2 letters can be inherited where applicable; we publish the inheritance map in the audit room alongside the Type 2 report and update it on any subprocessor change.</p>
+  </div>
+</section>
+
+<section class="body">
+  <div class="wrap">
     <h2>While you wait</h2>
     <p>If you need to ship before our Type 1 letter, the same controls that go into the audit are in production today. Three artifacts a procurement team can use now:</p>
     <pre>1. Vendor security questionnaire (CAIQ-Lite) - filled, signed
@@ -125,6 +217,7 @@ ask: hello@kolm.ai with subject "vendor security pack"</pre>
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/registry">Registry</a>
         <a href="/case-studies">Case studies</a>
       </div>

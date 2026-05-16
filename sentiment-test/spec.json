@@ -1,0 +1,85 @@
+{
+  "job_id": "job_sentiment_v1",
+  "task": "classify product-review sentiment as positive/neutral/negative with a continuous score using a lexicon",
+  "recipes": [
+    {
+      "id": "rcp_sentiment_lex_v1",
+      "name": "Lexicon sentiment classifier",
+      "source_file": "./recipe.js"
+    }
+  ],
+  "pack": {
+    "lexicon": {
+      "positive_words": [
+        "love", "loved", "loves", "great", "awesome", "amazing", "excellent",
+        "perfect", "fantastic", "wonderful", "best", "good", "happy", "pleased",
+        "delighted", "fast", "reliable", "smooth", "comfortable", "recommend",
+        "recommended", "worth", "solid", "nice", "beautiful", "easy", "helpful",
+        "impressive", "satisfied", "value"
+      ],
+      "negative_words": [
+        "hate", "hated", "bad", "terrible", "awful", "horrible", "worst",
+        "poor", "broken", "broke", "useless", "disappointing", "disappointed",
+        "slow", "buggy", "crash", "crashes", "crashed", "defective", "junk",
+        "waste", "wasted", "return", "refund", "regret", "annoying", "uncomfortable",
+        "cheap", "flimsy", "frustrating"
+      ]
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "n": 10,
+    "cases": [
+      {
+        "id": "ev_pos_1",
+        "input": "I absolutely love this product, it works great and feels amazing!",
+        "expected": { "sentiment": "positive" }
+      },
+      {
+        "id": "ev_pos_2",
+        "input": "Excellent build quality, fast shipping, highly recommend.",
+        "expected": { "sentiment": "positive" }
+      },
+      {
+        "id": "ev_pos_3",
+        "input": "Comfortable, reliable, and worth every penny.",
+        "expected": { "sentiment": "positive" }
+      },
+      {
+        "id": "ev_neg_1",
+        "input": "Terrible quality, broke after one week. Total waste of money.",
+        "expected": { "sentiment": "negative" }
+      },
+      {
+        "id": "ev_neg_2",
+        "input": "Awful experience, the app crashes constantly and is buggy.",
+        "expected": { "sentiment": "negative" }
+      },
+      {
+        "id": "ev_neg_3",
+        "input": "Disappointing and flimsy, I regret this purchase.",
+        "expected": { "sentiment": "negative" }
+      },
+      {
+        "id": "ev_neu_1",
+        "input": "It is a product that exists and arrived in a box.",
+        "expected": { "sentiment": "neutral" }
+      },
+      {
+        "id": "ev_neu_2",
+        "input": "Color matches the website photo and shipping took five days.",
+        "expected": { "sentiment": "neutral" }
+      },
+      {
+        "id": "ev_mixed_pos",
+        "input": "Good design overall, comfortable and easy to use.",
+        "expected": { "sentiment": "positive" }
+      },
+      {
+        "id": "ev_mixed_neg",
+        "input": "Poor stitching and the zipper broke, very disappointing.",
+        "expected": { "sentiment": "negative" }
+      }
+    ]
+  }
+}

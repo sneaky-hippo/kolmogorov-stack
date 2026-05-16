@@ -1,0 +1,125 @@
+{
+  "job_id": "job_classifier_v1",
+  "task": "rule-based keyword classifier — score input against artifact-bound + tenant-supplied categories",
+  "base_model": "none",
+  "recipes": [
+    {
+      "id": "rcp_classifier_v1",
+      "name": "keyword classifier",
+      "source": "function generate(input, lib) {\n  var text = (typeof input === 'string') ? input : (input && input.text) || '';\n  if (typeof text !== 'string') text = String(text);\n  var cats = [];\n  var packCats = (lib.pack && lib.pack.categories) || [];\n  for (var i=0;i<packCats.length;i++) cats.push(packCats[i]);\n  var tenantCats = (lib.params && lib.params.extra_categories) || [];\n  for (var j=0;j<tenantCats.length;j++) cats.push(tenantCats[j]);\n  var lower = text.toLowerCase();\n  var scores = {};\n  for (var k=0;k<cats.length;k++){ var c=cats[k]; if (!c||!c.name||!Array.isArray(c.keywords)) continue;\n    var weight = (typeof c.weight==='number'&&c.weight>0) ? c.weight : 1;\n    var score = 0; for (var n=0;n<c.keywords.length;n++){ var kw=String(c.keywords[n]||'').toLowerCase(); if (!kw) continue; var idx=0,hits=0; while ((idx=lower.indexOf(kw,idx))!==-1){ hits++; idx+=kw.length; } score += hits*weight; }\n    if (score>0) scores[c.name] = (scores[c.name]||0) + score;\n  }\n  var sortedNames = Object.keys(scores).sort(function(a,b){ if (scores[b]!==scores[a]) return scores[b]-scores[a]; return a<b?-1:1; });\n  var fallback = (lib.pack && lib.pack.fallback_label) || 'unclassified';\n  var top = sortedNames.length ? sortedNames[0] : fallback;\n  return { label: top, score: scores[top]||0, scores: scores };\n}",
+      "tags": [
+        "classification",
+        "rules",
+        "generic"
+      ],
+      "schema": {
+        "input": {
+          "text": "string"
+        },
+        "output": {
+          "label": "string",
+          "score": "number",
+          "scores": "object"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "starter categories for support-ticket triage — tenants extend via params.extra_categories",
+    "fallback_label": "general",
+    "categories": [
+      {
+        "name": "billing",
+        "keywords": [
+          "refund",
+          "invoice",
+          "payment",
+          "charge",
+          "subscription"
+        ]
+      },
+      {
+        "name": "bug",
+        "keywords": [
+          "error",
+          "crash",
+          "broken",
+          "fails",
+          "not working",
+          "500"
+        ]
+      },
+      {
+        "name": "auth",
+        "keywords": [
+          "password",
+          "reset",
+          "login",
+          "sign in",
+          "mfa",
+          "2fa",
+          "account"
+        ]
+      },
+      {
+        "name": "feature_request",
+        "keywords": [
+          "feature",
+          "would love",
+          "wish",
+          "request",
+          "dark mode",
+          "support for"
+        ]
+      },
+      {
+        "name": "how_to",
+        "keywords": [
+          "how do i",
+          "how can i",
+          "where do i",
+          "tutorial",
+          "docs"
+        ]
+      }
+    ]
+  },
+  "index": {
+    "spec": "kolm-index-1",
+    "by_keyword": {
+      "classify": "rcp_classifier_v1",
+      "label": "rcp_classifier_v1"
+    },
+    "by_recipe": {
+      "rcp_classifier_v1": [
+        "classify",
+        "label"
+      ]
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "n": 1,
+    "cases": [
+      {
+        "id": "billing",
+        "input": {
+          "text": "I need a refund"
+        },
+        "expected": {
+          "label": "billing",
+          "score": 1,
+          "scores": {
+            "billing": 1
+          }
+        }
+      }
+    ],
+    "coverage": 1
+  },
+  "training_stats": {
+    "pass_rate_positive": 1,
+    "latency_p50_us": 80
+  }
+}

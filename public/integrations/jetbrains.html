@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Run your .kolm inside JetBrains IDEs in 60 seconds &middot; kolm</title>
+<meta name="description" content="One command. IntelliJ, PyCharm, GoLand, WebStorm, RubyMine - any JetBrains IDE - calls your compiled AI through MCP. The model runs locally. Zero API calls.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:title" content="Run your .kolm inside JetBrains IDEs in 60 seconds">
+<meta property="og:description" content="kolm install jetbrains --apply. Restart. Done.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="kolm + JetBrains" />
+<meta name="twitter:description" content="One command. Your compiled AI becomes a callable tool in IntelliJ, PyCharm, GoLand and the rest of the JetBrains family." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<meta property="og:url" content="https://kolm.ai/integrations/jetbrains">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/integrations/jetbrains">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #faf2e1; --accent-soft: rgba(236,231,220, 0.10); --accent-strong: #c9c2b2;
+    --good: #7ef0d2; --warn: #ffd07a;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+  .wrap-wide { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap, .wrap-wide { padding: 0 20px; } }
+
+  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
+  header.site .left { display: flex; align-items: center; gap: 36px; }
+  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 500; font-size: 16px; }
+  header.site nav { display: flex; gap: 22px; }
+  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
+  header.site nav a:hover { color: var(--ink); }
+  header.site .right { display: flex; align-items: center; gap: 14px; }
+  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 500; }
+  @media (max-width: 720px) { header.site nav { display: none; } }
+
+  section.hero { padding: 88px 0 32px; }
+  .crumb { font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; margin: 0 0 18px; }
+  .crumb a { color: var(--ink-mute); }
+  .crumb a:hover { color: var(--ink); }
+  h1 { margin: 0 0 18px; font-size: clamp(36px, 5.4vw, 60px); line-height: 1.04; font-weight: 500; max-width: 22ch; letter-spacing: -0.01em; }
+  h1 .tone { color: var(--accent-strong); }
+  p.lede { margin: 0 0 28px; font-size: 17.5px; line-height: 1.55; color: var(--ink-mute); max-width: 64ch; }
+
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; }
+  .kind { font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; color: var(--ink-faint); padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px; }
+  .kind.good { color: var(--good); border-color: rgba(126,240,210,0.18); }
+
+  section.steps { padding: 24px 0 56px; }
+  .steps-grid { display: grid; gap: 16px; grid-template-columns: 1fr; margin: 16px 0 0; }
+  .step { border: 1px solid var(--line); border-radius: 12px; padding: 24px 26px; background: var(--bg-elev); }
+  .step .num { font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 8px; letter-spacing: 0.04em; }
+  .step h3 { margin: 0 0 10px; font-size: 19px; font-weight: 500; color: var(--ink); }
+  .step p { margin: 0; font-size: 15px; color: var(--ink-mute); line-height: 1.6; max-width: 60ch; }
+  .step .code-row { position: relative; margin: 14px 0 0; }
+  .step pre { margin: 0; padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; font-family: var(--mono); font-size: 13.5px; color: var(--ink); overflow-x: auto; line-height: 1.55; }
+  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--bg-elev); color: var(--ink-mute); border: 1px solid var(--line); border-radius: 5px; padding: 4px 10px; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; cursor: pointer; letter-spacing: 0.04em; }
+  .copy-btn:hover { color: var(--ink); border-color: var(--line-strong); }
+  .copy-btn.done { color: var(--good); border-color: rgba(126,240,210,0.18); }
+
+  section.snippet { padding: 32px 0 56px; border-top: 1px solid var(--line); }
+  section.snippet h2 { margin: 0 0 8px; font-size: clamp(22px, 2.4vw, 28px); font-weight: 500; }
+  section.snippet p.kicker { margin: 0 0 22px; color: var(--ink-mute); font-size: 15px; max-width: 64ch; }
+  section.snippet .file-label { font-family: var(--mono); font-size: 11.5px; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 6px; letter-spacing: 0.04em; }
+  section.snippet pre { margin: 0; padding: 18px 22px; background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px; font-family: var(--mono); font-size: 13px; color: var(--ink); overflow-x: auto; line-height: 1.6; }
+
+  section.what-you-get { padding: 32px 0 56px; border-top: 1px solid var(--line); }
+  section.what-you-get h2 { margin: 0 0 22px; font-size: clamp(22px, 2.4vw, 28px); font-weight: 500; }
+  .check-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 720px) { .check-grid { grid-template-columns: 1fr; } }
+  .check { padding: 18px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev); }
+  .check h3 { margin: 0 0 6px; font-size: 15px; font-weight: 500; color: var(--ink); }
+  .check p { margin: 0; font-size: 14px; color: var(--ink-mute); line-height: 1.6; }
+
+  section.cta { padding: 48px 0 96px; border-top: 1px solid var(--line); }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin: 18px 0 0; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 8px; font-size: 14.5px; font-weight: 500; font-family: var(--sans); border: 1px solid var(--line-strong); color: var(--ink); background: transparent; transition: border-color 180ms, background 180ms; }
+  .btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .btn.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  .btn:hover { border-color: var(--ink-mute); }
+
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  footer.site a { color: var(--ink-mute); }
+</style>
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "Run your .kolm inside JetBrains IDEs",
+  "description": "Three steps to use a kolm-compiled AI inside IntelliJ, PyCharm, GoLand and the rest of the JetBrains family as a local MCP tool.",
+  "totalTime": "PT1M",
+  "step": [
+    {"@type":"HowToStep","position":1,"name":"Install the integration","text":"Run kolm install jetbrains --apply. Writes the MCP entry to the JetBrains AI Assistant settings file."},
+    {"@type":"HowToStep","position":2,"name":"Restart the IDE","text":"The compiled model appears as an MCP tool in the AI Assistant panel."},
+    {"@type":"HowToStep","position":3,"name":"Use it","text":"The model runs locally. Zero API calls leave the machine."}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type":"ListItem","position":1,"name":"Home","item":"https://kolm.ai/"},
+    {"@type":"ListItem","position":2,"name":"Integrations","item":"https://kolm.ai/integrations"},
+    {"@type":"ListItem","position":3,"name":"JetBrains","item":"https://kolm.ai/integrations/jetbrains"}
+  ]
+}
+</script>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/use-cases">Use cases</a>
+        <a href="/docs">Docs</a>
+        <a href="/research">Research</a>
+        <a href="/enterprise">Enterprise</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumb"><a href="/integrations">Integrations</a> &middot; JetBrains</p>
+    <h1>Run your <span class="tone">.kolm</span> inside JetBrains IDEs in 60 seconds.</h1>
+    <p class="lede">One command writes the MCP server entry for the AI Assistant. Restart your IDE. Your compiled AI shows up as a callable tool in the AI Assistant panel. Same recipe for IntelliJ IDEA, PyCharm, GoLand, WebStorm, RubyMine, RustRover, CLion, PhpStorm, Rider, DataGrip.</p>
+    <div class="meta-row">
+      <span class="kind good">shipped</span>
+      <span class="kind">MCP &middot; stdio</span>
+      <span class="kind">macOS &middot; Linux &middot; Windows</span>
+      <span class="kind">AI Assistant 2024.3+</span>
+    </div>
+  </div>
+</section>
+
+<section class="steps">
+  <div class="wrap">
+    <div class="steps-grid">
+
+      <div class="step">
+        <p class="num">Step 01</p>
+        <h3>Install the integration.</h3>
+        <p>One command. The installer detects every JetBrains IDE on disk, writes the MCP server entry to each AI Assistant config, and pins the kolm binary by absolute path. Re-running is idempotent.</p>
+        <div class="code-row">
+          <pre id="cmd-1">kolm install jetbrains --apply</pre>
+          <button type="button" class="copy-btn" data-copy="cmd-1" aria-label="Copy command">copy</button>
+        </div>
+      </div>
+
+      <div class="step">
+        <p class="num">Step 02</p>
+        <h3>Restart the IDE.</h3>
+        <p>JetBrains IDEs (2024.3 or newer with AI Assistant) re-read the MCP config at startup. After restart your compiled model shows up as an MCP tool inside the AI Assistant chat. No further configuration. No keys to paste.</p>
+        <div class="code-row">
+          <pre id="cmd-2"># File &middot; Invalidate Caches and Restart
+# or just close and reopen the IDE</pre>
+          <button type="button" class="copy-btn" data-copy="cmd-2" aria-label="Copy command">copy</button>
+        </div>
+      </div>
+
+      <div class="step">
+        <p class="num">Step 03</p>
+        <h3>Use it. The model runs locally.</h3>
+        <p>Ask AI Assistant to call your kolm tool. The recipe runs in-process. Zero outbound API calls. The same byte-exact <code>.kolm</code> artifact you compiled on the laptop is what the editor invokes.</p>
+        <div class="code-row">
+          <pre id="cmd-3"># in AI Assistant chat
+&gt; /kolm.run support-triage classify this ticket
+&gt; /kolm.run pr-review score this PR</pre>
+          <button type="button" class="copy-btn" data-copy="cmd-3" aria-label="Copy command">copy</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="snippet">
+  <div class="wrap">
+    <h2>What lands in the JetBrains MCP config</h2>
+    <p class="kicker">Open the AI Assistant settings file after running the installer. This is the entire change. No telemetry. No phone-home. The <code>command</code> is the absolute path of the kolm binary the installer detected, so the entry stays valid even if your PATH changes.</p>
+    <p class="file-label">JetBrains AI Assistant &middot; MCP servers (per-IDE config)</p>
+<pre>{
+  "mcpServers": {
+    "kolm": {
+      "type": "stdio",
+      "command": "/usr/local/bin/kolm",
+      "args": ["serve", "--mcp"],
+      "env": {
+        "KOLM_HOME": "~/.kolm"
+      }
+    }
+  }
+}</pre>
+  </div>
+</section>
+
+<section class="what-you-get">
+  <div class="wrap">
+    <h2>What you get.</h2>
+    <div class="check-grid">
+      <div class="check">
+        <h3>Every JetBrains IDE.</h3>
+        <p>IntelliJ IDEA, PyCharm, GoLand, WebStorm, RubyMine, RustRover, CLion, PhpStorm, Rider, DataGrip - same install, same MCP entry. One config per IDE family.</p>
+      </div>
+      <div class="check">
+        <h3>Local execution.</h3>
+        <p>The MCP server runs in-process over stdio. No daemon. No HTTP unless you opt in with <code>--http</code> on port 8765.</p>
+      </div>
+      <div class="check">
+        <h3>Zero outbound calls.</h3>
+        <p>The IDE talks to the kolm process. The kolm process executes the recipe against your local model. Nothing leaves the machine.</p>
+      </div>
+      <div class="check">
+        <h3>Reproducible.</h3>
+        <p>Every tool call ships <code>_kolm</code> metadata (artifact hash, recipe id, K-score). AI Assistant logs it. You can replay any call.</p>
+      </div>
+      <div class="check">
+        <h3>Idempotent install.</h3>
+        <p>Re-running <code>kolm install jetbrains --apply</code> updates the entry in place. No duplicate servers. No drift.</p>
+      </div>
+      <div class="check">
+        <h3>Dry-run first.</h3>
+        <p>Drop the <code>--apply</code> and the installer prints what it would write to each detected IDE. Audit it. Then re-run with <code>--apply</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="wrap">
+    <h2 style="margin:0 0 6px;font-size:clamp(22px,2.4vw,28px);font-weight:500;">Ready to compile.</h2>
+    <p class="lede" style="margin:0 0 8px;">If you don&apos;t have the CLI yet, the quickstart is one page. If you want the MCP surface itself, the spec page lists every tool the kolm server exposes.</p>
+    <div class="cta-row">
+      <a href="/quickstart" class="btn primary">Get the CLI &rarr;</a>
+      <a href="/spec" class="btn">View MCP spec</a>
+      <a href="/integrations" class="btn">Other integrations</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/badge">Embed badge</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  document.querySelectorAll('.copy-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var id = btn.getAttribute('data-copy');
+      var pre = document.getElementById(id);
+      if (!pre) return;
+      var text = pre.textContent;
+      try {
+        navigator.clipboard.writeText(text).then(function(){
+          btn.textContent = 'copied';
+          btn.classList.add('done');
+          setTimeout(function(){ btn.textContent = 'copy'; btn.classList.remove('done'); }, 1600);
+        });
+      } catch (e) {
+        var r = document.createRange(); r.selectNode(pre);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(r);
+        try { document.execCommand('copy'); btn.textContent='copied'; btn.classList.add('done'); setTimeout(function(){ btn.textContent='copy'; btn.classList.remove('done'); }, 1600); } catch(_){}
+        window.getSelection().removeAllRanges();
+      }
+    });
+  });
+})();
+</script>
+<script src="/nav.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+{
+  "job_id": "job_kolm_multilingual_greeter_v1",
+  "task": "multilingual greeter — detects english / spanish / french / german / portuguese / italian / dutch in short greetings (edge-tiny: 4 KB recipe, microsecond runtime)",
+  "base_model": "none",
+  "recipes": [
+    {
+      "id": "rcp_multilingual_greeter_v1",
+      "name": "multilingual greeter (edge)",
+      "source": "function generate(input, lib) {\n  var text = (typeof input === 'string') ? input : (input && input.text) || '';\n  if (typeof text !== 'string') text = String(text);\n  var cats = [];\n  var packCats = (lib.pack && lib.pack.categories) || [];\n  for (var i=0;i<packCats.length;i++) cats.push(packCats[i]);\n  var tenantCats = (lib.params && lib.params.extra_categories) || [];\n  for (var j=0;j<tenantCats.length;j++) cats.push(tenantCats[j]);\n  var lower = text.toLowerCase();\n  var scores = {};\n  for (var k=0;k<cats.length;k++){ var c=cats[k]; if (!c||!c.name||!Array.isArray(c.keywords)) continue;\n    var weight = (typeof c.weight==='number'&&c.weight>0) ? c.weight : 1;\n    var score = 0; for (var n=0;n<c.keywords.length;n++){ var kw=String(c.keywords[n]||'').toLowerCase(); if (!kw) continue; var idx=0,hits=0; while ((idx=lower.indexOf(kw,idx))!==-1){ hits++; idx+=kw.length; } score += hits*weight; }\n    if (score>0) scores[c.name] = (scores[c.name]||0) + score;\n  }\n  var sortedNames = Object.keys(scores).sort(function(a,b){ if (scores[b]!==scores[a]) return scores[b]-scores[a]; return a<b?-1:1; });\n  var fallback = (lib.pack && lib.pack.fallback_label) || 'other';\n  var top = sortedNames.length ? sortedNames[0] : fallback;\n  return { label: top, score: scores[top]||0, scores: scores };\n}",
+      "tags": [
+        "classification",
+        "edge",
+        "i18n",
+        "language"
+      ],
+      "schema": {
+        "input": {
+          "text": "string"
+        },
+        "output": {
+          "label": "string",
+          "score": "number",
+          "scores": "object"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "language detection by lexical greeting cues, sized for edge devices",
+    "fallback_label": "unknown",
+    "categories": [
+      {
+        "name": "english",
+        "keywords": [
+          "hello",
+          "hi there",
+          "good morning",
+          "good evening",
+          "thanks",
+          "thank you"
+        ]
+      },
+      {
+        "name": "spanish",
+        "keywords": [
+          "hola",
+          "buenos dias",
+          "buenas tardes",
+          "gracias",
+          "por favor",
+          "buen dia"
+        ]
+      },
+      {
+        "name": "french",
+        "keywords": [
+          "bonjour",
+          "salut",
+          "bonsoir",
+          "merci",
+          "sil vous plait",
+          "s'il vous plait"
+        ]
+      },
+      {
+        "name": "german",
+        "keywords": [
+          "hallo",
+          "guten tag",
+          "guten morgen",
+          "danke",
+          "bitte",
+          "gruss"
+        ]
+      },
+      {
+        "name": "portuguese",
+        "keywords": [
+          "ola",
+          "olá",
+          "bom dia",
+          "boa tarde",
+          "obrigado",
+          "obrigada",
+          "tudo bem"
+        ]
+      },
+      {
+        "name": "italian",
+        "keywords": [
+          "ciao",
+          "buongiorno",
+          "buonasera",
+          "grazie",
+          "prego",
+          "salve"
+        ]
+      },
+      {
+        "name": "dutch",
+        "keywords": [
+          "hallo daar",
+          "goedemorgen",
+          "goedendag",
+          "goedenavond",
+          "dank je",
+          "alsjeblieft"
+        ]
+      }
+    ]
+  },
+  "index": {
+    "spec": "kolm-index-1",
+    "by_keyword": {
+      "greet": "rcp_multilingual_greeter_v1",
+      "lang": "rcp_multilingual_greeter_v1"
+    },
+    "by_recipe": {
+      "rcp_multilingual_greeter_v1": [
+        "greet",
+        "lang",
+        "edge"
+      ]
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "n": 1,
+    "cases": [
+      {
+        "id": "es",
+        "input": {
+          "text": "hola buenos dias"
+        },
+        "expected": {
+          "label": "spanish"
+        }
+      }
+    ],
+    "coverage": 1
+  },
+  "training_stats": {
+    "pass_rate_positive": 1,
+    "latency_p50_us": 50
+  }
+}

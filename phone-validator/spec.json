@@ -1,0 +1,55 @@
+{
+  "job_id": "job_phone_validator_v1",
+  "task": "validate and normalize raw phone strings into E.164 with country tag",
+  "recipes": [
+    {
+      "id": "rcp_phone",
+      "name": "phone-validator",
+      "source_file": "./recipe.js"
+    }
+  ],
+  "evals": {
+    "cases": [
+      {
+        "input": { "text": "(555) 867-5309" },
+        "expected": { "e164": "+15558675309", "country": "US", "valid": true, "original": "(555) 867-5309" }
+      },
+      {
+        "input": { "text": "+44 7700 900456" },
+        "expected": { "e164": "+447700900456", "country": "GB", "valid": true, "original": "+44 7700 900456" }
+      },
+      {
+        "input": { "text": "0049 30 12345678" },
+        "expected": { "e164": "+493012345678", "country": "DE", "valid": true, "original": "0049 30 12345678" }
+      },
+      {
+        "input": { "text": "+33 1 23 45 67 89" },
+        "expected": { "e164": "+33123456789", "country": "FR", "valid": true, "original": "+33 1 23 45 67 89" }
+      },
+      {
+        "input": { "text": "+81 90-1234-5678" },
+        "expected": { "e164": "+819012345678", "country": "JP", "valid": true, "original": "+81 90-1234-5678" }
+      },
+      {
+        "input": { "text": "+86 138 0013 8000" },
+        "expected": { "e164": "+8613800138000", "country": "CN", "valid": true, "original": "+86 138 0013 8000" }
+      },
+      {
+        "input": { "text": "+91 98765 43210" },
+        "expected": { "e164": "+919876543210", "country": "IN", "valid": true, "original": "+91 98765 43210" }
+      },
+      {
+        "input": { "text": "+55 11 91234-5678" },
+        "expected": { "e164": "+5511912345678", "country": "BR", "valid": true, "original": "+55 11 91234-5678" }
+      },
+      {
+        "input": { "text": "1-555-867-5309" },
+        "expected": { "e164": "+15558675309", "country": "US", "valid": true, "original": "1-555-867-5309" }
+      },
+      {
+        "input": { "text": "abc" },
+        "expected": { "e164": "", "country": "UNKNOWN", "valid": false, "original": "abc" }
+      }
+    ]
+  }
+}

@@ -40,24 +40,50 @@ export { constantTimeEqual };
 
 function tenantKeyMatches(tenant, key) {
   if (!tenant || !key) return false;
-  if (tenant.api_key_hash && constantTimeEqual(tenant.api_key_hash, hashApiKey(key))) return true;
-  return !!tenant.api_key && constantTimeEqual(tenant.api_key, key);
-}
-
-function migrateRawKeyIfNeeded(tenant, key) {
-  if (!tenant?.id || !tenant.api_key) return;
-  update('tenants', x => x.id === tenant.id, {
-    ...keyFields(key),
-    api_key: undefined,
-    key_migrated_at: tenant.key_migrated_at || new Date().toISOString(),
-  });
+  // api_key_hash is the only authoritative store. Legacy plain-key column was
+  // migrated to hashed form by migrateAllPlainKeysOnce() at module-load time;
+  // any row that still has a non-empty api_key column at lookup time is a
+  // pre-migration leftover that can no longer authenticate (the equivalent of
+  // a lost password — owner must rotate via /v1/account/rotate-key after a
+  // separate identity-verified recovery flow).
+  if (!tenant.api_key_hash) return false;
+  return constantTimeEqual(tenant.api_key_hash, hashApiKey(key));
 }
 
 export function findTenantByApiKey(key) {
-  const tenant = findOne('tenants', x => !x._deleted && tenantKeyMatches(x, key));
-  if (tenant) migrateRawKeyIfNeeded(tenant, key);
-  return tenant;
+  return findOne('tenants', x => !x._deleted && tenantKeyMatches(x, key)) || null;
 }
+
+// One-shot migration: any tenant minted before api_key_hash was a column has
+// a plain api_key string. This walks the tenant table once at module load
+// and computes api_key_hash + api_key_prefix for those rows, then clears the
+// plain api_key column. Idempotent — subsequent boots are no-ops because the
+// filter (api_key && !api_key_hash) matches zero rows.
+export function migrateAllPlainKeysOnce() {
+  let migrated = 0;
+  try {
+    for (const t of all('tenants')) {
+      if (t._deleted) continue;
+      if (typeof t.api_key === 'string' && t.api_key.length > 0 && !t.api_key_hash) {
+        update('tenants', x => x.id === t.id, {
+          ...keyFields(t.api_key),
+          api_key: undefined,
+          key_migrated_at: t.key_migrated_at || new Date().toISOString(),
+        });
+        migrated++;
+      } else if (typeof t.api_key === 'string' && t.api_key.length > 0 && t.api_key_hash) {
+        // Stale plain column on an already-hashed row — clear it.
+        update('tenants', x => x.id === t.id, { api_key: undefined });
+        migrated++;
+      }
+    }
+  } catch (e) {
+    // Never block startup on migration failure — surface but continue.
+    console.warn('[auth] plain-key migration error:', e && e.message);
+  }
+  if (migrated > 0) console.log('[auth] migrated', migrated, 'tenant plain-key column(s) to hash');
+}
+migrateAllPlainKeysOnce();
 
 export function provisionTenant(name, { quota = 10000, plan = 'free', kind = 'user', expires_at = null, email = null } = {}) {
   const existing = all('tenants').find(t => t.name === name);
@@ -243,6 +269,43 @@ export function rotateTenantReceiptSecret(tenant_id) {
   return { key_id: newKeyId, rotated_at: new Date().toISOString(), previous_count: previous.length };
 }
 
+// Return current + previous key metadata for a tenant. Secrets are NEVER
+// returned, only the key_id, rotated_at, and retired_at timestamps so the
+// caller can audit what's in the verification fallback ring.
+export function listTenantReceiptSecrets(tenant_id) {
+  const tenant = findOne('tenants', x => x.id === tenant_id);
+  if (!tenant) throw new Error('tenant not found');
+  const current = tenant.receipt_secret
+    ? {
+        key_id: tenant.receipt_key_id || 'current',
+        rotated_at: tenant.receipt_rotated_at || null,
+        status: 'current',
+      }
+    : null;
+  const previous = Array.isArray(tenant.previous_receipt_secrets)
+    ? tenant.previous_receipt_secrets.map(p => ({
+        key_id: p.key_id || 'previous',
+        retired_at: p.retired_at || null,
+        status: 'previous',
+      }))
+    : [];
+  return { current, previous, total: (current ? 1 : 0) + previous.length };
+}
+
+// Drop a specific previous key from the verification ring. Once pruned,
+// receipts signed with that key will no longer verify against this tenant.
+// Refuses to prune the current key — rotate first if you want to retire it.
+export function pruneTenantReceiptSecret(tenant_id, key_id) {
+  const tenant = findOne('tenants', x => x.id === tenant_id);
+  if (!tenant) throw new Error('tenant not found');
+  if (tenant.receipt_key_id === key_id) throw new Error('cannot prune the current key; rotate first');
+  const previous = Array.isArray(tenant.previous_receipt_secrets) ? tenant.previous_receipt_secrets : [];
+  const remaining = previous.filter(p => p.key_id !== key_id);
+  if (remaining.length === previous.length) throw new Error('key_id not found in previous_receipt_secrets');
+  update('tenants', x => x.id === tenant_id, { previous_receipt_secrets: remaining });
+  return { pruned: key_id, remaining_count: remaining.length };
+}
+
 function takeToken(t) {
   const now = Date.now();
   let b = buckets.get(t.id);
@@ -277,7 +340,9 @@ const PUBLIC_API = (p) =>
   p === '/v1/anon/claim' ||
   p === '/v1/registry/public' ||
   p === '/v1/hub' ||
+  p === '/v1/lead/enterprise' ||                                        // KOLM-102: structured intake post; GET /:id stays admin-gated
   /^\/v1\/hub\/[^/]+\/[^/]+(?:\/download)?$/.test(p) ||
+  /^\/v1\/receipts\/[A-Za-z0-9._\-]{8,128}\/public$/.test(p) ||         // public receipt-by-hash lookup, no auth (KOLM-109)
   p === '/v1/stripe/webhook' ||
   p === '/v1/oauth/providers' ||
   p === '/v1/byoc/attestation' ||
@@ -287,7 +352,7 @@ const PUBLIC_API = (p) =>
   /^\/v1\/tunnel\/agent\/[A-Za-z0-9_\-]+(?:\/response)?$/.test(p);
 
 export function adminApiKey() {
-  return process.env.ADMIN_KEY || (isProductionRuntime() ? null : 'ks_admin_change_me');
+  return process.env.ADMIN_KEY || null;
 }
 
 export function authMiddleware(req, res, next) {

@@ -43,7 +43,7 @@ echo
 # Stage 1 . landing + first impression (5 probes)
 probe "landing"            "/"                              200 "kolm"
 probe "hero-quant"         "/"                              200 "7\.42|hero-quant"
-probe "receipt-cta"        "/"                              200 "Open a receipt|/docs/showcase/receipt"
+probe "pricing-cta"        "/"                              200 "See pricing|href=\"/pricing\""
 probe "frontier-strip"     "/"                              200 "Forty-two frontier|frontier-strip"
 probe "favicon"            "/favicon.svg"                   200
 

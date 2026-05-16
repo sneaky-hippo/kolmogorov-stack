@@ -1,0 +1,98 @@
+{
+  "job_id": "job_phi_redactor_v1",
+  "task": "redact identifier patterns from free text — extend at run time via params.extra_patterns",
+  "base_model": "none",
+  "recipes": [
+    {
+      "id": "rcp_redactor_v1",
+      "name": "identifier redactor",
+      "source": "function generate(input, lib) {\n  var text = (typeof input === 'string') ? input : (input && input.text) || '';\n  if (typeof text !== 'string') return { redacted: '', hits: [] };\n  var patterns = [];\n  var enabled = (lib.pack && lib.pack.enabled_builtins) || ['email','phone','url','ipv4','date'];\n  for (var i=0;i<enabled.length;i++){ var k=enabled[i]; if (lib.patterns[k]) patterns.push({name:k.toUpperCase(),regex:lib.patterns[k],replacement:\"[\"+k.toUpperCase()+\"]\"}); }\n  var packPats = (lib.pack && lib.pack.default_patterns) || [];\n  for (var j=0;j<packPats.length;j++){ var p=packPats[j]; try { patterns.push({name:p.name,regex:new RegExp(p.regex,p.flags||'g'),replacement:p.replacement||('['+p.name+']')}); } catch(e){} }\n  var extras = (lib.params && lib.params.extra_patterns) || [];\n  for (var x=0;x<extras.length;x++){ var e=extras[x]; try { patterns.push({name:e.name,regex:new RegExp(e.regex,e.flags||'g'),replacement:e.replacement||('['+e.name+']')}); } catch(err){} }\n  var hits = {}, redacted = text;\n  for (var n=0;n<patterns.length;n++){ var pat=patterns[n], count=0; redacted = redacted.replace(pat.regex, function(){ count++; return pat.replacement; }); if (count>0) hits[pat.name]=(hits[pat.name]||0)+count; }\n  var hitList = []; for (var key in hits) hitList.push({name:key,count:hits[key]});\n  hitList.sort(function(a,b){ return a.name<b.name?-1:a.name>b.name?1:0; });\n  return { redacted: redacted, hits: hitList };\n}",
+      "tags": [
+        "redaction",
+        "privacy",
+        "generic"
+      ],
+      "schema": {
+        "input": {
+          "text": "string"
+        },
+        "output": {
+          "redacted": "string",
+          "hits": "array"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "starter identifier patterns — tenants extend via params.extra_patterns",
+    "enabled_builtins": [
+      "email",
+      "phone",
+      "url",
+      "ipv4",
+      "date"
+    ],
+    "default_patterns": [
+      {
+        "name": "SSN_LIKE",
+        "regex": "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+        "replacement": "[SSN]"
+      }
+    ]
+  },
+  "index": {
+    "spec": "kolm-index-1",
+    "by_keyword": {
+      "redact": "rcp_redactor_v1",
+      "privacy": "rcp_redactor_v1"
+    },
+    "by_recipe": {
+      "rcp_redactor_v1": [
+        "redact",
+        "privacy"
+      ]
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "n": 2,
+    "cases": [
+      {
+        "id": "phone",
+        "input": {
+          "text": "call 555-123-4567 today"
+        },
+        "expected": {
+          "redacted": "call [PHONE] today",
+          "hits": [
+            {
+              "name": "PHONE",
+              "count": 1
+            }
+          ]
+        }
+      },
+      {
+        "id": "ssn",
+        "input": {
+          "text": "ssn 123-45-6789"
+        },
+        "expected": {
+          "redacted": "ssn [SSN]",
+          "hits": [
+            {
+              "name": "SSN_LIKE",
+              "count": 1
+            }
+          ]
+        }
+      }
+    ],
+    "coverage": 1
+  },
+  "training_stats": {
+    "pass_rate_positive": 1,
+    "latency_p50_us": 60
+  }
+}

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm AI 컴파일러 문서 | kolm</title>
+<meta name="description" content="60초 만에 kolm으로 빌드하세요. compile, run, evolve를 위한 CLI와 HTTP 레퍼런스. 모든 예제는 프로덕션에서 실제로 캡처된 출력입니다.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<link rel="alternate" hreflang="en" href="https://kolm.ai/docs">
+<link rel="alternate" hreflang="ja" href="https://kolm.ai/docs/ja">
+<link rel="alternate" hreflang="zh" href="https://kolm.ai/docs/zh">
+<link rel="alternate" hreflang="es" href="https://kolm.ai/docs/es">
+<link rel="alternate" hreflang="fr" href="https://kolm.ai/docs/fr">
+<link rel="alternate" hreflang="de" href="https://kolm.ai/docs/de">
+<link rel="alternate" hreflang="ko" href="https://kolm.ai/docs/ko">
+<link rel="alternate" hreflang="x-default" href="https://kolm.ai/docs">
+
+<meta property="og:title" content="kolm 문서">
+<meta property="og:description" content="60초 만에 kolm으로 빌드하세요. 코드 우선 레퍼런스. 모든 예제는 프로덕션에서 실제로 캡처된 출력입니다.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/docs/ko">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:title" content="kolm 문서">
+<meta name="twitter:description" content="60초 만에 kolm으로 빌드하세요. 코드 우선 레퍼런스.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/docs/ko">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .docs-shell{max-width:780px;margin:0 auto;padding:48px 32px 96px}
+  @media (max-width:920px){.docs-shell{padding:24px 20px 64px}}
+  .docs-main h1{font-size:clamp(40px,5.8vw,72px);line-height:1.04;margin:0 0 18px;letter-spacing:-0.025em;font-weight:500;max-width:20ch}
+  .docs-main h2{font-size:22px;line-height:1.3;margin:48px 0 8px;scroll-margin-top:80px;font-weight:500}
+  .docs-main h3{font-size:14px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);margin:28px 0 8px;font-weight:500;font-family:var(--mono)}
+  .docs-main p{color:var(--ink-mute);margin:6px 0 14px;font-size:15px;line-height:1.8;max-width:62ch}
+  .docs-main code:not(pre code){font-family:var(--mono);font-size:12.5px;color:var(--ink);background:rgba(255,255,255,0.04);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+  pre.code-block{background:#0a0c0f;border:1px solid var(--line);border-radius:8px;padding:16px 18px;font-family:var(--mono);font-size:12.5px;line-height:1.65;color:#e6e6e6;overflow-x:auto;margin:14px 0;position:relative}
+  pre.code-block .copy{position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.06);border:1px solid var(--line);color:var(--ink-mute);font-family:var(--mono);font-size:10.5px;padding:4px 8px;border-radius:4px;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em}
+  pre.code-block .copy:hover{color:var(--ink);background:rgba(255,255,255,0.10)}
+  pre.code-block .copy.done{color:var(--good,#7ef0d2)}
+  .endpoint-tag{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;margin-top:24px}
+  .endpoint-tag .verb{font-weight:500;color:var(--ink);background:rgba(255,255,255,0.08);padding:3px 8px;border-radius:4px;font-size:11px}
+  .endpoint-tag .verb.post{background:rgba(126,240,210,0.16);color:#7ef0d2}
+  .endpoint-tag .verb.get{background:rgba(76,125,255,0.20);color:#8aaaff}
+  .endpoint-tag .path{color:var(--ink-mute)}
+  .endpoint-tag .auth{color:var(--ink-faint);margin-left:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em}
+  .note{border-left:2px solid var(--accent);padding:10px 14px;background:rgba(236,231,220,0.03);border-radius:0 6px 6px 0;font-size:14px;color:var(--ink-mute);margin:14px 0;max-width:62ch;line-height:1.8}
+  .note b{color:var(--ink);font-weight:500}
+  .docs-main .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:18px;border:1px solid var(--line-strong);border-radius:999px;padding:6px 14px;background:rgba(8,9,8,0.62)}
+  .docs-main .eyebrow .pulse{display:inline-block;width:6px;height:6px;border-radius:50%;background:#7ef0d2;box-shadow:0 0 10px #7ef0d2}
+  .lang-switch{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:0.04em;margin:0 0 32px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,0.01);max-width:62ch;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+  .lang-switch .lbl{color:var(--ink-faint);text-transform:uppercase;margin-right:4px}
+  .lang-switch a{color:var(--ink-mute);text-decoration:none;border-bottom:1px solid transparent}
+  .lang-switch a:hover{color:var(--ink);border-bottom-color:var(--accent)}
+  .lang-switch a.on{color:var(--ink);border-bottom-color:var(--accent)}
+  .lang-switch .sep{color:var(--ink-faint);opacity:0.5}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><span>kolm</span></a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
+      <a href="/research">Research</a>
+      <a href="/enterprise">Enterprise</a>
+      <a href="/pricing">Pricing</a>
+    </nav>
+    <div class="site-actions">
+      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
+      <a href="/signin">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<main class="docs-shell">
+  <article class="docs-main">
+
+    <nav class="lang-switch" aria-label="Language">
+      <span class="lbl">lang</span>
+      <a href="/docs">EN</a><span class="sep">·</span>
+      <a href="/docs/ja">日本語</a><span class="sep">·</span>
+      <a href="/docs/zh">中文</a><span class="sep">·</span>
+      <a href="/docs/es">ES</a><span class="sep">·</span>
+      <a href="/docs/fr">FR</a><span class="sep">·</span>
+      <a href="/docs/de">DE</a><span class="sep">·</span>
+      <a href="/docs/ko" class="on">한국어</a>
+    </nav>
+
+    <div class="eyebrow"><span class="pulse"></span>docs · v0.7.8 · 빌드 키트</div>
+    <h1>60초 만에 kolm으로 빌드</h1>
+    <p>이 페이지의 모든 예제는 2026-05-11에 <code>kolm.ai</code>에서 실제로 캡처된 응답입니다. 아무 블록이나 복사해 터미널에 붙여넣으면 동작합니다. 동작하지 않으면 이슈를 등록해 주세요.</p>
+    <p>코드 블록, CLI 명령, API 엔드포인트, 환경 변수 이름, JSON 키는 언어와 무관하게 동일하므로 영문 그대로 유지합니다.</p>
+
+    <h2>빠른 시작</h2>
+    <p>가입하고 키를 받고, 예제 두 개로 마스킹 (redaction) 함수를 컴파일해 실제 입력에 실행해 봅니다. 여섯 줄이면 끝납니다.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>$ curl -sX POST https://kolm.ai/v1/signup \
+    -H 'content-type: application/json' \
+    -d '{"email":"you@example.com","plan":"free"}'
+$ export KOLM_KEY=ks_...                            # 위 응답에서 가져옵니다
+$ curl -sX POST https://kolm.ai/v1/synthesize \
+    -H "authorization: Bearer $KOLM_KEY" -H 'content-type: application/json' \
+    -d '{"name":"redact","positives":[{"input":"token=sk_live_xxx","expected":"[REDACTED]"}]}'
+$ curl -sX POST https://kolm.ai/v1/run \
+    -H "authorization: Bearer $KOLM_KEY" -H 'content-type: application/json' \
+    -d '{"concept_id":"cpt_...","input":"my token=sk_live_abc123"}'</code></pre>
+    <p>40 마이크로초, HMAC 하나, 서명된 영수증 (signed receipt) 하나. 이게 전부입니다.</p>
+
+    <h2>인증 (Authentication)</h2>
+    <p><code>authorization</code> 헤더에 Bearer 토큰을 사용합니다. 토큰은 <code>POST /v1/signup</code> 또는 <code>/signup</code>에서 받습니다. Free 플랜에는 월 10,000회 호출이 포함됩니다.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -H "authorization: Bearer ks_..." https://kolm.ai/v1/account</code></pre>
+
+    <h2>CLI 설치</h2>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>npm i -g github:sneaky-hippo/kolmogorov-stack
+kolm login</code></pre>
+
+    <h2>회원가입 (Sign up)</h2>
+    <div class="endpoint-tag"><span class="verb post">POST</span><span class="path">/v1/signup</span><span class="auth">no auth</span></div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -X POST https://kolm.ai/v1/signup \
+  -H 'content-type: application/json' \
+  -d '{"email":"you@example.com","plan":"free"}'</code></pre>
+    <div class="note"><b>주의:</b> API 키는 한 번만 표시됩니다. 잘 보관해 두세요. 분실 시 <code>POST /v1/account/rotate-key</code>로 회전할 수 있습니다.</div>
+
+    <h2>Synthesize (합성)</h2>
+    <p>입력/기대 출력 쌍의 목록을, 분류·마스킹·변환을 수행하는 컴파일된 JavaScript 함수로 바꿉니다. <code>concept_id</code>와 품질 점수를 반환합니다.</p>
+    <div class="endpoint-tag"><span class="verb post">POST</span><span class="path">/v1/synthesize</span><span class="auth">bearer</span></div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -X POST https://kolm.ai/v1/synthesize \
+  -H "authorization: Bearer $KOLM_KEY" \
+  -H 'content-type: application/json' \
+  -d '{ "name":"redact-secrets", "positives":[ { "input":"token=sk_live_xxx", "expected":"[REDACTED]" } ] }'</code></pre>
+    <p>K-score 게이트는 기본 0.85입니다. 게이트 미만의 컴파일은 실패한 축을 명시하며 <code>accepted: false</code>를 반환합니다. 예제를 더 추가하거나 spec을 조정해 다시 제출하세요.</p>
+
+    <h2>Run (실행)</h2>
+    <p>컴파일된 concept을 새 입력에 대해 실행합니다. 출력과 함께, 같은 키를 가진 누구나 재검증할 수 있는 서명된 영수증을 반환합니다.</p>
+    <div class="endpoint-tag"><span class="verb post">POST</span><span class="path">/v1/run</span><span class="auth">bearer</span></div>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>curl -X POST https://kolm.ai/v1/run \
+  -H "authorization: Bearer $KOLM_KEY" \
+  -H 'content-type: application/json' \
+  -d '{ "concept_id":"cpt_mp11ol06a...", "input":"my token=sk_live_abc123" }'</code></pre>
+
+    <h2>영수증 (Receipts)</h2>
+    <p><b>오늘 제공되는 것:</b> 각 <code>.kolm</code> 아티팩트는 아카이브 내용 (manifest + 레이어 해시) 전체에 대한 단일 HMAC-SHA256 서명을 보유합니다. 각 <code>/v1/run</code> 응답은 <code>source_hash · input_hash · output_hash · version_id · issued_at</code>을 포함한 <code>_kolm</code> 메타데이터 블록을 반환하며, 발행자 또는 공유 테넌트 영수증 시크릿 보유자라면 누구나 재검증할 수 있습니다. <b>목표 아키텍처:</b> 요청 간 호출별 HMAC 체이닝과 Ed25519 공개키 영수증은 로드맵에 있으며 아직 제공되지 않습니다.</p>
+
+    <h2>.kolm 포맷</h2>
+    <p>다섯 개의 파일을 담은 서명된 zip입니다: <code>spec.json</code> (레시피), <code>policy.json</code> (게이트), <code>recall/</code> (옵션 사이드카), <code>verifier.js</code> (저비용 출력 확인), <code>receipt.json</code> (HMAC 체인). 전체 스키마는 <a href="/spec" style="color:var(--accent)">/spec</a>에 있습니다.</p>
+
+    <h2>K-score</h2>
+    <p><b>모델 단위가 아니라 아티팩트 단위.</b> 컴파일된 각 <code>.kolm</code>은 자체 평가 세트에서 자체 K-score를 받습니다. 이 점수는 그 아티팩트를 평가하는 것이지, 그 아래의 베이스 모델을 평가하는 것이 아닙니다. 단일 스칼라이며, 배포 기준은 0.85입니다. 계산식은 <code>0.40·A + 0.15·(S + L + C + V)</code>로, 여기서 A는 정확도 (accuracy), S는 특이도 (specificity), L은 지연 (latency), C는 비용 (cost), V는 검증가능성 (verifiability)입니다. 전체 내역은 <a href="/k-score" style="color:var(--accent)">/k-score</a>에 있습니다.</p>
+
+    <h2>CLI</h2>
+    <p>여덟 개의 동사가 전체 루프를 다룹니다. API와 동일한 인증을 사용합니다. <code>kolm login</code>은 키를 <code>~/.kolm/config.json</code>에 저장합니다.</p>
+    <pre class="code-block"><button class="copy" type="button">copy</button><code>kolm init              # kolm.yaml + examples/ 스캐폴드
+kolm compile           # synthesize · 서명 · .kolm 작성
+kolm run file.kolm     # 실행 후 영수증 발급
+kolm tune --airgap     # 캡처된 실행에서 LoRA 어댑터 학습
+kolm rag attach docs/  # BM25 사이드카 빌드
+kolm serve --mcp       # Claude Code / Cursor용 로컬 MCP 서버
+kolm install claude-code   # 에이전트 하네스 연결
+kolm doctor            # env, 키, 포트, 버전 점검</code></pre>
+
+    <h2>MCP serve</h2>
+    <p><code>kolm serve --mcp</code>는 로컬 아티팩트를 stdio를 통해 MCP 도구로 노출합니다 (MCP 기본 방식). 클라이언트는 이를 서브프로세스로 실행하며, <code>kolm install &lt;harness&gt; --apply</code>는 claude-code / cursor / continue / cline에 맞는 위치에 spawn 설정을 기록합니다. <code>--http</code>를 전달하면 <code>127.0.0.1:8765</code>에 선택적 HTTP JSON-RPC 엔드포인트가 추가됩니다.</p>
+
+    <h2>원격 접근</h2>
+    <p>기본 배포는 로컬입니다. <code>kolm serve --local</code>은 런타임을 사용자의 기기에 바인딩하며, 노트북·휴대폰·코딩 에이전트는 사용자가 통제하는 네트워크로 접근합니다. 프롬프트와 출력은 결코 우리의 인프라를 거치지 않습니다. 거칠 인프라 자체가 없기 때문입니다.</p>
+    <p>벤더를 신뢰하지 않고도 호스팅된 접근을 원하는 팀이라면, 동일한 <code>.kolm</code>을 <b>TEE</b> (Trusted Execution Environment, 신뢰 실행 환경) 안에서 실행할 수 있습니다. 하드웨어 엔클레이브 (AWS Nitro, GCP Confidential, Azure SEV)가 모델, 가중치, 요청 데이터를 봉인하여 kolm도 클라우드 제공자도 읽을 수 없게 합니다. 상대적으로 안전하고 상대적으로 사적입니다. 암호학적 보장은 아니지만, 클라우드 호스팅 추론에 대해 가장 솔직한 표현입니다.</p>
+
+    <h2>OpenAI 호환성</h2>
+    <p>런타임은 <code>localhost:8765</code>에서 <code>/v1/chat/completions</code>, <code>/v1/models</code>, <code>/v1/embeddings</code>를 노출합니다. OpenAI 호환 클라이언트를 그곳으로 연결하면 됩니다. tool call과 스트리밍은 문서대로 동작합니다. 모든 요청은 서명된 영수증을 발급합니다.</p>
+
+    <h2>컴플라이언스 팩 (Compliance packs)</h2>
+    <p>컴플라이언스 팩은 (recipe.json + evidence.md + dpia.md + mrm.md + controls.md)의 버전 관리된 번들로, 어떤 마스킹이 필수인지, 어떤 필드를 검증해야 하는지, 감사관이 무엇을 물을지를 부호화합니다. 그래서 엔지니어링 팀이 법무팀이 승인한 동일한 목표에 대해 빌드하게 됩니다.</p>
+    <p>오늘 세 개의 팩이 제공되며, 각각 <code>data/compliance-packs/&lt;pack&gt;/</code> 아래에 있습니다: HIPAA (PHI 마스킹, K 기준 0.92), SR 11-7 (Fed Model Risk Management), SOX-lite (AI를 위한 ITGC).</p>
+
+    <h2>이 번역에 대해</h2>
+    <p>한국어판은 요약본만 다룹니다. 코드 블록, CLI 명령, API 엔드포인트, JSON 형식, 오류 코드는 언어와 무관하므로 영문 그대로입니다. 전체 레퍼런스와 모든 튜토리얼, 최신 예제는 정본 영문 문서를 참조하세요: <a href="/docs" style="color:var(--accent)">kolm.ai/docs</a>.</p>
+
+  </article>
+</main>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/badge">Embed badge</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+        <a href="/hub">Hub</a>
+        <a href="/registry">Registry</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai · Made with .kolm · Apache-2.0</span>
+      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('pre.code-block .copy').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const code = btn.parentElement.querySelector('code');
+      if (!code) return;
+      navigator.clipboard.writeText(code.innerText.trim());
+      const old = btn.textContent;
+      btn.textContent = 'copied';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = old; btn.classList.remove('done'); }, 1200);
+    });
+  });
+</script>
+<script src="/nav.js" defer></script>
+</body>
+</html>

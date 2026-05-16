@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Admin console &middot; kolm</title>
+<meta name="description" content="Founder-only admin console. Read-only view of tenants, usage, audit feed, compile jobs, system health.">
+<meta name="robots" content="noindex,nofollow">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  body { font-family: var(--sans, system-ui, -apple-system, sans-serif); }
+  .admin-wrap { max-width: 1280px; margin: 0 auto; padding: 0 32px 96px; }
+  .admin-head { display: flex; justify-content: space-between; align-items: baseline; padding: 24px 0 18px; border-bottom: 1px solid var(--line, rgba(255,255,255,0.08)); margin-bottom: 24px; }
+  [data-theme="light"] .admin-head { border-bottom-color: rgba(24,23,26,0.10); }
+  .admin-head h1 { margin: 0; font-size: 22px; font-weight: 500; letter-spacing: -0.012em; }
+  .admin-head .a-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-faint, #737c73); letter-spacing: 0.12em; text-transform: uppercase; }
+
+  /* Tabs */
+  .a-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--line, rgba(255,255,255,0.08)); flex-wrap: wrap; }
+  [data-theme="light"] .a-tabs { border-bottom-color: rgba(24,23,26,0.10); }
+  .a-tab { padding: 10px 16px; background: none; border: none; cursor: pointer; font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--ink-mute, #b5bdb1); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .a-tab:hover { color: var(--ink, #faf2e1); }
+  [data-theme="light"] .a-tab { color: #6c655a; }
+  [data-theme="light"] .a-tab:hover { color: #18171a; }
+  .a-tab.is-on { color: var(--kolm-accent, #10b981); border-bottom-color: var(--kolm-accent, #10b981); }
+
+  /* Stat cards */
+  .a-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 28px; }
+  @media (max-width: 980px) { .a-stats { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .a-stats { grid-template-columns: 1fr; } }
+  .a-stat { padding: 18px 18px 16px; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--line, rgba(255,255,255,0.08)); }
+  [data-theme="light"] .a-stat { background: #ffffff; border-color: rgba(24,23,26,0.08); }
+  .a-stat-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint, #737c73); }
+  .a-stat-value { margin-top: 8px; font-size: 28px; font-weight: 500; letter-spacing: -0.018em; color: var(--ink, #faf2e1); }
+  [data-theme="light"] .a-stat-value { color: #18171a; }
+  .a-stat-meta { margin-top: 4px; font-family: var(--mono); font-size: 11px; color: var(--ink-mute, #b5bdb1); letter-spacing: 0.04em; }
+  .a-stat .ok { color: var(--kolm-accent, #10b981); }
+  .a-stat .warn { color: #f59e0b; }
+
+  /* Table */
+  .a-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--line, rgba(255,255,255,0.08)); background: rgba(255,255,255,0.02); }
+  [data-theme="light"] .a-table-wrap { background: #ffffff; border-color: rgba(24,23,26,0.08); }
+  .a-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .a-table th, .a-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--line, rgba(255,255,255,0.06)); vertical-align: top; }
+  [data-theme="light"] .a-table th, [data-theme="light"] .a-table td { border-bottom-color: rgba(24,23,26,0.06); }
+  .a-table th { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint, #737c73); font-weight: 500; background: rgba(255,255,255,0.02); }
+  [data-theme="light"] .a-table th { background: #fafaf6; }
+  .a-table td { color: var(--ink, #faf2e1); }
+  [data-theme="light"] .a-table td { color: #18171a; }
+  .a-table .mono { font-family: var(--mono); font-size: 11.5px; }
+  .a-table .dim { color: var(--ink-faint, #737c73); }
+  .a-table tr:hover { background: rgba(255,255,255,0.02); }
+  [data-theme="light"] .a-table tr:hover { background: rgba(24,23,26,0.02); }
+
+  .a-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .a-pill-free { background: rgba(255,255,255,0.06); color: var(--ink-mute, #b5bdb1); }
+  .a-pill-starter { background: rgba(126,240,210,0.10); color: var(--kolm-accent, #10b981); }
+  .a-pill-pro { background: rgba(126,240,210,0.16); color: var(--kolm-accent, #10b981); }
+  .a-pill-growth { background: rgba(126,240,210,0.20); color: var(--kolm-accent, #10b981); }
+  .a-pill-teams, .a-pill-business { background: rgba(245,158,11,0.16); color: #f59e0b; }
+  .a-pill-enterprise { background: rgba(168,85,247,0.16); color: #a855f7; }
+
+  /* Auth gate */
+  .a-gate { max-width: 480px; margin: 96px auto 0; padding: 28px 32px; border-radius: 14px; border: 1px solid var(--line, rgba(255,255,255,0.10)); background: rgba(255,255,255,0.02); text-align: center; }
+  [data-theme="light"] .a-gate { background: #ffffff; border-color: rgba(24,23,26,0.10); }
+  .a-gate h2 { margin: 0 0 8px; font-size: 22px; font-weight: 500; }
+  .a-gate p { margin: 0 0 18px; color: var(--ink-mute, #b5bdb1); font-size: 14px; line-height: 1.5; }
+  .a-gate input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line, rgba(255,255,255,0.10)); background: rgba(0,0,0,0.25); color: var(--ink, #faf2e1); font-family: var(--mono); font-size: 13px; box-sizing: border-box; margin-bottom: 12px; }
+  [data-theme="light"] .a-gate input { background: #fafaf6; border-color: rgba(24,23,26,0.10); color: #18171a; }
+  .a-gate button { width: 100%; padding: 12px; border-radius: 10px; background: var(--kolm-accent, #10b981); color: #ffffff; border: none; cursor: pointer; font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em; }
+  .a-gate .a-gate-err { color: #ef4444; font-family: var(--mono); font-size: 12px; margin-top: 8px; }
+
+  /* Panel */
+  .a-panel { display: none; }
+  .a-panel.is-on { display: block; }
+
+  /* Action bar */
+  .a-actions { display: flex; gap: 8px; align-items: center; margin: 4px 0 14px; flex-wrap: wrap; }
+  .a-search { flex: 1 1 240px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line, rgba(255,255,255,0.10)); background: rgba(0,0,0,0.20); color: var(--ink, #faf2e1); font-family: var(--mono); font-size: 12px; }
+  [data-theme="light"] .a-search { background: #fafaf6; border-color: rgba(24,23,26,0.10); color: #18171a; }
+  .a-refresh { padding: 9px 14px; border-radius: 8px; background: rgba(126,240,210,0.08); border: 1px solid rgba(126,240,210,0.24); color: var(--kolm-accent, #10b981); font-family: var(--mono); font-size: 12px; cursor: pointer; }
+  .a-refresh:hover { background: rgba(126,240,210,0.16); }
+  .a-signout { padding: 9px 14px; border-radius: 8px; background: none; border: 1px solid var(--line, rgba(255,255,255,0.10)); color: var(--ink-mute, #b5bdb1); font-family: var(--mono); font-size: 12px; cursor: pointer; }
+  .a-signout:hover { color: var(--ink, #faf2e1); }
+  .a-loading { color: var(--ink-faint, #737c73); font-family: var(--mono); font-size: 11.5px; }
+
+  /* Health detail */
+  .a-health { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  @media (max-width: 720px) { .a-health { grid-template-columns: 1fr; } }
+  .a-health-card { padding: 16px 18px; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--line, rgba(255,255,255,0.08)); }
+  [data-theme="light"] .a-health-card { background: #ffffff; border-color: rgba(24,23,26,0.08); }
+  .a-health-card h4 { margin: 0 0 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint, #737c73); font-weight: 500; }
+  .a-health-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin: 0; font-size: 13px; }
+  .a-health-card dt { color: var(--ink-mute, #b5bdb1); font-family: var(--mono); font-size: 11.5px; }
+  .a-health-card dd { margin: 0; color: var(--ink, #faf2e1); font-family: var(--mono); font-size: 11.5px; }
+  [data-theme="light"] .a-health-card dd { color: #18171a; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand">kolm</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
+      <a href="/research">Research</a>
+      <a href="/enterprise">Enterprise</a>
+      <a href="/pricing">Pricing</a>
+    </nav>
+    <div class="site-actions">
+      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button>
+      <button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="admin-wrap">
+    <!-- Auth gate (shown until ADMIN_KEY pasted in) -->
+    <section id="aGate" class="a-gate">
+      <h2>Admin console</h2>
+      <p>Paste your <code>ADMIN_KEY</code> (the value of the env var on the backend). Stored in <code>sessionStorage</code> for this tab only.</p>
+      <input id="aGateKey" type="password" placeholder="ks_admin_..." autocomplete="off" spellcheck="false">
+      <button id="aGateBtn" type="button">Sign in &rarr;</button>
+      <div id="aGateErr" class="a-gate-err" hidden></div>
+    </section>
+
+    <!-- Console (shown when admin auth verified) -->
+    <section id="aConsole" hidden>
+      <div class="admin-head">
+        <h1>Admin console</h1>
+        <div class="a-meta">read-only &middot; <span id="aRegion">&mdash;</span> &middot; <span id="aTime">&mdash;</span></div>
+      </div>
+
+      <nav class="a-tabs" role="tablist" aria-label="Admin sections">
+        <button type="button" class="a-tab is-on" data-tab="overview" role="tab" aria-selected="true">overview</button>
+        <button type="button" class="a-tab" data-tab="tenants" role="tab" aria-selected="false">tenants</button>
+        <button type="button" class="a-tab" data-tab="audit" role="tab" aria-selected="false">audit feed</button>
+        <button type="button" class="a-tab" data-tab="compile" role="tab" aria-selected="false">compile jobs</button>
+        <button type="button" class="a-tab" data-tab="observability" role="tab" aria-selected="false">observability</button>
+        <button type="button" class="a-tab" data-tab="health" role="tab" aria-selected="false">health</button>
+      </nav>
+
+      <!-- Overview panel -->
+      <div id="aPanel-overview" class="a-panel is-on" role="tabpanel">
+        <div class="a-stats">
+          <div class="a-stat">
+            <div class="a-stat-label">Total tenants</div>
+            <div class="a-stat-value" id="sTenants">&mdash;</div>
+            <div class="a-stat-meta">+<span id="sSignups24h">&mdash;</span> last 24h &middot; +<span id="sSignups7d">&mdash;</span> last 7d</div>
+          </div>
+          <div class="a-stat">
+            <div class="a-stat-label">Compile jobs</div>
+            <div class="a-stat-value" id="sCompileTotal">&mdash;</div>
+            <div class="a-stat-meta">+<span id="sCompile24h">&mdash;</span> last 24h &middot; +<span id="sCompile7d">&mdash;</span> last 7d</div>
+          </div>
+          <div class="a-stat">
+            <div class="a-stat-label">Audit events</div>
+            <div class="a-stat-value" id="sAuditTotal">&mdash;</div>
+            <div class="a-stat-meta"><span id="sAudit24h">&mdash;</span> in last 24h</div>
+          </div>
+          <div class="a-stat">
+            <div class="a-stat-label">Quota used</div>
+            <div class="a-stat-value" id="sUsage">&mdash;</div>
+            <div class="a-stat-meta">total across all tenants</div>
+          </div>
+        </div>
+
+        <h3 style="font-size:14px;font-family:var(--mono);letter-spacing:0.12em;color:var(--ink-faint,#737c73);text-transform:uppercase;margin:24px 0 12px">Plan distribution</h3>
+        <div class="a-table-wrap">
+          <table class="a-table">
+            <thead><tr><th>Plan</th><th>Count</th><th>Share</th></tr></thead>
+            <tbody id="planRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tenants panel -->
+      <div id="aPanel-tenants" class="a-panel" role="tabpanel">
+        <div class="a-actions">
+          <input id="tenantSearch" class="a-search" placeholder="filter by name or email...">
+          <button type="button" class="a-refresh" data-refresh="tenants">refresh</button>
+          <button type="button" class="a-signout" id="aSignoutBtn">sign out</button>
+        </div>
+        <div class="a-table-wrap">
+          <table class="a-table">
+            <thead>
+              <tr>
+                <th>Name</th><th>Email</th><th>Plan</th><th>Used / Quota</th><th>Auth</th><th>Created</th><th>Last used</th>
+              </tr>
+            </thead>
+            <tbody id="tenantRows"><tr><td colspan="7" class="a-loading">loading&hellip;</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Audit panel -->
+      <div id="aPanel-audit" class="a-panel" role="tabpanel">
+        <div class="a-actions">
+          <span class="a-loading">cross-tenant audit feed &middot; chronological, newest first</span>
+          <button type="button" class="a-refresh" data-refresh="audit">refresh</button>
+        </div>
+        <div class="a-table-wrap">
+          <table class="a-table">
+            <thead>
+              <tr><th>When</th><th>Tenant</th><th>Op</th><th>Actor</th><th>Payload</th></tr>
+            </thead>
+            <tbody id="auditRows"><tr><td colspan="5" class="a-loading">loading&hellip;</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Compile panel -->
+      <div id="aPanel-compile" class="a-panel" role="tabpanel">
+        <div class="a-actions">
+          <span class="a-loading">recent compile jobs across all tenants</span>
+          <button type="button" class="a-refresh" data-refresh="compile">refresh</button>
+        </div>
+        <div class="a-table-wrap">
+          <table class="a-table">
+            <thead>
+              <tr><th>Job id</th><th>Tenant</th><th>Task</th><th>Status</th><th>K-score</th><th>Created</th></tr>
+            </thead>
+            <tbody id="compileRows"><tr><td colspan="6" class="a-loading">loading&hellip;</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Observability panel -->
+      <div id="aPanel-observability" class="a-panel" role="tabpanel">
+        <div class="a-actions">
+          <span class="a-loading">live latency + invocation stream &middot; auto-refresh 10s</span>
+          <button type="button" class="a-refresh" data-refresh="observability">refresh now</button>
+        </div>
+        <div class="a-stats">
+          <div class="a-stat">
+            <div class="a-stat-label">Total invocations</div>
+            <div class="a-stat-value" id="oInvTotal">&mdash;</div>
+            <div class="a-stat-meta">receipt-bearing: <span id="oReceiptRuns" class="ok">&mdash;</span></div>
+          </div>
+          <div class="a-stat">
+            <div class="a-stat-label">p50 latency</div>
+            <div class="a-stat-value" id="oP50">&mdash;</div>
+            <div class="a-stat-meta">median wire latency</div>
+          </div>
+          <div class="a-stat">
+            <div class="a-stat-label">p95 latency</div>
+            <div class="a-stat-value" id="oP95">&mdash;</div>
+            <div class="a-stat-meta">95th percentile</div>
+          </div>
+          <div class="a-stat">
+            <div class="a-stat-label">p99 latency</div>
+            <div class="a-stat-value" id="oP99">&mdash;</div>
+            <div class="a-stat-meta">tail latency</div>
+          </div>
+        </div>
+        <div class="a-stats" style="grid-template-columns: repeat(3, minmax(0, 1fr));margin-top:14px">
+          <div class="a-stat">
+            <div class="a-stat-label">Cache hit rate</div>
+            <div class="a-stat-value" id="oCacheRate">&mdash;</div>
+            <div class="a-stat-meta">across all invocations</div>
+          </div>
+          <div class="a-stat">
+            <div class="a-stat-label">K-score median</div>
+            <div class="a-stat-value" id="oKMedian">&mdash;</div>
+            <div class="a-stat-meta">last 100 compile jobs</div>
+          </div>
+          <div class="a-stat">
+            <div class="a-stat-label">Active tenants 24h</div>
+            <div class="a-stat-value" id="oActive24h">&mdash;</div>
+            <div class="a-stat-meta">distinct tenants touched</div>
+          </div>
+        </div>
+        <h3 style="font-size:14px;font-family:var(--mono);letter-spacing:0.12em;color:var(--ink-faint,#737c73);text-transform:uppercase;margin:24px 0 12px">Latency sparkline &middot; last 60 invocations</h3>
+        <div style="border:1px solid var(--line, rgba(255,255,255,0.08));border-radius:12px;background:rgba(255,255,255,0.02);padding:18px;">
+          <svg id="oSpark" viewBox="0 0 600 80" preserveAspectRatio="none" style="width:100%;height:80px;display:block">
+            <polyline id="oSparkLine" fill="none" stroke="#7ef0d2" stroke-width="1.4" stroke-linejoin="round" points=""></polyline>
+            <polyline id="oSparkFill" fill="rgba(126,240,210,0.08)" stroke="none" points=""></polyline>
+          </svg>
+          <div class="mono dim" style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint,#737c73);letter-spacing:0.08em;text-transform:uppercase;margin-top:8px">
+            <span>oldest</span>
+            <span id="oSparkMax">peak: &mdash;</span>
+            <span>newest</span>
+          </div>
+        </div>
+        <h3 style="font-size:14px;font-family:var(--mono);letter-spacing:0.12em;color:var(--ink-faint,#737c73);text-transform:uppercase;margin:24px 0 12px">Recent invocations &middot; newest first</h3>
+        <div class="a-table-wrap">
+          <table class="a-table">
+            <thead>
+              <tr><th>When</th><th>Tenant</th><th>Recipe</th><th>Latency</th><th>Cache</th><th>Status</th></tr>
+            </thead>
+            <tbody id="oInvRows"><tr><td colspan="6" class="a-loading">loading&hellip;</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Health panel -->
+      <div id="aPanel-health" class="a-panel" role="tabpanel">
+        <div class="a-actions">
+          <span class="a-loading">runtime + env state</span>
+          <button type="button" class="a-refresh" data-refresh="health">refresh</button>
+        </div>
+        <div class="a-health" id="healthCards"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-tag">
+      <span>kolm.ai admin &middot; read-only &middot; founder access</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var SS_KEY = 'kolm_admin_key';
+  function getKey() { try { return sessionStorage.getItem(SS_KEY) || ''; } catch (e) { return ''; } }
+  function setKey(k) { try { sessionStorage.setItem(SS_KEY, k); } catch (e) {} }
+  function clearKey() { try { sessionStorage.removeItem(SS_KEY); } catch (e) {} }
+
+  function $(id) { return document.getElementById(id); }
+
+  function api(path) {
+    var key = getKey();
+    return fetch(path, { headers: { 'X-API-Key': key, accept: 'application/json' } })
+      .then(function (r) {
+        if (r.status === 401 || r.status === 403) { clearKey(); throw new Error('forbidden'); }
+        if (!r.ok) throw new Error('http ' + r.status);
+        return r.json();
+      });
+  }
+
+  function fmtTime(s) {
+    if (!s) return '—';
+    try {
+      var d = new Date(s);
+      var now = new Date();
+      var diff = (now - d) / 1000;
+      if (diff < 60) return Math.floor(diff) + 's ago';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      if (diff < 30 * 86400) return Math.floor(diff / 86400) + 'd ago';
+      return d.toISOString().slice(0, 10);
+    } catch (e) { return s; }
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function fmtBytes(n) { if (!n) return '—'; var u = ['B','KB','MB','GB']; var i = 0; while (n >= 1024 && i < u.length-1) { n /= 1024; i++; } return n.toFixed(1) + u[i]; }
+  function fmtNum(n) { if (n == null) return '—'; return Number(n).toLocaleString(); }
+
+  function showConsole() { $('aGate').hidden = true; $('aConsole').hidden = false; loadOverview(); }
+  function showGate() { $('aGate').hidden = false; $('aConsole').hidden = true; }
+
+  $('aGateBtn').addEventListener('click', function () {
+    var k = ($('aGateKey').value || '').trim();
+    if (!k) return;
+    setKey(k);
+    api('/v1/admin/stats').then(function () { showConsole(); }).catch(function () {
+      $('aGateErr').textContent = 'admin key rejected. check ADMIN_KEY env var on the backend.';
+      $('aGateErr').hidden = false;
+      clearKey();
+    });
+  });
+  $('aGateKey').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('aGateBtn').click(); });
+
+  $('aSignoutBtn') && $('aSignoutBtn').addEventListener('click', function () { clearKey(); showGate(); });
+
+  // Tabs
+  var tabs = document.querySelectorAll('.a-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].addEventListener('click', function () {
+      var t = this.dataset.tab;
+      for (var j = 0; j < tabs.length; j++) { tabs[j].classList.toggle('is-on', tabs[j].dataset.tab === t); tabs[j].setAttribute('aria-selected', String(tabs[j].dataset.tab === t)); }
+      var panels = document.querySelectorAll('.a-panel');
+      for (var k = 0; k < panels.length; k++) { panels[k].classList.toggle('is-on', panels[k].id === 'aPanel-' + t); }
+      if (t === 'tenants') loadTenants();
+      else if (t === 'audit') loadAudit();
+      else if (t === 'compile') loadCompile();
+      else if (t === 'observability') loadObservability();
+      else if (t === 'health') loadHealth();
+      else loadOverview();
+    });
+  }
+  var refreshes = document.querySelectorAll('.a-refresh');
+  for (var i = 0; i < refreshes.length; i++) {
+    refreshes[i].addEventListener('click', function () {
+      var r = this.dataset.refresh;
+      if (r === 'tenants') loadTenants();
+      else if (r === 'audit') loadAudit();
+      else if (r === 'compile') loadCompile();
+      else if (r === 'observability') loadObservability();
+      else if (r === 'health') loadHealth();
+    });
+  }
+
+  $('tenantSearch').addEventListener('input', function () { loadTenants(); });
+
+  function loadOverview() {
+    api('/v1/admin/stats').then(function (j) {
+      $('sTenants').textContent = fmtNum(j.tenants.total);
+      $('sSignups24h').textContent = fmtNum(j.tenants.signups_24h);
+      $('sSignups7d').textContent = fmtNum(j.tenants.signups_7d);
+      $('sCompileTotal').textContent = fmtNum(j.compile.total);
+      $('sCompile24h').textContent = fmtNum(j.compile.last_24h);
+      $('sCompile7d').textContent = fmtNum(j.compile.last_7d);
+      $('sAuditTotal').textContent = fmtNum(j.audit.total);
+      $('sAudit24h').textContent = fmtNum(j.audit.last_24h);
+      $('sUsage').textContent = fmtNum(j.usage.total_used) + (j.usage.total_quota ? ' / ' + fmtNum(j.usage.total_quota) : '');
+      $('aTime').textContent = new Date(j.generated_at).toLocaleString();
+      var planRows = '';
+      var total = j.tenants.total || 1;
+      var planOrder = ['enterprise', 'business', 'teams', 'growth', 'pro', 'starter', 'free'];
+      var dist = j.tenants.plan_dist || {};
+      planOrder.concat(Object.keys(dist).filter(function (p) { return planOrder.indexOf(p) < 0; })).forEach(function (p) {
+        var c = dist[p];
+        if (c == null) return;
+        var share = ((c / total) * 100).toFixed(1);
+        planRows += '<tr><td><span class="a-pill a-pill-' + esc(p) + '">' + esc(p) + '</span></td><td class="mono">' + fmtNum(c) + '</td><td class="mono dim">' + share + '%</td></tr>';
+      });
+      $('planRows').innerHTML = planRows || '<tr><td colspan="3" class="a-loading">no tenants</td></tr>';
+    }).catch(function () { showGate(); });
+    api('/v1/admin/health').then(function (j) { $('aRegion').textContent = j.region || 'unknown'; }).catch(function () {});
+  }
+
+  function loadTenants() {
+    var q = encodeURIComponent($('tenantSearch').value || '');
+    $('tenantRows').innerHTML = '<tr><td colspan="7" class="a-loading">loading&hellip;</td></tr>';
+    api('/v1/admin/tenants?limit=400&q=' + q).then(function (j) {
+      var rows = (j.tenants || []).map(function (t) {
+        var pill = '<span class="a-pill a-pill-' + esc(t.plan) + '">' + esc(t.plan) + '</span>';
+        return '<tr>' +
+          '<td class="mono">' + esc(t.name || t.id.slice(0,12)) + '</td>' +
+          '<td class="mono dim">' + esc(t.email || '—') + '</td>' +
+          '<td>' + pill + '</td>' +
+          '<td class="mono">' + fmtNum(t.used) + ' / ' + fmtNum(t.quota) + '</td>' +
+          '<td class="mono dim">' + esc(t.auth_provider) + '</td>' +
+          '<td class="mono dim">' + fmtTime(t.created_at) + '</td>' +
+          '<td class="mono dim">' + fmtTime(t.last_used_at) + '</td>' +
+          '</tr>';
+      }).join('');
+      $('tenantRows').innerHTML = rows || '<tr><td colspan="7" class="a-loading">no tenants match</td></tr>';
+    }).catch(function () { $('tenantRows').innerHTML = '<tr><td colspan="7" class="a-loading">load failed</td></tr>'; });
+  }
+
+  function loadAudit() {
+    $('auditRows').innerHTML = '<tr><td colspan="5" class="a-loading">loading&hellip;</td></tr>';
+    api('/v1/admin/audit?limit=300').then(function (j) {
+      var rows = (j.events || []).map(function (e) {
+        var payload = '';
+        try { payload = JSON.stringify(e.payload || {}, null, 0); } catch (_) { payload = ''; }
+        if (payload.length > 120) payload = payload.slice(0, 117) + '…';
+        return '<tr>' +
+          '<td class="mono dim">' + fmtTime(e.at) + '</td>' +
+          '<td class="mono">' + esc(e.tenant_name || e.tenant_id || '—') + '</td>' +
+          '<td class="mono"><b>' + esc(e.op || '—') + '</b></td>' +
+          '<td class="mono dim">' + esc(e.actor || '—') + '</td>' +
+          '<td class="mono dim">' + esc(payload) + '</td>' +
+          '</tr>';
+      }).join('');
+      $('auditRows').innerHTML = rows || '<tr><td colspan="5" class="a-loading">no audit events</td></tr>';
+    }).catch(function () { $('auditRows').innerHTML = '<tr><td colspan="5" class="a-loading">load failed</td></tr>'; });
+  }
+
+  function loadCompile() {
+    $('compileRows').innerHTML = '<tr><td colspan="6" class="a-loading">loading&hellip;</td></tr>';
+    api('/v1/admin/compile-jobs?limit=200').then(function (j) {
+      var rows = (j.jobs || []).map(function (job) {
+        var statusColor = job.status === 'done' ? 'ok' : (job.status === 'failed' ? 'warn' : 'dim');
+        var k = job.k_score && (job.k_score.composite || job.k_score) || null;
+        return '<tr>' +
+          '<td class="mono dim">' + esc((job.id || '').slice(0, 16)) + '</td>' +
+          '<td class="mono">' + esc(job.tenant || '—') + '</td>' +
+          '<td class="mono">' + esc((job.task || '—').slice(0, 60)) + '</td>' +
+          '<td class="mono ' + statusColor + '">' + esc(job.status || '—') + '</td>' +
+          '<td class="mono ok">' + (k != null ? Number(k).toFixed(3) : '—') + '</td>' +
+          '<td class="mono dim">' + fmtTime(job.created_at) + '</td>' +
+          '</tr>';
+      }).join('');
+      $('compileRows').innerHTML = rows || '<tr><td colspan="6" class="a-loading">no compile jobs</td></tr>';
+    }).catch(function () { $('compileRows').innerHTML = '<tr><td colspan="6" class="a-loading">load failed</td></tr>'; });
+  }
+
+  var __obsTimer = null;
+  function fmtUs(us) {
+    if (us == null || !isFinite(us)) return '—';
+    if (us < 1000) return us + ' us';
+    if (us < 1000000) return (us / 1000).toFixed(1) + ' ms';
+    return (us / 1000000).toFixed(2) + ' s';
+  }
+  function drawSpark(points) {
+    var line = $('oSparkLine');
+    var fill = $('oSparkFill');
+    if (!line || !fill) return;
+    var W = 600, H = 80;
+    var arr = (points || []).filter(function (n) { return typeof n === 'number' && n >= 0; });
+    if (!arr.length) { line.setAttribute('points', ''); fill.setAttribute('points', ''); $('oSparkMax').textContent = 'peak: —'; return; }
+    var max = Math.max.apply(null, arr) || 1;
+    $('oSparkMax').textContent = 'peak: ' + fmtUs(max);
+    var n = arr.length;
+    var dx = n > 1 ? (W / (n - 1)) : 0;
+    var pts = arr.map(function (v, i) {
+      var x = i * dx;
+      var y = H - (v / max) * (H - 4) - 2;
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    line.setAttribute('points', pts.join(' '));
+    fill.setAttribute('points', '0,' + H + ' ' + pts.join(' ') + ' ' + W + ',' + H);
+  }
+  function loadObservability() {
+    api('/v1/telemetry').then(function (j) {
+      $('oInvTotal').textContent = fmtNum(j.total_invocations);
+      $('oReceiptRuns').textContent = fmtNum(j.receipt_bearing_runs);
+      $('oP50').textContent = fmtUs(j.p50_us);
+      $('oP95').textContent = fmtUs(j.p95_us);
+      $('oP99').textContent = fmtUs(j.p99_us);
+      $('oCacheRate').textContent = (j.cache_hit_rate * 100).toFixed(1) + '%';
+      $('oKMedian').textContent = (j.k_score_median != null) ? Number(j.k_score_median).toFixed(3) : '—';
+      $('oActive24h').textContent = fmtNum(j.active_tenants_24h);
+      drawSpark(j.sparkline || []);
+      var rows = (j.recent || []).slice(0, 50).map(function (inv) {
+        var status = inv.error ? '<span class="warn">error</span>' : '<span class="ok">ok</span>';
+        var cache = inv.cache_hit ? '<span class="ok">hit</span>' : '<span class="dim">miss</span>';
+        return '<tr>' +
+          '<td class="mono dim">' + fmtTime(inv.ts) + '</td>' +
+          '<td class="mono">' + esc((inv.tenant || '—').slice(0, 12)) + '</td>' +
+          '<td class="mono">' + esc((inv.concept_id || inv.recipe || '—').slice(0, 20)) + '</td>' +
+          '<td class="mono ok">' + fmtUs(inv.latency_us) + '</td>' +
+          '<td class="mono">' + cache + '</td>' +
+          '<td class="mono">' + status + '</td>' +
+          '</tr>';
+      }).join('');
+      $('oInvRows').innerHTML = rows || '<tr><td colspan="6" class="a-loading">no invocations yet</td></tr>';
+    }).catch(function () { $('oInvRows').innerHTML = '<tr><td colspan="6" class="a-loading">load failed</td></tr>'; });
+    if (__obsTimer) { clearInterval(__obsTimer); __obsTimer = null; }
+    __obsTimer = setInterval(function () {
+      var t = document.querySelector('.a-tab.is-on');
+      if (t && t.dataset.tab === 'observability') {
+        api('/v1/telemetry').then(function (j) {
+          $('oInvTotal').textContent = fmtNum(j.total_invocations);
+          $('oReceiptRuns').textContent = fmtNum(j.receipt_bearing_runs);
+          $('oP50').textContent = fmtUs(j.p50_us);
+          $('oP95').textContent = fmtUs(j.p95_us);
+          $('oP99').textContent = fmtUs(j.p99_us);
+          $('oCacheRate').textContent = (j.cache_hit_rate * 100).toFixed(1) + '%';
+          $('oKMedian').textContent = (j.k_score_median != null) ? Number(j.k_score_median).toFixed(3) : '—';
+          $('oActive24h').textContent = fmtNum(j.active_tenants_24h);
+          drawSpark(j.sparkline || []);
+        }).catch(function () {});
+      } else { clearInterval(__obsTimer); __obsTimer = null; }
+    }, 10000);
+  }
+
+  function loadHealth() {
+    $('healthCards').innerHTML = '<div class="a-loading">loading&hellip;</div>';
+    api('/v1/admin/health').then(function (j) {
+      var html = '';
+      html += '<div class="a-health-card"><h4>runtime</h4><dl>';
+      html += '<dt>region</dt><dd>' + esc(j.region) + '</dd>';
+      html += '<dt>node</dt><dd>' + esc(j.node_version) + '</dd>';
+      html += '<dt>uptime</dt><dd>' + Math.floor(j.uptime_sec / 3600) + 'h ' + Math.floor((j.uptime_sec % 3600) / 60) + 'm</dd>';
+      html += '<dt>now</dt><dd>' + esc(j.now) + '</dd>';
+      html += '</dl></div>';
+
+      html += '<div class="a-health-card"><h4>memory</h4><dl>';
+      html += '<dt>rss</dt><dd>' + fmtBytes(j.memory.rss) + '</dd>';
+      html += '<dt>heap used</dt><dd>' + fmtBytes(j.memory.heapUsed) + '</dd>';
+      html += '<dt>heap total</dt><dd>' + fmtBytes(j.memory.heapTotal) + '</dd>';
+      html += '<dt>external</dt><dd>' + fmtBytes(j.memory.external) + '</dd>';
+      html += '</dl></div>';
+
+      html += '<div class="a-health-card"><h4>env</h4><dl>';
+      html += '<dt>anthropic</dt><dd>' + (j.env.anthropic_configured ? '<span class="ok">configured</span>' : '<span class="warn">missing</span>') + '</dd>';
+      html += '<dt>stripe</dt><dd>' + (j.env.stripe_configured ? '<span class="ok">configured</span>' : '<span class="warn">missing</span>') + '</dd>';
+      html += '<dt>email</dt><dd>' + (j.env.email_configured ? '<span class="ok">configured</span>' : '<span class="warn">missing</span>') + '</dd>';
+      html += '<dt>oauth google</dt><dd>' + (j.env.oauth_google ? '<span class="ok">on</span>' : '<span class="warn">off</span>') + '</dd>';
+      html += '<dt>oauth github</dt><dd>' + (j.env.oauth_github ? '<span class="ok">on</span>' : '<span class="warn">off</span>') + '</dd>';
+      html += '</dl></div>';
+
+      if (j.store) {
+        html += '<div class="a-health-card"><h4>store</h4><dl>';
+        Object.keys(j.store).forEach(function (k) {
+          html += '<dt>' + esc(k) + '</dt><dd>' + esc(JSON.stringify(j.store[k])) + '</dd>';
+        });
+        html += '</dl></div>';
+      }
+      $('healthCards').innerHTML = html;
+    }).catch(function () { $('healthCards').innerHTML = '<div class="a-loading">load failed</div>'; });
+  }
+
+  // Bootstrap
+  if (getKey()) {
+    api('/v1/admin/stats').then(function () { showConsole(); }).catch(function () { showGate(); });
+  } else {
+    showGate();
+  }
+
+  // Strip the auth pill from nav (admin console doesn't need user pill, uses sessionStorage admin key instead).
+  setTimeout(function () { var p = document.querySelector('.kolm-auth-pill'); if (p) p.remove(); }, 100);
+})();
+</script>
+<script src="/nav.js" defer></script>
+</body>
+</html>

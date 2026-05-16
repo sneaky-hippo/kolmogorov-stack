@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-test('server trusts one edge proxy in production-like hosts', async (t) => {
+test('server trusts the two-hop Vercel + Railway edge chain in production', async (t) => {
   const savedEnv = {
     NODE_ENV: process.env.NODE_ENV,
     RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT,
@@ -30,7 +30,10 @@ test('server trusts one edge proxy in production-like hosts', async (t) => {
   });
 
   const { app } = await import(`../server.js?trust-proxy=${Date.now()}`);
-  assert.equal(app.get('trust proxy'), 1);
+  // Two-hop chain: Client -> Vercel CDN -> Railway edge -> Express. Express
+  // must trust both hops so rate-limit keyGenerator and req.ip resolve to the
+  // real client IP, not Railway's edge IP.
+  assert.equal(app.get('trust proxy'), 2);
 });
 
 test('artifact receipts label the HMAC signature algorithm truthfully', async (t) => {

@@ -1,4 +1,12 @@
 <!DOCTYPE html>
+<!--
+  Dual-purpose page: serves both /signup and /signin via vercel.json rewrites
+  (signin.html does NOT exist as a separate file). The H1, copy, and form CTA
+  swap based on document.location.pathname at load time (see #signin-swap and
+  the auth-swap script below). If you "refactor" by splitting these into two
+  files, the URL-aware swap script becomes dead code — keep them merged unless
+  you also rewrite the route handlers in vercel.json.
+-->
 <html lang="en" style="background:#08090c;color-scheme:dark">
 <head>
 <meta charset="UTF-8">
@@ -67,8 +75,8 @@
   <div class="wrap">
     <a href="/" class="brand"><span>kolm</span></a>
     <nav class="site-nav" aria-label="Primary">
-      <a href="/use-cases">Solutions</a>
-      <a href="/docs">Developers</a>
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
       <a href="/research">Research</a>
       <a href="/enterprise">Enterprise</a>
       <a href="/pricing">Pricing</a>
@@ -206,6 +214,7 @@ kolm compile --spec my-skill.spec.json</code></pre>
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/registry">Registry</a>
         <a href="/case-studies">Case studies</a>
       </div>
@@ -235,7 +244,13 @@ kolm compile --spec my-skill.spec.json</code></pre>
 
 <script>
 (function(){
-  var KEY_NAMES = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
+  // ks_api_key is the only key we write going forward (wave 100 P1-3: dedup
+  // to cut XSS exfil surface 75%). The 3 legacy aliases are still in the
+  // READ_FALLBACK below so pages that loaded before the migration still work,
+  // and saveKey() proactively removes them on every save to drain the old keys.
+  var WRITE_KEY = 'ks_api_key';
+  var READ_FALLBACK = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
+  var LEGACY_KEYS = ['kolm_api_key', 'apiKey', 'recipeApiKey'];
   var PLANS = {
     free:       { label: 'Developer',  price: '$0 forever',          meta: 'No card. Your API key works the second this form returns.' },
     starter:    { label: 'Starter',    price: '$9 / month',          meta: 'Provisioned instantly. Stripe payment link returned in the same response. Complete billing within 30 days to stay on Starter.' },
@@ -245,7 +260,10 @@ kolm compile --spec my-skill.spec.json</code></pre>
   };
   function $(id){ return document.getElementById(id); }
   function saveKey(key){
-    try { KEY_NAMES.forEach(function(name){ localStorage.setItem(name, key); }); } catch (_) {}
+    try {
+      localStorage.setItem(WRITE_KEY, key);
+      LEGACY_KEYS.forEach(function(name){ localStorage.removeItem(name); });
+    } catch (_) {}
   }
   function show(kind, text){
     var el = $('msg');

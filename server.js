@@ -108,6 +108,33 @@ for (const url of ['/registry', '/atlas']) {
   });
 }
 
+// /community + /device-transfer — same dir-collision pattern. public/community/
+// holds bootstrap copy (devto-article, discord-bootstrap, hn-launch) and
+// public/device-transfer/ holds device-specific guides (browser-wasm, iphone,
+// jetson). Without these explicit handlers express.static 301-redirects to the
+// trailing-slash form and then 404s since neither directory has an index.html.
+app.get('/community', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=60, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'community.html'));
+});
+app.get('/device-transfer', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=60, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public', 'device-transfer.html'));
+});
+
+// /docs/:lang i18n alias — vercel.json:152-157 rewrites /docs/{ja,zh,es,fr,de,ko}
+// to /docs/i18n/{lang}.html. Mirror that here so Railway-direct and self-host
+// serve the same set of translated docs. Whitelist the 6 shipped locales so an
+// untranslated locale 404s cleanly instead of leaking the i18n folder layout.
+const DOCS_I18N_LANGS = new Set(['ja', 'zh', 'es', 'fr', 'de', 'ko']);
+app.get('/docs/:lang', (req, res, next) => {
+  const lang = req.params.lang;
+  if (!DOCS_I18N_LANGS.has(lang)) return next();
+  const file = path.join(__dirname, 'public', 'docs', 'i18n', lang + '.html');
+  if (fs.existsSync(file)) return res.sendFile(file);
+  next();
+});
+
 // RFC 9116 security.txt — serve from .well-known and as a top-level
 // alias. express.static skips dot-directories on some hosts, so we serve
 // explicitly to guarantee both URLs resolve.
@@ -170,12 +197,16 @@ const ROUTE_ALIASES = {
   '/developers': 'build-your-own',
   '/solutions': 'use-cases/index',
   '/teams/accept': 'teams-accept',
-  '/signin': 'signup',
   '/login': 'signup',
+  // wave 104: parity with vercel.json alias rewrites.
+  '/audit': 'audit-log',
+  '/cli': 'quickstart',
+  '/contact': 'community',
+  '/insurance': 'health-insurance',
 };
 // /registry + /atlas are handled BEFORE express.static (see top of file) because
 // public/registry/ exists as a subdirectory (submit.html).
-for (const route of ['/', '/dashboard', '/playground', '/docs', '/signup', '/signin', '/login', '/why', '/pricing', '/status', '/account', '/how-it-works', '/device', '/compile', '/run', '/recall', '/cloud', '/k-score', '/benchmarks', '/compare', '/research', '/serve', '/evolve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/legal', '/edge', '/cookbook', '/defense', '/manifesto', '/faq', '/quickstart', '/trust', '/integrations', '/press', '/vs-ollama', '/vs-rag', '/vs-fine-tune', '/vs-predibase', '/vs-openpipe', '/vs-langsmith', '/vs-mem0', '/vs-hindsight', '/vs-openai-fine-tune', '/vs-together', '/why-now', '/threat-model', '/roi', '/api', '/whitepaper', '/build-your-own', '/developers', '/solutions', '/audit-log', '/baa', '/captures', '/capture', '/enterprise', '/glossary', '/leaderboard', '/hub', '/spec', '/spec/grammar', '/models', '/compute', '/troubleshooting', '/teams', '/teams/accept', '/tunnels', '/byoc', '/airgap', '/showcase', '/sdks', '/compliance-packs']) {
+for (const route of ['/', '/dashboard', '/playground', '/docs', '/signup', '/signin', '/login', '/why', '/pricing', '/status', '/account', '/how-it-works', '/device', '/compile', '/run', '/recall', '/cloud', '/k-score', '/benchmarks', '/compare', '/research', '/serve', '/evolve', '/anatomy', '/security', '/privacy', '/terms', '/healthcare', '/finance', '/legal', '/edge', '/cookbook', '/defense', '/manifesto', '/faq', '/quickstart', '/trust', '/integrations', '/press', '/vs-ollama', '/vs-rag', '/vs-fine-tune', '/vs-predibase', '/vs-openpipe', '/vs-langsmith', '/vs-mem0', '/vs-hindsight', '/vs-openai-fine-tune', '/vs-together', '/why-now', '/threat-model', '/roi', '/api', '/whitepaper', '/build-your-own', '/developers', '/solutions', '/audit-log', '/baa', '/captures', '/capture', '/enterprise', '/glossary', '/leaderboard', '/hub', '/spec', '/spec/grammar', '/models', '/compute', '/troubleshooting', '/teams', '/teams/accept', '/tunnels', '/byoc', '/airgap', '/showcase', '/sdks', '/compliance-packs', '/audit', '/cli', '/contact', '/insurance', '/health-insurance', '/distill', '/train', '/frontier-stack', '/license']) {
   app.get(route, (_req, res) => {
     const name = route === '/' ? 'index' : (ROUTE_ALIASES[route] || route.slice(1));
     const file = path.join(__dirname, 'public', name + '.html');
@@ -233,6 +264,38 @@ app.get('/cookbook/:slug', (req, res, next) => {
   }
   const file = path.join(__dirname, 'public', 'cookbook', slug + '.html');
   if (fs.existsSync(file)) return res.sendFile(file);
+  next();
+});
+
+// Public receipt page: /r/:hash mirrors vercel.json:200 rewrite to /r.html?hash=:hash.
+// Generic fallback below cannot handle this because the file lives at public/r.html
+// (singular) and the param is consumed via query string by the page JS, not a
+// nested file path.
+app.get('/r/:hash', (req, res, next) => {
+  const hash = req.params.hash;
+  if (!/^[a-z0-9_-]+$/i.test(hash)) return next();
+  const file = path.join(__dirname, 'public', 'r.html');
+  if (fs.existsSync(file)) return res.sendFile(file);
+  next();
+});
+
+// Generic extensionless static fallback — mirrors Vercel's "try public/<path>.html"
+// rewrite behavior so self-host / Docker / Railway-direct serves the same routes
+// the live Vercel deploy does. Without this, the manual route list at L178 drifts
+// behind every new vercel.json rewrite (e.g. /agents /train /why-kolm /docs/api
+// /compare/* /case-studies/* /security/* /spec/* /benchmarks/*). Conservative: only
+// matches GET requests for paths without an extension and rejects traversal (..).
+app.get('*', (req, res, next) => {
+  if (req.method !== 'GET') return next();
+  const p = req.path;
+  if (!p || p === '/' || p.startsWith('/v1') || p === '/health' || p === '/ready' || p.includes('..')) return next();
+  if (/\.[a-z0-9]+$/i.test(p)) return next();
+  const rel = p.slice(1);
+  if (!/^[a-z0-9][a-z0-9_\-\/]*$/i.test(rel)) return next();
+  const direct = path.join(__dirname, 'public', rel + '.html');
+  if (fs.existsSync(direct)) return res.sendFile(direct);
+  const indexed = path.join(__dirname, 'public', rel, 'index.html');
+  if (fs.existsSync(indexed)) return res.sendFile(indexed);
   next();
 });
 

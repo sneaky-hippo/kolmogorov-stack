@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Enterprise console · kolm</title>
+<meta name="description" content="Org-level kolm console: team roster, plan, audit feed, compliance posture, and tenant settings for Business / Enterprise plans.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<link rel="canonical" href="https://kolm.ai/enterprise/console">
+<meta name="robots" content="noindex,follow">
+<meta property="og:title" content="Enterprise console · kolm" />
+<meta property="og:description" content="Per-org dashboard for paid tenants: team, plan, audit, compliance." />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .ec-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0 26px}
+  @media(max-width:900px){.ec-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .ec-card{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--bg-card);min-width:0}
+  .ec-card .lbl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-mute);margin-bottom:8px}
+  .ec-card .val{font-size:24px;font-weight:600;line-height:1.1;overflow-wrap:anywhere}
+  .ec-card .sub{font-size:12px;color:var(--ink-mute);margin-top:4px}
+  .ec-section{margin:34px 0;padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:var(--bg-card)}
+  .ec-section h2{margin:0 0 4px;font-size:18px;font-weight:600}
+  .ec-section .ec-section-sub{font-size:13px;color:var(--ink-mute);margin:0 0 14px}
+  .ec-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mono)}
+  .ec-table th,.ec-table td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+  .ec-table th{font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-mute);font-weight:500}
+  .ec-pill{display:inline-block;padding:2px 8px;border:1px solid var(--line);border-radius:99px;font-family:var(--mono);font-size:11px}
+  .ec-pill.owner{border-color:#9b8a4a;color:#dab552}
+  .ec-pill.admin{border-color:#5a7c8a;color:#76a7bd}
+  .ec-pill.member{border-color:#666;color:#aaa}
+  .ec-pill.green{border-color:#4f8a55;color:#7ec486}
+  .ec-pill.amber{border-color:#9b8a4a;color:#dab552}
+  .ec-pill.red{border-color:#a55;color:#d77}
+  .ec-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .ec-row .btn{padding:8px 14px}
+  .ec-quota-bar{height:10px;border-radius:999px;background:#1d1d22;overflow:hidden;margin-top:8px}
+  .ec-quota-bar > span{display:block;height:100%;background:linear-gradient(90deg,#7ec486,#dab552)}
+  .ec-empty{padding:18px 20px;border:1px dashed var(--line);border-radius:10px;color:var(--ink-mute);font-size:13px;text-align:center;font-family:var(--mono)}
+  .ec-gate{max-width:520px;margin:80px auto;padding:36px 28px;border:1px solid var(--line);border-radius:12px;background:var(--bg-card);text-align:center}
+  .ec-gate h2{margin:0 0 8px}
+  .ec-gate p{color:var(--ink-mute);font-size:14px}
+  .ec-org-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+  @media(max-width:900px){.ec-org-grid{grid-template-columns:1fr 1fr}}
+  .ec-org-grid .ec-card .val{font-size:14px;font-family:var(--mono)}
+  .ec-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .ec-actions input{flex:1;min-width:160px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px}
+  .ec-err{color:#d77;font-family:var(--mono);font-size:12px;margin-top:6px}
+  .ec-ok{color:#7ec486;font-family:var(--mono);font-size:12px;margin-top:6px}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand" aria-label="kolm home">kolm</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/enterprise/console" aria-current="page">Org</a>
+      <a href="/captures">Captures</a>
+      <a href="/audit-log">Audit log</a>
+      <a href="/account">Account</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/docs">Help</a>
+    </div>
+  </div>
+</header>
+
+<main class="page-main">
+
+  <!-- Gate shown when no session / not a paid tenant -->
+  <section id="ec-gate" class="ec-gate" hidden>
+    <h2>Enterprise console</h2>
+    <p id="ec-gate-msg">Sign in with a Business or Enterprise account to view org settings.</p>
+    <div style="margin-top:18px;display:flex;gap:10px;justify-content:center">
+      <a class="btn ghost" href="/pricing">View plans</a>
+      <a class="btn primary" href="/signup">Sign in</a>
+    </div>
+  </section>
+
+  <!-- Console body -->
+  <section id="ec-body" hidden>
+    <section class="page-head">
+      <div>
+        <div class="eyebrow"><span class="pulse"></span>Organization</div>
+        <h1 id="ec-org-name">Org console</h1>
+        <p class="lede" id="ec-org-sub">Per-org settings, team roster, compliance posture, and audit feed.</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn ghost" href="/dashboard">My dashboard</a>
+        <button type="button" class="btn ghost" id="ec-compliance-pkg-btn">Export compliance package</button>
+        <a class="btn primary" href="#ec-team">Manage team</a>
+      </div>
+    </section>
+
+    <div class="ec-grid">
+      <div class="ec-card">
+        <div class="lbl">Plan</div>
+        <div class="val" id="ec-plan">—</div>
+        <div class="sub" id="ec-plan-status">—</div>
+      </div>
+      <div class="ec-card">
+        <div class="lbl">Seats</div>
+        <div class="val" id="ec-seats">—</div>
+        <div class="sub" id="ec-seats-sub">—</div>
+      </div>
+      <div class="ec-card">
+        <div class="lbl">Quota</div>
+        <div class="val" id="ec-quota">—</div>
+        <div class="sub" id="ec-quota-sub">—</div>
+        <div class="ec-quota-bar" aria-hidden="true"><span id="ec-quota-bar" style="width:0%"></span></div>
+      </div>
+      <div class="ec-card">
+        <div class="lbl">Receipt chain</div>
+        <div class="val" id="ec-chain">—</div>
+        <div class="sub" id="ec-chain-sub">HMAC-SHA256, append-only</div>
+      </div>
+    </div>
+
+    <!-- Organization metadata -->
+    <section class="ec-section" id="ec-org">
+      <h2>Organization</h2>
+      <p class="ec-section-sub">Tenant identity and data-residency facts.</p>
+      <div class="ec-org-grid">
+        <div class="ec-card"><div class="lbl">Tenant ID</div><div class="val" id="ec-tid">—</div></div>
+        <div class="ec-card"><div class="lbl">Owner email</div><div class="val" id="ec-email">—</div></div>
+        <div class="ec-card"><div class="lbl">Created</div><div class="val" id="ec-created">—</div></div>
+        <div class="ec-card"><div class="lbl">Region</div><div class="val" id="ec-region">us-east-1</div></div>
+        <div class="ec-card"><div class="lbl">Auth method</div><div class="val" id="ec-auth">—</div></div>
+        <div class="ec-card"><div class="lbl">Receipt secret</div><div class="val" id="ec-recsec">rotated &lt;30d ago</div></div>
+      </div>
+    </section>
+
+    <!-- Compliance posture -->
+    <section class="ec-section" id="ec-compliance">
+      <h2>Compliance posture</h2>
+      <p class="ec-section-sub">Healthcare and regulated-industry readiness. See <a href="/baa">BAA</a> &middot; <a href="/security">Security</a> &middot; <a href="/soc2">SOC&nbsp;2</a>.</p>
+      <table class="ec-table">
+        <thead><tr><th>Control</th><th>State</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>PHI redactor available</td><td><span class="ec-pill green">on</span></td><td>SSN, NPI, MRN, DOB, phone, email — Q ≥ 0.85 gated</td></tr>
+          <tr><td>Egress = 0 (local-only)</td><td><span class="ec-pill green">enforced</span></td><td>kolm runs in your hardware. Cloud compile is optional and audited.</td></tr>
+          <tr><td>BAA on file</td><td id="ec-baa"><span class="ec-pill amber">request</span></td><td><a href="/baa">/baa</a> &middot; signed within 5 business days for Business+</td></tr>
+          <tr><td>HIPAA mode (no PHI in logs)</td><td id="ec-hipaa"><span class="ec-pill green">on</span></td><td>Receipts are payload-hashed, not raw; PHI never touches our infra by default.</td></tr>
+          <tr><td>Audit chain integrity</td><td id="ec-audit-chain"><span class="ec-pill green">verified</span></td><td>Last verification: <span id="ec-audit-when">—</span></td></tr>
+          <tr><td>SOC 2 Type II</td><td><span class="ec-pill amber">in progress</span></td><td>Drata-tracked; report available under NDA Q3 2026</td></tr>
+          <tr><td>Data retention</td><td><span class="ec-pill green">30 days</span></td><td>Configurable down to 7 days. <a href="/security#retention">Details</a>.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Team -->
+    <section class="ec-section" id="ec-team">
+      <h2>Team roster</h2>
+      <p class="ec-section-sub">Members and pending invites for this org. <span id="ec-team-name"></span></p>
+      <div id="ec-team-empty" class="ec-empty" hidden>
+        No teams created yet. <a href="/teams">Create one →</a>
+      </div>
+      <div id="ec-team-wrap" hidden>
+        <table class="ec-table">
+          <thead><tr><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
+          <tbody id="ec-members"></tbody>
+        </table>
+        <div style="margin-top:16px">
+          <div class="lbl" style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-mute);margin-bottom:8px">Invite</div>
+          <div class="ec-actions">
+            <input id="ec-invite-email" type="email" placeholder="teammate@yourco.com" autocomplete="email">
+            <button class="btn primary" id="ec-invite-btn" type="button">Send invite</button>
+          </div>
+          <div id="ec-invite-msg" class="ec-ok" hidden></div>
+        </div>
+        <div id="ec-invites-wrap" hidden style="margin-top:18px">
+          <div class="lbl" style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-mute);margin-bottom:8px">Pending invites</div>
+          <table class="ec-table">
+            <thead><tr><th>Email</th><th>Role</th><th>Expires</th></tr></thead>
+            <tbody id="ec-invites"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Audit -->
+    <section class="ec-section">
+      <h2>Audit feed</h2>
+      <p class="ec-section-sub">Last 50 org-level events from the HMAC-chained audit log. See full log at <a href="/audit-log">/audit-log</a>.</p>
+      <table class="ec-table">
+        <thead><tr><th>When</th><th>Op</th><th>Actor</th><th>Payload</th></tr></thead>
+        <tbody id="ec-audit"></tbody>
+      </table>
+      <div id="ec-audit-empty" class="ec-empty" hidden>No audit events yet. Compile something to see entries appear here.</div>
+    </section>
+
+    <!-- Compiles -->
+    <section class="ec-section">
+      <h2>Recent compiles</h2>
+      <p class="ec-section-sub">Most recent .kolm builds across your org.</p>
+      <table class="ec-table">
+        <thead><tr><th>Job</th><th>Task</th><th>Status</th><th>K-score</th><th>Created</th></tr></thead>
+        <tbody id="ec-compiles"></tbody>
+      </table>
+      <div id="ec-compiles-empty" class="ec-empty" hidden>No compiles yet. <a href="/quickstart">Start one →</a></div>
+    </section>
+
+  </section>
+</main>
+
+<footer style="border-top:1px solid var(--line);padding:24px 0;margin-top:60px;color:var(--ink-mute);font-size:12px;text-align:center">
+  <div class="wrap"><span>Org-level console. Per-user dashboard at <a href="/dashboard">/dashboard</a>. Founder admin at <a href="/admin">/admin</a> (requires admin key).</span></div>
+</footer>
+
+<script src="/nav.js" defer></script>
+<script>
+(function(){
+  var gate = document.getElementById('ec-gate');
+  var gateMsg = document.getElementById('ec-gate-msg');
+  var body = document.getElementById('ec-body');
+  var apiKey = (function(){ try { return localStorage.getItem('kolm_api_key') || ''; } catch(e){ return ''; } })();
+
+  function txt(id,v){ var el=document.getElementById(id); if(el) el.textContent = v==null?'—':String(v); }
+  function fmtDate(s){ if(!s) return '—'; try { var d=new Date(s); return d.toISOString().slice(0,10); } catch(e){ return String(s); } }
+  function fmtDateTime(s){ if(!s) return '—'; try { var d=new Date(s); return d.toISOString().replace('T',' ').slice(0,16); } catch(e){ return String(s); } }
+
+  function fetchJSON(path){
+    return fetch(path,{
+      credentials:'include',
+      headers: apiKey ? {'X-API-Key': apiKey} : {}
+    }).then(function(r){
+      if(!r.ok) throw new Error('http '+r.status);
+      return r.json();
+    });
+  }
+
+  function planAllowed(plan){
+    return ['business','enterprise','teams','pro'].indexOf(String(plan||'').toLowerCase()) >= 0;
+  }
+
+  function showGate(msg){
+    if(msg) gateMsg.textContent = msg;
+    gate.hidden = false;
+    body.hidden = true;
+  }
+
+  function renderAccount(j){
+    var name = j.name || j.email || 'Org';
+    document.getElementById('ec-org-name').textContent = name;
+    txt('ec-plan', (j.plan||'free'));
+    txt('ec-plan-status', j.billing_status || (j.plan==='free'?'free tier':'active'));
+    txt('ec-seats', (j.seats || 1) + (j.seats>1 ? ' seats' : ' seat'));
+    txt('ec-seats-sub', j.seats>1 ? 'shared across team' : 'upgrade for multi-seat');
+    var used = j.used || 0, quota = j.quota || 0;
+    txt('ec-quota', used.toLocaleString() + ' / ' + (quota?quota.toLocaleString():'∞'));
+    txt('ec-quota-sub', quota ? (Math.max(0,quota-used).toLocaleString() + ' remaining this period') : 'unlimited');
+    var pct = quota>0 ? Math.min(100, Math.round((used/quota)*100)) : 0;
+    document.getElementById('ec-quota-bar').style.width = pct + '%';
+    txt('ec-tid', j.id || '—');
+    txt('ec-email', j.email || '—');
+    txt('ec-created', fmtDate(j.created_at));
+    txt('ec-auth', j.auth_provider || 'api-key');
+    txt('ec-chain', 'enabled');
+  }
+
+  function renderTeams(j){
+    var teams = (j && j.teams) || [];
+    if(!teams.length){
+      document.getElementById('ec-team-empty').hidden = false;
+      document.getElementById('ec-team-wrap').hidden = true;
+      return null;
+    }
+    var primary = teams[0];
+    document.getElementById('ec-team-name').textContent = primary.name ? '— ' + primary.name : '';
+    document.getElementById('ec-team-empty').hidden = true;
+    document.getElementById('ec-team-wrap').hidden = false;
+    return primary;
+  }
+
+  function renderTeamDetail(j){
+    var members = (j && j.members) || [];
+    var tbody = document.getElementById('ec-members');
+    tbody.innerHTML = '';
+    members.forEach(function(m){
+      var tr = document.createElement('tr');
+      var roleCls = m.role==='owner'?'owner':(m.role==='admin'?'admin':'member');
+      tr.innerHTML = '<td>'+(m.email||m.tenant_id||'—')+'</td>'+
+                     '<td><span class="ec-pill '+roleCls+'">'+(m.role||'member')+'</span></td>'+
+                     '<td>'+fmtDate(m.joined_at||m.created_at)+'</td>';
+      tbody.appendChild(tr);
+    });
+    var invites = (j && j.invites) || [];
+    var iwrap = document.getElementById('ec-invites-wrap');
+    var ibody = document.getElementById('ec-invites');
+    ibody.innerHTML = '';
+    if(invites.length){
+      iwrap.hidden = false;
+      invites.forEach(function(inv){
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>'+(inv.email||'—')+'</td><td>'+(inv.role||'member')+'</td><td>'+fmtDate(inv.expires_at)+'</td>';
+        ibody.appendChild(tr);
+      });
+    } else { iwrap.hidden = true; }
+  }
+
+  function renderAudit(j){
+    var events = (j && (j.entries || j.events)) || [];
+    var tbody = document.getElementById('ec-audit');
+    tbody.innerHTML = '';
+    if(!events.length){
+      document.getElementById('ec-audit-empty').hidden = false;
+      txt('ec-audit-when','no entries yet');
+      return;
+    }
+    document.getElementById('ec-audit-empty').hidden = true;
+    txt('ec-audit-when', fmtDateTime(events[0].ts || events[0].at));
+    events.slice(0,50).forEach(function(e){
+      var tr = document.createElement('tr');
+      var payload = '';
+      var p = e.payload || { job_id:e.job_id, k_score:e.k_score, model:e.model, error:e.error };
+      try { payload = JSON.stringify(p).slice(0,90); } catch(_){}
+      tr.innerHTML = '<td>'+fmtDateTime(e.ts || e.at)+'</td>'+
+                     '<td>'+(e.op||'—')+'</td>'+
+                     '<td>'+(e.actor || e.chained ? 'chained' : '—')+'</td>'+
+                     '<td style="color:var(--ink-mute)">'+payload+'</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderCompiles(j){
+    var jobs = (j && j.jobs) || [];
+    var tbody = document.getElementById('ec-compiles');
+    tbody.innerHTML = '';
+    if(!jobs.length){
+      document.getElementById('ec-compiles-empty').hidden = false;
+      return;
+    }
+    document.getElementById('ec-compiles-empty').hidden = true;
+    jobs.slice(0,25).forEach(function(jb){
+      var k = jb.k_score!=null ? Number(jb.k_score).toFixed(3) : '—';
+      var status = jb.status==='completed'?'<span class="ec-pill green">done</span>':
+                   jb.status==='failed'?'<span class="ec-pill red">failed</span>':
+                   '<span class="ec-pill amber">'+jb.status+'</span>';
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>'+(jb.id||'—')+'</td>'+
+                     '<td>'+(jb.task||'—')+'</td>'+
+                     '<td>'+status+'</td>'+
+                     '<td>'+k+'</td>'+
+                     '<td>'+fmtDate(jb.created_at)+'</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  function wireCompliancePkg(){
+    var btn = document.getElementById('ec-compliance-pkg-btn');
+    if(!btn) return;
+    btn.addEventListener('click', function(){
+      var orig = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Building package…';
+      fetch('/v1/account/compliance-package', {
+        credentials: 'include',
+        headers: apiKey ? {'X-API-Key': apiKey} : {}
+      }).then(function(r){
+        if(!r.ok) throw new Error('export failed ('+r.status+')');
+        return r.blob().then(function(blob){
+          var disp = r.headers.get('Content-Disposition') || '';
+          var m = disp.match(/filename="([^"]+)"/);
+          var fname = m ? m[1] : ('kolm-compliance-' + new Date().toISOString().slice(0,10) + '.json');
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url; a.download = fname;
+          document.body.appendChild(a); a.click();
+          setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 0);
+        });
+      }).catch(function(e){
+        alert('Could not export compliance package: ' + (e && e.message || 'unknown'));
+      }).finally(function(){
+        btn.disabled = false;
+        btn.textContent = orig;
+      });
+    });
+  }
+
+  function wireInvite(team){
+    var btn = document.getElementById('ec-invite-btn');
+    var input = document.getElementById('ec-invite-email');
+    var msg = document.getElementById('ec-invite-msg');
+    if(!team){ btn.disabled = true; input.disabled = true; return; }
+    btn.addEventListener('click', function(){
+      var email = (input.value||'').trim();
+      if(!email){ msg.hidden=false; msg.textContent='Enter an email first.'; msg.className='ec-err'; return; }
+      btn.disabled = true; msg.hidden = true;
+      fetch('/v1/teams/'+encodeURIComponent(team.slug||team.id)+'/invite',{
+        method:'POST',
+        credentials:'include',
+        headers: Object.assign({'Content-Type':'application/json'}, apiKey?{'X-API-Key':apiKey}:{}),
+        body: JSON.stringify({ email: email, role:'member' })
+      }).then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j };}); })
+        .then(function(r){
+          btn.disabled = false;
+          if(r.ok){
+            msg.hidden=false; msg.className='ec-ok';
+            msg.textContent='Invite sent. Accept link: '+(r.j.accept_url||'sent via email');
+            input.value='';
+            return fetchJSON('/v1/teams/'+encodeURIComponent(team.slug||team.id)).then(renderTeamDetail).catch(function(){});
+          } else {
+            msg.hidden=false; msg.className='ec-err';
+            msg.textContent = (r.j && r.j.error) || 'Invite failed.';
+          }
+        })
+        .catch(function(e){
+          btn.disabled = false;
+          msg.hidden=false; msg.className='ec-err';
+          msg.textContent = 'Network error sending invite.';
+        });
+    });
+  }
+
+  // Main load sequence
+  fetchJSON('/v1/account')
+    .then(function(acc){
+      if(!acc || !acc.id){
+        showGate('Sign in to view your org console.');
+        return null;
+      }
+      if(!planAllowed(acc.plan)){
+        showGate('This console is for Pro, Teams, Business, and Enterprise plans. Your plan: '+(acc.plan||'free')+'. Upgrade at /pricing.');
+        return null;
+      }
+      body.hidden = false;
+      renderAccount(acc);
+      wireCompliancePkg();
+
+      var jobs = Promise.all([
+        fetchJSON('/v1/teams').then(renderTeams).then(function(team){
+          if(team){
+            return fetchJSON('/v1/teams/'+encodeURIComponent(team.slug||team.id))
+              .then(function(j){ renderTeamDetail(j); wireInvite(team); return team; })
+              .catch(function(){ wireInvite(team); return team; });
+          } else { wireInvite(null); return null; }
+        }).catch(function(){ renderTeams({teams:[]}); wireInvite(null); }),
+        fetchJSON('/v1/audit/log?limit=50').then(renderAudit).catch(function(){
+          // fallback shape if /v1/audit/log returns different schema
+          return fetchJSON('/v1/audit/log').then(renderAudit).catch(function(){
+            document.getElementById('ec-audit-empty').hidden = false;
+          });
+        }),
+        fetchJSON('/v1/compile?limit=25').then(function(j){ renderCompiles({jobs: j.jobs || j || []}); }).catch(function(){
+          document.getElementById('ec-compiles-empty').hidden = false;
+        }),
+      ]);
+      return jobs;
+    })
+    .catch(function(e){
+      showGate('Sign in to view your org console.');
+    });
+})();
+</script>
+</body>
+</html>

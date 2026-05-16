@@ -9,8 +9,8 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Union
 
-DEFAULT_BASE = "https://kolmogorov-stack-production.up.railway.app"
-USER_AGENT = "kolmogorov-recipe-py/0.1.0"
+DEFAULT_BASE = "https://kolm.ai"
+USER_AGENT = "kolmogorov-recipe-py/0.2.0"
 
 
 class RecipeError(Exception):
@@ -38,8 +38,10 @@ class RecipeClient:
 
     Args:
         api_key: bearer token (e.g. "ks_..."). If omitted, falls back to
-            ``RECIPE_API_KEY`` then ``KOLMOGOROV_API_KEY`` env vars.
-        base_url: API base URL. Defaults to the hosted service.
+            ``KOLM_API_KEY``, then ``RECIPE_API_KEY``, then
+            ``KOLMOGOROV_API_KEY`` env vars.
+        base_url: API base URL. Defaults to ``https://kolm.ai``. Can be
+            overridden via ``KOLM_BASE_URL`` or ``RECIPE_BASE_URL`` env vars.
         timeout: per-request timeout in seconds. Default 60.
     """
 
@@ -51,10 +53,16 @@ class RecipeClient:
     ) -> None:
         self.api_key = (
             api_key
+            or os.environ.get("KOLM_API_KEY")
             or os.environ.get("RECIPE_API_KEY")
             or os.environ.get("KOLMOGOROV_API_KEY")
         )
-        self.base_url = (base_url or os.environ.get("RECIPE_BASE_URL") or DEFAULT_BASE).rstrip("/")
+        self.base_url = (
+            base_url
+            or os.environ.get("KOLM_BASE_URL")
+            or os.environ.get("RECIPE_BASE_URL")
+            or DEFAULT_BASE
+        ).rstrip("/")
         self.timeout = timeout
 
     # ------------------------------------------------------------------

@@ -6,12 +6,15 @@
 #   PORT=8787 node server.js &
 #   URL=http://localhost:8787 bash scripts/smoke-live.sh
 #
-# Default URL is the Railway prod backend. Pages are also served by Vercel
-# in prod; both layers must answer 200 for the same URL set. Marketing copy
-# changes constantly and is intentionally NOT asserted here — only routes,
-# auth gates, and the shape of API responses are.
+# Default URL is the public-facing kolm.ai domain. Vercel proxies /v1/* to
+# the Railway origin, so going through kolm.ai exercises the full edge stack
+# (rate limits, WAF, edge auth) the way real users hit it. Override with
+# URL=https://kolmogorov-stack-production.up.railway.app to bypass the proxy
+# when debugging origin-specific behavior. Marketing copy changes constantly
+# and is intentionally NOT asserted here — only routes, auth gates, and the
+# shape of API responses are.
 
-URL="${URL:-https://kolmogorov-stack-production.up.railway.app}"
+URL="${URL:-https://kolm.ai}"
 PASS=0; FAIL=0; FAILED=()
 
 check() {

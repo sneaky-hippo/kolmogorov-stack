@@ -1,0 +1,35 @@
+{
+  "job_id": "job_risk_adjustment_v1",
+  "task": "Extract valid CMS-HCC codes from clinical progress notes with per-code confidence and source-span citations. Drop codes without an in-note span. Output { hcc_codes: [{ code, icd10, confidence, source_span }], redaction_count }.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_risk_adj_v1",
+      "name": "risk-adjustment-coder",
+      "source": "function generate(input, lib){ var note = String((input && input.note_text) || '').toLowerCase(); var dict = (lib.pack && lib.pack.hcc_dictionary) || []; var out = []; for (var i=0;i<dict.length;i++){ var entry = dict[i]; for (var j=0;j<entry.span_keywords.length;j++){ var kw = String(entry.span_keywords[j]).toLowerCase(); var idx = note.indexOf(kw); if (idx >= 0){ var start = Math.max(0, idx - 12); var end = Math.min(note.length, idx + kw.length + 40); out.push({ code: entry.code, icd10: entry.icd10, confidence: entry.base_confidence, source_span: note.substring(start, end) }); break; } } } return { hcc_codes: out, redaction_count: 0 }; }",
+      "tags": ["health-insurance", "risk-adjustment", "hcc"],
+      "schema": {
+        "input": { "note_id": "string", "note_text": "string", "hcc_model_year": "string" },
+        "output": { "hcc_codes": "array", "redaction_count": "number" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "Starter HCC dictionary (model year 2026). Tenants supply full dictionary via params for production.",
+    "hcc_dictionary": [
+      { "code": "HCC18", "icd10": "E11.9", "span_keywords": ["t2dm", "type 2 diabetes", "metformin"], "base_confidence": 0.93 },
+      { "code": "HCC85", "icd10": "I50.9", "span_keywords": ["ef 35", "ef 30", "chf", "heart failure"], "base_confidence": 0.91 },
+      { "code": "HCC19", "icd10": "E11.65", "span_keywords": ["a1c 9", "a1c 10", "uncontrolled diabetes"], "base_confidence": 0.88 }
+    ]
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      { "id": "diabetes_extract", "input": { "note_text": "PMH: T2DM on metformin, A1C 7.1, no complications." }, "expected": { "hcc_codes": [{ "code": "HCC18" }] } },
+      { "id": "empty_note", "input": { "note_text": "" }, "expected": { "hcc_codes": [] } }
+    ],
+    "coverage": 1.0
+  }
+}

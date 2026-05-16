@@ -171,7 +171,31 @@ export function computeKScore({ size_bytes, accuracy, coverage, p50_latency_us, 
 // receipt binds (artifact_hash, eval_set_hash, eval_score, judge_id) via an
 // HMAC chain so any third party can re-verify offline without trusting the
 // runtime that produced the artifact.
-export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id, eval_score, tier, pack, index, target_device, train_device }) {
+function normalizeLicense(license) {
+  if (!license) {
+    return {
+      id: 'LicenseRef-kolm-default-1.0',
+      name: 'kolm default artifact license (1.0)',
+      url: 'https://kolm.ai/license#artifact-default-1-0',
+      allows: ['inference', 'evaluation', 'redistribution-with-attribution'],
+      requires: ['preserve-receipt', 'preserve-attribution'],
+      forbids: [],
+    };
+  }
+  if (typeof license === 'string') {
+    return { id: license, name: license, url: null, allows: [], requires: [], forbids: [] };
+  }
+  return {
+    id: String(license.id || license.spdx || 'LicenseRef-unknown'),
+    name: license.name ? String(license.name) : String(license.id || 'unknown'),
+    url: license.url ? String(license.url) : null,
+    allows: Array.isArray(license.allows) ? license.allows.map(String) : [],
+    requires: Array.isArray(license.requires) ? license.requires.map(String) : [],
+    forbids: Array.isArray(license.forbids) ? license.forbids.map(String) : [],
+  };
+}
+
+export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id, eval_score, tier, pack, index, target_device, train_device, license }) {
   const secret = requireSignSecret();
   const recipes_json = JSON.stringify({
     spec: 'rs-1',
@@ -254,6 +278,7 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
     training: training_stats || { distilled_pairs: 0, accuracy: null },
     evals: { n: evals_obj.n || (evals_obj.cases?.length || 0), spec: evals_obj.spec, hash: eval_set_hash },
     k_score: k_score || null,  // patched after zipping for the size_bytes axis
+    license: normalizeLicense(license),
     cid,
     hashes,
   };
@@ -415,7 +440,7 @@ export function packageArtifact({ job_id, payload, outPath }) {
 // with the size-aware K-score patched into the manifest. The double-zip is
 // cheap (≤10ms for 5KB artifacts) and keeps the K-score honest — the size
 // axis includes the K-score bytes themselves.
-export async function buildAndZip({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, outDir, judge_id, tier, pack, index, target_device, train_device }) {
+export async function buildAndZip({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, outDir, judge_id, tier, pack, index, target_device, train_device, license }) {
   requireSignSecret();
   const dir = outDir || path.join(os.tmpdir(), 'kolm-artifacts');
   fs.mkdirSync(dir, { recursive: true });
@@ -431,7 +456,7 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
   const _judgeId = judge_id || process.env.KOLM_JUDGE_ID || 'kolm-pattern-synth-1';
 
   // Pass 1 — zip to measure size.
-  const probePayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, judge_id: _judgeId, eval_score, tier: _tier, pack, index, target_device, train_device });
+  const probePayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, judge_id: _judgeId, eval_score, tier: _tier, pack, index, target_device, train_device, license });
   const outPath = path.join(dir, `${job_id}.kolm`);
   await packageArtifact({ job_id, payload: probePayload, outPath });
   const probeBytes = fs.statSync(outPath).size;
@@ -456,7 +481,7 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
   // exactly what's inside the on-disk artifact, so a verifier recomputing
   // K-score from the artifact bytes will reproduce manifest.k_score
   // deterministically (size_bytes axis matches the embedded value).
-  const finalPayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id: _judgeId, eval_score, tier: _tier, pack, index, target_device, train_device });
+  const finalPayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id: _judgeId, eval_score, tier: _tier, pack, index, target_device, train_device, license });
   await packageArtifact({ job_id, payload: finalPayload, outPath });
   const stat = fs.statSync(outPath);
 

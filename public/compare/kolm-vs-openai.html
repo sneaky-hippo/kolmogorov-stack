@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm vs OpenAI | hosted API vs portable signed artifact</title>
+<meta name="description" content="Twelve axes that separate calling the OpenAI API for every inference from compiling a signed .kolm artifact you can run on your own hardware.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/compare/kolm-vs-openai">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:46px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:780px}
+  .lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:680px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  table.matrix{width:100%;border-collapse:collapse;margin:48px 0;font-size:14px}
+  table.matrix th{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:14px 12px;border-bottom:1px solid var(--line);font-weight:400}
+  table.matrix td{padding:18px 12px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5}
+  table.matrix td.axis{font-weight:500;color:var(--ink);min-width:160px}
+  table.matrix td.kolm{color:var(--ink)}
+  table.matrix td.kolm b{color:var(--accent);font-weight:500}
+  table.matrix td.other{color:var(--ink-mute)}
+  table.matrix td.other b{color:var(--ink);font-weight:500}
+  table.matrix td.why{color:var(--ink-mute);font-size:13.5px}
+  table.matrix td.proof a{color:var(--accent);text-decoration:none;font-family:var(--mono);font-size:12.5px;border-bottom:1px dashed rgba(16,185,129,0.32)}
+  table.matrix td.proof a:hover{border-bottom-color:var(--accent)}
+  table.matrix tr.win-kolm td.kolm{background:rgba(16,185,129,0.06)}
+  table.matrix tr.win-other td.other{background:rgba(236,231,220,0.04)}
+  table.matrix tr.tie td.kolm, table.matrix tr.tie td.other{background:rgba(236,231,220,0.02)}
+  @media(max-width:880px){table.matrix,table.matrix thead,table.matrix tbody,table.matrix tr,table.matrix td,table.matrix th{display:block}table.matrix th{display:none}table.matrix tr{border-bottom:2px solid var(--line);padding:18px 0}table.matrix td{padding:6px 0;border:none}table.matrix td.axis{font-size:11.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);font-family:var(--mono);margin-bottom:6px}}
+  .close{padding:48px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .close h2{font-size:24px;font-weight:500;letter-spacing:-0.012em;margin:0 0 16px}
+  .close p{color:var(--ink-mute);max-width:680px;margin:0 0 16px}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer{padding:36px 0;color:var(--ink-faint);font-size:13px}
+  footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+</style>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/quickstart">quickstart</a><a href="/pricing">pricing</a><a href="/docs">docs</a><a href="/compare">compare</a></nav></div></header>
+<main>
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/compare">compare</a> &nbsp;/&nbsp; vs OpenAI</p>
+    <h1>kolm vs the OpenAI API.</h1>
+    <p class="lede">The OpenAI API is the right answer for general intelligence on demand. kolm is the right answer for a specific task you run a million times a month and need to prove was answered the same way every time. We use the OpenAI API ourselves &mdash; as a teacher at compile time, not as the runtime for every call. The axes below are what changes when you ship the artifact instead of renting the inference.</p>
+    <p class="stamp">Twelve axes. Reviewed 2026-05-16.</p>
+  </div>
+</section>
+<section>
+  <div class="wrap">
+    <table class="matrix">
+      <thead><tr><th>Axis</th><th>kolm</th><th>OpenAI API</th><th>Why it matters</th><th>Proof</th></tr></thead>
+      <tbody>
+      <tr class="win-kolm"><td class="axis">Marginal inference cost</td><td class="kolm"><b>$0</b> per call (your hardware)</td><td class="other">$2.50&ndash;$15 per 1M tokens</td><td class="why">At a million calls/month the difference is six figures.</td><td class="proof"><a href="/pricing#math">ROI calc &rarr;</a></td></tr>
+      <tr class="win-kolm"><td class="axis">Data residency</td><td class="kolm"><b>never leaves</b> your hardware</td><td class="other">leaves on every request</td><td class="why">HIPAA, FedRAMP, SR 11-7, GDPR Schrems II all simplify dramatically.</td><td class="proof"><a href="/health-insurance">healthcare &rarr;</a></td></tr>
+      <tr class="win-kolm"><td class="axis">Receipt chain</td><td class="kolm"><b>HMAC-SHA256</b> per inference, 4 rings</td><td class="other">API request log only</td><td class="why">A receipt a regulator can verify offline is a different artifact from a billing log.</td><td class="proof"><a href="/cdn/kolm-assets/docs/showcase/phi-redactor.kolm" download>open a receipt &rarr;</a></td></tr>
+      <tr class="win-kolm"><td class="axis">Model versioning</td><td class="kolm"><b>CID-pinned</b> .kolm immutable</td><td class="other">silent gpt-4o updates</td><td class="why">Production behaviour shouldn't change because the vendor shipped a new checkpoint at 3am.</td><td class="proof"><a href="/spec/rs-1">RS-1 spec &rarr;</a></td></tr>
+      <tr class="win-kolm"><td class="axis">Lock-in</td><td class="kolm">portable .kolm, run anywhere</td><td class="other">API surface only</td><td class="why">If the API price doubles or the terms change, your code change is zero.</td><td class="proof"><a href="/byoc">byoc deploy modes &rarr;</a></td></tr>
+      <tr class="win-kolm"><td class="axis">Offline / air-gapped</td><td class="kolm"><b>runs without network</b></td><td class="other">requires internet</td><td class="why">Edge, defense, hospital basements, in-flight, regulated VPCs.</td><td class="proof"><a href="/edge">edge &rarr;</a></td></tr>
+      <tr class="win-kolm"><td class="axis">Throughput ceiling</td><td class="kolm">your hardware, your limits</td><td class="other">tier-based RPM/TPM caps</td><td class="why">Burst traffic that triggers 429s in the API is just CPU usage on your box.</td><td class="proof"><a href="/research/multi-lora-serving">S-LoRA &rarr;</a></td></tr>
+      <tr class="win-kolm"><td class="axis">Compliance pack</td><td class="kolm">HIPAA &middot; SR 11-7 &middot; SOX-lite</td><td class="other">BAA on Enterprise tier only</td><td class="why">Industry-specific controls auditors actually ask for.</td><td class="proof"><a href="/compliance-packs">/compliance-packs &rarr;</a></td></tr>
+      <tr class="win-kolm"><td class="axis">Quality gate</td><td class="kolm"><b>K-score blocking</b> at compile</td><td class="other">manual evals after the fact</td><td class="why">A gate that refuses to ship the artifact below threshold is a contract, not a wish.</td><td class="proof"><a href="/k-score">K-score formal &rarr;</a></td></tr>
+      <tr class="win-kolm"><td class="axis">Constrained generation</td><td class="kolm">union-schema oneOf, refusal token</td><td class="other">JSON mode (best-effort)</td><td class="why">Tool calls and grounded answers need decoder-level enforcement, not parsing retries.</td><td class="proof"><a href="/research#constrained">constrained decoding &rarr;</a></td></tr>
+      <tr class="win-other"><td class="axis">General intelligence</td><td class="kolm">task-specific only</td><td class="other"><b>broad capability</b>, frontier scale</td><td class="why">For "what should the next state of my application look like", call the frontier.</td><td class="proof"><a href="https://platform.openai.com">openai &rarr;</a></td></tr>
+      <tr class="win-other"><td class="axis">Time to first call</td><td class="kolm">~4 minutes to compile</td><td class="other"><b>seconds</b>, just an API key</td><td class="why">If you don't have your task scoped yet, the API answers faster than the compile.</td><td class="proof"><a href="/quickstart">quickstart &rarr;</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="close">
+  <div class="wrap">
+    <h2>When OpenAI is the right answer.</h2>
+    <p>You need general reasoning. Your task changes shape weekly. You don't run the same prompt a million times. Volume is low and a per-call bill is fine. Or you're at the prototyping stage and time-to-first-answer beats unit economics. Use the API.</p>
+    <h2 style="margin-top:32px">When kolm is the right answer.</h2>
+    <p>You have a task &mdash; redact PHI, classify support tickets, extract invoice fields, translate medical instructions, score a credit decision &mdash; that runs at scale and the answer must be reproducible. Compile once: ship the artifact, get the receipt, run it on your hardware, audit every call. The frontier is the teacher; the artifact is the worker.</p>
+    <div class="actions"><a class="btn primary" href="/quickstart">Compile your first AI &rarr;</a><a class="btn" href="/cdn/kolm-assets/docs/showcase/phi-redactor.kolm" download>Open a receipt &rarr;</a></div>
+  </div>
+</section>
+</main>
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <p style="text-align:center;color:var(--ink-faint);font-size:12.5px;margin:0">
+      &copy; 2026 kolm &middot; <a href="/pricing">pricing</a> &middot; <a href="/compare">all comparisons</a> &middot; <a href="/quickstart">quickstart</a>
+    </p>
+  </div>
+</footer>
+</body>
+</html>

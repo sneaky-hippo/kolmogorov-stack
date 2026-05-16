@@ -6,7 +6,7 @@
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
 <script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
 <title>kolm &middot; compile your own AI.</title>
-<meta name="description" content="Build, train, and keep your own AI. kolm compiles a task into one file you own. Trains on your data. Runs on your hardware. No per-call bill, no vendor lock.">
+<meta name="description" content="Build, train, and keep your own AI. kolm builds it on your data, runs on your hardware, audits every call. No per-call bill, no vendor lock.">
 <meta name="keywords" content="build your own AI, train your own AI, on-device AI, private AI, local AI, AI compiler, .kolm artifact, fine-tuning, own your model, HIPAA AI, edge AI, regulated AI">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -15,17 +15,17 @@
 <meta property="og:site_name" content="kolm">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="kolm &middot; build, train, and keep your own AI">
-<meta property="og:description" content="Build it in a sentence. Train it on your data. Keep it on your hardware. One file you own. Runs anywhere. No per-call bill.">
+<meta property="og:description" content="Build it in a sentence. Compile it on your data. Audit every call. Your AI, yours forever. No per-call bill.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://kolm.ai/">
 <meta property="og:image" content="https://kolm.ai/og-card.svg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="kolm: build, train, and keep your own AI as one file that runs on your hardware.">
+<meta property="og:image:alt" content="kolm: build, train, and keep your own AI that runs on your hardware.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@kolm_ai">
 <meta name="twitter:title" content="kolm &middot; build, train, and keep your own AI">
-<meta name="twitter:description" content="Build it in a sentence. Train it on your data. Keep it on your hardware. One file you own. Runs anywhere.">
+<meta name="twitter:description" content="Build it in a sentence. Compile it on your data. Audit every call. Your AI, yours forever.">
 <meta name="twitter:image" content="https://kolm.ai/og-card.svg">
 <link rel="canonical" href="https://kolm.ai/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -432,7 +432,9 @@
     .hcn-s1 .hcn-prompt-go { padding: 8px 14px; font-size: 11.5px; }
     .hcn-s1 .hcn-stage-out { min-height: 170px; }
     .hcn-s1 .hcn-file { padding: 20px 20px 16px; }
-    .hcn-s1 .hcn-file-name { font-size: 15px; }
+    /* allow long artifact filenames to wrap on narrow tablets/phones rather than
+       sitting on a nowrap line that crowds the K-score on the right edge. */
+    .hcn-s1 .hcn-file-name { font-size: 15px; white-space: normal; overflow-wrap: anywhere; min-width: 0; }
     .hcn-s1 .hcn-file-k { font-size: 19px; }
     .hcn-s1 .hcn-file-meta { font-size: 10.5px; gap: 10px; grid-template-columns: 1fr 1fr; }
     .hcn-s1 .hcn-file-meta .hcn-meta-lab { font-size: 8.5px; letter-spacing: 0.12em; }
@@ -495,7 +497,12 @@
     .hcn-s1 .hcn-prompt-text { font-size: 12.5px; padding: 9px 10px; }
     .hcn-s1 .hcn-prompt-head { font-size: 9.5px; }
     .hcn-s1 .hcn-stage-out { min-height: 150px; }
-    .hcn-s1 .hcn-file-name { font-size: 13.5px; }
+    /* Stack filename + K-score vertically on narrow phones so the two never overlap.
+       At baseline they share a row via flex-wrap, but on iPhone SE / 360-380px widths
+       the nowrap filename can crowd the K-score; column layout removes that risk. */
+    .hcn-s1 .hcn-file { width: min(560px, 100%); max-width: calc(100vw - 28px); }
+    .hcn-s1 .hcn-file-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+    .hcn-s1 .hcn-file-name { font-size: 13.5px; white-space: normal; overflow-wrap: anywhere; min-width: 0; max-width: 100%; }
     .hcn-s1 .hcn-file-k { font-size: 18px; }
     .hcn-s1 .hcn-file-meta { font-size: 10px; gap: 8px; }
     .hcn-s2 .hcn-proof-k { font-size: clamp(56px, 24vw, 90px); }
@@ -652,7 +659,7 @@
   .uc-strip { margin-left: auto; margin-right: auto; max-width: 1180px; padding: 0 32px; text-align: center; }
   /* v11 wave 27: min-height locks h2 height so the 3 tab taglines (2-3 lines each)
      swap without jolting the layout. Worst-case desktop = 3 lines x 46px x 1.06 = 146px. */
-  .uc-strip h2 { font-size: clamp(32px, 3.6vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.028em; margin: 0 auto 14px; max-width: 24ch; min-height: 152px; display: flex; align-items: center; justify-content: center; }
+  .uc-strip h2 { font-size: clamp(32px, 3.6vw, 46px); font-weight: 500; line-height: 1.1; letter-spacing: -0.028em; margin: 0 auto 14px; max-width: 24ch; min-height: 152px; display: flex; align-items: center; justify-content: center; overflow: hidden; will-change: opacity; backface-visibility: hidden; -webkit-backface-visibility: hidden; transform: translateZ(0); -webkit-transform: translateZ(0); }
   @media (max-width: 1024px) { .uc-strip h2 { min-height: 132px; } }
   @media (max-width: 720px)  { .uc-strip h2 { min-height: 124px; max-width: 22ch; } }
   @media (max-width: 480px)  { .uc-strip h2 { min-height: 140px; max-width: 20ch; line-height: 1.12; } }
@@ -665,11 +672,12 @@
      made the pill nearly invisible and the inactive labels read as floating text
      blending into the body. Now: solid card background, full ink on inactive,
      active state retained. */
-  .uc-strip .uc-tabs { display: inline-flex; gap: 4px; padding: 5px; border: 1px solid var(--line); border-radius: 999px; margin: 0 0 18px; background: var(--bg-2, #11151b); flex-wrap: nowrap; max-width: 100%; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
+  .uc-strip .uc-tabs { display: inline-flex; gap: 4px; padding: 5px; border: 1px solid var(--line); border-radius: 999px; margin: 0 0 18px; background: var(--bg-2, #11151b); flex-wrap: nowrap; min-width: 320px; max-width: 100%; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; scroll-padding-inline: 12px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
+  .uc-strip .uc-tabs::-webkit-scrollbar { display: none; }
   .uc-strip .uc-tab { font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; padding: 9px 16px; border-radius: 999px; border: 0; background: transparent; color: var(--ink, #faf2e1); cursor: pointer; transition: color 160ms, background 160ms; text-transform: lowercase; white-space: nowrap; opacity: 0.92; }
   .uc-strip .uc-tab + .uc-tab { box-shadow: none; }
   @media (max-width: 480px) {
-    .uc-strip .uc-tabs { gap: 4px; padding: 3px; }
+    .uc-strip .uc-tabs { gap: 4px; padding: 3px; min-width: 0; max-width: calc(100vw - 32px); }
     .uc-strip .uc-tab { font-size: 10.5px; padding: 7px 10px; }
   }
   .uc-strip .uc-tab:hover { opacity: 1; }
@@ -711,16 +719,8 @@
   [data-theme=light] .uc-strip .uc-seal a { color: #0c0e10; border-color: rgba(10,136,98, 0.32); }
   [data-theme=light] .uc-strip .uc-seal a:hover { color: #059669; }
 
-  /* trust-strip - compact compliance & integrity row  - honest claims only */
-  .trust-strip { padding: 30px 0 28px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 38px 0 0; text-align: center; }
-  .trust-strip .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
-  .trust-strip .ts-caption { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint, #737c73); letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 18px; }
-  .trust-strip .ts-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px 26px; max-width: 980px; margin: 0 auto; }
-  .trust-strip .ts-cell { font-family: var(--mono); font-size: 12px; color: var(--ink-mute, #b5bdb1); text-decoration: none; letter-spacing: 0.02em; transition: color 220ms ease-out; white-space: nowrap; }
-  .trust-strip .ts-cell b { color: var(--ink, #faf2e1); font-weight: 500; letter-spacing: 0.01em; }
-  .trust-strip .ts-cell:hover { color: var(--ink, #faf2e1); }
-  .trust-strip .ts-cell:hover b { color: #7ef0d2; }
-  @media (max-width: 720px) { .trust-strip { padding: 22px 0 20px; } .trust-strip .ts-row { gap: 10px 18px; } .trust-strip .ts-cell { font-size: 11px; } .trust-strip .ts-caption { font-size: 9.5px; margin-bottom: 14px; } }
+  /* trust-strip CSS removed wave 108 — section deleted (caption duplicated hero-promise,
+     cells duplicated hero-quant). Mobile tap-target rule at line 2599 also removed. */
 
 </style>
 <script type="application/ld+json">
@@ -855,8 +855,8 @@
   <div class="wrap">
     <a href="/" class="brand"><span>kolm</span></a>
     <nav class="site-nav" aria-label="Primary">
-      <a href="/use-cases">Solutions</a>
-      <a href="/docs">Developers</a>
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
       <a href="/research">Research</a>
       <a href="/enterprise">Enterprise</a>
       <a href="/pricing">Pricing</a>
@@ -875,11 +875,11 @@
   <div class="hero-grid-bg" aria-hidden="true"></div>
   <div class="wrap">
     <h1>Compile your own <span class="cycle-word"><span class="cw-ghost" aria-hidden="true">classifier</span><span class="cw-cur" data-words="AI,agent,model,classifier,assistant,vision,voice">AI</span></span></h1>
-    <p class="lede">Describe what your AI should do. kolm returns one small file that runs anywhere. Laptop, server, phone, edge. For any task, any team, any frontier model.</p>
+    <p class="lede">Describe what your AI should do. kolm builds it on your data and gives it back to you to run anywhere. With the recipe, the evals, and a receipt for every call.</p>
 
     <div class="actions">
       <a href="/quickstart" class="btn primary lg btn-electric">Compile your first AI &rarr;</a>
-      <a href="/docs/showcase/receipt.json" class="btn ghost lg" target="_blank" rel="noopener">Open a receipt &rarr;</a>
+      <a href="/pricing" class="btn ghost lg">See pricing &rarr;</a>
     </div>
 
     <p class="hero-quant" aria-label="quantified proof">
@@ -887,19 +887,50 @@
       <span class="hq-sep" aria-hidden="true">&middot;</span>
       <span><b>11.6&times;</b> cheaper than the frontier</span>
       <span class="hq-sep" aria-hidden="true">&middot;</span>
-      <span><b>Your own AI, trained on your data</b></span>
+      <span><b>Built on your data</b></span>
       <span class="hq-sep" aria-hidden="true">&middot;</span>
-      <span><b>Runs offline</b></span>
+      <span><b>Receipt on every call</b></span>
       <a href="/benchmarks" class="hq-link">how we measure &rarr;</a>
+    </p>
+
+    <!-- wave 123 . hero-artifact: concrete proof for the abstract claims above.
+         Every number here is reproducible from the signed manifest + receipt inside
+         the linked .kolm. K=0.982 is from manifest.metrics.k_score; 0 leaks is from
+         manifest.metrics.leak_rate across 10 seeds (manifest.metrics.seeds); 9.5 KB
+         is the artifact size on disk. Don't change without re-extracting & verifying. -->
+    <p class="hero-artifact" aria-label="live shipped artifact you can download right now">
+      <span class="ha-lab">live</span>
+      <a href="/cdn/kolm-assets/docs/showcase/phi-redactor.kolm" class="ha-mono" download>phi-redactor.kolm</a>
+      <span class="ha-sep" aria-hidden="true">&middot;</span>
+      <span><b>9.5&nbsp;KB</b></span>
+      <span class="ha-sep" aria-hidden="true">&middot;</span>
+      <span><b>K&nbsp;0.982</b></span>
+      <span class="ha-sep" aria-hidden="true">&middot;</span>
+      <span><b>0 PHI leaks</b> across 10 seeds</span>
+      <span class="ha-sep" aria-hidden="true">&middot;</span>
+      <span><b>HIPAA</b> Safe Harbor</span>
     </p>
 
     <p class="hero-promise" aria-label="what kolm does">
       <span class="hp-mono">.kolm</span>
-      <span class="hp-claim"><b>Build it</b> in a sentence. <b>Train it</b> on your data. <b>Keep it</b> on your hardware. One file. Yours forever.</span>
+      <span class="hp-claim"><b>Build it</b> in a sentence. <b>Compile it</b> on your data. <b>Audit it</b> every call. Your AI. Yours forever.</span>
     </p>
 
-    <!-- v7.18.2 . removed in-hero supported-by row. Provider-strip section
-         below the demo carries the same content in SOTA-clean form. -->
+    <p class="hero-moat" aria-label="format positioning">
+      <span class="hm-cell"><span class="hm-mono">.exe</span> for software.</span>
+      <span class="hm-cell"><span class="hm-mono">.apk</span> for mobile.</span>
+      <span class="hm-cell"><span class="hm-mono">.kolm</span> for AI.</span>
+    </p>
+
+    <!-- wave 108 . hero-stack: surfaces the two product-truth signals that lived in
+         the (now-deleted) trust-strip without duplicating hero-quant. Open-source +
+         drop-in-for-OpenAI are positioning facts, not stats - they belong in the hero
+         alongside .exe/.apk/.kolm metaphor, not in a separate strip below the demo. -->
+    <p class="hero-stack" aria-label="open-source and drop-in compatibility">
+      <a class="hs-cell" href="https://github.com/sneaky-hippo/kolmogorov-stack"><span class="hs-lab">open source</span><span class="hs-val">Apache-2.0 on GitHub</span></a>
+      <span class="hs-sep" aria-hidden="true">&middot;</span>
+      <a class="hs-cell" href="/openapi.json"><span class="hs-lab">drop-in</span><span class="hs-val">for OpenAI / Anthropic / Bedrock</span></a>
+    </p>
 
     <div class="nl-try" aria-label="natural-language try-it">
       <form id="nl-form" autocomplete="off">
@@ -994,14 +1025,14 @@
 
         <!-- Scene 3 . PORTABILITY . one .kolm artifact runs anywhere - 4 recognizable surfaces -->
         <div class="hcn-scene hcn-s3" id="hcn-scene-2" data-scene="2">
-          <div class="hcn-port-eye">one file. every device.</div>
+          <div class="hcn-port-eye">one file. one format.</div>
           <div class="hcn-port-strip">
             <div class="hcn-port-dev" data-port="0"><span class="hcn-port-dev-tick">pending</span><span class="hcn-port-dev-name">Mac</span><span class="hcn-port-dev-lat"><b>142</b><span class="hcn-port-dev-lat-unit">ms</span></span></div>
             <div class="hcn-port-dev" data-port="1"><span class="hcn-port-dev-tick">pending</span><span class="hcn-port-dev-name">iPhone</span><span class="hcn-port-dev-lat"><b>218</b><span class="hcn-port-dev-lat-unit">ms</span></span></div>
             <div class="hcn-port-dev" data-port="2"><span class="hcn-port-dev-tick">pending</span><span class="hcn-port-dev-name">Browser</span><span class="hcn-port-dev-lat"><b>540</b><span class="hcn-port-dev-lat-unit">ms</span></span></div>
             <div class="hcn-port-dev" data-port="3"><span class="hcn-port-dev-tick">pending</span><span class="hcn-port-dev-name">Your server</span><span class="hcn-port-dev-lat"><b>38</b><span class="hcn-port-dev-lat-unit">ms</span></span></div>
           </div>
-          <div class="hcn-port-foot">Never leaves your hardware.</div>
+          <div class="hcn-port-foot">Yours. Auditable. Forever.</div>
         </div>
 
         <!-- Scene 4 . THE SHOWCASE . your hardware vs their cloud . takes the most real estate -->
@@ -1021,7 +1052,7 @@
               <div class="hcn-race-hud"><span>on-device</span><span class="hcn-ms" id="hcn-ms-r">0 ms</span></div>
             </div>
           </div>
-          <div class="hcn-race-foot"><span><b>7.4x</b> faster</span><span><b>Runs offline.</b></span><span><b>Same answer.</b></span></div>
+          <div class="hcn-race-foot"><span><b>7.4x</b> faster</span><span><b>Lower latency.</b></span><span><b>Same answer.</b></span></div>
         </div>
 
         <!-- Scene 5 . OUTCOME . the audit receipt . premium, no cheesy stamp -->
@@ -1041,7 +1072,7 @@
           <div class="hcn-hero" id="hcn-hero-text"><b>Your own AI</b>, trained on your data. Yours forever.</div>
         </div>
 
-        <noscript><img src="/video/kolm-hero-poster.jpg" alt="kolm: compile a task into one signed file that runs anywhere." width="1200" height="800" decoding="async" loading="lazy"></noscript>
+        <noscript><img src="/video/kolm-hero-poster.jpg" alt="kolm: compile a task into your own AI that runs anywhere." width="1200" height="800" decoding="async" loading="lazy"></noscript>
       </div>
       <div class="hcn-dock">
         <button type="button" class="hcn-pp" id="hcn-pp" aria-label="pause demo" aria-pressed="true"><span class="hcn-pp-ico pause" id="hcn-pp-ico" aria-hidden="true"></span></button>
@@ -1069,20 +1100,12 @@
   </div>
 </section>
 
-<!-- v11.8 . trust-strip social-proof. Built-on-open-standards + receipts +
-     license + spec, rendered as a single quiet row right under the hero
-     demo. Mirrors provider-strip restraint - no cards, no logos. -->
-<section class="trust-strip" aria-label="trust signals">
-  <div class="wrap">
-    <p class="ts-caption">Build it. Train it. Own it. Yours forever.</p>
-    <div class="ts-row">
-      <a class="ts-cell" href="/train"><b>Train</b> on your data</a>
-      <a class="ts-cell" href="/device-transfer"><b>Run</b> on your hardware</a>
-      <a class="ts-cell" href="https://github.com/sneaky-hippo/kolmogorov-stack"><b>Open source</b> on GitHub</a>
-      <a class="ts-cell" href="/openapi.json"><b>Drop-in</b> for OpenAI</a>
-    </div>
-  </div>
-</section>
+<!-- v11.9 wave 108 . trust-strip removed. The caption "Build it. Train it. Own it.
+     Yours forever." duplicated the hero-promise verbatim, and its 4 cells repeated
+     hero-quant content (Built on your data / Receipt on every call). Open-source
+     and Drop-in-for-OpenAI claims moved to hero-quant and hero-moat respectively
+     so frontier proof and product-positioning live in the hero, not in a redundant
+     strip beneath it. -->
 
 <!-- v7.18.2 . provider strip, SOTA-clean. Anthropic / Apple / OpenAI all
      credit upstream providers in a SINGLE quiet row: caption left, providers
@@ -1091,28 +1114,40 @@
      each provider's brand. -->
 <section class="provider-strip" aria-label="frontier models supported">
   <div class="wrap">
-    <p class="ps-caption">Compile from any frontier.</p>
+    <p class="ps-caption">Distill from any frontier. Or any open weight.</p>
     <div class="ps-row">
       <span class="ps-cell">Claude</span>
       <span class="ps-cell">GPT</span>
+      <span class="ps-cell">Gemini</span>
       <span class="ps-cell">Llama</span>
       <span class="ps-cell">Mistral</span>
       <span class="ps-cell">DeepSeek</span>
       <span class="ps-cell">Qwen</span>
-      <span class="ps-cell">Gemini</span>
+      <span class="ps-cell">Phi</span>
     </div>
+    <p class="ps-foot">teacher trace &middot; synthetic data &middot; response distillation &middot; prompt cache &middot; tool-call traces</p>
   </div>
 </section>
 
-<!-- v11 . frontier-inventory band. Surfaces the 42 SOTA techniques shipped in
-     /research. Mirrors provider-strip restraint: top hairline, caption, single
-     row of category counts in display weight. The numbers ARE the badge - no
-     pill, no card, no animation. Anthropic/Linear pattern: proof as typography. -->
-<section class="frontier-strip" aria-label="research basis">
-  <div class="wrap">
-    <p class="fs-caption">Trained with the best techniques in the field, so your model is faster, smaller, and more accurate than the cloud version. <a href="/frontier-stack" class="fs-link">See the stack &rarr;</a></p>
-  </div>
-</section>
+<!-- v11 wave 108 . process band upgraded with specific SOTA techniques per stage.
+     Replaces the W105 short labels with the actual frontier methods kolm runs at each
+     step. Techniques are the proof: every name links a real, documented method (see
+     /research). Wave 108 lesson: "Distill / teacher · synthetic" was too sparse to
+     communicate frontier depth - the user couldn't tell if these were SOTA or marketing
+     buzzwords. Expanded each cell to make the depth measurable. Footer rephrases the
+     CTA to anchor the receipt-verifiability claim. -->
+<!-- v11 wave 112 . frontier-strip DELETED entirely.
+     User: "this is still hideous, its in two uglylayers and this is still both
+     ugly and useless. why the fuck are you saying k = 0.94 what does that even
+     mean? nobody cares about gate cleared receipt sealed have some fucking user
+     empathy". Two waves of edits to the 6-cell process band landed as broken
+     visual wrap (5 cells on top, Run alone on second line) and reader-hostile
+     jargon. The provider-strip above (DISTILL FROM ANY FRONTIER. OR ANY OPEN
+     WEIGHT + 8 model names + technique sub-foot) already carries the frontier
+     proof. The /frontier-stack page exists for curious readers who want the
+     full SOTA stack. Removing the band restores hero → provider-strip → demo
+     rhythm without competing visuals. -->
+
 
 <style>
   /* v7.18.2 . SOTA-clean hero backdrop. Single quiet layer: a very soft warm
@@ -1213,61 +1248,30 @@
     transition: color 200ms ease;
   }
   .ps-cell:hover { color: var(--ink, #faf2e1); }
+  /* wave 108: substance line under the model list. Names the concrete distillation
+     surfaces (teacher trace, synthetic data, etc.) so visitors see what "Distill
+     from any frontier" actually means in practice. */
+  .ps-foot {
+    margin: 22px auto 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-faint, #737c73);
+    letter-spacing: 0.02em;
+    max-width: 720px;
+    line-height: 1.55;
+  }
   [data-theme=light] .provider-strip { border-top-color: rgba(12,14,16,0.06); }
   [data-theme=light] .ps-caption { color: #737c73; }
   [data-theme=light] .ps-cell { color: #4b5158; }
   [data-theme=light] .ps-cell:hover { color: #0c0e10; }
+  [data-theme=light] .ps-foot { color: #6b7178; }
   @media (max-width: 520px) {
     .ps-row { gap: 12px 26px; }
+    .ps-foot { font-size: 11px; padding: 0 12px; }
   }
 
-  /* v11 . frontier-strip mirrors provider-strip restraint. Top hairline,
-     centered caption, single row of 6 category counts with display-weight
-     digits + lowercase labels. No card, no border per cell - the number
-     IS the proof. Footer link routes the curious into /research. */
-  .frontier-strip { padding: 48px 0 56px; border-top: 1px solid var(--line, rgba(255,255,255,0.06)); margin-top: 0; }
-  .frontier-strip .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; text-align: center; }
-  .fs-caption {
-    margin: 0 0 22px;
-    font-size: 13px;
-    color: var(--ink-faint, #737c73);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    font-weight: 500;
-  }
-  .fs-row {
-    display: flex; flex-wrap: wrap; justify-content: center;
-    gap: 14px 36px;
-    align-items: baseline;
-  }
-  .fs-cell {
-    font-size: 14px;
-    color: var(--ink-mute, #b5bdb1);
-    letter-spacing: 0.01em;
-    line-height: 1.3;
-  }
-  .fs-cell b {
-    font-family: var(--mono, ui-monospace, SFMono-Regular, monospace);
-    font-size: clamp(18px, 1.5vw, 22px);
-    font-weight: 500;
-    color: var(--ink, #faf2e1);
-    margin-right: 6px;
-    font-variant-numeric: tabular-nums;
-  }
-  .fs-foot { margin: 22px 0 0; font-size: 12.5px; }
-  .fs-link { color: var(--ink-mute, #b5bdb1); text-decoration: none; border-bottom: 1px solid rgba(236,231,220, 0.20); padding-bottom: 1px; transition: color 160ms, border-color 160ms; }
-  .fs-link:hover { color: var(--ink, #faf2e1); border-bottom-color: rgba(236,231,220, 0.6); }
-  [data-theme=light] .frontier-strip { border-top-color: rgba(12,14,16,0.06); }
-  [data-theme=light] .fs-caption { color: #737c73; }
-  [data-theme=light] .fs-cell { color: #4b5158; }
-  [data-theme=light] .fs-cell b { color: #0c0e10; }
-  [data-theme=light] .fs-link { color: #4b5158; border-bottom-color: rgba(12,14,16,0.18); }
-  [data-theme=light] .fs-link:hover { color: #0c0e10; border-bottom-color: rgba(12,14,16,0.6); }
-  @media (max-width: 720px) {
-    .frontier-strip { padding: 40px 0 44px; }
-    .frontier-strip .wrap { padding: 0 20px; }
-    .fs-row { gap: 12px 20px; }
-  }
+  /* v11 wave 112 . frontier-strip CSS removed. Section deleted from homepage.
+     If we ever want a process band again, /frontier-stack is the home for it. */
 
   /* v11 wave 8 . quant-line (hackGPT 9.2). Single bold quantified claim below
      the demo. Each value mono, each separator a middle-dot. Numbers come from
@@ -1531,6 +1535,49 @@
   [data-theme=light] .hero-quant .hq-link { color: #18171a; border-bottom-color: rgba(24, 23, 26, 0.28); }
   [data-theme=light] .hero-quant .hq-link:hover { border-bottom-color: rgba(24, 23, 26, 0.6); }
 
+  /* hero-artifact . wave 123 . concrete-artifact proof line directly under hero-quant.
+     Every number is reproducible from the linked .kolm's manifest + receipt. */
+  .hero-artifact {
+    display: flex; align-items: center; gap: 6px 10px;
+    margin: 10px 0 0;
+    font-family: var(--mono, ui-monospace);
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--ink-faint, #737c73);
+    flex-wrap: wrap;
+    letter-spacing: 0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-artifact .ha-lab {
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    font-size: 9.5px;
+    padding: 2px 6px 2px;
+    border: 1px solid rgba(126, 240, 210, 0.32);
+    color: #7ef0d2;
+    border-radius: 3px;
+    background: rgba(126, 240, 210, 0.06);
+    line-height: 1;
+  }
+  .hero-artifact .ha-mono {
+    color: var(--ink, #ece7dc);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(236, 231, 220, 0.32);
+    transition: border-color 160ms ease, color 160ms ease;
+  }
+  .hero-artifact .ha-mono:hover { color: #7ef0d2; border-bottom-color: rgba(126, 240, 210, 0.7); }
+  .hero-artifact b { color: var(--ink-mute, #b5bdb1); font-weight: 500; }
+  .hero-artifact .ha-sep { color: var(--ink-faint, #737c73); opacity: 0.45; }
+  @media (max-width: 720px) {
+    .hero-artifact { justify-content: center; text-align: center; font-size: 10.5px; gap: 4px 6px; line-height: 1.65; margin-top: 8px; }
+  }
+  [data-theme=light] .hero-artifact { color: #8a8478; }
+  [data-theme=light] .hero-artifact b { color: #18171a; }
+  [data-theme=light] .hero-artifact .ha-mono { color: #18171a; border-bottom-color: rgba(24, 23, 26, 0.28); }
+  [data-theme=light] .hero-artifact .ha-mono:hover { color: #006a52; border-bottom-color: rgba(0, 132, 102, 0.6); }
+  [data-theme=light] .hero-artifact .ha-lab { border-color: rgba(0, 132, 102, 0.35); color: #006a52; background: rgba(0, 132, 102, 0.06); }
+  [data-theme=light] .hero-artifact .ha-sep { color: #b5b0a3; opacity: 0.7; }
+
   .nl-try { margin: 44px 0 0; max-width: 720px; }
   .nl-try .nl-head { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint, #737c73); text-transform: uppercase; letter-spacing: 0.08em; display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
   .nl-try .nl-head b { color: var(--ink-mute, #b5bdb1); font-weight: 500; text-transform: none; letter-spacing: 0; }
@@ -1768,11 +1815,11 @@
       <span class="ca-num">04</span>
       <h3>Grade it, then ship</h3>
       <p>Tested on examples it has never seen. Ships if it beats your target. If not, you see exactly why.</p>
-      <code class="ca-out">94% accurate &middot; one file, yours</code>
+      <code class="ca-out">passes your target &middot; shipped</code>
     </li>
   </ol>
 
-  <p class="ca-foot">4 minutes &middot; runs on Mac, Linux, and Windows</p>
+  <p class="ca-foot">4 minutes &middot; runs on Mac, Linux, and Windows &middot; <a href="/how-it-works">see how it works &rarr;</a></p>
 </section>
 
 <style>
@@ -1895,52 +1942,131 @@
 <section class="access-anywhere" aria-label="access your AI from anywhere">
   <div class="aa-head">
     <h2>Your AI lives on your machine. <span class="aa-h-soft">Reach it from anywhere.</span></h2>
-    <p class="aa-sub">Your model lives on your hardware. Your laptop, phone, or coding agent all hit the same one. We never see your data. There&rsquo;s nothing for us to leak.</p>
+    <p class="aa-sub">Your model lives on your hardware. Your laptop, phone, coding agent, edge device all hit the same one. We never see your data. There&rsquo;s nothing for us to leak.</p>
   </div>
   <div class="aa-diagram" aria-hidden="true">
-    <div class="aa-mesh">
-      <div class="aa-node aa-node-home" data-label="home">
-        <div class="aa-node-dot"></div>
-        <div class="aa-node-name">.kolm at home</div>
-        <div class="aa-node-meta">your model</div>
+    <div class="kn-stage">
+      <svg class="kn-grid" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <pattern id="kn-dots" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="1" fill="currentColor" opacity="0.18"/>
+          </pattern>
+        </defs>
+        <rect width="1000" height="500" fill="url(#kn-dots)"/>
+      </svg>
+
+      <svg class="kn-paths" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+        <defs>
+          <linearGradient id="kn-grad-tl" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="var(--kn-line-soft)"/>
+            <stop offset="60%" stop-color="var(--kn-line-strong)"/>
+            <stop offset="100%" stop-color="var(--kn-line-strong)"/>
+          </linearGradient>
+          <linearGradient id="kn-grad-tr" x1="1" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--kn-line-soft)"/>
+            <stop offset="60%" stop-color="var(--kn-line-strong)"/>
+            <stop offset="100%" stop-color="var(--kn-line-strong)"/>
+          </linearGradient>
+          <linearGradient id="kn-grad-bl" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0%" stop-color="var(--kn-line-soft)"/>
+            <stop offset="60%" stop-color="var(--kn-line-strong)"/>
+            <stop offset="100%" stop-color="var(--kn-line-strong)"/>
+          </linearGradient>
+          <linearGradient id="kn-grad-br" x1="1" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="var(--kn-line-soft)"/>
+            <stop offset="60%" stop-color="var(--kn-line-strong)"/>
+            <stop offset="100%" stop-color="var(--kn-line-strong)"/>
+          </linearGradient>
+          <radialGradient id="kn-hub-glow" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0%" stop-color="var(--kn-hub-glow-in)" stop-opacity="0.55"/>
+            <stop offset="55%" stop-color="var(--kn-hub-glow-mid)" stop-opacity="0.16"/>
+            <stop offset="100%" stop-color="var(--kn-hub-glow-mid)" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+
+        <!-- Soft hub aura behind everything -->
+        <ellipse cx="500" cy="250" rx="280" ry="180" fill="url(#kn-hub-glow)"/>
+
+        <!-- Connecting curves: corner card edge to hub edge.
+             Hub box ~ (380,200) to (620,300). -->
+        <path id="kn-p-laptop" d="M 215 130 C 320 180, 400 210, 420 230" stroke="url(#kn-grad-tl)" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-dasharray="0"/>
+        <path id="kn-p-phone"  d="M 785 130 C 680 180, 600 210, 580 230" stroke="url(#kn-grad-tr)" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-dasharray="0"/>
+        <path id="kn-p-agent"  d="M 215 370 C 320 320, 400 290, 420 270" stroke="url(#kn-grad-bl)" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-dasharray="0"/>
+        <path id="kn-p-edge"   d="M 785 370 C 680 320, 600 290, 580 270" stroke="url(#kn-grad-br)" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-dasharray="0"/>
+
+        <!-- Animated packets flowing toward the hub (data is local; flow is bidirectional in narrative). -->
+        <circle class="kn-pkt" r="2.6" fill="var(--kn-pkt)">
+          <animateMotion dur="3.4s" repeatCount="indefinite" rotate="auto">
+            <mpath href="#kn-p-laptop"/>
+          </animateMotion>
+        </circle>
+        <circle class="kn-pkt" r="2.6" fill="var(--kn-pkt)">
+          <animateMotion dur="3.8s" begin="0.9s" repeatCount="indefinite" rotate="auto">
+            <mpath href="#kn-p-phone"/>
+          </animateMotion>
+        </circle>
+        <circle class="kn-pkt" r="2.6" fill="var(--kn-pkt)">
+          <animateMotion dur="3.6s" begin="1.7s" repeatCount="indefinite" rotate="auto">
+            <mpath href="#kn-p-agent"/>
+          </animateMotion>
+        </circle>
+        <circle class="kn-pkt" r="2.6" fill="var(--kn-pkt)">
+          <animateMotion dur="4.0s" begin="2.4s" repeatCount="indefinite" rotate="auto">
+            <mpath href="#kn-p-edge"/>
+          </animateMotion>
+        </circle>
+      </svg>
+
+      <!-- Central hub: rich tile with .kolm signature and K-score -->
+      <div class="kn-hub" role="img" aria-label=".kolm artifact running on your hardware">
+        <div class="kn-hub-card">
+          <div class="kn-hub-row">
+            <span class="kn-hub-dot"></span>
+            <span class="kn-hub-eb">.kolm at home</span>
+          </div>
+          <div class="kn-hub-name">your model</div>
+          <div class="kn-hub-meta">
+            <span class="kn-hub-k">K=0.988</span>
+            <span class="kn-hub-sep">&middot;</span>
+            <span class="kn-hub-verb">signed</span>
+            <span class="kn-hub-sep">&middot;</span>
+            <span class="kn-hub-verb">local-exec</span>
+          </div>
+          <div class="kn-hub-bar"><span></span></div>
+        </div>
       </div>
-      <div class="aa-spokes">
-        <div class="aa-spoke aa-spoke-1"></div>
-        <div class="aa-spoke aa-spoke-2"></div>
-        <div class="aa-spoke aa-spoke-3"></div>
-        <div class="aa-spoke aa-spoke-4"></div>
+
+      <!-- 4 device cards at the corners -->
+      <div class="kn-dev kn-dev-tl">
+        <div class="kn-dev-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M2 20h20"/><path d="M9 20l1-4M15 20l-1-4"/></svg>
+        </div>
+        <div class="kn-dev-name">laptop</div>
+        <div class="kn-dev-meta">cafe &middot; airplane &middot; offline</div>
       </div>
-      <div class="aa-clients">
-        <div class="aa-client" data-where="laptop">
-          <div class="aa-client-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M2 20h20"/></svg>
-          </div>
-          <div class="aa-client-label">laptop</div>
-          <div class="aa-client-meta">cafe, airplane</div>
+      <div class="kn-dev kn-dev-tr">
+        <div class="kn-dev-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 18h4"/></svg>
         </div>
-        <div class="aa-client" data-where="phone">
-          <div class="aa-client-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>
-          </div>
-          <div class="aa-client-label">phone</div>
-          <div class="aa-client-meta">anywhere with signal</div>
+        <div class="kn-dev-name">phone</div>
+        <div class="kn-dev-meta">on-device &middot; coreml / onnx</div>
+      </div>
+      <div class="kn-dev kn-dev-bl">
+        <div class="kn-dev-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M7 21h10M9 17v4M15 17v4"/><path d="M7 8l2 2-2 2M11 12h4"/></svg>
         </div>
-        <div class="aa-client" data-where="agent">
-          <div class="aa-client-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>
-          </div>
-          <div class="aa-client-label">coding agent</div>
-          <div class="aa-client-meta">Cursor, Claude Code</div>
+        <div class="kn-dev-name">coding agent</div>
+        <div class="kn-dev-meta">cursor &middot; claude code &middot; mcp</div>
+      </div>
+      <div class="kn-dev kn-dev-br">
+        <div class="kn-dev-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="12" r="1.4"/><path d="M12 10h5M12 14h5"/></svg>
         </div>
-        <div class="aa-client" data-where="edge">
-          <div class="aa-client-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>
-          </div>
-          <div class="aa-client-label">edge device</div>
-          <div class="aa-client-meta">factory, kiosk, robot</div>
-        </div>
+        <div class="kn-dev-name">edge device</div>
+        <div class="kn-dev-meta">factory &middot; kiosk &middot; robot</div>
       </div>
     </div>
+
     <div class="aa-flow-line">
       <span class="aa-flow-pulse"></span>
       <span class="aa-flow-text">runs locally &middot; data stays with you &middot; no vendor round-trip</span>
@@ -1989,49 +2115,115 @@
   .access-anywhere .aa-h-soft { color: var(--ink-mute, #b5bdb1); display: block; }
   .access-anywhere .aa-sub { font-size: 17px; line-height: 1.5; color: var(--ink-mute, #b5bdb1); margin: 0 auto; max-width: 60ch; }
 
-  /* Mesh diagram */
-  .access-anywhere .aa-diagram { margin: 0 auto 64px; max-width: 920px; }
-  .access-anywhere .aa-mesh { position: relative; height: 320px; margin: 0 auto; }
-  .access-anywhere .aa-node-home {
+  /* Network diagram · SVG-based with real connecting curves + animated packets */
+  .access-anywhere .aa-diagram {
+    margin: 0 auto 64px; max-width: 1040px;
+    --kn-line-soft: rgba(255,255,255,0.04);
+    --kn-line-strong: rgba(126,240,210,0.55);
+    --kn-hub-glow-in: rgba(126,240,210,0.32);
+    --kn-hub-glow-mid: rgba(126,240,210,0.18);
+    --kn-pkt: #7ef0d2;
+  }
+  [data-theme="light"] .access-anywhere .aa-diagram {
+    --kn-line-soft: rgba(24,23,26,0.04);
+    --kn-line-strong: rgba(10,136,98,0.55);
+    --kn-hub-glow-in: rgba(10,136,98,0.28);
+    --kn-hub-glow-mid: rgba(10,136,98,0.14);
+    --kn-pkt: #0a8862;
+  }
+
+  .access-anywhere .kn-stage {
+    position: relative; width: 100%;
+    aspect-ratio: 1000 / 500;
+    max-height: 460px;
+    color: var(--ink, #faf2e1);
+  }
+  [data-theme="light"] .access-anywhere .kn-stage { color: #1f2429; }
+
+  .access-anywhere .kn-grid { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.55; pointer-events: none; }
+  [data-theme="light"] .access-anywhere .kn-grid { opacity: 0.8; }
+  .access-anywhere .kn-paths { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  .access-anywhere .kn-pkt { filter: drop-shadow(0 0 4px var(--kn-pkt)); }
+
+  /* Central hub (rich .kolm tile) */
+  .access-anywhere .kn-hub {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    text-align: center; z-index: 3;
-    padding: 22px 24px; border-radius: 14px;
-    background: linear-gradient(180deg, rgba(126,240,210,0.10), rgba(126,240,210,0.04));
-    border: 1px solid rgba(126,240,210,0.32);
-    box-shadow: 0 0 0 1px rgba(126,240,210,0.06), 0 12px 40px -16px rgba(126,240,210,0.30);
-    min-width: 180px;
+    z-index: 3;
   }
-  .access-anywhere .aa-node-dot { width: 8px; height: 8px; border-radius: 50%; background: #7ef0d2; box-shadow: 0 0 12px rgba(126,240,210,0.75); margin: 0 auto 10px; }
-  .access-anywhere .aa-node-name { font-family: var(--mono); font-size: 13px; color: var(--ink, #faf2e1); letter-spacing: 0.02em; }
-  .access-anywhere .aa-node-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-faint, #737c73); margin-top: 4px; letter-spacing: 0.12em; text-transform: uppercase; }
-
-  .access-anywhere .aa-spokes { position: absolute; inset: 0; pointer-events: none; }
-  .access-anywhere .aa-spoke {
-    position: absolute; top: 50%; left: 50%; height: 1px; transform-origin: 0 50%;
-    background: linear-gradient(90deg, rgba(255,255,255,0.22), rgba(255,255,255,0.02));
-    width: 240px; opacity: 0.55;
+  .access-anywhere .kn-hub-card {
+    padding: 18px 22px 16px; border-radius: 14px; min-width: 220px;
+    background: linear-gradient(180deg, rgba(126,240,210,0.12), rgba(126,240,210,0.04));
+    border: 1px solid rgba(126,240,210,0.38);
+    box-shadow:
+      0 0 0 1px rgba(126,240,210,0.08),
+      0 18px 60px -20px rgba(126,240,210,0.40),
+      inset 0 0 0 1px rgba(255,255,255,0.04);
+    backdrop-filter: blur(6px);
+    text-align: left;
   }
-  .access-anywhere .aa-spoke-1 { transform: translateY(-50%) rotate(-150deg); }
-  .access-anywhere .aa-spoke-2 { transform: translateY(-50%) rotate(-30deg); }
-  .access-anywhere .aa-spoke-3 { transform: translateY(-50%) rotate(150deg); }
-  .access-anywhere .aa-spoke-4 { transform: translateY(-50%) rotate(30deg); }
+  [data-theme="light"] .access-anywhere .kn-hub-card {
+    background: linear-gradient(180deg, rgba(10,136,98,0.10), rgba(10,136,98,0.04));
+    border-color: rgba(10,136,98,0.36);
+    box-shadow:
+      0 0 0 1px rgba(10,136,98,0.06),
+      0 14px 48px -20px rgba(10,136,98,0.28),
+      inset 0 0 0 1px rgba(255,255,255,0.55);
+  }
+  .access-anywhere .kn-hub-row { display: flex; align-items: center; gap: 8px; }
+  .access-anywhere .kn-hub-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #7ef0d2;
+    box-shadow: 0 0 12px rgba(126,240,210,0.85);
+    animation: kn-pulse 2.4s ease-in-out infinite;
+  }
+  [data-theme="light"] .access-anywhere .kn-hub-dot { background: #0a8862; box-shadow: 0 0 12px rgba(10,136,98,0.7); }
+  @keyframes kn-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+  .access-anywhere .kn-hub-eb { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-mute, #b5bdb1); }
+  [data-theme="light"] .access-anywhere .kn-hub-eb { color: #45413a; }
+  .access-anywhere .kn-hub-name { font-family: var(--mono); font-size: 16px; color: var(--ink, #faf2e1); margin: 8px 0 6px; letter-spacing: 0.01em; }
+  [data-theme="light"] .access-anywhere .kn-hub-name { color: #18171a; }
+  .access-anywhere .kn-hub-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; }
+  .access-anywhere .kn-hub-k { color: var(--kolm-accent, #10b981); font-weight: 500; }
+  .access-anywhere .kn-hub-sep { color: var(--ink-faint, #737c73); }
+  .access-anywhere .kn-hub-verb { color: var(--ink-mute, #b5bdb1); }
+  [data-theme="light"] .access-anywhere .kn-hub-verb { color: #45413a; }
+  .access-anywhere .kn-hub-bar {
+    margin-top: 10px; height: 2px; border-radius: 2px;
+    background: rgba(255,255,255,0.06);
+    overflow: hidden; position: relative;
+  }
+  [data-theme="light"] .access-anywhere .kn-hub-bar { background: rgba(24,23,26,0.06); }
+  .access-anywhere .kn-hub-bar span {
+    position: absolute; left: 0; top: 0; height: 100%; width: 40%;
+    background: linear-gradient(90deg, transparent, var(--kolm-accent, #10b981), transparent);
+    animation: kn-sweep 2.6s ease-in-out infinite;
+  }
+  @keyframes kn-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
 
-  .access-anywhere .aa-clients { position: absolute; inset: 0; }
-  .access-anywhere .aa-client {
-    position: absolute; text-align: center; min-width: 130px;
-    padding: 14px 14px 12px;
+  /* 4 corner device cards · positioned to match SVG path endpoints */
+  .access-anywhere .kn-dev {
+    position: absolute; min-width: 142px; max-width: 170px;
+    padding: 14px 14px 12px; border-radius: 12px;
+    background: rgba(255,255,255,0.03);
     border: 1px solid var(--line, rgba(255,255,255,0.10));
-    border-radius: 12px;
-    background: rgba(255,255,255,0.02);
     backdrop-filter: blur(8px);
+    text-align: left; z-index: 2;
   }
-  .access-anywhere .aa-client[data-where="laptop"] { top: 8%; left: 6%; }
-  .access-anywhere .aa-client[data-where="phone"]  { top: 8%; right: 6%; }
-  .access-anywhere .aa-client[data-where="agent"]  { bottom: 8%; left: 6%; }
-  .access-anywhere .aa-client[data-where="edge"]   { bottom: 8%; right: 6%; }
-  .access-anywhere .aa-client-icon { color: var(--ink, #faf2e1); margin-bottom: 6px; }
-  .access-anywhere .aa-client-label { font-family: var(--mono); font-size: 12px; color: var(--ink, #faf2e1); letter-spacing: 0.04em; }
-  .access-anywhere .aa-client-meta { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint, #737c73); margin-top: 2px; letter-spacing: 0.08em; text-transform: uppercase; }
+  [data-theme="light"] .access-anywhere .kn-dev {
+    background: #ffffff;
+    border-color: rgba(24,23,26,0.10);
+    box-shadow: 0 1px 2px rgba(24,23,26,0.04);
+  }
+  .access-anywhere .kn-dev-tl { top: 6%;  left: 4%;  transform: translate(0, 0); }
+  .access-anywhere .kn-dev-tr { top: 6%;  right: 4%; transform: translate(0, 0); }
+  .access-anywhere .kn-dev-bl { bottom: 6%; left: 4%; transform: translate(0, 0); }
+  .access-anywhere .kn-dev-br { bottom: 6%; right: 4%; transform: translate(0, 0); }
+  .access-anywhere .kn-dev-icon { color: var(--kolm-accent, #10b981); margin-bottom: 8px; line-height: 0; }
+  .access-anywhere .kn-dev-name { font-family: var(--mono); font-size: 12.5px; color: var(--ink, #faf2e1); letter-spacing: 0.04em; }
+  [data-theme="light"] .access-anywhere .kn-dev-name { color: #18171a; }
+  .access-anywhere .kn-dev-meta { font-family: var(--mono); font-size: 10px; color: var(--ink-faint, #737c73); margin-top: 4px; letter-spacing: 0.08em; line-height: 1.5; }
+  [data-theme="light"] .access-anywhere .kn-dev-meta { color: #8a8478; }
 
   .access-anywhere .aa-flow-line {
     display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -2103,24 +2295,30 @@
     .access-anywhere .aa-rows { grid-template-columns: 1fr; gap: 14px; max-width: 560px; }
   }
 
+  @media (max-width: 980px) {
+    .access-anywhere .kn-stage { aspect-ratio: 900 / 560; max-height: 560px; }
+    .access-anywhere .kn-hub-card { min-width: 200px; padding: 16px 18px 14px; }
+    .access-anywhere .kn-dev { min-width: 124px; max-width: 150px; padding: 12px 12px 10px; }
+  }
   @media (max-width: 720px) {
     .access-anywhere { padding: 0 20px; }
     .access-anywhere .aa-head { margin: 0 auto 32px; }
     .access-anywhere h2 { font-size: clamp(28px, 7vw, 36px); }
     .access-anywhere .aa-sub { font-size: 15.5px; }
     .access-anywhere .aa-diagram { margin-bottom: 36px; }
-    .access-anywhere .aa-mesh { height: 280px; }
-    .access-anywhere .aa-node-home { min-width: 140px; padding: 14px 14px; }
-    .access-anywhere .aa-node-name { font-size: 12px; }
-    .access-anywhere .aa-node-meta { font-size: 10px; }
-    .access-anywhere .aa-client { min-width: 96px; padding: 10px 8px 8px; }
-    .access-anywhere .aa-client[data-where="laptop"] { top: 0%; left: 0%; }
-    .access-anywhere .aa-client[data-where="phone"]  { top: 0%; right: 0%; }
-    .access-anywhere .aa-client[data-where="agent"]  { bottom: 0%; left: 0%; }
-    .access-anywhere .aa-client[data-where="edge"]   { bottom: 0%; right: 0%; }
-    .access-anywhere .aa-client-label { font-size: 10.5px; }
-    .access-anywhere .aa-client-meta { font-size: 9.5px; }
-    .access-anywhere .aa-spoke { width: 130px; }
+    .access-anywhere .kn-stage { aspect-ratio: 600 / 620; max-height: 620px; }
+    .access-anywhere .kn-hub-card { min-width: 168px; padding: 14px 14px 12px; }
+    .access-anywhere .kn-hub-name { font-size: 14px; }
+    .access-anywhere .kn-hub-eb { font-size: 10px; }
+    .access-anywhere .kn-hub-meta { font-size: 9.5px; }
+    .access-anywhere .kn-dev { min-width: 104px; max-width: 134px; padding: 10px 10px 8px; }
+    .access-anywhere .kn-dev-tl { top: 2%;  left: 2%; }
+    .access-anywhere .kn-dev-tr { top: 2%;  right: 2%; }
+    .access-anywhere .kn-dev-bl { bottom: 2%; left: 2%; }
+    .access-anywhere .kn-dev-br { bottom: 2%; right: 2%; }
+    .access-anywhere .kn-dev-icon svg { width: 22px; height: 22px; }
+    .access-anywhere .kn-dev-name { font-size: 11px; }
+    .access-anywhere .kn-dev-meta { font-size: 9.5px; }
     .access-anywhere .aa-flow-line { font-size: 10.5px; line-height: 1.5; padding: 0 8px; }
     .access-anywhere .aa-rows { margin-bottom: 28px; }
     .access-anywhere .aa-row { padding: 18px 16px; }
@@ -2134,7 +2332,7 @@
   <p class="uc-sub">Same idea every time: type a sentence, get an AI that runs where you choose. For regulated environments (healthcare first, then finance and legal), everyday product features, or fully on-device.</p>
 
   <div class="uc-tabs" role="tablist" aria-label="industry">
-    <button type="button" class="uc-tab is-on" data-tab="regulated" data-tagline="Clinical workflows first. PHI never leaves." role="tab" aria-selected="true" aria-controls="uc-panel-regulated">regulated</button>
+    <button type="button" class="uc-tab is-on" data-tab="regulated" data-tagline="Clinical workflows first. PHI stays inside the customer-hosted bridge." role="tab" aria-selected="true" aria-controls="uc-panel-regulated">regulated</button>
     <button type="button" class="uc-tab" data-tab="everyday" data-tagline="From coding agents to consumer apps." role="tab" aria-selected="false" aria-controls="uc-panel-everyday">everyday AI</button>
     <button type="button" class="uc-tab" data-tab="device" data-tagline="From a phone in your pocket to a box on the factory floor." role="tab" aria-selected="false" aria-controls="uc-panel-device">on-device</button>
   </div>
@@ -2167,7 +2365,7 @@
       <a href="/healthcare" class="uc-card uc-card-reg">
         <span class="uc-vert">healthcare</span>
         <h3>Triage prior-auth. Draft encounter notes. Code visits.</h3>
-        <p>Train a small model on your clinical workflows. Runs inside the BAA-bounded environment your CISO already trusts. PHI never leaves your hosts because the model is local. Compliance gets a receipt on every call.</p>
+        <p>Train a small model on your clinical workflows. Runs inside the BAA-bounded environment your CISO already trusts. PHI stays inside the customer-hosted bridge your hosts because the model is local. Compliance gets a receipt on every call.</p>
         <span class="uc-tag">healthcare &rarr;</span>
       </a>
       <a href="/finance" class="uc-card uc-card-reg">
@@ -2231,11 +2429,25 @@
         t.setAttribute('aria-selected', on ? 'true' : 'false');
         t.tabIndex = on ? 0 : -1;
         if (on && headline && t.dataset.tagline) {
+          // v60-mobile-ghost-fix: swap only AFTER opacity fully reaches 0 + hide
+          // visibility synchronously so sub-pixel residual paint can't bleed
+          // through the iOS Safari URL bar overlay on mobile dark mode.
+          if (headline._ucSwapT) { clearTimeout(headline._ucSwapT); }
           headline.style.opacity = '0';
-          setTimeout(function () {
+          headline.style.pointerEvents = 'none';
+          headline._ucSwapT = setTimeout(function () {
+            // hide compositor layer before mutating text so any residual
+            // 1-2px alpha paint cannot show the outgoing string under the URL bar
+            headline.style.visibility = 'hidden';
             headline.textContent = t.dataset.tagline;
-            headline.style.opacity = '1';
-          }, 140);
+            // force a paint of the hidden state, then reveal next frame
+            void headline.offsetHeight;
+            requestAnimationFrame(function () {
+              headline.style.visibility = 'visible';
+              headline.style.opacity = '1';
+              headline.style.pointerEvents = '';
+            });
+          }, 220);
         }
       });
       panels.forEach(function (p) {
@@ -2270,6 +2482,30 @@
       idx = (idx + 1) % order.length;
       show(order[idx]);
     }, 6000);
+    // v7.24: center the active pill inside the scrollable tab bar on load so
+    // the leading edge is never clipped on narrow viewports.
+    // wave 104: switched from scrollIntoView() to direct scrollLeft to avoid
+    // the implicit page-level vertical scroll that scrollIntoView triggers
+    // even with block:'nearest'. first-visit traffic was landing mid-page
+    // instead of at the hero. only horizontal centering inside the tab
+    // strip is needed; window.scrollY must stay 0.
+    function centerActiveTab() {
+      var tabsEl = document.querySelector('.uc-strip .uc-tabs');
+      if (!tabsEl) return;
+      var active = tabsEl.querySelector('.uc-tab.is-on') || tabsEl.querySelector('.uc-tab.is-active');
+      if (!active) return;
+      try {
+        var tabsRect = tabsEl.getBoundingClientRect();
+        var activeRect = active.getBoundingClientRect();
+        var delta = (activeRect.left + activeRect.width / 2) - (tabsRect.left + tabsRect.width / 2);
+        tabsEl.scrollLeft += delta;
+      } catch (e) { /* layout not ready, skip */ }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', centerActiveTab);
+    } else {
+      centerActiveTab();
+    }
   })();
 </script>
 
@@ -2363,13 +2599,11 @@
   }
   [data-theme=light] .bottom-cta .bc-sub { color: #4b5158; }
 
-  /* Mobile UX: bigger tap targets in footer grid + ts-cell trust-strip chips */
+  /* Mobile UX: bigger tap targets in footer grid (wave 112: .fs-link removed with frontier-strip) */
   @media (max-width: 720px) {
     footer.site .footer-grid > div { display: flex; flex-direction: column; gap: 8px !important; }
     footer.site .footer-grid > div h4 { margin-bottom: 4px; }
     footer.site .footer-grid a { display: flex; align-items: center; min-height: 32px; padding: 4px 0; line-height: 1.3; }
-    .ts-cell { min-height: 32px; padding: 6px 10px; display: inline-flex; align-items: center; }
-    .fs-link { min-height: 32px; display: inline-flex; align-items: center; padding: 4px 0; }
     .hp-link, .hq-link { min-height: 32px; padding: 4px 8px; display: inline-flex; align-items: center; }
     .aa-foot-link { min-height: 32px; padding: 4px 8px; display: inline-flex; align-items: center; }
     .uc-tab { min-height: 36px; padding: 8px 14px !important; }
@@ -2405,6 +2639,7 @@
       <div>
         <h4>Trust</h4>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/case-studies">Case studies</a>
         <a href="/hub">Hub</a>
         <a href="/registry">Registry</a>
@@ -2414,6 +2649,7 @@
       <div>
         <h4>Industries</h4>
         <a href="/healthcare">Healthcare</a>
+        <a href="/health-insurance">Health insurance</a>
         <a href="/finance">Finance</a>
         <a href="/legal">Legal</a>
         <a href="/compliance">Compliance</a>
@@ -2794,7 +3030,7 @@
       { id: 0, start: 0,    end: 4000,  title: 'scene 01 . describe',      caption: 'Describe what you want. One prompt in, one private file out.' },
       { id: 1, start: 4000, end: 8500,  title: 'scene 02 . train',         caption: 'Accuracy climbs past your target. Measured on your data.' },
       { id: 2, start: 8500, end: 12500, title: 'scene 03 . run anywhere',  caption: 'Same model. Mac, iPhone, browser, your server.' },
-      { id: 3, start: 12500,end: 21000, title: 'scene 04 . fast',          caption: '7.4x faster. Runs offline. Same answer.' },
+      { id: 3, start: 12500,end: 21000, title: 'scene 04 . fast',          caption: '7.4x faster. Lower latency. Same answer.' },
       { id: 4, start: 21000,end: 25000, title: 'scene 05 . ship',          caption: 'Your AI. Audit-ready. Forever.' }
     ];
     var TOTAL = TL[TL.length - 1].end;
@@ -2802,9 +3038,9 @@
 
     // Rotating prompt examples for scene 1. Each loop iteration picks the next.
     var PROMPT_ROTATION = [
-      { text: 'extract PHI from clinical notes',         artifact: 'phi-redactor.kolm', size: '82 MB',  k: 'K=0.94' },
-      { text: 'classify support tickets by urgency',     artifact: 'triage.kolm',       size: '64 MB',  k: 'K=0.91' },
-      { text: 'redact PII from invoices',                artifact: 'invoice.kolm',      size: '54 MB',  k: 'K=0.95' }
+      { text: 'extract PHI from clinical notes',         artifact: 'phi-redactor.kolm', size: '82 MB',  k: '94% pass' },
+      { text: 'classify support tickets by urgency',     artifact: 'triage.kolm',       size: '64 MB',  k: '91% pass' },
+      { text: 'redact PII from invoices',                artifact: 'invoice.kolm',      size: '54 MB',  k: '95% pass' }
     ];
 
     // Run race tokens (pre-baked output, revealed char-by-char).
@@ -3042,10 +3278,10 @@
           var kHtml = pct + '% (target 85%)';
           if (recK.innerHTML !== kHtml) recK.innerHTML = kHtml;
         }
-        // Keep "kolm verify <artifact>" row tracking the rotation.
+        // Keep "kolm inspect <artifact>" row tracking the rotation.
         var recVerify = document.querySelector('#hcn-scene-4 .hcn-rec-row[data-rr="3"] .hcn-rec-val');
         if (recVerify && recPick) {
-          var verifyHtml = '<b>kolm verify ' + recPick.artifact + '</b>';
+          var verifyHtml = '<b> kolm inspect ' + recPick.artifact + '</b>';
           if (recVerify.innerHTML !== verifyHtml) recVerify.innerHTML = verifyHtml;
         }
         // Stagger receipt rows (4 rows: model, accuracy, built, verify).

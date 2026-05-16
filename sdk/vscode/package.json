@@ -1,10 +1,10 @@
 {
-  "name": "recipe-vscode",
-  "displayName": "Recipe — Show how once. Run forever.",
-  "description": "Replace repeat LLM-as-judge calls with deterministic Recipes. Selects an Anthropic/OpenAI call in your editor → mints a Recipe → swaps the call inline.",
-  "version": "0.1.0",
+  "name": "kolm-vscode",
+  "displayName": "Kolm — Compile your AI behavior into a signed file",
+  "description": "Compile, inspect, verify, and run .kolm artifacts without leaving your editor. Detects LLM calls and offers to swap them for a signed, deterministic kolm artifact.",
+  "version": "0.2.0",
   "publisher": "kolmogorov",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "homepage": "https://kolm.ai",
   "repository": {
     "type": "git",
@@ -16,51 +16,74 @@
   },
   "categories": ["AI", "Other", "Programming Languages"],
   "keywords": [
-    "recipe",
+    "kolm",
+    "kolmogorov",
     "llm",
     "claude",
     "openai",
-    "classifier",
-    "synthesis",
-    "agents"
+    "anthropic",
+    "artifact",
+    "compile",
+    "verify",
+    "k-score",
+    "receipt",
+    ".kolm"
   ],
   "activationEvents": [
     "onLanguage:javascript",
     "onLanguage:typescript",
-    "onLanguage:python"
+    "onLanguage:python",
+    "onCommand:kolm.inspect",
+    "onCommand:kolm.verify",
+    "onCommand:kolm.run",
+    "onCommand:kolm.compile",
+    "onCommand:kolm.search",
+    "onCommand:kolm.openConsole",
+    "onCommand:kolm.replaceLLMCall"
   ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      { "command": "recipe.synthesizeFromSelection", "title": "Recipe: Synthesize from selection" },
-      { "command": "recipe.runRecipe",                "title": "Recipe: Run a recipe" },
-      { "command": "recipe.search",                   "title": "Recipe: Search the registry" },
-      { "command": "recipe.replaceLLMCall",           "title": "Recipe: Replace this LLM call with a recipe" },
-      { "command": "recipe.openConsole",              "title": "Recipe: Open Console" }
+      { "command": "kolm.inspect",         "title": "Kolm: Inspect this .kolm artifact" },
+      { "command": "kolm.verify",          "title": "Kolm: Verify this .kolm artifact" },
+      { "command": "kolm.run",             "title": "Kolm: Run a .kolm artifact with an input" },
+      { "command": "kolm.compile",         "title": "Kolm: Compile a new artifact from a spec" },
+      { "command": "kolm.search",          "title": "Kolm: Search the public registry" },
+      { "command": "kolm.replaceLLMCall",  "title": "Kolm: Replace this LLM call with a kolm artifact" },
+      { "command": "kolm.openConsole",     "title": "Kolm: Open the dashboard" }
     ],
     "menus": {
       "editor/context": [
-        { "command": "recipe.synthesizeFromSelection", "group": "1_modification", "when": "editorHasSelection" },
-        { "command": "recipe.replaceLLMCall",          "group": "1_modification", "when": "editorHasSelection" }
+        { "command": "kolm.replaceLLMCall", "group": "1_modification", "when": "editorHasSelection" }
+      ],
+      "explorer/context": [
+        { "command": "kolm.inspect", "when": "resourceExtname == .kolm", "group": "navigation" },
+        { "command": "kolm.verify",  "when": "resourceExtname == .kolm", "group": "navigation" },
+        { "command": "kolm.run",     "when": "resourceExtname == .kolm", "group": "navigation" }
       ]
     },
     "configuration": {
-      "title": "Recipe",
+      "title": "Kolm",
       "properties": {
-        "recipe.apiKey": {
+        "kolm.apiKey": {
           "type": "string",
           "default": "",
-          "description": "Recipe API key (ks_…). Get one at https://kolm.ai/signup"
+          "description": "Kolm API key (ks_...). Get one at https://kolm.ai/signup. Falls back to KOLM_API_KEY env var."
         },
-        "recipe.baseUrl": {
+        "kolm.baseUrl": {
           "type": "string",
           "default": "https://kolm.ai",
-          "description": "Override Recipe API base URL"
+          "description": "Kolm API base URL. Default points at the hosted service."
         },
-        "recipe.suggestReplacements": {
+        "kolm.suggestReplacements": {
           "type": "boolean",
           "default": true,
-          "description": "Show inline CodeLens suggestions on detected LLM calls"
+          "description": "Show inline CodeLens suggestions on detected LLM calls."
+        },
+        "kolm.showRestEquivalent": {
+          "type": "boolean",
+          "default": true,
+          "description": "After running a command, log the equivalent REST call so the editor doubles as an API tutorial."
         }
       }
     }

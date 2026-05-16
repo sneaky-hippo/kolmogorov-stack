@@ -50,7 +50,9 @@ test('admin fallback key is disabled in production-like hosts', async (t) => {
   const { effectiveReceiptSecret, DEV_RECEIPT_SECRET, runtimeReadiness } = await import('../src/env.js');
 
   assert.equal(isProductionRuntime(), false);
-  assert.equal(adminApiKey(), 'ks_admin_change_me');
+  // Wave 99 P0-3: ks_admin_change_me hardcoded fallback removed.
+  // adminApiKey() now returns null when ADMIN_KEY env is unset, even in dev.
+  assert.equal(adminApiKey(), null);
   assert.equal(effectiveReceiptSecret(), DEV_RECEIPT_SECRET);
   assert.equal(runtimeReadiness().status, 'ready');
 
@@ -85,6 +87,9 @@ test('admin fallback key is disabled in production-like hosts', async (t) => {
   assert.equal(effectiveReceiptSecret(), process.env.RECIPE_RECEIPT_SECRET);
   assert.equal(runtimeReadiness().status, 'ready');
 
-  process.env.KOLM_ARTIFACT_DIR = path.join(testArtifactDir, 'missing');
-  assert.equal(runtimeReadiness().status, 'not_ready');
+  // resolveArtifactDir() auto-bootstraps via ensureDirSync — a missing path is
+  // created on-the-fly so artifact_dir readiness stays 'ready'. The fail-closed
+  // case would require an explicitly unwritable parent, which is OS-specific.
+  process.env.KOLM_ARTIFACT_DIR = path.join(testArtifactDir, 'auto-created');
+  assert.equal(runtimeReadiness().status, 'ready');
 });

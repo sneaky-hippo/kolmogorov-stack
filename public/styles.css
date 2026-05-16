@@ -67,6 +67,12 @@ body::before,
 body::after { content: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .brand .brand-dot { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 ::selection { background: rgba(236,231,220, 0.38); color: #fff; }
 
@@ -983,6 +989,23 @@ p code, li code {
 .btn.ghost:hover { background: rgba(236,231,220,0.08); border-color: var(--line-stronger); }
 .btn.accent { background: rgba(126,240,210, 0.07); color: #c1f5e3; border-color: rgba(126,240,210, 0.32); }
 .btn.accent:hover { background: rgba(126,240,210, 0.14); color: #d6f8e8; border-color: rgba(126,240,210, 0.5); box-shadow: 0 0 0 1px rgba(126,240,210, 0.10); }
+/* SOTA focus-visible rings: keyboard-only, never mouse. */
+.btn:focus-visible,
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+.btn:focus-visible { outline-offset: 3px; }
+/* Subtle press feedback on every button. */
+.btn:active { transform: translateY(0.5px); }
+.btn { transition: background 120ms ease, border-color 120ms ease, color 120ms ease, transform 80ms ease, box-shadow 160ms ease; }
 
 /* ============================================================
    Install tabs --bun-archetype. $ prompt, copy on click.
@@ -1318,7 +1341,9 @@ pre.terminal .num { color: var(--accent-amber); }
   border: 1px solid var(--line);
   border-radius: var(--r);
   padding: 18px 20px;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
+a.card:hover { border-color: var(--line-strong); }
 .card h3 {
   font-size: 15px; font-weight: 500;
   margin: 0 0 6px;
@@ -1462,37 +1487,44 @@ footer.site .wrap {
   grid-template-columns: 1fr auto;
   gap: 24px; align-items: start;
 }
-@media (max-width: 720px) {
+/* v7.17: stack footer-tag under the link grid earlier so the 5-col grid
+   always has full row width to render horizontally. */
+@media (max-width: 1024px) {
   .site-footer .wrap,
   footer.site .wrap { grid-template-columns: 1fr; }
+  footer.site .footer-tag { text-align: left; max-width: 100%; }
 }
 .site-footer .meta { font-family: var(--mono); }
 .site-footer .meta a { color: var(--ink-mute); }
 .site-footer .meta a:hover { color: var(--ink); }
+/* v7.17: footer-grid renders as a true 5-column horizontal grid at >=900px.
+   Previously used `repeat(5, auto)` which collapsed columns to content width
+   inside the 1fr cell of the parent `.wrap`, producing one vertical stack
+   on common widths. minmax(0,1fr) forces all 5 columns to share width evenly
+   and never overflow their cell. */
 .site-footer .links,
 footer.site .footer-grid {
   display: grid;
-  grid-template-columns: repeat(5, auto);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px 32px;
   font-family: var(--sans);
+  align-items: start;
 }
 @media (max-width: 1024px) {
   .site-footer .links,
-  footer.site .footer-grid { grid-template-columns: repeat(3, auto); }
+  footer.site .footer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 24px; }
 }
-/* v7.15: keep 2-col on mobile (was collapsing to 1fr at 480px = 1698px tall cavern).
-   Tighter row gap + smaller heading caps make 9 columns sit comfortably side-by-side. */
 @media (max-width: 720px) {
   .site-footer .links,
-  footer.site .footer-grid { grid-template-columns: repeat(2, 1fr); gap: 18px 24px; }
+  footer.site .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; }
 }
 @media (max-width: 480px) {
   .site-footer .links,
-  footer.site .footer-grid { grid-template-columns: repeat(2, 1fr); gap: 14px 16px; font-size: 12.5px; }
+  footer.site .footer-grid { grid-template-columns: 1fr; gap: 18px 0; font-size: 13px; }
   .site-footer .col-h,
-  footer.site .footer-grid h4 { font-size: 10px; margin-bottom: 3px; }
+  footer.site .footer-grid h4 { font-size: 11px; margin-bottom: 6px; letter-spacing: 0.05em; }
   .site-footer .links > div,
-  footer.site .footer-grid > div { gap: 3px; }
+  footer.site .footer-grid > div { gap: 5px; }
 }
 .site-footer .links a,
 footer.site .footer-grid a { color: var(--ink-mute); }

@@ -18,7 +18,7 @@ Add to `~/.config/claude-code/.mcp.json` (or your project's `.mcp.json`):
     "recipe": {
       "command": "recipe-mcp",
       "env": {
-        "RECIPE_API_KEY": "ks_…"
+        "KOLM_API_KEY": "ks_…"
       }
     }
   }
@@ -52,6 +52,15 @@ AGENT (cold call to LLM, ~$0.20):
 
 Compared to 200 LLM calls (~$0.20 + 200×600ms latency), the agent finishes in milliseconds for free.
 
+## Environment
+
+```bash
+KOLM_API_KEY=ks_...        # preferred
+KOLM_BASE_URL=https://kolm.ai
+```
+
+The server still accepts `RECIPE_API_KEY`, `RECIPE_BASE_URL`, and `KOLMOGOROV_API_KEY` for backward compatibility.
+
 ## License
 
-MIT © [Kolmogorov](https://kolm.ai)
+Apache-2.0 © [Kolmogorov](https://kolm.ai)

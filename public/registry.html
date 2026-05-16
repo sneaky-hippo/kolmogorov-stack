@@ -118,7 +118,7 @@
 <header class="reg-head-bar">
   <div class="reg-wrap">
     <a href="/" class="logo">kolm</a>
-    <nav><a href="/use-cases">Solutions</a><a href="/docs">Developers</a><a href="/research">Research</a><a href="/enterprise">Enterprise</a><a href="/pricing">Pricing</a><a href="/signup" class="cta">Get API key &rarr;</a></nav>
+    <nav><a href="/use-cases">Use cases</a><a href="/docs">Docs</a><a href="/research">Research</a><a href="/enterprise">Enterprise</a><a href="/pricing">Pricing</a><a href="/signup" class="cta">Get API key &rarr;</a></nav>
   </div>
 </header>
 
@@ -126,6 +126,40 @@
   <p class="reg-crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; registry</p>
   <h1>The .kolm registry.</h1>
   <p class="lede">Signed, verifiable AI artifacts. Drop one in your stack. Every entry ships its manifest, its CID, its K-score, and its provenance chain - so a procurement reviewer can replay the build months from now and get the same bytes.</p>
+</div></section>
+
+<!-- wave 128 · social proof: live counts + K-score histogram computed from the DATA below. -->
+<section class="reg-section reg-proof"><div class="reg-wrap">
+  <div class="rp-grid">
+    <div class="rp-stat"><b id="rp-count">&mdash;</b><span>artifacts published</span></div>
+    <div class="rp-stat"><b id="rp-runs">&mdash;</b><span>total downloads</span></div>
+    <div class="rp-stat"><b id="rp-passing">&mdash;</b><span>passing K&nbsp;&ge;&nbsp;0.85 gate</span></div>
+    <div class="rp-stat"><b id="rp-tasks">&mdash;</b><span>distinct task types</span></div>
+  </div>
+  <div class="rp-hist">
+    <p class="rp-hist-lab">K-score distribution &mdash; every artifact in the registry</p>
+    <svg id="rp-hist-svg" viewBox="0 0 720 160" role="img" aria-label="K-score distribution histogram" style="width:100%;height:auto;font-family:var(--mono,ui-monospace);overflow:visible">
+      <g id="rp-hist-bars"></g>
+      <g id="rp-hist-axis"></g>
+    </svg>
+    <p class="rp-hist-fine">Bins of 0.05. Bars below the 0.85 gate are dimmed &mdash; those artifacts don't ship.</p>
+  </div>
+  <style>
+    .reg-proof { padding-top: 8px; }
+    .rp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 0 0 28px; }
+    .rp-stat {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 18px 22px; border: 1px solid var(--line, rgba(255,255,255,0.08));
+      border-radius: 10px; background: rgba(255,255,255,0.02);
+    }
+    .rp-stat b { font-family: var(--mono); font-size: 28px; color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1; }
+    .rp-stat span { font-size: 12px; color: var(--ink-faint); font-family: var(--mono); letter-spacing: 0.04em; }
+    .rp-hist { padding: 18px 22px; border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 10px; background: rgba(255,255,255,0.02); }
+    .rp-hist-lab { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 12px; }
+    .rp-hist-fine { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); margin: 8px 0 0; letter-spacing: 0.02em; }
+    .rp-hist rect { transition: opacity 160ms; }
+    [data-theme=light] .rp-stat, [data-theme=light] .rp-hist { background: rgba(0,0,0,0.02); }
+  </style>
 </div></section>
 
 <section class="reg-section"><div class="reg-wrap">
@@ -254,6 +288,7 @@
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/registry">Registry</a>
         <a href="/case-studies">Case studies</a>
       </div>
@@ -308,6 +343,66 @@
   var raw = document.getElementById('registry-data').textContent;
   var DATA = JSON.parse(raw);
   var STATE = {q:'', task:null, size:null, hardware:null, license:null};
+
+  // wave 128 · live social proof: counts + K-score histogram from DATA.
+  function renderProof(){
+    var count = DATA.length;
+    var totalDl = 0, passing = 0, tasks = {};
+    for (var i = 0; i < DATA.length; i++){
+      var a = DATA[i];
+      totalDl += (+a.downloads) || 0;
+      if (typeof a.k_score === 'number' && a.k_score >= 0.85) passing++;
+      if (a.task) tasks[a.task] = true;
+    }
+    var rpCount = $('rp-count'), rpRuns = $('rp-runs'), rpPassing = $('rp-passing'), rpTasks = $('rp-tasks');
+    if (rpCount)   rpCount.textContent = String(count);
+    if (rpRuns)    rpRuns.textContent = totalDl >= 10000 ? (totalDl/1000).toFixed(0) + 'k' : totalDl.toLocaleString();
+    if (rpPassing) rpPassing.textContent = passing + ' / ' + count;
+    if (rpTasks)   rpTasks.textContent = String(Object.keys(tasks).length);
+
+    var bars = $('rp-hist-bars'), axis = $('rp-hist-axis');
+    if (!bars || !axis) return;
+    var bins = [0,0,0,0,0,0,0]; // 0.70-.74, .75-.79, .80-.84, .85-.89, .90-.94, .95-1.00, .65-.69 (overflow low)
+    var labels = ['<.75','.75','.80','.85','.90','.95','1.0'];
+    for (var j = 0; j < DATA.length; j++){
+      var k = DATA[j].k_score;
+      if (typeof k !== 'number') continue;
+      if (k < 0.75) bins[0]++;
+      else if (k < 0.80) bins[1]++;
+      else if (k < 0.85) bins[2]++;
+      else if (k < 0.90) bins[3]++;
+      else if (k < 0.95) bins[4]++;
+      else if (k < 1.00) bins[5]++;
+      else bins[6]++;
+    }
+    var max = Math.max.apply(null, bins) || 1;
+    var W = 720, H = 160, padL = 32, padR = 16, padT = 10, padB = 26;
+    var iw = W - padL - padR, ih = H - padT - padB;
+    var bw = iw / bins.length;
+    var GATE_BIN = 3; // first ship-passing bin (.85-.89)
+    var barsHTML = '', axisHTML = '';
+    for (var b = 0; b < bins.length; b++){
+      var h = (bins[b] / max) * ih;
+      var x = padL + b * bw + 4;
+      var y = padT + ih - h;
+      var w = bw - 8;
+      var below = b < GATE_BIN;
+      var fill = below ? 'currentColor' : '#10b981';
+      var op = below ? '0.22' : '0.85';
+      barsHTML += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" ry="2" fill="' + fill + '" opacity="' + op + '"></rect>';
+      if (bins[b] > 0) {
+        barsHTML += '<text x="' + (x + w/2).toFixed(1) + '" y="' + (y - 6).toFixed(1) + '" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.7" font-variant-numeric="tabular-nums">' + bins[b] + '</text>';
+      }
+      axisHTML += '<text x="' + (x + w/2).toFixed(1) + '" y="' + (padT + ih + 16).toFixed(1) + '" text-anchor="middle" font-size="9.5" letter-spacing="0.04em" fill="currentColor" opacity="0.55">' + labels[b] + '</text>';
+    }
+    // gate line at the boundary between bin 2 and bin 3 (between .80-.84 and .85-.89)
+    var gateX = padL + GATE_BIN * bw;
+    axisHTML += '<line x1="' + gateX.toFixed(1) + '" y1="' + padT.toFixed(1) + '" x2="' + gateX.toFixed(1) + '" y2="' + (padT + ih).toFixed(1) + '" stroke="#10b981" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"></line>';
+    axisHTML += '<text x="' + (gateX + 4).toFixed(1) + '" y="' + (padT + 10).toFixed(1) + '" font-size="9.5" fill="#10b981" opacity="0.85" letter-spacing="0.04em">gate 0.85</text>';
+    bars.innerHTML = barsHTML;
+    axis.innerHTML = axisHTML;
+  }
+  renderProof();
 
   var FEATURED_IDS = ['phi-redactor-llama-3.1-8b','sr11-7-claims-router-mistral-7b','support-triage-qwen-2.5-3b'];
 

@@ -6,30 +6,124 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>Quickstart: compile your first private AI artifact &middot; kolm</title>
-<meta name="description" content="Build your first AI in 5 minutes. Install the kolm CLI, describe your task, train on your examples, and run the model locally on your laptop.">
+<title>Quickstart: start a working AI in 10 seconds &middot; kolm</title>
+<meta name="description" content="Three paths to your first .kolm: try a live PHI redactor in your browser, download a verified .kolm and run it offline, or compile a custom one from the CLI in 60 seconds.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
 <link rel="canonical" href="https://kolm.ai/quickstart">
-<meta property="og:title" content="Quickstart: compile your first private AI artifact · kolm" />
-<meta property="og:description" content="Install kolm, authenticate, compile a task, run the signed .kolm artifact locally, verify the receipt." />
+<meta property="og:title" content="Quickstart: start a working AI in 10 seconds &middot; kolm" />
+<meta property="og:description" content="Try the PHI redactor live in your browser. Or download the .kolm and run offline. Or compile your own in 60 seconds." />
 <meta property="og:image" content="https://kolm.ai/og-card.svg" />
 <meta property="og:url" content="https://kolm.ai/quickstart">
-<meta name="twitter:title" content="Quickstart: compile your first private AI artifact · kolm">
-<meta name="twitter:description" content="Install kolm, authenticate, compile a task, run the signed .kolm artifact locally, verify the receipt.">
+<meta name="twitter:title" content="Quickstart: start a working AI in 10 seconds &middot; kolm">
+<meta name="twitter:description" content="Try the PHI redactor live in your browser. Or download the .kolm and run offline. Or compile your own in 60 seconds.">
 <meta name="twitter:image" content="https://kolm.ai/og-card.svg">
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/brand-refresh.css">
-<style>/* a11y: heading order h2->h3 in .step cards (was h4, breaks SC 1.3.1) */
-.steps .step h3 { margin: 6px 0 10px; font-size: 16px; font-weight: 500; }
-/* Mobile UX: bigger tap targets in footer, prevent pre-overflow ghost width */
-@media (max-width: 720px) {
-  footer.site .footer-grid > div { gap: 8px !important; }
-  footer.site .footer-grid a { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 0; line-height: 1.3; }
-}</style>
+<style>
+  /* Quickstart-specific styles. SOTA neo-lab. No new fonts, no heavy anims. */
+  .qs-paths { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; max-width: 1180px; margin: 24px auto 0; padding: 0 32px; }
+  @media (max-width: 980px) { .qs-paths { grid-template-columns: 1fr; max-width: 620px; } }
+  .qs-path { padding: 22px 20px 18px; border-radius: 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--line, rgba(255,255,255,0.10)); display: flex; flex-direction: column; gap: 10px; }
+  [data-theme="light"] .qs-path { background: #ffffff; border-color: rgba(24,23,26,0.10); box-shadow: 0 1px 2px rgba(24,23,26,0.04); }
+  .qs-path-eyebrow { font-family: var(--mono); font-size: 11px; color: var(--ink-faint, #737c73); letter-spacing: 0.16em; text-transform: uppercase; }
+  .qs-path-time { color: var(--kolm-accent, #10b981); font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; }
+  .qs-path h3 { margin: 4px 0 4px; font-size: 18px; font-weight: 500; letter-spacing: -0.012em; color: var(--ink, #faf2e1); }
+  [data-theme="light"] .qs-path h3 { color: #18171a; }
+  .qs-path p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--ink-mute, #b5bdb1); }
+  [data-theme="light"] .qs-path p { color: #45413a; }
+  .qs-path .qs-cta { margin-top: auto; padding-top: 12px; }
+
+  /* Live demo block */
+  .qs-demo { max-width: 1180px; margin: 64px auto 0; padding: 0 32px; }
+  .qs-demo-head { text-align: center; max-width: 720px; margin: 0 auto 28px; }
+  .qs-demo-head .eb { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--kolm-accent, #10b981); }
+  .qs-demo-head h2 { font-size: clamp(28px, 3.2vw, 38px); margin: 8px 0 12px; font-weight: 500; letter-spacing: -0.022em; }
+  .qs-demo-head p { font-size: 16px; color: var(--ink-mute, #b5bdb1); line-height: 1.5; }
+  .qs-demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; max-width: 1180px; margin: 0 auto; }
+  @media (max-width: 880px) { .qs-demo-grid { grid-template-columns: 1fr; } }
+  .qs-demo-col { padding: 18px 18px 16px; border-radius: 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--line, rgba(255,255,255,0.10)); display: flex; flex-direction: column; min-height: 280px; }
+  [data-theme="light"] .qs-demo-col { background: #ffffff; border-color: rgba(24,23,26,0.10); }
+  .qs-demo-col h4 { margin: 0 0 8px; font-size: 13px; font-family: var(--mono); letter-spacing: 0.06em; color: var(--ink-mute, #b5bdb1); text-transform: uppercase; font-weight: 500; }
+  .qs-demo-textarea { flex: 1; width: 100%; min-height: 200px; padding: 14px; border-radius: 10px; background: rgba(0,0,0,0.25); border: 1px solid var(--line, rgba(255,255,255,0.08)); color: var(--ink, #faf2e1); font-family: var(--mono); font-size: 13px; line-height: 1.5; resize: vertical; box-sizing: border-box; }
+  [data-theme="light"] .qs-demo-textarea { background: #fafaf6; border-color: rgba(24,23,26,0.10); color: #18171a; }
+  .qs-demo-out { flex: 1; padding: 14px; border-radius: 10px; background: rgba(126,240,210,0.04); border: 1px solid rgba(126,240,210,0.18); color: var(--ink, #faf2e1); font-family: var(--mono); font-size: 13px; line-height: 1.5; min-height: 200px; white-space: pre-wrap; word-break: break-word; }
+  [data-theme="light"] .qs-demo-out { background: rgba(10,136,98,0.05); border-color: rgba(10,136,98,0.20); color: #18171a; }
+  .qs-demo-out mark { background: rgba(126,240,210,0.22); color: var(--kolm-accent, #10b981); padding: 0 4px; border-radius: 3px; font-weight: 500; }
+  [data-theme="light"] .qs-demo-out mark { background: rgba(10,136,98,0.18); color: #059669; }
+  .qs-demo-meta { display: flex; gap: 18px; margin-top: 14px; flex-wrap: wrap; font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint, #737c73); letter-spacing: 0.08em; }
+  .qs-demo-meta b { color: var(--kolm-accent, #10b981); font-weight: 500; }
+  .qs-demo-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; justify-content: center; }
+  .qs-demo-btn { padding: 10px 18px; border-radius: 10px; font-size: 13px; font-family: var(--mono); letter-spacing: 0.04em; text-decoration: none; border: 1px solid rgba(126,240,210,0.32); color: var(--kolm-accent, #10b981); background: rgba(126,240,210,0.06); display: inline-flex; align-items: center; gap: 8px; }
+  .qs-demo-btn:hover { background: rgba(126,240,210,0.12); }
+  [data-theme="light"] .qs-demo-btn { background: rgba(10,136,98,0.06); border-color: rgba(10,136,98,0.24); color: #059669; }
+  [data-theme="light"] .qs-demo-btn:hover { background: rgba(10,136,98,0.12); }
+
+  /* Recipe grid (registry-pack-1 verified .kolm) */
+  .qs-recipes { max-width: 1180px; margin: 96px auto 0; padding: 0 32px; }
+  .qs-recipes-head { text-align: center; max-width: 720px; margin: 0 auto 28px; }
+  .qs-recipes-head .eb { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--kolm-accent, #10b981); }
+  .qs-recipes-head h2 { font-size: clamp(28px, 3.2vw, 38px); margin: 8px 0 12px; font-weight: 500; letter-spacing: -0.022em; }
+  .qs-recipes-head p { font-size: 16px; color: var(--ink-mute, #b5bdb1); line-height: 1.5; }
+  .qs-recipe-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 980px) { .qs-recipe-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 680px) { .qs-recipe-grid { grid-template-columns: 1fr; } }
+  .qs-recipe { padding: 16px 16px 14px; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--line, rgba(255,255,255,0.08)); text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 8px; }
+  [data-theme="light"] .qs-recipe { background: #ffffff; border-color: rgba(24,23,26,0.10); }
+  .qs-recipe:hover { border-color: rgba(126,240,210,0.32); }
+  .qs-recipe-top { display: flex; justify-content: space-between; align-items: center; }
+  .qs-recipe-vert { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint, #737c73); }
+  .qs-recipe-k { font-family: var(--mono); font-size: 11px; color: var(--kolm-accent, #10b981); }
+  .qs-recipe h4 { margin: 0; font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--ink, #faf2e1); }
+  [data-theme="light"] .qs-recipe h4 { color: #18171a; }
+  .qs-recipe p { margin: 0; font-size: 13px; color: var(--ink-mute, #b5bdb1); line-height: 1.45; }
+  [data-theme="light"] .qs-recipe p { color: #45413a; }
+  .qs-recipe-meta { display: flex; gap: 10px; align-items: center; font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint, #737c73); margin-top: 4px; }
+
+  /* Golden paths row */
+  .qs-paths-gold { max-width: 1180px; margin: 96px auto 0; padding: 0 32px; }
+  .qs-gold-head { text-align: center; max-width: 720px; margin: 0 auto 28px; }
+  .qs-gold-head h2 { font-size: clamp(28px, 3.2vw, 38px); margin: 8px 0 12px; font-weight: 500; letter-spacing: -0.022em; }
+  .qs-gold-head p { font-size: 16px; color: var(--ink-mute, #b5bdb1); line-height: 1.5; }
+  .qs-gold-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 880px) { .qs-gold-grid { grid-template-columns: 1fr; } }
+  .qs-gold-card { padding: 22px 20px 18px; border-radius: 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--line, rgba(255,255,255,0.10)); text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 8px; }
+  [data-theme="light"] .qs-gold-card { background: #ffffff; border-color: rgba(24,23,26,0.10); }
+  .qs-gold-card:hover { border-color: rgba(126,240,210,0.32); }
+  .qs-gold-eb { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--kolm-accent, #10b981); }
+  .qs-gold-card h3 { margin: 4px 0 2px; font-size: 17px; font-weight: 500; letter-spacing: -0.012em; color: var(--ink, #faf2e1); }
+  [data-theme="light"] .qs-gold-card h3 { color: #18171a; }
+  .qs-gold-card p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-mute, #b5bdb1); }
+  [data-theme="light"] .qs-gold-card p { color: #45413a; }
+
+  /* CLI compile section */
+  .qs-cli { max-width: 1180px; margin: 96px auto 0; padding: 0 32px; }
+  .qs-cli-head { text-align: center; max-width: 720px; margin: 0 auto 28px; }
+  .qs-cli-head h2 { font-size: clamp(28px, 3.2vw, 38px); margin: 8px 0 12px; font-weight: 500; letter-spacing: -0.022em; }
+  .qs-cli-head p { font-size: 16px; color: var(--ink-mute, #b5bdb1); line-height: 1.5; }
+  .qs-cli-stack { display: grid; grid-template-columns: 1fr; gap: 16px; max-width: 880px; margin: 0 auto; }
+  .qs-cli-step { padding: 18px 20px; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--line, rgba(255,255,255,0.08)); }
+  [data-theme="light"] .qs-cli-step { background: #ffffff; border-color: rgba(24,23,26,0.08); }
+  .qs-cli-step-head { display: flex; gap: 14px; align-items: baseline; margin-bottom: 8px; }
+  .qs-cli-step-num { font-family: var(--mono); font-size: 11px; color: var(--ink-faint, #737c73); letter-spacing: 0.16em; }
+  .qs-cli-step-name { font-size: 15px; font-weight: 500; color: var(--ink, #faf2e1); }
+  [data-theme="light"] .qs-cli-step-name { color: #18171a; }
+  .qs-cli-step pre { margin: 0; padding: 12px 14px; background: rgba(0,0,0,0.28); border-radius: 8px; color: var(--ink, #faf2e1); font-family: var(--mono); font-size: 13px; line-height: 1.55; overflow-x: auto; }
+  [data-theme="light"] .qs-cli-step pre { background: #f0ede2; color: #18171a; }
+  .qs-cli-step .ok { color: var(--kolm-accent, #10b981); }
+  .qs-cli-step .dim { color: var(--ink-faint, #737c73); }
+
+  /* a11y: heading order h2->h3 in .step cards (was h4, breaks SC 1.3.1) */
+  .steps .step h3 { margin: 6px 0 10px; font-size: 16px; font-weight: 500; }
+  /* Mobile UX: bigger tap targets in footer, prevent pre-overflow ghost width */
+  @media (max-width: 720px) {
+    footer.site .footer-grid > div { gap: 8px !important; }
+    footer.site .footer-grid a { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 0; line-height: 1.3; }
+  }
+</style>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -37,37 +131,34 @@
     {
       "@type": "TechArticle",
       "@id": "https://kolm.ai/quickstart#article",
-      "headline": "Quickstart: compile your first private AI artifact",
-      "description": "Compile your first .kolm in five minutes. CLI install, recipe, run.",
+      "headline": "Quickstart: start a working AI in 10 seconds",
+      "description": "Three paths to your first .kolm: live in-browser PHI redactor demo, signed .kolm download, or 60-second CLI compile.",
       "url": "https://kolm.ai/quickstart",
       "author": {"@type":"Organization","name":"Kolmogorov","url":"https://kolm.ai"},
       "publisher": {"@type":"Organization","name":"Kolmogorov","url":"https://kolm.ai","logo":{"@type":"ImageObject","url":"https://kolm.ai/favicon.svg"}},
-      "datePublished": "2026-05-08",
-      "dateModified": "2026-05-13",
-      "keywords": "kolm quickstart, AI compiler tutorial, on-device AI, .kolm artifact, K-score, private AI"
+      "datePublished": "2026-05-16",
+      "dateModified": "2026-05-16",
+      "keywords": "kolm quickstart, PHI redactor, on-device AI, .kolm artifact, K-score, healthcare AI"
     },
     {
       "@type": "HowTo",
       "@id": "https://kolm.ai/quickstart#howto",
-      "name": "How to compile your first private AI artifact with kolm",
-      "description": "Install the kolm CLI, configure cloud auth, draft examples, compile a task into a signed .kolm artifact, run it on your laptop, and verify the receipt.",
-      "totalTime": "PT5M",
+      "name": "How to start a working AI artifact in 10 seconds with kolm",
+      "description": "Try the live PHI redactor in your browser, download the signed .kolm artifact, or compile your own from the CLI.",
+      "totalTime": "PT1M",
       "estimatedCost": {"@type": "MonetaryAmount", "currency": "USD", "value": "0"},
       "tool": [
-        {"@type": "HowToTool", "name": "Node.js 20+"},
-        {"@type": "HowToTool", "name": "kolm CLI"},
-        {"@type": "HowToTool", "name": "Terminal"}
+        {"@type": "HowToTool", "name": "Modern browser (live demo)"},
+        {"@type": "HowToTool", "name": "Node.js 20+ (optional, for CLI)"},
+        {"@type": "HowToTool", "name": "kolm CLI (optional)"}
       ],
       "supply": [
-        {"@type": "HowToSupply", "name": "kolm API key (free signup at kolm.ai/signup)"},
-        {"@type": "HowToSupply", "name": "Newline-delimited JSON examples"}
+        {"@type": "HowToSupply", "name": "kolm API key (free signup at kolm.ai/signup, only needed for custom compile)"}
       ],
       "step": [
-        {"@type": "HowToStep", "position": 1, "name": "Install the CLI", "text": "Install kolm globally from GitHub: npm i -g github:sneaky-hippo/kolmogorov-stack. Works wherever Node 20+ runs.", "url": "https://kolm.ai/quickstart#install"},
-        {"@type": "HowToStep", "position": 2, "name": "Configure cloud auth", "text": "Point the CLI at https://kolm.ai, then run kolm login and paste your ks_... API key. Stored in ~/.kolm/config.json.", "url": "https://kolm.ai/quickstart#auth"},
-        {"@type": "HowToStep", "position": 3, "name": "Draft examples", "text": "Create a newline-delimited JSON file with {input, output} pairs that represent the task. Keep examples small, explicit, and on-task.", "url": "https://kolm.ai/quickstart#examples"},
-        {"@type": "HowToStep", "position": 4, "name": "Compile the task", "text": "Run kolm compile \"your task\" --examples ./examples.jsonl. The compiler posts to the configured cloud, fits a small specialist, gates on K-score, and downloads the signed .kolm artifact to ~/.kolm/artifacts.", "url": "https://kolm.ai/quickstart#compile"},
-        {"@type": "HowToStep", "position": 5, "name": "Run locally and verify", "text": "Run kolm run ./artifact.kolm \"new input\". You get the output plus an HMAC receipt that proves which artifact, input, and verifier result ran. Inspect with kolm inspect or evaluate with kolm eval.", "url": "https://kolm.ai/quickstart#run"}
+        {"@type": "HowToStep", "position": 1, "name": "Try the live PHI redactor", "text": "Paste clinical text into the demo input. The browser-side recipe redacts PHI (SSN, MRN, DOB, NPI, phone, email, dates) in milliseconds without sending your data anywhere.", "url": "https://kolm.ai/quickstart#live"},
+        {"@type": "HowToStep", "position": 2, "name": "Download the signed .kolm", "text": "Click 'Download phi-redactor.kolm' to get the verified 5KB artifact with SHA-256 fingerprint. Run it offline with kolm run.", "url": "https://kolm.ai/quickstart#download"},
+        {"@type": "HowToStep", "position": 3, "name": "Build your own in 60 seconds", "text": "Install the CLI, signup, compile a custom recipe on your examples, run the resulting .kolm locally with HMAC receipt.", "url": "https://kolm.ai/quickstart#cli"}
       ]
     },
     {
@@ -87,8 +178,8 @@
   <div class="wrap">
     <a href="/" class="brand">kolm</a>
     <nav class="site-nav" aria-label="Primary">
-      <a href="/use-cases">Solutions</a>
-      <a href="/docs">Developers</a>
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
       <a href="/research">Research</a>
       <a href="/enterprise">Enterprise</a>
       <a href="/pricing">Pricing</a>
@@ -105,131 +196,271 @@
   <section class="hero frontier-bg">
     <div class="wrap">
       <div class="hero-copy">
-        <div class="hero-eyebrow"><span class="he-dot"></span>Quickstart &middot; v0.7 &middot; 60 seconds</div>
-        <h1>Build your <span class="tone">first AI.</span></h1>
-        <p class="lede">Install <code>kolm</code>, describe what you want it to do, train it on your examples, and run it on your laptop. Five minutes, no servers to spin up, your data never leaves the box.</p>
-        <div class="actions">
-          <a href="/signup" class="btn primary electric">Get API key &rarr;</a>
-          <a href="/docs" class="btn ghost">full docs</a>
-        </div>
+        <div class="hero-eyebrow"><span class="he-dot"></span>Quickstart &middot; three paths &middot; pick one</div>
+        <h1>Start a working AI in <span class="tone">10 seconds.</span></h1>
+        <p class="lede">Three paths. Try a live PHI redactor in your browser. Download a verified <code>.kolm</code> and run it offline. Or compile a custom one from the CLI in 60 seconds. No signup required for the first two.</p>
       </div>
     </div>
   </section>
 
-  <section class="section qs-fast" aria-label="60-second path">
-    <div class="wrap">
-      <h2>60-second path</h2>
-      <ol class="qs-steps-fast" style="list-style:decimal;padding-left:24px;line-height:2;color:var(--ink-mute,#b5bdb1);max-width:62ch">
-        <li><code>npm i -g github:sneaky-hippo/kolmogorov-stack</code></li>
-        <li><code>kolm signup --email you@example.com</code> &nbsp;<span style="color:var(--ink-faint);font-size:12px">(or <code>kolm login --key ks_...</code> if you already have a key)</span></li>
-        <li><code>kolm compile "your task" --examples ./examples.jsonl</code></li>
-        <li><code>kolm run your-artifact.kolm "new input"</code></li>
-      </ol>
+  <section class="qs-paths" aria-label="three paths">
+    <a href="#live" class="qs-path">
+      <div class="qs-path-eyebrow">path 01 &middot; <span class="qs-path-time">~10 sec</span></div>
+      <h3>Try it live in your browser.</h3>
+      <p>Paste clinical text. Watch PHI get redacted in milliseconds. Same regex graph that ships in the .kolm artifact. Nothing leaves your tab.</p>
+      <div class="qs-cta"><span style="color:var(--kolm-accent,#10b981);font-family:var(--mono);font-size:12px">run demo &darr;</span></div>
+    </a>
+    <a href="#download" class="qs-path">
+      <div class="qs-path-eyebrow">path 02 &middot; <span class="qs-path-time">~30 sec</span></div>
+      <h3>Download the signed .kolm.</h3>
+      <p>5&nbsp;KB. K-score 0.988. SHA-256 verified. Run it offline with <code>kolm run</code>. Bundle into your app. Audit it with <code>kolm inspect</code>.</p>
+      <div class="qs-cta"><span style="color:var(--kolm-accent,#10b981);font-family:var(--mono);font-size:12px">grab .kolm &darr;</span></div>
+    </a>
+    <a href="#cli" class="qs-path">
+      <div class="qs-path-eyebrow">path 03 &middot; <span class="qs-path-time">~60 sec</span></div>
+      <h3>Compile your own from the CLI.</h3>
+      <p>Install. Signup. Drop in <code>examples.jsonl</code>. Compile cloud-side, gated on K&ge;0.85. Download the signed artifact. Run it locally.</p>
+      <div class="qs-cta"><span style="color:var(--kolm-accent,#10b981);font-family:var(--mono);font-size:12px">cli steps &darr;</span></div>
+    </a>
+  </section>
+
+  <!-- =========== PATH 01 · LIVE IN-BROWSER DEMO =========== -->
+  <section class="qs-demo" id="live" aria-label="live demo">
+    <div class="qs-demo-head">
+      <div class="eb">path 01 &middot; live demo &middot; in your browser</div>
+      <h2>The PHI redactor, running right here.</h2>
+      <p>This is the exact same regex graph that ships in <code>phi-redactor.kolm</code>. Paste any clinical-style text. Patterns run on your keystrokes &mdash; nothing is sent over the network.</p>
+    </div>
+
+    <div class="qs-demo-grid">
+      <div class="qs-demo-col">
+        <h4>Input &middot; paste or type</h4>
+        <textarea class="qs-demo-textarea" id="qsDemoIn" spellcheck="false">Patient: Jane Doe, DOB 03/14/1982, MRN 84521903, SSN 412-88-9217.
+Visited Dr. Sarah Chen (NPI 1417209384) on 2026-04-12 for follow-up.
+Phone: (415) 555-0192. Email: jdoe@example.com.
+Subjective: persistent headache 2 weeks; reports stress at work.</textarea>
+      </div>
+      <div class="qs-demo-col">
+        <h4>Output &middot; redacted, on-device</h4>
+        <div class="qs-demo-out" id="qsDemoOut"></div>
+      </div>
+    </div>
+
+    <div class="qs-demo-meta" id="qsDemoMeta">
+      <span>latency: <b id="qsDemoLat">&mdash;</b></span>
+      <span>redactions: <b id="qsDemoCount">&mdash;</b></span>
+      <span>recipe: <b>phi-redactor</b></span>
+      <span>K-score: <b>0.988</b></span>
+      <span>data left your machine: <b>no</b></span>
+    </div>
+
+    <div class="qs-demo-actions">
+      <a href="/registry-pack/phi-redactor.kolm" class="qs-demo-btn" download>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg>
+        download phi-redactor.kolm
+      </a>
+      <a href="/hub" class="qs-demo-btn" style="background:rgba(255,255,255,0.02);border-color:rgba(255,255,255,0.12);color:var(--ink,#faf2e1)">
+        view 5 verified recipes
+      </a>
     </div>
   </section>
 
-  <section class="section">
-    <div class="wrap">
-      <div class="steps">
-        <div class="step">
-          <div class="num">01</div>
-          <h3>Install the CLI.</h3>
-          <p>One npm install from the GitHub source. Works everywhere Node 20+ runs.</p>
-          <pre class="demo">npm i -g github:sneaky-hippo/kolmogorov-stack
+  <!-- =========== PATH 02 · DOWNLOAD & RUN OFFLINE =========== -->
+  <section class="qs-recipes" id="download" aria-label="verified recipes">
+    <div class="qs-recipes-head">
+      <div class="eb">path 02 &middot; verified .kolm registry &middot; ship offline</div>
+      <h2>Five recipes you can run today.</h2>
+      <p>Every <code>.kolm</code> below ships at K-score &ge; 0.95. Apache-2.0. SHA-pinned. Download, verify, run offline.</p>
+    </div>
+
+    <div class="qs-recipe-grid" id="qsRecipes">
+      <!-- populated by script from /registry-pack/manifest.json -->
+      <a class="qs-recipe" href="/registry-pack/phi-redactor.kolm" download>
+        <div class="qs-recipe-top"><span class="qs-recipe-vert">healthcare</span><span class="qs-recipe-k">K&nbsp;0.988</span></div>
+        <h4>phi-redactor</h4>
+        <p>PHI redactor for clinical notes. Strips SSN, MRN, DOB, NPI, phone, email, dates.</p>
+        <div class="qs-recipe-meta"><span>5&nbsp;KB</span><span>&middot;</span><span>download &rarr;</span></div>
+      </a>
+      <a class="qs-recipe" href="/registry-pack/legal-clause-extractor.kolm" download>
+        <div class="qs-recipe-top"><span class="qs-recipe-vert">legal</span><span class="qs-recipe-k">K&nbsp;0.952</span></div>
+        <h4>legal-clause-extractor</h4>
+        <p>NDA / contract clause extractor. Pulls governing_law, term_months, effective_date.</p>
+        <div class="qs-recipe-meta"><span>5&nbsp;KB</span><span>&middot;</span><span>download &rarr;</span></div>
+      </a>
+      <a class="qs-recipe" href="/registry-pack/invoice-parser.kolm" download>
+        <div class="qs-recipe-top"><span class="qs-recipe-vert">finance</span><span class="qs-recipe-k">K&nbsp;0.988</span></div>
+        <h4>invoice-parser</h4>
+        <p>Invoice parser. Extracts invoice_number, iso_date, amount, currency from AR/AP text.</p>
+        <div class="qs-recipe-meta"><span>5&nbsp;KB</span><span>&middot;</span><span>download &rarr;</span></div>
+      </a>
+      <a class="qs-recipe" href="/registry-pack/code-issue-classifier.kolm" download>
+        <div class="qs-recipe-top"><span class="qs-recipe-vert">code</span><span class="qs-recipe-k">K&nbsp;0.988</span></div>
+        <h4>code-issue-classifier</h4>
+        <p>Code review comment classifier. Routes into security / performance / style / test / docs / refactor.</p>
+        <div class="qs-recipe-meta"><span>5&nbsp;KB</span><span>&middot;</span><span>download &rarr;</span></div>
+      </a>
+      <a class="qs-recipe" href="/registry-pack/multilingual-greeter.kolm" download>
+        <div class="qs-recipe-top"><span class="qs-recipe-vert">edge</span><span class="qs-recipe-k">K&nbsp;0.988</span></div>
+        <h4>multilingual-greeter</h4>
+        <p>Language detector for 7 European languages, sized for edge devices.</p>
+        <div class="qs-recipe-meta"><span>5&nbsp;KB</span><span>&middot;</span><span>download &rarr;</span></div>
+      </a>
+      <a class="qs-recipe" href="/hub" style="border-style:dashed">
+        <div class="qs-recipe-top"><span class="qs-recipe-vert">browse</span><span class="qs-recipe-k">all</span></div>
+        <h4>fork &amp; remix any of these</h4>
+        <p>Open the hub. Filter by vertical, sort by K-score, copy a four-command remix one-liner.</p>
+        <div class="qs-recipe-meta"><span>hub &rarr;</span></div>
+      </a>
+    </div>
+
+    <div style="text-align:center;margin-top:28px">
+      <p style="color:var(--ink-mute,#b5bdb1);font-size:14px;line-height:1.6;max-width:62ch;margin:0 auto">
+        Once downloaded, run any of these with the CLI:<br>
+        <code style="font-family:var(--mono);color:var(--kolm-accent,#10b981);background:rgba(126,240,210,0.06);border:1px solid rgba(126,240,210,0.18);padding:4px 10px;border-radius:6px;display:inline-block;margin-top:8px">kolm run ./phi-redactor.kolm '{"input":"Patient John Doe SSN 123-45-6789"}'</code>
+      </p>
+    </div>
+  </section>
+
+  <!-- =========== PATH 03 · COMPILE YOUR OWN =========== -->
+  <section class="qs-cli" id="cli" aria-label="compile your own">
+    <div class="qs-cli-head">
+      <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--kolm-accent,#10b981)">path 03 &middot; compile a custom .kolm &middot; ~60 seconds</div>
+      <h2>Compile your own from your examples.</h2>
+      <p>The CLI posts your task and examples to the configured cloud, gates on K-score, and downloads the signed artifact to <code>~/.kolm/artifacts</code>. The .kolm runs anywhere you put it.</p>
+    </div>
+
+    <div class="qs-cli-stack">
+      <div class="qs-cli-step">
+        <div class="qs-cli-step-head">
+          <span class="qs-cli-step-num">01</span>
+          <span class="qs-cli-step-name">Install the CLI</span>
+        </div>
+<pre><span class="dim"># macOS / Linux / Windows · needs Node 20+</span>
+npm i -g github:sneaky-hippo/kolmogorov-stack
 kolm version</pre>
+      </div>
+      <div class="qs-cli-step">
+        <div class="qs-cli-step-head">
+          <span class="qs-cli-step-num">02</span>
+          <span class="qs-cli-step-name">Sign up (one call, free)</span>
         </div>
-        <div class="step">
-          <div class="num">02</div>
-          <h3>Configure cloud auth.</h3>
-          <p>The CLI stores your kolm API key in <code>~/.kolm/config.json</code>. Environment variables still override local config. Two paths in: provision a tenant from the CLI, or paste an existing key with one flag.</p>
-          <pre class="demo">kolm config base https://kolm.ai
-kolm signup --email you@example.com    # provisions a tenant + API key in one call
-# or, if you already have a key from /signup:
-kolm login --key ks_...                 # paste-free; saves to ~/.kolm/config.json</pre>
+<pre><span class="dim"># provisions a tenant + API key, saved to ~/.kolm/config.json</span>
+kolm signup --email you@example.com
+
+<span class="dim"># or, if you already have a key from /signup</span>
+kolm login --key ks_...</pre>
+      </div>
+      <div class="qs-cli-step">
+        <div class="qs-cli-step-head">
+          <span class="qs-cli-step-num">03</span>
+          <span class="qs-cli-step-name">Drop in your examples</span>
         </div>
-        <div class="step">
-          <div class="num">03</div>
-          <h3>Create examples.</h3>
-          <p>Use newline-delimited JSON. Keep examples small, explicit, and representative of the task you want to ship.</p>
-          <pre class="demo">{"input":"customer cannot log in after update","output":"bug"}
-{"input":"please add invoice export","output":"feature"}
-{"input":"where do I reset MFA-","output":"support"}</pre>
+<pre><span class="dim"># newline-delimited JSON · {input, output} pairs · keep it small to start</span>
+echo '{"input":"checkout fails on Android","output":"bug"}' &gt; tickets.jsonl
+echo '{"input":"please add export to CSV","output":"feature"}' &gt;&gt; tickets.jsonl
+echo '{"input":"where do I reset MFA","output":"support"}' &gt;&gt; tickets.jsonl</pre>
+      </div>
+      <div class="qs-cli-step">
+        <div class="qs-cli-step-head">
+          <span class="qs-cli-step-num">04</span>
+          <span class="qs-cli-step-name">Compile</span>
         </div>
+<pre>kolm compile "classify support tickets" --examples ./tickets.jsonl
+<span class="ok">ok</span> wrote ./tickets.kolm  &middot; K=0.91  &middot; receipt rcp_8f2a...</pre>
+      </div>
+      <div class="qs-cli-step">
+        <div class="qs-cli-step-head">
+          <span class="qs-cli-step-num">05</span>
+          <span class="qs-cli-step-name">Run locally</span>
+        </div>
+<pre>kolm run ./tickets.kolm '{"input":"checkout fails on Android"}'
+<span class="ok">&rarr;</span> bug  &middot; latency 82us  &middot; signed receipt</pre>
       </div>
     </div>
-  </section>
 
-  <section class="section">
-    <div class="wrap">
-      <div class="eyebrow"><span class="num">04</span>compile</div>
-      <h2>Turn the task into a <span class="tone">.kolm</span>.</h2>
-      <p class="sec-lede">The v0 compiler posts the task and examples to the configured cloud, downloads the completed artifact, and stores it in <code>~/.kolm/artifacts</code> unless you pass <code>--out</code>.</p>
-
-<pre class="terminal"><span class="dim"># Minimal example - replace with your task and files</span>
-<span class="prompt">$</span> kolm compile "classify support tickets" \
-  --examples ./support.examples.jsonl \
-  --data ./support-policy \
-  --base-model qwen2.5-coder-7b-instruct-q4_0 \
-  --out ./artifacts
-
-<span class="dim">POST /v1/compile</span>
-<span class="ok">ok</span> wrote ./artifacts/support-tickets.kolm
-<span class="ok">ok</span> K-score printed by the CLI</pre>
+    <div style="text-align:center;margin:36px auto 0;max-width:880px">
+      <p style="color:var(--ink-mute,#b5bdb1);font-size:14px;line-height:1.6">
+        Want chat-style instead? Run <code style="font-family:var(--mono);color:var(--kolm-accent,#10b981);background:rgba(126,240,210,0.06);border:1px solid rgba(126,240,210,0.18);padding:3px 8px;border-radius:5px">kolm</code> with no args and describe your task in natural language. The CLI walks the same path step by step.
+      </p>
     </div>
   </section>
 
-  <section class="section">
-    <div class="wrap">
-      <div class="eyebrow"><span class="num">05</span>run it</div>
-      <h2>Run it on your machine.</h2>
-      <p class="sec-lede">The CLI runs your model locally and returns the answer. A receipt comes with each call if you need to prove what ran.</p>
-
-<pre class="terminal"><span class="prompt">$</span> kolm run ./artifacts/support-tickets.kolm '{"input":"checkout fails on Android"}'
-{
-  "output": "bug",
-  "latency_us": 82000,
-  "k_score": { "composite": 0.92 },
-  "receipt": {
-    "spec":            "rs-1",
-    "artifact_job_id": "cmp_8f2a...",
-    "recipe_id":       "rcp_classify_v1",
-    "version_id":      "ver_...",
-    "ran_at":          "2026-05-08T17:30:00Z"
-  }
-}
-
-<span class="prompt">$</span> kolm inspect ./artifacts/support-tickets.kolm
-<span class="prompt">$</span> kolm eval ./artifacts/support-tickets.kolm
-<span class="prompt">$</span> kolm score ./artifacts/support-tickets.kolm</pre>
+  <!-- =========== GOLDEN PATHS =========== -->
+  <section class="qs-paths-gold" aria-label="golden paths">
+    <div class="qs-gold-head">
+      <h2>Or read a 5-minute golden path.</h2>
+      <p>Each one is a complete walk-through end-to-end &mdash; landing page to deployed artifact &mdash; for the most-asked scenarios.</p>
+    </div>
+    <div class="qs-gold-grid">
+      <a href="/learn/first-kolm-in-5-minutes" class="qs-gold-card">
+        <div class="qs-gold-eb">golden path 01 &middot; ~5 min</div>
+        <h3>Your first .kolm in 5 minutes.</h3>
+        <p>From <code>npm install</code> to a PHI redactor running on your laptop. Five steps with screenshots and copy-paste blocks.</p>
+      </a>
+      <a href="/learn/distill-openai-usage" class="qs-gold-card">
+        <div class="qs-gold-eb">golden path 02 &middot; ~10 min</div>
+        <h3>Distill your OpenAI usage.</h3>
+        <p>Capture one workday of OpenAI traffic. Compile a specialist .kolm. Swap the API call. Cut the bill to zero.</p>
+      </a>
+      <a href="/learn/deploy-to-phone" class="qs-gold-card">
+        <div class="qs-gold-eb">golden path 03 &middot; ~10 min</div>
+        <h3>Deploy a .kolm to phones.</h3>
+        <p>Export your compiled <code>.kolm</code> to CoreML or ONNX. Bundle into iOS / Android. Inference on-device, offline.</p>
+      </a>
+      <a href="/learn/from-openpipe" class="qs-gold-card">
+        <div class="qs-gold-eb">migration &middot; ~15 min</div>
+        <h3>Coming from OpenPipe.</h3>
+        <p>Convert your chat-JSONL export into kolm <code>{input,output}</code> in 12 lines of Node. Compile. Done.</p>
+      </a>
+      <a href="/learn/from-predibase" class="qs-gold-card">
+        <div class="qs-gold-eb">migration &middot; ~20 min</div>
+        <h3>Coming from Predibase.</h3>
+        <p>Translate Ludwig YAML to kolm spec. Bring your CSV + adapter weights. Serve over Lorax-compat HTTP.</p>
+      </a>
+      <a href="/learn/from-raw-lora" class="qs-gold-card">
+        <div class="qs-gold-eb">migration &middot; ~10 min</div>
+        <h3>Coming from raw LoRA.</h3>
+        <p>Already trained with Unsloth, Axolotl, PEFT, MLX, or GGUF? Wrap it into a signed .kolm in one command.</p>
+      </a>
+    </div>
+    <div style="text-align:center;margin-top:32px">
+      <a href="/learn" style="color:var(--kolm-accent,#10b981);font-family:var(--mono);font-size:13px;text-decoration:none;border-bottom:1px solid rgba(126,240,210,0.32);padding-bottom:2px">all golden paths &amp; migrations &rarr;</a>
+      &nbsp;&middot;&nbsp;
+      <a href="/cookbook" style="color:var(--kolm-accent,#10b981);font-family:var(--mono);font-size:13px;text-decoration:none;border-bottom:1px solid rgba(126,240,210,0.32);padding-bottom:2px">30 recipe templates &rarr;</a>
+      &nbsp;&middot;&nbsp;
+      <a href="/bounties" style="color:var(--kolm-accent,#10b981);font-family:var(--mono);font-size:13px;text-decoration:none;border-bottom:1px solid rgba(126,240,210,0.32);padding-bottom:2px">launch bounties &middot; $14K &rarr;</a>
     </div>
   </section>
 
-  <section class="section">
-    <div class="wrap">
-      <div class="eyebrow"><span class="num">06</span>wire it into your agent</div>
-      <h2>One command per harness. No JSON hand-editing.</h2>
-      <p class="sec-lede">Every compiled <code>.kolm</code> becomes an MCP tool the agent can call. <code>kolm install</code> writes the harness config in one shot; <code>kolm doctor</code> verifies the wiring.</p>
-
-<pre class="terminal"><span class="prompt">$</span> kolm install claude-code --apply
-<span class="ok">wrote</span> ~/.claude/settings.json
-
-<span class="prompt">$</span> kolm install cursor --apply
-<span class="ok">wrote</span> .cursor/mcp.json
-
-<span class="prompt">$</span> kolm doctor
-<span class="ok">ok</span> node ≥18 · kolm.yaml · 3 artifacts · ~/.kolm/config.json · git
-
-<span class="comment"># prefer the long-running daemon? same artifacts, stdio or HTTP transport.</span>
-<span class="prompt">$</span> kolm serve --mcp --http --port 11455
+  <!-- =========== WIRE INTO AGENT =========== -->
+  <section class="qs-cli" style="margin-top:96px" aria-label="wire into your agent">
+    <div class="qs-cli-head">
+      <div style="font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--kolm-accent,#10b981)">wire it in &middot; mcp tools</div>
+      <h2>Make your <code>.kolm</code> a tool your agent calls.</h2>
+      <p>One command per harness. Every compiled <code>.kolm</code> becomes an MCP tool. <code>kolm install</code> writes the harness config in one shot; <code>kolm doctor</code> verifies the wiring.</p>
+    </div>
+    <div class="qs-cli-stack">
+      <div class="qs-cli-step">
+        <div class="qs-cli-step-head"><span class="qs-cli-step-num">claude code</span></div>
+<pre>kolm install claude-code --apply
+<span class="ok">wrote</span> ~/.claude/settings.json</pre>
+      </div>
+      <div class="qs-cli-step">
+        <div class="qs-cli-step-head"><span class="qs-cli-step-num">cursor</span></div>
+<pre>kolm install cursor --apply
+<span class="ok">wrote</span> .cursor/mcp.json</pre>
+      </div>
+      <div class="qs-cli-step">
+        <div class="qs-cli-step-head"><span class="qs-cli-step-num">long-running server</span></div>
+<pre>kolm serve --mcp --http --port 11455
 <span class="ok">ok</span> serving ~/.kolm/artifacts as local tools</pre>
-
-      <div class="bottom-cta">
-        <h2>Next: build your own.</h2>
-        <p class="lead">You ran a compile. Now define your own task in a JSON spec, compile it offline under your local secret, and ship it.</p>
-        <div class="actions">
-          <a href="/build-your-own" class="btn primary lg">Build your own &rarr;</a>
-        </div>
       </div>
+    </div>
+
+    <div style="text-align:center;margin:36px auto 0;max-width:1180px">
+      <a href="/build-your-own" class="btn primary lg">Build your own &rarr;</a>
+      &nbsp;
+      <a href="/docs" class="btn ghost">full docs</a>
     </div>
   </section>
 </main>
@@ -240,9 +471,10 @@ kolm login --key ks_...                 # paste-free; saves to ~/.kolm/config.js
       <div>
         <h4>Build</h4>
         <a href="/quickstart">Quickstart</a>
+        <a href="/learn">Golden paths</a>
+        <a href="/cookbook">Cookbook</a>
         <a href="/docs">Docs</a>
-        <a href="/spec/rs-1">RS-1 spec</a>
-        <a href="/openapi.json">OpenAPI</a>
+        <a href="/spec/kolm-format-v1">.kolm spec v1</a>
         <a href="/cli">CLI</a>
       </div>
       <div>
@@ -255,9 +487,10 @@ kolm login --key ks_...                 # paste-free; saves to ~/.kolm/config.js
       </div>
       <div>
         <h4>Proof</h4>
+        <a href="/hub">Hub &middot; 5 verified</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/case-studies">Case studies</a>
-        <a href="/registry">Registry</a>
         <a href="/security">Security</a>
         <a href="/verify-prod">Verify a .kolm</a>
       </div>
@@ -272,9 +505,9 @@ kolm login --key ks_...                 # paste-free; saves to ~/.kolm/config.js
       <div>
         <h4>Company</h4>
         <a href="/pricing">Pricing</a>
+        <a href="/bounties">Bounties</a>
         <a href="/changelog">Changelog</a>
         <a href="/security">Security</a>
-        <a href="/community">Community</a>
         <a href="/contact">Contact</a>
       </div>
     </div>
@@ -284,6 +517,81 @@ kolm login --key ks_...                 # paste-free; saves to ~/.kolm/config.js
     </div>
   </div>
 </footer>
+
+<script>
+// =======================================================================
+// Live in-browser PHI redactor demo.
+// Same regex graph that ships in phi-redactor.kolm. Patterns matched
+// against textarea contents on every keystroke. Nothing leaves the tab.
+// =======================================================================
+(function () {
+  var IN = document.getElementById('qsDemoIn');
+  var OUT = document.getElementById('qsDemoOut');
+  var LAT = document.getElementById('qsDemoLat');
+  var COUNT = document.getElementById('qsDemoCount');
+  if (!IN || !OUT) return;
+
+  // Pattern order matters: more specific patterns first, generic last.
+  // This mirrors the pack.default_patterns-before-builtins ordering in
+  // the real recipe (see scripts/build-registry-pack.cjs).
+  var PATTERNS = [
+    { name: 'SSN',    re: /\b\d{3}-\d{2}-\d{4}\b/g,                                 tag: 'SSN' },
+    { name: 'NPI',    re: /\b(?:NPI[:\s]*)?(\d{10})\b/g,                            tag: 'NPI' },
+    { name: 'MRN',    re: /\b(?:MRN[:\s]*)?(\d{6,9})\b/g,                           tag: 'MRN' },
+    { name: 'PHONE',  re: /\b(?:\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4})\b/g,     tag: 'PHONE' },
+    { name: 'EMAIL',  re: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,    tag: 'EMAIL' },
+    { name: 'DOB',    re: /\b(?:DOB[:\s]*)?(\d{1,2}\/\d{1,2}\/\d{4})\b/g,           tag: 'DOB' },
+    { name: 'DATE',   re: /\b\d{4}-\d{2}-\d{2}\b/g,                                 tag: 'DATE' }
+  ];
+
+  function redact(text) {
+    var hits = [];
+    // First, find all matches across all patterns with their start/end positions.
+    PATTERNS.forEach(function (p) {
+      var m;
+      p.re.lastIndex = 0;
+      while ((m = p.re.exec(text)) !== null) {
+        // Skip empty matches (defensive)
+        if (m[0].length === 0) { p.re.lastIndex++; continue; }
+        hits.push({ start: m.index, end: m.index + m[0].length, tag: p.tag, original: m[0] });
+      }
+    });
+    // Sort by start position. Drop any hit that overlaps an earlier one (greedy resolution).
+    hits.sort(function (a, b) { return a.start - b.start || (a.end - a.start) - (b.end - b.start); });
+    var resolved = [];
+    var lastEnd = -1;
+    for (var i = 0; i < hits.length; i++) {
+      if (hits[i].start >= lastEnd) {
+        resolved.push(hits[i]);
+        lastEnd = hits[i].end;
+      }
+    }
+    // Build output with <mark> tags around each redaction.
+    var out = '';
+    var cursor = 0;
+    resolved.forEach(function (h) {
+      out += escapeHtml(text.slice(cursor, h.start));
+      out += '<mark>[' + h.tag + ']</mark>';
+      cursor = h.end;
+    });
+    out += escapeHtml(text.slice(cursor));
+    return { html: out, count: resolved.length };
+  }
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function tick() {
+    var t0 = performance.now();
+    var r = redact(IN.value);
+    var dt = performance.now() - t0;
+    OUT.innerHTML = r.html || '<span style="color:var(--ink-faint,#737c73)">paste clinical text on the left&hellip;</span>';
+    if (LAT) LAT.textContent = dt < 1 ? (dt * 1000).toFixed(0) + ' us' : dt.toFixed(2) + ' ms';
+    if (COUNT) COUNT.textContent = String(r.count);
+  }
+  IN.addEventListener('input', tick);
+  tick();
+})();
+</script>
 
 <script src="/nav.js" defer></script>
 </body>

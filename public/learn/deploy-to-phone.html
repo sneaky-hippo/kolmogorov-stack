@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Deploy a .kolm to a phone | kolm</title>
+<meta name="description" content="Export a signed .kolm artifact to iPhone (CoreML), Android (ONNX Mobile), or Apple Silicon (MLX). Forecast size, latency, and fit before shipping. Five minutes, no cloud round-trip.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/learn/deploy-to-phone">
+<meta property="og:title" content="Deploy a .kolm to a phone">
+<meta property="og:description" content="Export to iPhone, Android, or Apple Silicon. Forecast fit before shipping. Five minutes.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/learn/deploy-to-phone">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Deploy a .kolm to a phone" />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "@id": "https://kolm.ai/learn/deploy-to-phone#howto",
+  "name": "Deploy a .kolm to a phone",
+  "description": "Export a .kolm artifact to iPhone, Android, or Apple Silicon. Forecast size, latency, fit. Five-minute path.",
+  "totalTime": "PT5M",
+  "estimatedCost": {"@type": "MonetaryAmount", "currency": "USD", "value": "0"},
+  "step": [
+    {"@type": "HowToStep", "position": 1, "name": "Preview the fit", "text": "kolm export my-redactor.kolm --preview --device iphone-15-pro --quant int4"},
+    {"@type": "HowToStep", "position": 2, "name": "Run the export", "text": "kolm export my-redactor.kolm --backend coreml --quant int4 --out ./exports"},
+    {"@type": "HowToStep", "position": 3, "name": "Bundle and ship", "text": "Drag the .mlpackage into your iOS app target."}
+  ]
+}
+</script>
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669}
+  body{background:var(--bg);color:var(--ink);font:16.5px/1.7 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .paper{padding:64px 0 48px}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 16px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:38px;line-height:1.12;font-weight:500;letter-spacing:-0.02em;margin:0 0 12px}
+  .subtitle{font-size:16.5px;color:var(--ink-mute);margin:0 0 14px;line-height:1.55;max-width:640px}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:8px 0 0;letter-spacing:0.04em}
+  .promise{margin:32px 0 0;padding:20px 24px;border-left:2px solid var(--accent);background:rgba(16,185,129,0.04);font-size:15.5px;line-height:1.65;color:var(--ink-mute)}
+  .promise b{color:var(--ink);font-weight:500}
+  h2{font-size:21px;font-weight:500;letter-spacing:-0.01em;margin:48px 0 12px;color:var(--ink)}
+  .step-head{display:flex;align-items:baseline;gap:14px;margin:48px 0 12px}
+  .step-num{font-family:var(--mono);font-size:12px;color:var(--ink-faint);letter-spacing:0.16em;text-transform:uppercase;border:1px solid var(--line);padding:4px 10px;border-radius:4px;flex-shrink:0}
+  .step-head h2{margin:0;flex:1}
+  .step-time{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:0.04em;white-space:nowrap}
+  p{color:var(--ink-mute);margin:0 0 14px}
+  p b{color:var(--ink);font-weight:500}
+  ul,ol{color:var(--ink-mute);margin:0 0 16px;padding-left:24px}
+  li{margin:0 0 6px}
+  li b{color:var(--ink);font-weight:500}
+  code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  pre{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px 18px;overflow:auto;font-family:var(--mono);font-size:13px;line-height:1.55;margin:0 0 14px;color:var(--ink)}
+  pre code{background:transparent;border:0;padding:0}
+  pre.cmd::before{content:"$";color:var(--accent);margin-right:10px;user-select:none}
+  pre.out{background:transparent;border-style:dashed;border-color:rgba(16,185,129,0.18);color:var(--ink-mute);font-size:12.5px}
+  pre.out::before{display:none}
+  .checkpoint{margin:14px 0 24px;padding:12px 16px;background:rgba(16,185,129,0.05);border-left:2px solid var(--accent);font-family:var(--mono);font-size:12.5px;color:var(--ink-mute);line-height:1.55}
+  .checkpoint b{color:var(--accent);font-weight:500;margin-right:10px}
+  table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:14px}
+  th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500}
+  td b{color:var(--ink);font-weight:500}
+  .tbl-wrap{border:1px solid var(--line);border-radius:8px;overflow-x:auto;margin:0 0 16px}
+  .actions{display:flex;gap:12px;margin:36px 0 0;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms;background:var(--bg-elev)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:32px 0;border-top:1px solid var(--line);color:var(--ink-faint);font-size:13px;margin-top:64px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:var(--ink-mute);text-decoration:none}
+  footer.site a:hover{color:var(--ink)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr);gap:18px}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500;margin:0 0 10px}
+  .footer-grid a{display:block;padding:3px 0;font-size:13px}
+  .footer-tag{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:18px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11.5px}
+  .footer-tag span{color:var(--ink-faint)}
+</style>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/use-cases">Use cases</a><a href="/docs">Docs</a><a href="/research">Research</a><a href="/enterprise">Enterprise</a><a href="/pricing">Pricing</a><a href="/signup" class="cta">Get API key &rarr;</a></nav></div></header>
+<main>
+<section class="paper">
+<div class="wrap">
+
+<p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/learn">learn</a> &nbsp;/&nbsp; deploy to a phone</p>
+
+<h1>Deploy a .kolm to a phone.</h1>
+<p class="subtitle">Export the same artifact to iPhone (CoreML), Android (ONNX Mobile), or Apple Silicon (MLX). Forecast size, latency, and fit before shipping. Same K-score, smaller binary, fully offline on the device.</p>
+<p class="stamp">Golden Path 3 of 3 . v1.0 . assumes you already completed <a href="/learn/first-kolm-in-5-minutes" style="color:inherit;border-bottom:1px dashed var(--line)">step 1</a></p>
+
+<div class="promise">
+<b>What you will have.</b> A device-native model file ready to drop into your iOS / Android / Mac app. CoreML <code>.mlpackage</code> for iPhone, ONNX <code>.onnx</code> for Android, MLX bundle for M-series Macs. Predicted size and latency on your target device. Same task, same K-score, no cloud round-trip.
+</div>
+
+<h2>Targets supported</h2>
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>Device class</th><th>Backend</th><th>Output</th><th>Typical size (3B int4)</th></tr></thead>
+  <tbody>
+    <tr><td>iPhone 15 Pro</td><td><b>coreml</b></td><td><code>.mlpackage</code></td><td>1.7 GB</td></tr>
+    <tr><td>iPhone 12 / 13</td><td><b>coreml</b></td><td><code>.mlpackage</code></td><td>1.7 GB</td></tr>
+    <tr><td>Pixel 8 / OnePlus 12</td><td><b>onnx</b></td><td><code>.onnx</code></td><td>1.7 GB</td></tr>
+    <tr><td>M-series Mac (M1+)</td><td><b>mlx</b></td><td>mlx bundle</td><td>1.7 GB</td></tr>
+    <tr><td>Raspberry Pi 5 (8GB)</td><td><b>gguf</b></td><td><code>.gguf</code></td><td>1.7 GB</td></tr>
+    <tr><td>Jetson Orin Nano</td><td><b>tensorrt</b></td><td>engine plan</td><td>2.1 GB</td></tr>
+    <tr><td>Snapdragon X Elite</td><td><b>onnx</b></td><td><code>.onnx</code></td><td>1.7 GB</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Full picker with predicted latency and memory headroom lives at <a href="/device-transfer" style="color:var(--accent)">/device-transfer</a>.</p>
+
+<div class="step-head">
+  <span class="step-num">step 1</span>
+  <h2 id="step-1">Preview the fit (no toolchain).</h2>
+  <span class="step-time">30 seconds</span>
+</div>
+<p>Before installing CoreMLTools or ONNX Runtime, <code>kolm export --preview</code> tells you in JSON whether the artifact will fit on the device, the predicted tokens/sec, and the K-score loss from quantization. Pure JS lookup, no python.</p>
+
+<pre class="cmd">kolm export my-redactor.kolm --preview --device iphone-15-pro --quant int4</pre>
+<pre class="out">{
+  "device":                "iPhone 15 Pro (8GB)",
+  "quant":                 "int4",
+  "size_mb":               1741,
+  "estimated_latency_ms":  33.3,
+  "tok_per_s":             30,
+  "k_loss":                -0.02,
+  "k_score_est":           0.910,
+  "fits":                  true,
+  "fit_verdict":           "fit",
+  "backend":               "coreml"
+}</pre>
+
+<div class="checkpoint"><b>checkpoint</b> <code>fits: true</code> and a <code>k_score_est &ge; 0.85</code> mean you can ship to that device. <code>fit_verdict: tight</code> means it will run but with little headroom; <code>over</code> means try a smaller quantization (int3) or a smaller base.</div>
+
+<p>Same probe against a Pixel 8:</p>
+<pre class="cmd">kolm export my-redactor.kolm --preview --device pixel-8 --quant int4</pre>
+<pre class="out">{
+  "device":                "Pixel 8 (12GB)",
+  "quant":                 "int4",
+  "size_mb":               1741,
+  "estimated_latency_ms":  41.2,
+  "tok_per_s":             24,
+  "k_score_est":           0.910,
+  "fits":                  true,
+  "backend":               "onnx"
+}</pre>
+
+<div class="step-head">
+  <span class="step-num">step 2</span>
+  <h2 id="step-2">Run the export.</h2>
+  <span class="step-time">3 minutes</span>
+</div>
+<p>The actual export converts the LoRA-adapted base into the target binary format. CoreML uses Apple's <code>coremltools</code>; ONNX uses <code>optimum</code>; MLX uses <code>mlx_lm</code>; GGUF uses <code>llama.cpp</code>. <code>kolm export</code> shells out to whichever toolchain is on your PATH.</p>
+
+<pre class="cmd">kolm export my-redactor.kolm --backend coreml --quant int4 --out ./exports</pre>
+<pre class="out">resolving base from manifest . llama-3.2-3b
+applying LoRA adapter . ok
+quantizing to int4 . ok
+running coremltools convert . ok
+verifying export against held-out cases . K=0.910 (-0.026 from fp16)
+wrote ./exports/my-redactor.mlpackage  (1.7 GB)</pre>
+
+<p>For Android (ONNX Mobile):</p>
+<pre class="cmd">kolm export my-redactor.kolm --backend onnx --quant int4 --opset 17 --out ./exports</pre>
+
+<p>For Apple Silicon Macs (MLX, useful for desktop apps):</p>
+<pre class="cmd">kolm export my-redactor.kolm --backend mlx --quantize --out ./exports</pre>
+
+<div class="checkpoint"><b>checkpoint</b> the export verb runs the held-out evaluation on the converted binary. The <code>K=</code> printed at the end is real and reproducible. If it dropped below 0.85 you do not ship.</div>
+
+<div class="step-head">
+  <span class="step-num">step 3</span>
+  <h2 id="step-3">Bundle and ship.</h2>
+  <span class="step-time">90 seconds</span>
+</div>
+
+<p><b>iOS.</b> Drag the <code>.mlpackage</code> into your Xcode target. Call from Swift:</p>
+<pre><code>import CoreML
+
+let model = try MyRedactor(configuration: MLModelConfiguration())
+let out = try model.prediction(input: MyRedactorInput(text: input))
+print(out.redacted)</code></pre>
+
+<p><b>Android.</b> Drop the <code>.onnx</code> into your <code>assets/</code> folder. Call from Kotlin via ONNX Runtime Mobile:</p>
+<pre><code>val env = OrtEnvironment.getEnvironment()
+val session = env.createSession(assets.open("my-redactor.onnx").readBytes())
+val out = session.run(mapOf("text" to OnnxTensor.createTensor(env, input)))
+print(out["redacted"]?.value)</code></pre>
+
+<p><b>macOS.</b> MLX is python or Swift. For a quick desktop app:</p>
+<pre class="cmd">python -m mlx_lm.generate --model ./exports/my-redactor.mlx --prompt "..."</pre>
+
+<div class="checkpoint"><b>checkpoint</b> the model runs on-device with no network call. The K-score is the same as the laptop K-score you saw in Golden Path 1, minus the small quantization loss the preview predicted.</div>
+
+<h2>What just happened</h2>
+<p>You took one <code>.kolm</code> and produced a device-native model in three commands. The K-score is reproducible; the size and latency match the preview. The same artifact, ejected, would let an external auditor trace every layer of the conversion. No remote inference, no API keys, no per-call cost.</p>
+
+<h2>Edge cases</h2>
+<ul>
+  <li><b>Toolchain missing.</b> The export fails with a clear "<code>coremltools</code> not found; install with <code>pip install coremltools</code>" message. <code>kolm doctor --export</code> diagnoses your PATH.</li>
+  <li><b>Quantization loss exceeds gate.</b> Drop to int3 only if your task tolerates the K-loss. For PII redaction the loss is tiny; for code generation it is not.</li>
+  <li><b>Custom recipes that call out to web APIs.</b> kolm refuses to export a recipe that requires network. <code>kolm inspect --net</code> shows which recipes are air-gap-safe.</li>
+  <li><b>FedRAMP / classified environments.</b> The export step itself runs offline; <code>kolm export --offline-only</code> hard-fails if any sub-step would hit the network.</li>
+</ul>
+
+<h2>What to do next</h2>
+<div class="actions">
+  <a href="/hub" class="btn primary">Browse the public hub &rarr;</a>
+  <a href="/bounties" class="btn">$14K in launch bounties</a>
+  <a href="/spec/rs-1" class="btn">Read the .kolm format spec</a>
+</div>
+
+</div>
+</section>
+</main>
+<footer class="site">
+<div class="wrap">
+<div class="footer-grid">
+<div><h4>Product</h4><a href="/">Home</a><a href="/quickstart">Quickstart</a><a href="/learn">Learn</a><a href="/pricing">Pricing</a><a href="/hub">Hub</a></div>
+<div><h4>Spec</h4><a href="/spec">Spec</a><a href="/spec/rs-1">RS-1</a><a href="/spec/codebase">Codebase</a><a href="/research">Research</a></div>
+<div><h4>Verticals</h4><a href="/healthcare">Healthcare</a><a href="/finance">Finance</a><a href="/legal">Legal</a><a href="/edge">Edge</a><a href="/enterprise">Enterprise</a></div>
+<div><h4>Docs</h4><a href="/docs/api">API</a><a href="/docs/k-score-methodology">K-score</a><a href="/docs/manifest-v0.1.json">Manifest</a><a href="/docs/receipt-v0.1.json">Receipt</a></div>
+<div><h4>Company</h4><a href="/manifesto">Manifesto</a><a href="mailto:hello@kolm.ai">Contact</a><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></div>
+</div>
+<div class="footer-tag"><span>kolm . an AI compiler . one file you own</span><span>Apache-2.0 . 2026</span></div>
+</div>
+</footer>
+</body>
+</html>

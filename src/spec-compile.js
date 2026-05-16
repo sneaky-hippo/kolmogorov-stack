@@ -174,6 +174,7 @@ export async function compileSpec(spec, opts = {}) {
     evals,
     training_stats,
     outDir,
+    license: opts.license != null ? opts.license : (spec.license || null),
   });
 
   const final = opts.outPath || built.outPath;

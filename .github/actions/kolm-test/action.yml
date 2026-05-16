@@ -1,0 +1,83 @@
+name: kolm test
+description: Run regression + adversarial probes against a .kolm artifact and gate the job on K-score.
+author: Kolmogorov
+
+inputs:
+  artifact:
+    description: Path to the .kolm file to test (relative to workspace root)
+    required: true
+  test-set:
+    description: Path to a JSONL test set. If empty, the artifact's bundled regression set is used.
+    required: false
+    default: ""
+  adversarial:
+    description: Run adversarial probes in addition to regression (default true)
+    required: false
+    default: "true"
+  threshold:
+    description: Minimum K-score required to pass (default 0.85)
+    required: false
+    default: "0.85"
+  api-key:
+    description: kolm API key (use $\{\{ secrets.KOLM_KEY \}\})
+    required: true
+  base-url:
+    description: kolm API base URL (default https://kolm.ai)
+    required: false
+    default: https://kolm.ai
+
+outputs:
+  k-score:
+    description: K-score reported by the test run
+    value: ${{ steps.test.outputs.k_score }}
+  passed:
+    description: Boolean (true / false) — whether all probes passed
+    value: ${{ steps.test.outputs.passed }}
+  report-path:
+    description: Path to the JSON report uploaded as an artifact
+    value: ${{ steps.test.outputs.report_path }}
+
+runs:
+  using: composite
+  steps:
+    - name: install kolm CLI
+      shell: bash
+      run: npm i -g github:sneaky-hippo/kolmogorov-stack
+
+    - name: configure
+      shell: bash
+      env:
+        KOLM_BASE: ${{ inputs.base-url }}
+        KOLM_KEY: ${{ inputs.api-key }}
+      run: kolm config base "$KOLM_BASE"
+
+    - name: test
+      id: test
+      shell: bash
+      env:
+        KOLM_BASE: ${{ inputs.base-url }}
+        KOLM_KEY: ${{ inputs.api-key }}
+      run: |
+        args=""
+        if [ -n "${{ inputs.test-set }}" ]; then args="$args --test-set ${{ inputs.test-set }}"; fi
+        if [ "${{ inputs.adversarial }}" = "true" ]; then args="$args --adversarial"; fi
+        out=$(kolm test "${{ inputs.artifact }}" $args --threshold "${{ inputs.threshold }}" --json)
+        echo "$out"
+        score=$(echo "$out" | jq -r '.k_score')
+        passed=$(echo "$out" | jq -r '.passed')
+        report=$(echo "$out" | jq -r '.report_path // empty')
+        echo "k_score=$score" >> "$GITHUB_OUTPUT"
+        echo "passed=$passed" >> "$GITHUB_OUTPUT"
+        echo "report_path=$report" >> "$GITHUB_OUTPUT"
+        if [ "$passed" != "true" ]; then
+          echo "::error::kolm test failed (K-score=$score < threshold=${{ inputs.threshold }})"
+          exit 1
+        fi
+
+    - name: upload report
+      if: always() && steps.test.outputs.report_path != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: kolm-test-report
+        path: ${{ steps.test.outputs.report_path }}
+        if-no-files-found: warn

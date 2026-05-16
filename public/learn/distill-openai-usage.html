@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Distill your OpenAI usage into a .kolm | kolm</title>
+<meta name="description" content="Capture prompt-response pairs from live OpenAI traffic, distill them into a seed set, and compile a specialist .kolm that costs 10-100x less and runs offline on your hardware.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/learn/distill-openai-usage">
+<meta property="og:title" content="Distill your OpenAI usage into a .kolm">
+<meta property="og:description" content="Capture prompt-response pairs from live OpenAI traffic, compile them into a .kolm that runs offline at 10-100x less cost.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/learn/distill-openai-usage">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Distill your OpenAI usage into a .kolm" />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "@id": "https://kolm.ai/learn/distill-openai-usage#howto",
+  "name": "Distill your OpenAI usage into a .kolm",
+  "description": "Capture prompt-response pairs from live OpenAI traffic, distill them into a seed set, compile a specialist .kolm.",
+  "totalTime": "PT5M",
+  "estimatedCost": {"@type": "MonetaryAmount", "currency": "USD", "value": "0"},
+  "step": [
+    {"@type": "HowToStep", "position": 1, "name": "Add the capture shim",   "text": "kolm capture wrap openai --env OPENAI_API_KEY"},
+    {"@type": "HowToStep", "position": 2, "name": "Let it run",               "text": "Use your app normally for one workday. Captures land in ~/.kolm/captures.jsonl."},
+    {"@type": "HowToStep", "position": 3, "name": "Distill",                  "text": "kolm distill --task 'summarize support tickets' --out summarize.seeds.jsonl"},
+    {"@type": "HowToStep", "position": 4, "name": "Compile the specialist",  "text": "kolm build my-summarizer --spec summarize.spec.json --examples summarize.seeds.jsonl --yes"},
+    {"@type": "HowToStep", "position": 5, "name": "Replace the OpenAI call", "text": "Swap your openai.ChatCompletion.create() with a kolm run shell call or HTTP request to kolm serve."}
+  ]
+}
+</script>
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669}
+  body{background:var(--bg);color:var(--ink);font:16.5px/1.7 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .paper{padding:64px 0 48px}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 16px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:38px;line-height:1.12;font-weight:500;letter-spacing:-0.02em;margin:0 0 12px}
+  .subtitle{font-size:16.5px;color:var(--ink-mute);margin:0 0 14px;line-height:1.55;max-width:640px}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:8px 0 0;letter-spacing:0.04em}
+  .promise{margin:32px 0 0;padding:20px 24px;border-left:2px solid var(--accent);background:rgba(16,185,129,0.04);font-size:15.5px;line-height:1.65;color:var(--ink-mute)}
+  .promise b{color:var(--ink);font-weight:500}
+  h2{font-size:21px;font-weight:500;letter-spacing:-0.01em;margin:48px 0 12px;color:var(--ink)}
+  .step-head{display:flex;align-items:baseline;gap:14px;margin:48px 0 12px}
+  .step-num{font-family:var(--mono);font-size:12px;color:var(--ink-faint);letter-spacing:0.16em;text-transform:uppercase;border:1px solid var(--line);padding:4px 10px;border-radius:4px;flex-shrink:0}
+  .step-head h2{margin:0;flex:1}
+  .step-time{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:0.04em;white-space:nowrap}
+  p{color:var(--ink-mute);margin:0 0 14px}
+  p b{color:var(--ink);font-weight:500}
+  ul,ol{color:var(--ink-mute);margin:0 0 16px;padding-left:24px}
+  li{margin:0 0 6px}
+  li b{color:var(--ink);font-weight:500}
+  code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  pre{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px 18px;overflow:auto;font-family:var(--mono);font-size:13px;line-height:1.55;margin:0 0 14px;color:var(--ink)}
+  pre code{background:transparent;border:0;padding:0}
+  pre.cmd::before{content:"$";color:var(--accent);margin-right:10px;user-select:none}
+  pre.out{background:transparent;border-style:dashed;border-color:rgba(16,185,129,0.18);color:var(--ink-mute);font-size:12.5px}
+  pre.out::before{display:none}
+  .checkpoint{margin:14px 0 24px;padding:12px 16px;background:rgba(16,185,129,0.05);border-left:2px solid var(--accent);font-family:var(--mono);font-size:12.5px;color:var(--ink-mute);line-height:1.55}
+  .checkpoint b{color:var(--accent);font-weight:500;margin-right:10px}
+  table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:14px}
+  th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500}
+  td b{color:var(--ink);font-weight:500}
+  .tbl-wrap{border:1px solid var(--line);border-radius:8px;overflow-x:auto;margin:0 0 16px}
+  .actions{display:flex;gap:12px;margin:36px 0 0;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms;background:var(--bg-elev)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:32px 0;border-top:1px solid var(--line);color:var(--ink-faint);font-size:13px;margin-top:64px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:var(--ink-mute);text-decoration:none}
+  footer.site a:hover{color:var(--ink)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr);gap:18px}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500;margin:0 0 10px}
+  .footer-grid a{display:block;padding:3px 0;font-size:13px}
+  .footer-tag{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:18px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11.5px}
+  .footer-tag span{color:var(--ink-faint)}
+</style>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/use-cases">Use cases</a><a href="/docs">Docs</a><a href="/research">Research</a><a href="/enterprise">Enterprise</a><a href="/pricing">Pricing</a><a href="/signup" class="cta">Get API key &rarr;</a></nav></div></header>
+<main>
+<section class="paper">
+<div class="wrap">
+
+<p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/learn">learn</a> &nbsp;/&nbsp; distill openai usage</p>
+
+<h1>Distill your OpenAI usage into a .kolm.</h1>
+<p class="subtitle">Capture prompt-response pairs from your live OpenAI traffic. Compile them into a specialist <code>.kolm</code> that runs offline. Replace one API call with a local execution that is 10-100&times; cheaper and free of egress.</p>
+<p class="stamp">Golden Path 2 of 3 . v1.0 . assumes you already completed <a href="/learn/first-kolm-in-5-minutes" style="color:inherit;border-bottom:1px dashed var(--line)">step 1</a></p>
+
+<div class="promise">
+<b>What you will have.</b> One <code>.kolm</code> trained on your actual prompts. K-score &ge; 0.85 against held-out cases from your own usage. Replaces a single OpenAI use-case at roughly 10-100&times; lower cost per call and zero data egress. Works on the same hardware you already own.
+</div>
+
+<h2>Why this works</h2>
+<p>You are already paying GPT-4 for narrow tasks like "summarize this support ticket" or "classify this email by intent." Each call is small, the answer space is narrow, and the prompts repeat. That is the exact shape kolm is built to compress. <b>Capture your real usage. Distill it. Compile.</b> The resulting <code>.kolm</code> handles the same task at a fraction of the cost.</p>
+
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>What</th><th>OpenAI gpt-4o-mini</th><th>Local .kolm</th></tr></thead>
+  <tbody>
+    <tr><td>Cost per 1k calls</td><td>$0.30 . $1.20 (typical)</td><td><b>$0</b> after compile</td></tr>
+    <tr><td>p95 latency</td><td>800 . 2200 ms</td><td><b>3 . 80 ms</b> local</td></tr>
+    <tr><td>Data egress</td><td>every call</td><td><b>zero</b></td></tr>
+    <tr><td>Offline / air-gapped</td><td>impossible</td><td><b>yes</b></td></tr>
+    <tr><td>Audit trail</td><td>OpenAI logs (their copy)</td><td><b>HMAC receipt</b> on every call</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="step-head">
+  <span class="step-num">step 1</span>
+  <h2 id="step-1">Capture your live traffic.</h2>
+  <span class="step-time">2 minutes</span>
+</div>
+<p><code>kolm capture wrap</code> installs a tiny shim that logs every OpenAI request and response to <code>~/.kolm/captures.jsonl</code>. The shim is local; no data is sent to kolm.ai during capture. Set the same <code>OPENAI_API_KEY</code> you already use.</p>
+
+<pre class="cmd">kolm capture wrap openai --env OPENAI_API_KEY</pre>
+<pre class="out">capture shim installed at ~/.kolm/shims/openai
+add this to your code:
+  import { openai } from '@kolm/capture'   # node
+  from kolm_capture import openai          # python
+or run with KOLM_CAPTURE=1 to enable shim-mode without code change.</pre>
+
+<p>Or, if you want zero code change, the shim can be installed as an HTTP proxy that your existing OpenAI SDK routes through:</p>
+
+<pre class="cmd">kolm capture proxy --port 5310 --upstream https://api.openai.com</pre>
+<pre class="out">listening on :5310 . upstream api.openai.com . capturing to ~/.kolm/captures.jsonl
+in your app, set OPENAI_BASE_URL=http://localhost:5310/v1 .</pre>
+
+<div class="checkpoint"><b>checkpoint</b> use your app normally for one workday (or one hour of typical traffic). The capture file grows. No quality loss; every OpenAI call still goes through to OpenAI, you just keep a copy.</div>
+
+<div class="step-head">
+  <span class="step-num">step 2</span>
+  <h2 id="step-2">Inspect what you captured.</h2>
+  <span class="step-time">30 seconds</span>
+</div>
+
+<pre class="cmd">kolm capture stats</pre>
+<pre class="out">captures:        1,402 prompts (~$11.30 spent on OpenAI today)
+top intents:
+  summarize-ticket             612 calls  (44%)
+  classify-email-intent        388 calls  (28%)
+  extract-shipping-address      174 calls  (12%)
+  rewrite-tone                  142 calls  (10%)
+  other                          86 calls  ( 6%)
+files: ~/.kolm/captures.jsonl  (3.2 MB)</pre>
+
+<p>Pick one intent. The narrower the task, the better the distillation. <b>summarize-ticket</b> at 612 calls is a great first candidate; <b>other</b> at 86 calls is not.</p>
+
+<div class="step-head">
+  <span class="step-num">step 3</span>
+  <h2 id="step-3">Distill captures into a seed set.</h2>
+  <span class="step-time">60 seconds</span>
+</div>
+<p><code>kolm distill</code> reads the capture file, filters by your task, optionally redacts PII before training, and emits a clean <code>.seeds.jsonl</code> file. The redaction step is mandatory if the captures include healthcare or PCI data; <code>kolm distill</code> refuses to write without it for those task tags.</p>
+
+<pre class="cmd">kolm distill --task summarize-ticket --redact pii --out summarize.seeds.jsonl</pre>
+<pre class="out">distilled 612 captures -&gt; 612 seed rows
+  shape: {input, output}
+  redaction: pii (names, emails, phones, SSN, addresses)
+  estimated K-score upper bound: 0.93 (based on response consistency)
+wrote summarize.seeds.jsonl (612 rows, 184 KB)</pre>
+
+<div class="checkpoint"><b>checkpoint</b> the seed file is plain JSONL. Open it. Inspect the rows. Delete any you do not want to train on. The compile step trusts only what you keep.</div>
+
+<div class="step-head">
+  <span class="step-num">step 4</span>
+  <h2 id="step-4">Compile the specialist.</h2>
+  <span class="step-time">90 seconds</span>
+</div>
+<p>Use the same one-shot wrapper from <a href="/learn/first-kolm-in-5-minutes" style="color:var(--accent)">Golden Path 1</a>. The build verb derives a spec from the task and seeds, runs the compile pipeline, gates on K-score, and emits a signed artifact.</p>
+
+<pre class="cmd">kolm build my-summarizer --spec-task "summarize support tickets in one sentence" --examples summarize.seeds.jsonl --yes</pre>
+<pre class="out">scaffolding spec my-summarizer.spec.json . ok
+loading 612 seed rows from summarize.seeds.jsonl . ok
+compiling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+K-score for my-summarizer.kolm: 0.917  (gate >= 0.85 - pass)
+verifying signature . ok
+artifact written: my-summarizer.kolm  (142 KB)
+
+try it:
+  kolm run my-summarizer.kolm --input &lt;sample.json&gt;</pre>
+
+<div class="checkpoint"><b>checkpoint</b> 0.917 K-score against your own held-out cases. This is the artifact replacing your OpenAI calls.</div>
+
+<div class="step-head">
+  <span class="step-num">step 5</span>
+  <h2 id="step-5">Swap the API call.</h2>
+  <span class="step-time">90 seconds</span>
+</div>
+<p>Two ways to call your new artifact. CLI is good for batch. HTTP is good for drop-in replacement of the OpenAI SDK.</p>
+
+<p><b>CLI batch.</b> One call per line of input. Useful for offline reprocessing.</p>
+<pre class="cmd">cat tickets.jsonl | kolm run my-summarizer.kolm</pre>
+
+<p><b>HTTP server.</b> <code>kolm serve</code> exposes the artifact on a localhost port. Shape-compatible with OpenAI's <code>/v1/chat/completions</code> endpoint for the chat case, or a flat <code>/v1/run</code> for everything else.</p>
+
+<pre class="cmd">kolm serve my-summarizer.kolm --port 5320 --openai-compat</pre>
+<pre class="out">listening on http://localhost:5320
+  POST /v1/chat/completions   openai-compat shape
+  POST /v1/run                native shape
+artifact: my-summarizer.kolm  K=0.917  recipe=summarize-v1</pre>
+
+<p>In your code, change one URL:</p>
+<pre><code>// before
+const openai = new OpenAI({ baseURL: "https://api.openai.com/v1" });
+
+// after
+const openai = new OpenAI({ baseURL: "http://localhost:5320/v1" });</code></pre>
+
+<div class="checkpoint"><b>checkpoint</b> your app keeps working. The OpenAI bill stops growing for this use case. The latency drops. The data stops leaving your network.</div>
+
+<h2>What just happened</h2>
+<p>You converted ongoing variable cost ($) into a one-time fixed asset (the <code>.kolm</code> file). The artifact is yours, sits on your hardware, and runs without OpenAI in the loop. It cost you 5 minutes of capture, 5 minutes of compile, and zero infrastructure.</p>
+
+<p>Repeat the same flow for each narrow OpenAI task in your app. Most teams find 60-80% of their OpenAI spend collapses into 5-10 specialist <code>.kolm</code> files. The remaining 20-40% (open-ended chat, complex reasoning) stays on GPT for now.</p>
+
+<h2>Quality, audited</h2>
+<p>kolm runs A/B checks against the captured OpenAI responses for the cases the model never trained on. The K-score is one number; the per-case verdict is in the receipt chain. Run <code>kolm eval my-summarizer.kolm --examples holdout.jsonl</code> any time to re-score against new captures. Drift detection is a <code>kolm tune watch</code> daemon away.</p>
+
+<h2>What to do next</h2>
+<div class="actions">
+  <a href="/learn/deploy-to-phone" class="btn primary">Next: deploy this .kolm to a phone &rarr;</a>
+  <a href="/learn/from-openpipe" class="btn">If you came from OpenPipe</a>
+  <a href="/hub" class="btn">Browse the hub</a>
+</div>
+
+</div>
+</section>
+</main>
+<footer class="site">
+<div class="wrap">
+<div class="footer-grid">
+<div><h4>Product</h4><a href="/">Home</a><a href="/quickstart">Quickstart</a><a href="/learn">Learn</a><a href="/pricing">Pricing</a><a href="/hub">Hub</a></div>
+<div><h4>Spec</h4><a href="/spec">Spec</a><a href="/spec/rs-1">RS-1</a><a href="/spec/codebase">Codebase</a><a href="/research">Research</a></div>
+<div><h4>Verticals</h4><a href="/healthcare">Healthcare</a><a href="/finance">Finance</a><a href="/legal">Legal</a><a href="/edge">Edge</a><a href="/enterprise">Enterprise</a></div>
+<div><h4>Docs</h4><a href="/docs/api">API</a><a href="/docs/k-score-methodology">K-score</a><a href="/docs/manifest-v0.1.json">Manifest</a><a href="/docs/receipt-v0.1.json">Receipt</a></div>
+<div><h4>Company</h4><a href="/manifesto">Manifesto</a><a href="mailto:hello@kolm.ai">Contact</a><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></div>
+</div>
+<div class="footer-tag"><span>kolm . an AI compiler . one file you own</span><span>Apache-2.0 . 2026</span></div>
+</div>
+</footer>
+</body>
+</html>

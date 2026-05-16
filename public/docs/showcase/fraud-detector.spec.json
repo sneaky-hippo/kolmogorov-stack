@@ -1,0 +1,34 @@
+{
+  "job_id": "job_fraud_detector_v1",
+  "task": "Analyze health insurance claim for FWA risk. Flag upcoding, unbundling, duplicate billing, impossible-day patterns. Redact PHI. Output { risk_level, flags, explanation, confidence, suggested_action }.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_fraud_v1",
+      "name": "fraud-detector",
+      "source": "function generate(input, lib){ var x = (input && typeof input === 'object') ? input : {}; var claim = x.claim || {}; var hist = x.provider_history_30d || {}; var cpts = Array.isArray(claim.cpt_codes) ? claim.cpt_codes : []; var bundles = (lib.pack && lib.pack.unbundling_pairs) || []; var flags = []; var seen = {}; for (var i=0;i<cpts.length;i++){ if (seen[cpts[i]]) flags.push('duplicate_cpt_' + cpts[i]); seen[cpts[i]] = true; } for (var j=0;j<bundles.length;j++){ var p = bundles[j]; if (cpts.indexOf(p[0]) >= 0 && cpts.indexOf(p[1]) >= 0) flags.push('unbundling_' + p[0] + '_' + p[1]); } if ((hist.avg_per_day || 0) > 12) flags.push('impossible_day_volume'); if (cpts.indexOf('99214') >= 0 && cpts.indexOf('99213') >= 0) flags.push('upcoding_e&m_99214'); var risk = flags.length >= 2 ? 'high' : flags.length === 1 ? 'medium' : 'low'; return { risk_level: risk, flags: flags, explanation: flags.length ? 'Flagged ' + flags.length + ' anomalies under NCCI / provider-history rules.' : 'No anomalies detected.', confidence: Math.min(0.99, 0.5 + flags.length * 0.15), suggested_action: risk === 'high' ? 'hold_for_siu_review' : risk === 'medium' ? 'send_to_secondary_review' : 'auto_process', redaction_count: 0 }; }",
+      "tags": ["health-insurance", "fraud", "fwa"],
+      "schema": {
+        "input": { "claim": "object", "provider_history_30d": "object" },
+        "output": { "risk_level": "string", "flags": "array", "explanation": "string", "confidence": "number" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "NCCI-based starter unbundling rules. Tenants extend per plan.",
+    "unbundling_pairs": [
+      ["99214", "99213"],
+      ["99213", "99212"]
+    ]
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      { "id": "clean_claim", "input": { "claim": { "cpt_codes": ["99214"] }, "provider_history_30d": { "avg_per_day": 6 } }, "expected": { "risk_level": "low" } },
+      { "id": "unbundling",  "input": { "claim": { "cpt_codes": ["99214", "99213"] }, "provider_history_30d": { "avg_per_day": 8 } }, "expected": { "risk_level": "medium" } }
+    ],
+    "coverage": 1.0
+  }
+}

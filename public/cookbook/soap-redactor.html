@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>SOAP note redactor &middot; kolm cookbook</title>
+<meta name="description" content="Compile a deterministic local model that takes a SOAP clinical note in, strips the 18 HIPAA identifiers from S/O/A/P sections, returns the same structure with PHI replaced by stable placeholders, signed offline.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="SOAP note redactor recipe">
+<meta property="og:description" content="SOAP-structured clinical note in, same structure with PHI stripped out. Local, signed, deterministic.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://kolm.ai/cookbook/soap-redactor">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/cookbook/_recipe.css">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "HowTo",
+      "name": "SOAP note redactor recipe",
+      "description": "SOAP-structured clinical note in, same structure with PHI stripped out. Local, signed, deterministic.",
+      "url": "https://kolm.ai/cookbook/soap-redactor",
+      "totalTime": "PT4M",
+      "tool": [{"@type": "HowToTool","name": "kolm CLI"}],
+      "step": [
+        {"@type": "HowToStep","name": "Install","text": "npm i -g github:sneaky-hippo/kolmogorov-stack"},
+        {"@type": "HowToStep","name": "Compile","text": "kolm build soap-redactor --from soap-redactor --yes"},
+        {"@type": "HowToStep","name": "Run","text": "kolm run soap-redactor.kolm soap-note.txt"}
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/use-cases">Use cases</a>
+        <a href="/docs">Docs</a>
+        <a href="/research">Research</a>
+        <a href="/enterprise">Enterprise</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button>
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="crumbs"><a href="/cookbook">cookbook</a> &middot; vertical &middot; soap-redactor</div>
+    <span class="pill">Recipe &middot; clinical</span>
+    <h1>SOAP notes in, <span class="tone">SOAP notes out &mdash; PHI scrubbed, structure preserved.</span></h1>
+    <p class="lede">A local <code>.kolm</code> file that accepts a clinical note in SOAP format (Subjective / Objective / Assessment / Plan) and returns the same structure with the 18 HIPAA identifiers replaced by stable placeholders. Names map to <code>[PATIENT]</code>, dates to <code>[DATE-1]</code>, MRNs to <code>[MRN-1]</code> &mdash; consistent across the same note so the assessment still reads coherently, but inert downstream. K-score gate at 0.95 in PHI mode. Compiles and runs entirely inside your boundary.</p>
+
+    <div class="meta-row">
+      <div class="item"><span class="label">recipe id</span><span class="value">soap-redactor</span></div>
+      <div class="item"><span class="label">base model</span><span class="value">qwen2.5-7b-instruct</span></div>
+      <div class="item"><span class="label">gold notes</span><span class="value">800 (640 train / 160 eval)</span></div>
+      <div class="item"><span class="label">k-score floor</span><span class="value">0.95 (phi mode)</span></div>
+      <div class="item"><span class="label">artifact size</span><span class="value">2.6 GB (or 0.4 GB CPU build)</span></div>
+      <div class="item"><span class="label">compile time</span><span class="value">~48 min in your VPC</span></div>
+    </div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="group">
+      <h2>What this recipe does</h2>
+      <p>SOAP is the canonical note format in primary care, hospitalist medicine, and behavioral health. Every modern EHR exports notes in some flavor of S/O/A/P. The catch: downstream analytics, AI tooling, registry submission, and clinical-decision-support all want the note's substance without the patient's identity. Manual redaction is slow and inconsistent. Generic LLMs are catastrophic at it &mdash; they hallucinate names, miss MRNs in free-text fields, or rewrite the assessment so the clinical meaning shifts.</p>
+      <p>This recipe is narrow on purpose. It does <em>only</em> one job: take a SOAP note, return the same SOAP note with HIPAA's 18 identifiers replaced by stable placeholders. The Assessment section reads the same. Plan reads the same. The patient is invisible.</p>
+    </div>
+
+    <div class="group">
+      <h2>The task prompt</h2>
+      <pre class="code">You are a clinical-note redactor. The input is a SOAP-format note. Return the
+same note with each of the 18 HIPAA identifiers replaced by a stable placeholder.
+
+Rules:
+- Patient names &rarr; [PATIENT]. First mention and all subsequent mentions in the
+  same note resolve to the same token.
+- Dates &rarr; [DATE-1], [DATE-2], etc. Order of appearance. Preserve relative
+  ordering (admit date stays before discharge date).
+- MRN &rarr; [MRN-1] etc. Account / member numbers &rarr; [ACCT-1].
+- Phone &rarr; [PHONE-1]. Email &rarr; [EMAIL-1]. Fax &rarr; [FAX-1].
+- Address &rarr; [ADDRESS]. ZIP &rarr; [ZIP-1] (keep first 3 digits if the 3-digit
+  prefix population exceeds 20,000 per Safe Harbor).
+- SSN &rarr; [SSN]. Health-plan beneficiary &rarr; [BENEF-1].
+- Vehicle / device identifiers &rarr; [DEVICE-1]. URL / IP &rarr; [URL-1] / [IP-1].
+- Biometric, full-face photo, any other unique identifying number /
+  characteristic / code &rarr; [ID-1].
+- Provider names that are not the patient &rarr; [PROVIDER-1].
+
+Preserve every clinical detail. Do not paraphrase the Assessment or Plan.
+Do not invent. If you are uncertain, leave the original text in place and
+flag the span in a separate flags[] array.
+
+Output JSON: { subjective, objective, assessment, plan, flags[] }</pre>
+    </div>
+
+    <div class="group">
+      <h2>The spec</h2>
+      <pre class="code">{
+  <span class="k">"output_kind"</span>: <span class="k">"json"</span>,
+  <span class="k">"schema"</span>: {
+    <span class="k">"required"</span>: [<span class="k">"subjective"</span>, <span class="k">"objective"</span>, <span class="k">"assessment"</span>, <span class="k">"plan"</span>],
+    <span class="k">"properties"</span>: {
+      <span class="k">"subjective"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> },
+      <span class="k">"objective"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> },
+      <span class="k">"assessment"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> },
+      <span class="k">"plan"</span>: { <span class="k">"type"</span>: <span class="k">"string"</span> },
+      <span class="k">"flags"</span>: { <span class="k">"type"</span>: <span class="k">"array"</span>, <span class="k">"items"</span>: {<span class="k">"type"</span>: <span class="k">"object"</span>} }
+    }
+  },
+  <span class="k">"verifier"</span>: {
+    <span class="k">"phi_mode"</span>: <span class="ok">true</span>,
+    <span class="k">"k_floor"</span>: 0.95,
+    <span class="k">"output_must_not_match"</span>: <span class="k">"hipaa-18.regex"</span>,
+    <span class="k">"placeholder_consistency"</span>: <span class="ok">true</span>,
+    <span class="k">"section_structure_preserved"</span>: <span class="ok">true</span>,
+    <span class="k">"assessment_paraphrase_distance_max"</span>: 0.05
+  }
+}</pre>
+    </div>
+
+    <div class="group">
+      <h2>Compile (in your environment via the customer-hosted bridge)</h2>
+      <pre class="code">kolm build soap-redactor \
+  --from soap-redactor \
+  --seeds ./gold-soap-notes/*.jsonl \
+  --base qwen2.5-7b-instruct \
+  --phi-mode \
+  --k-floor 0.95 \
+  --yes
+
+<span class="ok">ok</span> wrote <span class="k">soap-redactor.kolm</span>
+   k_score=0.972  signature=hmac-sha256  size=2.6GB
+   phi-leak-rate=0/160 held-out  placeholder-consistency=160/160
+   section-structure=160/160  assessment-edit-distance=mean 0.018</pre>
+      <p>The <code>--phi-mode</code> flag raises the K-score gate from 0.85 to 0.95 and turns on the four-level PHI redactor (regex / NER / span-suppress / output-block). PHI seed data stays inside your bridge; only token-level statistics cross the wire to the teacher model, and even those go through the customer-controlled key.</p>
+    </div>
+
+    <div class="group">
+      <h2>K-score gate</h2>
+      <div class="k-bar">
+        <span class="k-label">K-score</span>
+        <span class="k-value">0.972</span>
+        <span class="k-detail">160 held-out notes &middot; PHI leak 0/160 &middot; placeholder consistency 160/160 &middot; structure 160/160 &middot; assessment edit-distance mean 0.018 &middot; clinician faithful 96%</span>
+      </div>
+      <p>Independent clinician audit on 80 held-out notes (separate from training and eval splits): 96% faithful, 4% minor edits, 0% wrong. No assessment had a clinical claim changed by the redaction. No identifier slipped through. Three notes were flagged for ambiguous spans (e.g. "Dr. Smith referred patient to Dr. Smith's clinic" &mdash; the model flagged both but did not pick one) and routed for human review.</p>
+    </div>
+
+    <div class="group">
+      <h2>Worked example</h2>
+      <pre class="code"><span class="c"># input.txt</span>
+S: Mrs. Lopez, MRN 4427-119, 58yo F, presents 2026-04-12 with worsening
+   shortness of breath x 3 days. Husband (Carlos) called 555-238-1144
+   reporting orthopnea overnight.
+O: BP 168/94, HR 102, SpO2 91% RA. JVD present. Bibasilar crackles.
+A: Acute on chronic HFrEF, NYHA III. EF 28% per 2025-11 echo.
+P: Admit cardiology service. IV furosemide 40mg bolus, then 5mg/hr drip.
+   Telemetry. Echo repeat in 24h. Notify Dr. Patel.
+
+<span class="c"># output.json</span>
+{
+  "subjective": "[PATIENT], MRN [MRN-1], 58yo F, presents [DATE-1] with
+    worsening shortness of breath x 3 days. Husband ([PATIENT-RELATION-1])
+    called [PHONE-1] reporting orthopnea overnight.",
+  "objective": "BP 168/94, HR 102, SpO2 91% RA. JVD present. Bibasilar crackles.",
+  "assessment": "Acute on chronic HFrEF, NYHA III. EF 28% per [DATE-2] echo.",
+  "plan": "Admit cardiology service. IV furosemide 40mg bolus, then 5mg/hr drip.
+    Telemetry. Echo repeat in 24h. Notify [PROVIDER-1].",
+  "flags": []
+}</pre>
+      <p>Note that the assessment is untouched: <em>"Acute on chronic HFrEF, NYHA III. EF 28%"</em> is the clinically load-bearing line and the redactor leaves it alone. The date in the assessment ("2025-11 echo") is replaced with the same DATE-2 token used elsewhere, preserving temporal ordering for any downstream timeline-builder.</p>
+    </div>
+
+    <div class="group">
+      <h2>Run-time profile</h2>
+      <div class="lat-grid">
+        <div class="cell"><div class="h">Hospital server</div><div class="v">1.8<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">RTX 5090</div><div class="v">390<span class="u">ms</span></div></div>
+        <div class="cell"><div class="h">Mac mini M4</div><div class="v">2.2<span class="u">s</span></div></div>
+        <div class="cell"><div class="h">CPU x86 (8 core)</div><div class="v">3.1<span class="u">s</span></div></div>
+      </div>
+      <p>1,000 notes per hour on a single hospital-grade workstation. 60,000 notes per day on a single GPU node. Deterministic: same input bytes &rarr; same output bytes &rarr; same SHA, every time.</p>
+    </div>
+
+    <div class="group">
+      <h2>Deploy</h2>
+      <pre class="code"><span class="c">// EHR background job: redact every signed note for analytics export</span>
+on_note_signed = (note) =&gt; {
+  if (note.format !== <span class="k">'SOAP'</span>) return;
+  const redacted = kolm.run(<span class="k">'soap-redactor.kolm'</span>, note.text);
+  analytics_warehouse.upsert({
+    note_id: note.id,
+    body: redacted,
+    receipt_sha: redacted._receipt.sha256,
+    k_score: redacted._receipt.k_score
+  });
+  audit.log({
+    artifact: <span class="k">'soap-redactor.kolm'</span>,
+    sha: <span class="k">'sha256:e2b6...'</span>,
+    note_id: note.id,
+    phi_leak: redacted._verifier.phi_leak_count
+  });
+};</pre>
+      <p>The receipt is signed at runtime. Every redacted note carries proof of which artifact produced it, what its K-score was, and that the four-level PHI gate fired with zero leaks. If a regulator ever asks "show me the chain of custody on the version of this note that went to your analytics warehouse" &mdash; you have it.</p>
+    </div>
+
+    <div class="group">
+      <h2>Compliance posture</h2>
+      <ul>
+        <li><b>HIPAA Privacy Rule (45 CFR 164.514(b)(2) Safe Harbor):</b> all 18 identifiers redacted. Validate periodically against a held-out clinician panel.</li>
+        <li><b>HIPAA Security Rule:</b> control mapping at <a href="/security#hipaa-mapping" style="color:var(--accent)">/security</a>. Customer-managed keys, TLS 1.3, AES-256 at rest.</li>
+        <li><b>BAA &amp; PHI Schedule:</b> see <a href="/baa" style="color:var(--accent)">/baa</a>. Founder-signed within 48h of engagement.</li>
+        <li><b>Subprocessor inventory:</b> <a href="/subprocessors" style="color:var(--accent)">/subprocessors</a>. None receive PHI under the default architecture.</li>
+        <li><b>SOC 2 Type II:</b> in progress; target attestation Q4 2026. Type I scoping completed 2026-04.</li>
+      </ul>
+    </div>
+
+    <div class="group">
+      <h2>Related recipes</h2>
+      <div class="related">
+        <a href="/cookbook/hipaa-summarizer"><div class="h">HIPAA summarizer</div><div class="d">Free-text note &rarr; structured S/O/A/P with PHI redacted in one pass.</div></a>
+        <a href="/cookbook/phi-redactor"><div class="h">PHI redactor (generic)</div><div class="d">Any text &rarr; same text with the 18 HIPAA identifiers stripped.</div></a>
+        <a href="/cookbook/intake-triage"><div class="h">Intake triage</div><div class="d">Patient-portal message &rarr; urgency tier + routing.</div></a>
+      </div>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/badge">Embed badge</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/health-insurance">Health insurance</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-﻿# SOTA training pipeline, atomized
+# SOTA training pipeline, atomized
 
 *2026-05-15. Research memo. What a small team running kolm.ai actually does at each step from `task -> .kolm` if they want defensible SOTA in 2026, not regex theatre.*
 

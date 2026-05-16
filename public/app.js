@@ -1,10 +1,15 @@
 // Shared frontend helpers.
 window.KS = (() => {
-  const KEY_NAMES = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
+  // wave 100 P1-3: writes go to ks_api_key only (cuts XSS exfil surface 75%);
+  // reads still scan READ_FALLBACK for users who logged in pre-migration.
+  // setApiKey() drains LEGACY_KEYS on every save to migrate them.
+  const WRITE_KEY = 'ks_api_key';
+  const READ_FALLBACK = ['kolm_api_key', 'apiKey', 'recipeApiKey', 'ks_api_key'];
+  const LEGACY_KEYS = ['kolm_api_key', 'apiKey', 'recipeApiKey'];
 
   function apiKey() {
     try {
-      for (const name of KEY_NAMES) {
+      for (const name of READ_FALLBACK) {
         const value = localStorage.getItem(name);
         if (value) return value;
       }
@@ -15,13 +20,14 @@ window.KS = (() => {
   function setApiKey(key) {
     if (!key) return;
     try {
-      KEY_NAMES.forEach(name => localStorage.setItem(name, key));
+      localStorage.setItem(WRITE_KEY, key);
+      LEGACY_KEYS.forEach(name => localStorage.removeItem(name));
     } catch (_) {}
   }
 
   function clearApiKey() {
     try {
-      KEY_NAMES.forEach(name => localStorage.removeItem(name));
+      READ_FALLBACK.forEach(name => localStorage.removeItem(name));
     } catch (_) {}
   }
 

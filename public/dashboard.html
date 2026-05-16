@@ -51,6 +51,348 @@
     </div>
   </section>
 
+  <section class="hd-process" aria-label="how kolm builds your AI">
+    <p class="hd-process-cap">How kolm builds your AI</p>
+    <div class="hd-process-row" id="hd-process-row">
+      <span class="hd-process-cell" data-step="describe"><b>Describe</b><br>in english</span>
+      <span class="hd-process-arrow" aria-hidden="true">&rarr;</span>
+      <span class="hd-process-cell" data-step="distill"><b>Distill</b><br>teacher &middot; synthetic</span>
+      <span class="hd-process-arrow" aria-hidden="true">&rarr;</span>
+      <span class="hd-process-cell" data-step="align"><b>Align</b><br>DPO &middot; GRPO &middot; ORPO</span>
+      <span class="hd-process-arrow" aria-hidden="true">&rarr;</span>
+      <span class="hd-process-cell" data-step="evaluate"><b>Evaluate</b><br>K-score &middot; judges &middot; PRM</span>
+      <span class="hd-process-arrow" aria-hidden="true">&rarr;</span>
+      <span class="hd-process-cell" data-step="sign"><b>Sign</b><br>.kolm &middot; 4-ring receipt</span>
+      <span class="hd-process-arrow" aria-hidden="true">&rarr;</span>
+      <span class="hd-process-cell" data-step="run"><b>Run</b><br>VPC &middot; edge &middot; hosted</span>
+    </div>
+  </section>
+  <style>
+    .hd-process { margin: 18px 0 10px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-card) }
+    .hd-process-cap { margin: 0 0 12px; font-family: var(--mono); font-size: 11px; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.06em }
+    .hd-process-row { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap }
+    .hd-process-cell { font-family: var(--mono); font-size: 12.5px; color: var(--ink-mute); line-height: 1.45; flex: 0 0 auto }
+    .hd-process-cell b { color: var(--ink); font-weight: 600; display: block; font-size: 13.5px }
+    .hd-process-cell.active b { color: var(--good) }
+    .hd-process-cell.active { color: var(--ink) }
+    .hd-process-cell.done { color: var(--ink-faint) }
+    .hd-process-cell.done b { color: var(--ink-mute) }
+    .hd-process-arrow { color: var(--ink-faint); font-family: var(--mono); align-self: center; flex: 0 0 auto }
+    @media (max-width: 720px) {
+      .hd-process-row { flex-direction: column; gap: 10px }
+      .hd-process-arrow { display: none }
+    }
+  </style>
+
+  <!-- wave 139 . Tenant observability strip. /v1/telemetry returns
+       tenant-scoped data when called with the tenant API key, so the same
+       payload the admin observability tab consumes powers this section. -->
+  <section class="dashboard-panel" id="tenant-observability" aria-labelledby="to-h2" style="margin:18px 0 8px" hidden>
+    <div class="section-head">
+      <h2 id="to-h2">Your AI in production</h2>
+      <span style="font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)">Live · <span id="to-status">auto-refresh 10s</span></span>
+    </div>
+    <style>
+      #tenant-observability .to-stats { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:14px; margin:14px 0 0 }
+      @media (max-width: 980px) { #tenant-observability .to-stats { grid-template-columns: repeat(2, 1fr) } }
+      @media (max-width: 560px) { #tenant-observability .to-stats { grid-template-columns: 1fr } }
+      #tenant-observability .to-stat { padding:14px 16px; border-radius:12px; border:1px solid var(--line); background:var(--bg-card) }
+      #tenant-observability .to-stat-label { font-family:var(--mono); font-size:10.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink-faint) }
+      #tenant-observability .to-stat-value { margin-top:6px; font-size:24px; font-weight:500; letter-spacing:-0.014em; color:var(--ink) }
+      #tenant-observability .to-stat-meta { margin-top:2px; font-family:var(--mono); font-size:11px; color:var(--ink-faint); letter-spacing:0.04em }
+      #tenant-observability .to-spark-wrap { margin-top:14px; padding:14px 16px; border-radius:12px; border:1px solid var(--line); background:var(--bg-card) }
+      #tenant-observability .to-spark-head { display:flex; justify-content:space-between; font-family:var(--mono); font-size:10.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:6px }
+      #tenant-observability .to-empty { padding:20px 16px; text-align:center; font-family:var(--mono); font-size:12px; color:var(--ink-faint) }
+    </style>
+    <div class="to-stats">
+      <div class="to-stat">
+        <div class="to-stat-label">Runs</div>
+        <div class="to-stat-value" id="to-runs">&mdash;</div>
+        <div class="to-stat-meta">receipt-bearing: <span id="to-receipts">&mdash;</span></div>
+      </div>
+      <div class="to-stat">
+        <div class="to-stat-label">p50</div>
+        <div class="to-stat-value" id="to-p50">&mdash;</div>
+        <div class="to-stat-meta">median wire latency</div>
+      </div>
+      <div class="to-stat">
+        <div class="to-stat-label">p95</div>
+        <div class="to-stat-value" id="to-p95">&mdash;</div>
+        <div class="to-stat-meta">95th percentile</div>
+      </div>
+      <div class="to-stat">
+        <div class="to-stat-label">Cache hit</div>
+        <div class="to-stat-value" id="to-cache">&mdash;</div>
+        <div class="to-stat-meta">across all runs</div>
+      </div>
+    </div>
+    <div class="to-spark-wrap" id="to-spark-wrap" hidden>
+      <div class="to-spark-head"><span>Latency &middot; last 60 runs</span><span id="to-spark-peak">peak: &mdash;</span></div>
+      <svg viewBox="0 0 600 60" preserveAspectRatio="none" style="width:100%;height:60px;display:block">
+        <polyline id="to-spark-fill" fill="rgba(126,240,210,0.10)" stroke="none" points=""></polyline>
+        <polyline id="to-spark-line" fill="none" stroke="#7ef0d2" stroke-width="1.4" stroke-linejoin="round" points=""></polyline>
+      </svg>
+    </div>
+    <div class="to-empty" id="to-empty" hidden>No runs yet. <a href="#dash-compile" style="color:var(--kolm-accent, #7ef0d2)">Start a compile</a> to see live latency here.</div>
+  </section>
+
+  <!-- v1 wave 121 . Artifact lab. Drag a .kolm to inspect / test / serve.
+       Sits before the welcome banner so an auth'd user who downloaded an artifact
+       has the obvious thing to do at the top of the page. -->
+  <section class="dashboard-panel al-panel" id="artifact-lab" aria-labelledby="al-h2" style="margin:18px 0 8px">
+    <div class="section-head">
+      <h2 id="al-h2">Artifact lab</h2>
+      <span style="font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)">Drop a <code style="font-size:11px">.kolm</code> to inspect, test, and serve</span>
+    </div>
+
+    <div id="al-drop" class="al-drop" role="button" tabindex="0" aria-label="Drag a .kolm artifact here or click to browse">
+      <div class="al-drop-glow" aria-hidden="true"></div>
+      <div class="al-drop-inner">
+        <svg class="al-drop-icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <path d="M12 3v12m0 0l-5-5m5 5l5-5"/>
+          <path d="M5 21h14" stroke-dasharray="2 3"/>
+        </svg>
+        <p class="al-drop-text">Drag a <code>.kolm</code> artifact here</p>
+        <p class="al-drop-sub">or <button type="button" id="al-pick" class="al-link-btn">browse for one</button> · parsed locally · stays in your browser</p>
+        <input type="file" id="al-file" accept=".kolm,.zip,application/zip" hidden>
+      </div>
+    </div>
+
+    <div id="al-error" class="al-error" hidden></div>
+
+    <article id="al-card" class="al-card" hidden>
+      <header class="al-card-head">
+        <div class="al-card-title-row">
+          <h3 id="al-name" class="al-name">Untitled artifact</h3>
+          <button type="button" id="al-clear" class="al-clear" title="Drop another">drop another</button>
+        </div>
+        <p class="al-task" id="al-task">—</p>
+        <div class="al-meta">
+          <span class="al-pill"><span class="al-pill-l">model</span><b id="al-model">—</b></span>
+          <span class="al-pill"><span class="al-pill-l">K-score</span><b id="al-kscore">—</b></span>
+          <span class="al-pill"><span class="al-pill-l">gate</span><b id="al-gate">—</b></span>
+          <span class="al-pill"><span class="al-pill-l">size</span><b id="al-size">—</b></span>
+          <span class="al-pill al-pill-cid"><span class="al-pill-l">cid</span><code id="al-cid">—</code></span>
+        </div>
+      </header>
+
+      <nav class="al-tabs" role="tablist" aria-label="Artifact panes">
+        <button class="al-tab active" role="tab" aria-selected="true" data-tab="test">Test</button>
+        <button class="al-tab" role="tab" aria-selected="false" data-tab="serve">Serve as REST</button>
+        <button class="al-tab" role="tab" aria-selected="false" data-tab="recipe">Recipe</button>
+        <button class="al-tab" role="tab" aria-selected="false" data-tab="receipt">Receipt</button>
+        <button class="al-tab" role="tab" aria-selected="false" data-tab="evals">Evals</button>
+      </nav>
+
+      <div class="al-pane" data-pane="test">
+        <label class="al-label">Try a prompt</label>
+        <textarea id="al-prompt" rows="3" placeholder="Paste a clinical note. The redactor will strip PHI and return a receipt." class="al-input"></textarea>
+        <div class="al-test-row">
+          <button type="button" id="al-run" class="btn primary">Run with verifier &rarr;</button>
+          <label class="al-k-label">k <input id="al-k" type="number" min="1" max="8" value="2" class="al-k-input"></label>
+          <span id="al-test-status" class="al-status" aria-live="polite"></span>
+        </div>
+        <div id="al-output" class="al-output" hidden>
+          <div class="al-output-head">
+            <span class="al-output-tag">response</span>
+            <span id="al-output-meta" class="al-output-meta"></span>
+          </div>
+          <pre id="al-output-text" class="al-pre"></pre>
+          <details class="al-receipt-fold">
+            <summary>show receipt</summary>
+            <pre id="al-output-receipt" class="al-pre al-pre-mute"></pre>
+          </details>
+        </div>
+      </div>
+
+      <div class="al-pane" data-pane="serve" hidden>
+        <p class="al-sub">One curl. Drop it into your service. Calls bill against your account and produce a receipt per call.</p>
+        <div class="al-serve-grid">
+          <label class="al-label">Endpoint
+            <input id="al-serve-url" class="al-input al-mono" readonly value="https://kolm.ai/v1/run">
+          </label>
+          <label class="al-label">Method
+            <input class="al-input al-mono" readonly value="POST">
+          </label>
+        </div>
+        <label class="al-label">curl
+          <pre id="al-curl" class="al-pre al-pre-curl">paste an artifact above to populate</pre>
+        </label>
+        <div class="al-test-row">
+          <button type="button" id="al-copy-curl" class="btn primary">Copy curl</button>
+          <button type="button" id="al-copy-url" class="btn ghost">Copy URL</button>
+          <span id="al-serve-status" class="al-status" aria-live="polite"></span>
+        </div>
+        <p class="al-fineprint">Your API key is read from this dashboard. Rotate it from <a href="/account">/account</a> if needed.</p>
+      </div>
+
+      <div class="al-pane" data-pane="recipe" hidden>
+        <pre id="al-recipe-pre" class="al-pre al-pre-tall">—</pre>
+      </div>
+
+      <div class="al-pane" data-pane="receipt" hidden>
+        <pre id="al-receipt-pre" class="al-pre al-pre-tall">—</pre>
+      </div>
+
+      <div class="al-pane" data-pane="evals" hidden>
+        <p class="al-sub">The held-out evals the K-score was computed against, with per-row pass / fail.</p>
+        <pre id="al-evals-pre" class="al-pre al-pre-tall">—</pre>
+      </div>
+    </article>
+  </section>
+
+  <style>
+    /* Artifact lab — wave 121. SOTA drag-drop + test + serve. */
+    .al-panel { position: relative }
+    .al-drop {
+      position: relative; margin: 8px 0 0;
+      border: 1.5px dashed rgba(255,255,255,0.14);
+      border-radius: 14px;
+      padding: 44px 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.012), rgba(255,255,255,0.002));
+      cursor: pointer;
+      transition: border-color 200ms ease, background 200ms ease, transform 200ms ease;
+      overflow: hidden;
+    }
+    .al-drop:hover, .al-drop:focus-visible {
+      border-color: rgba(126,240,210,0.55);
+      background: linear-gradient(180deg, rgba(126,240,210,0.045), rgba(126,240,210,0.005));
+      outline: none;
+    }
+    .al-drop.al-active {
+      border-color: var(--good);
+      background: linear-gradient(180deg, rgba(126,240,210,0.08), rgba(126,240,210,0.015));
+      transform: scale(1.005);
+    }
+    .al-drop.al-active .al-drop-glow {
+      opacity: 1;
+    }
+    .al-drop-glow {
+      position: absolute; inset: -40%;
+      background: radial-gradient(circle at 50% 50%, rgba(126,240,210,0.18), transparent 60%);
+      filter: blur(40px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 200ms ease;
+    }
+    .al-drop-inner { position: relative; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px }
+    .al-drop-icon { color: var(--ink-mute); transition: color 200ms ease, transform 200ms ease }
+    .al-drop:hover .al-drop-icon, .al-drop.al-active .al-drop-icon {
+      color: var(--good);
+      transform: translateY(-2px);
+    }
+    .al-drop-text { margin: 4px 0 0; font-size: 15px; color: var(--ink); font-weight: 500 }
+    .al-drop-text code { font-family: var(--mono); font-size: 13px; padding: 1px 6px; border-radius: 4px; background: rgba(126,240,210,0.08); color: var(--good); border: 1px solid rgba(126,240,210,0.18) }
+    .al-drop-sub { margin: 0; font-size: 12.5px; color: var(--ink-faint); font-family: var(--mono) }
+    .al-link-btn {
+      appearance: none; background: transparent; border: none; padding: 0;
+      color: var(--good); font-family: var(--mono); font-size: 12.5px;
+      cursor: pointer; border-bottom: 1px dashed currentColor;
+    }
+    .al-link-btn:hover { color: var(--ink) }
+
+    .al-error {
+      margin: 12px 0 0; padding: 12px 14px; border-radius: 8px;
+      border: 1px solid rgba(255,120,120,0.32); background: rgba(255,120,120,0.06);
+      color: #ffb3b3; font-family: var(--mono); font-size: 12.5px;
+    }
+
+    .al-card {
+      margin: 16px 0 0; padding: 22px 24px; border: 1px solid var(--line-strong);
+      border-radius: 14px; background: var(--bg-card);
+      animation: al-rise 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes al-rise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+
+    .al-card-head { border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 14px }
+    .al-card-title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px }
+    .al-name { margin: 0; font-size: 19px; font-weight: 500; letter-spacing: -0.01em; color: var(--ink) }
+    .al-clear {
+      appearance: none; background: transparent; border: 1px solid var(--line);
+      padding: 6px 12px; border-radius: 6px; cursor: pointer;
+      font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint);
+      letter-spacing: 0.04em; text-transform: uppercase;
+      transition: border-color 120ms, color 120ms;
+    }
+    .al-clear:hover { border-color: var(--ink-mute); color: var(--ink-mute) }
+    .al-task { margin: 8px 0 12px; font-size: 14px; color: var(--ink-mute); line-height: 1.5; max-width: 760px }
+    .al-meta { display: flex; flex-wrap: wrap; gap: 8px }
+    .al-pill {
+      display: inline-flex; align-items: baseline; gap: 6px;
+      padding: 5px 10px; border: 1px solid var(--line);
+      border-radius: 999px; font-family: var(--mono); font-size: 11.5px;
+      color: var(--ink-mute); background: rgba(255,255,255,0.012);
+    }
+    .al-pill-l { color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px }
+    .al-pill b { color: var(--ink); font-weight: 600 }
+    .al-pill-cid code { font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute); max-width: 220px; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: bottom }
+
+    .al-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin: 0 -8px 14px }
+    .al-tab {
+      appearance: none; background: transparent; border: none;
+      padding: 10px 14px; cursor: pointer;
+      font-family: var(--mono); font-size: 12.5px; color: var(--ink-faint);
+      border-bottom: 2px solid transparent;
+      transition: color 120ms, border-color 120ms;
+    }
+    .al-tab:hover { color: var(--ink-mute) }
+    .al-tab.active { color: var(--ink); border-bottom-color: var(--good) }
+
+    .al-pane { display: flex; flex-direction: column; gap: 10px }
+    .al-label { display: flex; flex-direction: column; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.04em }
+    .al-input {
+      background: var(--bg-elev); color: var(--ink);
+      border: 1px solid var(--line-strong); border-radius: 8px;
+      padding: 10px 12px; font-family: var(--mono); font-size: 13px;
+      line-height: 1.55; resize: vertical;
+    }
+    .al-input:focus { outline: none; border-color: var(--good) }
+    .al-mono { font-family: var(--mono); font-size: 12.5px }
+    .al-sub { margin: 0 0 6px; font-size: 13.5px; color: var(--ink-mute) }
+
+    .al-test-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px }
+    .al-k-label { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; color: var(--ink-mute); text-transform: none; letter-spacing: 0 }
+    .al-k-input { width: 56px; background: var(--bg-elev); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; font-family: var(--mono); font-size: 12.5px }
+    .al-status { font-family: var(--mono); font-size: 12px; color: var(--ink-mute) }
+    .al-status.ok { color: var(--good) }
+    .al-status.err { color: #ffb3b3 }
+
+    .al-output {
+      margin-top: 10px; border: 1px solid var(--line);
+      border-radius: 10px; background: var(--bg-elev);
+      animation: al-rise 220ms ease;
+    }
+    .al-output-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+      font-family: var(--mono); font-size: 11px;
+    }
+    .al-output-tag { color: var(--good); text-transform: uppercase; letter-spacing: 0.06em }
+    .al-output-meta { color: var(--ink-faint) }
+    .al-receipt-fold { padding: 0 12px 10px }
+    .al-receipt-fold summary { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); cursor: pointer; padding: 6px 0; user-select: none }
+    .al-receipt-fold[open] summary { color: var(--ink-mute) }
+
+    .al-pre {
+      margin: 0; padding: 12px 14px;
+      font-family: var(--mono); font-size: 12.5px; line-height: 1.6;
+      color: var(--ink); background: transparent;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .al-pre-mute { color: var(--ink-mute); font-size: 11.5px }
+    .al-pre-tall { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--bg-elev) }
+    .al-pre-curl { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font-size: 12.5px; color: var(--good); cursor: text; user-select: all }
+
+    .al-serve-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin: 6px 0 4px }
+    @media (max-width: 720px) { .al-serve-grid { grid-template-columns: 1fr } }
+    .al-fineprint { margin: 4px 0 0; font-size: 11.5px; color: var(--ink-faint); font-family: var(--mono) }
+    .al-fineprint a { color: var(--ink-mute); border-bottom: 1px dashed var(--line) }
+
+    [data-theme=light] .al-drop { border-color: rgba(0,0,0,0.16); background: linear-gradient(180deg, rgba(0,0,0,0.015), transparent) }
+    [data-theme=light] .al-drop:hover { border-color: rgba(31,154,124,0.55); background: linear-gradient(180deg, rgba(31,154,124,0.05), transparent) }
+    [data-theme=light] .al-drop.al-active { border-color: #1f9a7c; background: linear-gradient(180deg, rgba(31,154,124,0.08), transparent) }
+    [data-theme=light] .al-pill { background: rgba(0,0,0,0.02) }
+  </style>
+
   <section id="welcome-banner" hidden style="margin:8px 0 18px;padding:16px 20px;border:1px solid var(--line);border-radius:10px;background:var(--bg-card);display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap">
     <div>
       <div style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.04em">first compile</div>
@@ -150,6 +492,12 @@
       .dash-chat-send{width:100%;padding:11px 16px}
       .dash-chat-actions{flex-direction:column;align-items:flex-start}
       .dash-chat-hint{margin-left:0}
+    }
+    .dc-grid-2,.dc-grid-3{display:grid;gap:14px}
+    .dc-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .dc-grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    @media (max-width:680px){
+      .dc-grid-2,.dc-grid-3{grid-template-columns:1fr}
     }
     @media (prefers-reduced-motion:reduce){
       .dash-chat-input,.dash-chat-send,.dash-chat-clear,.dash-chat-link{transition:none}
@@ -729,7 +1077,76 @@
         <span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.04em">Task</span>
         <textarea id="dc-task" rows="3" required placeholder="answer support tickets in our voice, never send unless the customer asked" style="background:var(--bg-elev);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;padding:11px 13px;font-family:var(--mono);font-size:13.5px;line-height:1.55;resize:vertical"></textarea>
       </label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+      <!-- v1 wave 121 . Training data picker. .jsonl/.csv upload + paste + sample templates.
+           Reads into dc-examples (array). Sent on the wire as `examples` to /v1/compile.
+           Optional — if empty, the compile worker uses the teacher to synthesize from the task alone. -->
+      <div class="dc-train">
+        <div class="dc-train-head">
+          <span class="dc-train-cap">Training data <em class="dc-train-em">optional · 0–200 examples · .jsonl, .csv, paste, or template</em></span>
+          <span id="dc-train-count" class="dc-train-count">0 examples loaded</span>
+        </div>
+        <div class="dc-train-tabs">
+          <button type="button" class="dc-tt active" data-tt="file">Upload file</button>
+          <button type="button" class="dc-tt" data-tt="paste">Paste JSONL</button>
+          <button type="button" class="dc-tt" data-tt="template">Use a template</button>
+        </div>
+        <div class="dc-train-panes">
+          <div class="dc-tp" data-tp="file">
+            <div id="dc-data-drop" class="dc-data-drop" role="button" tabindex="0">
+              <p>Drop a <code>.jsonl</code> or <code>.csv</code> file here, or <button type="button" id="dc-data-pick" class="al-link-btn">browse</button></p>
+              <p class="dc-data-hint">JSONL: one <code>{"input":"…","output":"…"}</code> per line. CSV: two columns, headers <code>input,output</code>.</p>
+              <input id="dc-data-file" type="file" accept=".jsonl,.csv,.json,.txt,text/*" hidden>
+            </div>
+          </div>
+          <div class="dc-tp" data-tp="paste" hidden>
+            <textarea id="dc-data-paste" rows="5" placeholder='{"input":"…","output":"…"}&#10;{"input":"…","output":"…"}' class="dc-data-paste"></textarea>
+            <button type="button" id="dc-data-paste-load" class="btn ghost dc-data-paste-btn">Load from paste &rarr;</button>
+          </div>
+          <div class="dc-tp" data-tp="template" hidden>
+            <div class="dc-tmpl-grid">
+              <button type="button" class="dc-tmpl" data-template="support">Support tickets <em>20 examples</em></button>
+              <button type="button" class="dc-tmpl" data-template="classify">6-class email router <em>18 examples</em></button>
+              <button type="button" class="dc-tmpl" data-template="redact">PHI redactor <em>14 examples</em></button>
+              <button type="button" class="dc-tmpl" data-template="extract">Invoice extractor <em>16 examples</em></button>
+              <button type="button" class="dc-tmpl" data-template="translate">Multilingual greeter <em>12 examples</em></button>
+              <button type="button" class="dc-tmpl" data-template="code">Code-issue classifier <em>22 examples</em></button>
+            </div>
+          </div>
+        </div>
+        <details class="dc-data-preview" id="dc-data-preview" hidden>
+          <summary>Loaded examples · click to expand</summary>
+          <pre id="dc-data-preview-pre" class="al-pre al-pre-tall"></pre>
+          <button type="button" id="dc-data-clear" class="btn ghost" style="margin-top:8px">Clear loaded examples</button>
+        </details>
+      </div>
+      <style>
+        .dc-train { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-elev) }
+        .dc-train-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap }
+        .dc-train-cap { font-family: var(--mono); font-size: 11px; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.04em }
+        .dc-train-em { font-style: normal; color: var(--ink-faint); font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 6px }
+        .dc-train-count { font-family: var(--mono); font-size: 11.5px; color: var(--good) }
+        .dc-train-tabs { display: flex; gap: 4px }
+        .dc-tt { appearance: none; background: transparent; border: 1px solid var(--line); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute); transition: border-color 120ms, color 120ms }
+        .dc-tt:hover { color: var(--ink); border-color: var(--ink-mute) }
+        .dc-tt.active { color: var(--ink); border-color: var(--good); background: rgba(126,240,210,0.04) }
+        .dc-data-drop { padding: 16px; border: 1.5px dashed var(--line-strong); border-radius: 8px; text-align: center; cursor: pointer; transition: border-color 200ms, background 200ms }
+        .dc-data-drop:hover, .dc-data-drop:focus-visible { border-color: var(--good); background: rgba(126,240,210,0.025); outline: none }
+        .dc-data-drop.al-active { border-color: var(--good); background: rgba(126,240,210,0.05) }
+        .dc-data-drop p { margin: 0; font-size: 13px; color: var(--ink-mute) }
+        .dc-data-hint { margin-top: 6px !important; font-size: 11.5px; color: var(--ink-faint); font-family: var(--mono) }
+        .dc-data-drop code { font-family: var(--mono); font-size: 11.5px; color: var(--good); background: rgba(126,240,210,0.06); padding: 0 4px; border-radius: 3px }
+        .dc-data-paste { width: 100%; background: var(--bg); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 6px; padding: 10px 12px; font-family: var(--mono); font-size: 12.5px; resize: vertical }
+        .dc-data-paste-btn { margin-top: 8px }
+        .dc-tmpl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px }
+        @media (max-width: 720px) { .dc-tmpl-grid { grid-template-columns: 1fr } }
+        .dc-tmpl { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); cursor: pointer; color: var(--ink); font-family: var(--mono); font-size: 12px; text-align: left; transition: border-color 120ms, background 120ms }
+        .dc-tmpl:hover { border-color: var(--good); background: rgba(126,240,210,0.04) }
+        .dc-tmpl em { display: block; margin-top: 4px; font-style: normal; color: var(--ink-faint); font-size: 11px }
+        .dc-data-preview summary { cursor: pointer; font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); padding: 6px 0; user-select: none }
+      </style>
+
+      <div class="dc-grid-2">
         <label style="display:flex;flex-direction:column;gap:6px">
           <span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.04em">Base model</span>
           <select id="dc-base" style="background:var(--bg-elev);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;padding:10px 13px;font-family:var(--mono);font-size:13.5px">
@@ -756,7 +1173,7 @@
           </select>
         </label>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <div class="dc-grid-3">
         <label style="display:flex;flex-direction:column;gap:6px">
           <span style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.04em">LoRA rank</span>
           <select id="dc-rank" style="background:var(--bg-elev);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;padding:10px 13px;font-family:var(--mono);font-size:13.5px">
@@ -1268,6 +1685,9 @@
         var body = { task: task, base_model: base, preset: preset, lora_rank: rank, k_threshold: kthresh };
         if (corpus) body.corpus_namespace = corpus;
         if (hook) body.deploy_hook = hook;
+        if (window.__dcExamples && window.__dcExamples.length) {
+          body.examples = window.__dcExamples.slice(0, 200);
+        }
         var resp = await KS.api('/v1/compile', { method: 'POST', body: JSON.stringify(body) });
         if (!resp.job_id) throw new Error('missing job_id');
         dcSetStatus('queued · job ' + resp.job_id, 'ok');
@@ -1281,8 +1701,636 @@
     });
   }
 
+  // -- v1 wave 121 — training data picker (file / paste / template) ---------
+  // Examples are kept on window.__dcExamples so the dc-form submit handler
+  // above can splice them into the /v1/compile body without coupling.
+  window.__dcExamples = window.__dcExamples || [];
+  var trCount   = document.getElementById('dc-train-count');
+  var trDrop    = document.getElementById('dc-data-drop');
+  var trPick    = document.getElementById('dc-data-pick');
+  var trFile    = document.getElementById('dc-data-file');
+  var trPaste   = document.getElementById('dc-data-paste');
+  var trPasteBn = document.getElementById('dc-data-paste-load');
+  var trPreview = document.getElementById('dc-data-preview');
+  var trPrePre  = document.getElementById('dc-data-preview-pre');
+  var trClear   = document.getElementById('dc-data-clear');
+  var trTabs    = document.querySelectorAll('.dc-tt');
+  var trPanes   = document.querySelectorAll('.dc-tp');
+  var trTmpls   = document.querySelectorAll('.dc-tmpl');
+
+  // Bail if the picker is not on this page (dashboard variant without compile form).
+  if (trDrop) {
+    function trSetExamples(arr, source) {
+      window.__dcExamples = Array.isArray(arr) ? arr : [];
+      var n = window.__dcExamples.length;
+      var capped = n > 200 ? ' (capped from ' + arr.length + ')' : '';
+      trCount.textContent = n + ' example' + (n === 1 ? '' : 's') + ' loaded'
+                          + (source ? ' · from ' + source : '') + capped;
+      trCount.style.color = n ? 'var(--good)' : 'var(--ink-mute)';
+      if (n) {
+        trPreview.hidden = false;
+        var preview = window.__dcExamples.slice(0, 5).map(function (ex) {
+          return JSON.stringify(ex);
+        }).join('\n');
+        var more = n > 5 ? '\n…and ' + (n - 5) + ' more' : '';
+        trPrePre.textContent = preview + more;
+      } else {
+        trPreview.hidden = true;
+        trPrePre.textContent = '';
+      }
+    }
+
+    function parseJSONL(text) {
+      var out = [];
+      var lines = String(text || '').split(/\r?\n/);
+      for (var i = 0; i < lines.length; i++) {
+        var ln = lines[i].trim();
+        if (!ln) continue;
+        try {
+          var obj = JSON.parse(ln);
+          if (obj && typeof obj === 'object' && obj.input != null && obj.output != null) {
+            out.push({ input: String(obj.input), output: String(obj.output) });
+          }
+        } catch (e) { /* skip malformed line */ }
+      }
+      return out;
+    }
+
+    function parseCSV(text) {
+      // Minimal CSV parser: handles quoted fields with commas + embedded "" quotes.
+      // First row must be header containing "input" and "output" columns (any order).
+      var rows = [];
+      var s = String(text || '');
+      var i = 0, field = '', row = [], inQuotes = false;
+      while (i < s.length) {
+        var c = s[i];
+        if (inQuotes) {
+          if (c === '"' && s[i + 1] === '"') { field += '"'; i += 2; continue; }
+          if (c === '"') { inQuotes = false; i++; continue; }
+          field += c; i++; continue;
+        }
+        if (c === '"') { inQuotes = true; i++; continue; }
+        if (c === ',') { row.push(field); field = ''; i++; continue; }
+        if (c === '\r') { i++; continue; }
+        if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+        field += c; i++;
+      }
+      if (field.length || row.length) { row.push(field); rows.push(row); }
+      if (rows.length < 2) return [];
+      var header = rows[0].map(function (h) { return String(h).toLowerCase().trim(); });
+      var iIn  = header.indexOf('input');
+      var iOut = header.indexOf('output');
+      if (iIn < 0 || iOut < 0) return [];
+      var out = [];
+      for (var r = 1; r < rows.length; r++) {
+        var row2 = rows[r];
+        if (!row2.length || (row2.length === 1 && !row2[0])) continue;
+        var inp = row2[iIn] != null ? String(row2[iIn]).trim() : '';
+        var outp = row2[iOut] != null ? String(row2[iOut]).trim() : '';
+        if (inp && outp) out.push({ input: inp, output: outp });
+      }
+      return out;
+    }
+
+    function parseAuto(name, text) {
+      var n = String(name || '').toLowerCase();
+      if (n.endsWith('.csv')) return parseCSV(text);
+      if (n.endsWith('.jsonl') || n.endsWith('.ndjson')) return parseJSONL(text);
+      if (n.endsWith('.json')) {
+        try {
+          var j = JSON.parse(text);
+          if (Array.isArray(j)) {
+            return j.filter(function (e) { return e && e.input != null && e.output != null; })
+                    .map(function (e) { return { input: String(e.input), output: String(e.output) }; });
+          }
+        } catch (e) { return []; }
+      }
+      // Try JSONL first, then CSV
+      var jl = parseJSONL(text);
+      if (jl.length) return jl;
+      return parseCSV(text);
+    }
+
+    function trReadFile(f) {
+      if (!f) return;
+      if (f.size > 5 * 1024 * 1024) { dcSetStatus('training data file too large (max 5 MB)', 'err'); return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var examples = parseAuto(f.name, reader.result);
+        if (!examples.length) { dcSetStatus('no valid examples found in ' + f.name + ' (expect JSONL with input/output or CSV with input,output header)', 'err'); return; }
+        trSetExamples(examples, f.name);
+        dcSetStatus('loaded ' + Math.min(examples.length, 200) + ' examples from ' + f.name, 'ok');
+      };
+      reader.onerror = function () { dcSetStatus('failed to read ' + f.name, 'err'); };
+      reader.readAsText(f);
+    }
+
+    // -- tabs --
+    trTabs.forEach(function (t) {
+      t.addEventListener('click', function () {
+        var key = t.getAttribute('data-tt');
+        trTabs.forEach(function (x) { x.classList.toggle('active', x === t); });
+        trPanes.forEach(function (p) { p.hidden = p.getAttribute('data-tp') !== key; });
+      });
+    });
+
+    // -- file pick --
+    trPick.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); trFile.click(); });
+    trDrop.addEventListener('click', function (e) {
+      if (e.target.closest('button')) return;
+      trFile.click();
+    });
+    trDrop.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); trFile.click(); }
+    });
+    trFile.addEventListener('change', function () {
+      if (trFile.files && trFile.files[0]) trReadFile(trFile.files[0]);
+    });
+    // -- file drag/drop on dc-data-drop --
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      trDrop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); trDrop.classList.add('al-active'); });
+    });
+    ['dragleave', 'dragend'].forEach(function (ev) {
+      trDrop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); if (e.target === trDrop) trDrop.classList.remove('al-active'); });
+    });
+    trDrop.addEventListener('drop', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      trDrop.classList.remove('al-active');
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) trReadFile(f);
+    });
+
+    // -- paste --
+    trPasteBn.addEventListener('click', function () {
+      var text = (trPaste.value || '').trim();
+      if (!text) { dcSetStatus('paste some JSONL first', 'err'); return; }
+      // Try JSONL first, fall back to CSV
+      var examples = parseJSONL(text);
+      if (!examples.length) examples = parseCSV(text);
+      if (!examples.length) { dcSetStatus('no valid examples in paste (expect JSONL with input/output fields)', 'err'); return; }
+      trSetExamples(examples, 'paste');
+      dcSetStatus('loaded ' + Math.min(examples.length, 200) + ' examples from paste', 'ok');
+    });
+
+    // -- templates (inline data, kept terse) --
+    var TEMPLATES = {
+      support: [
+        { input: "My subscription was charged twice this month, can you refund the extra?", output: "I'm sorry about the duplicate charge. I see two charges on the same day; I've refunded the extra one — it should appear in 3–5 business days. Anything else I can help with?" },
+        { input: "How do I cancel my plan?", output: "You can cancel anytime from Settings → Billing → Cancel plan. Your access stays active until the end of the current billing period." },
+        { input: "I forgot my password and the reset email isn't arriving", output: "Check your spam folder first. If it's not there, send the email you signed up with to support@kolm.ai and I'll trigger a manual reset within an hour." },
+        { input: "Is there a student discount?", output: "Yes — 50% off Pro for verified students. Email us from your .edu address and we'll switch your plan within a business day." },
+        { input: "Your dashboard is loading really slowly today", output: "Thanks for flagging — we're seeing the same on our end. Engineering is investigating. I'll DM you when it's resolved." },
+        { input: "Can I get an invoice with my company name on it?", output: "Sure — go to Billing → Edit details, add your company name and VAT number, and click Re-issue last invoice. It'll regenerate within a minute." },
+        { input: "What payment methods do you accept?", output: "We accept all major cards (Visa, Mastercard, Amex), Apple Pay, Google Pay, and ACH for annual plans." },
+        { input: "I want to upgrade from Pro to Business", output: "Head to Settings → Billing → Change plan and select Business. You'll only be charged the prorated difference for the rest of this cycle." },
+        { input: "Do you offer SSO?", output: "Yes — SAML SSO and SCIM provisioning ship with our Business plan. Setup takes about 15 minutes; happy to schedule a session if helpful." },
+        { input: "How do I export my data?", output: "Settings → Data → Export. We email a download link within a few minutes. Format is JSON; let me know if you need CSV." },
+        { input: "Can two people share one seat?", output: "Each seat is per-individual, but Business plans include unlimited viewer seats for read-only access — that often covers the secondary user." },
+        { input: "Why was my API key revoked?", output: "Keys get revoked automatically after 90 days of inactivity. You can generate a new one in Settings → API → Create key." },
+        { input: "Where can I see uptime?", output: "Live status is at status.kolm.ai with 90-day history. Subscribe there for incident notifications." },
+        { input: "Do you have a Slack integration?", output: "Yes — install from Settings → Integrations → Slack. You can route receipts and alerts to any channel." },
+        { input: "I'm getting rate-limited on the API", output: "Free tier is 60 req/min; Pro is 600 req/min. If you need more, drop me a note about your use case and I can bump it." },
+        { input: "Can I self-host?", output: "Business plan includes a self-hosted bridge for VPC deployments. We provide Docker and Helm charts; setup is usually under 30 minutes." },
+        { input: "How long do you retain my data?", output: "Receipts are kept indefinitely (you own them); training data is kept for 30 days then purged. You can delete anything sooner from Settings → Data." },
+        { input: "Is my data used to train models?", output: "No. Your data is never used to train shared models. Only models you compile yourself see your data, and the artifacts stay yours." },
+        { input: "Do you support HIPAA?", output: "Yes — sign a BAA at /baa and the platform automatically enables PHI redaction, audit chains, and the VPC-only bridge." },
+        { input: "I want a refund for last month — I didn't use it", output: "Happy to refund. Confirm the email on the account and I'll process it now; usually shows up in 3–5 business days." },
+      ],
+      classify: [
+        { input: "URGENT: Production database is down, need someone now", output: "incident" },
+        { input: "Can I get an invoice for last month?", output: "billing" },
+        { input: "How do I integrate the SDK with Next.js?", output: "engineering" },
+        { input: "I'd like to discuss a custom plan for 200 seats", output: "sales" },
+        { input: "Your competitor offers feature X — do you?", output: "sales" },
+        { input: "Password reset link is broken", output: "support" },
+        { input: "We're moving to a different vendor — please cancel", output: "support" },
+        { input: "API returning 500 on /v1/recipes — repro inside", output: "engineering" },
+        { input: "Security disclosure: found a path traversal in admin", output: "security" },
+        { input: "Where can I sign the BAA?", output: "compliance" },
+        { input: "Our SOC2 auditor needs your subprocessors list", output: "compliance" },
+        { input: "Refund request for the duplicate charge on May 3", output: "billing" },
+        { input: "Site is throwing CSP errors in console", output: "engineering" },
+        { input: "Interested in your enterprise self-host option", output: "sales" },
+        { input: "PagerDuty alert: K-score regression on prod recipe", output: "incident" },
+        { input: "Can you remove my account permanently under GDPR?", output: "compliance" },
+        { input: "We discovered an XSS in your blog comments", output: "security" },
+        { input: "Marketing question: do you have a partner program?", output: "sales" },
+      ],
+      redact: [
+        { input: "Patient John Doe (DOB 1980-05-12) presented with chest pain", output: "Patient [NAME] (DOB [DATE]) presented with chest pain" },
+        { input: "Contact Dr. Smith at smith@hospital.org or 555-123-4567", output: "Contact Dr. [NAME] at [EMAIL] or [PHONE]" },
+        { input: "SSN 123-45-6789 was used to verify identity", output: "SSN [SSN] was used to verify identity" },
+        { input: "Address: 123 Main St, Springfield, IL 62704", output: "Address: [ADDRESS]" },
+        { input: "MRN 00554321 admitted on 04/15/2026 at 14:32", output: "MRN [MRN] admitted on [DATE] at [TIME]" },
+        { input: "Insurance: Aetna PPO #PPO-99887", output: "Insurance: [INSURANCE]" },
+        { input: "Emergency contact Jane Doe (sister) at 555-987-6543", output: "Emergency contact [NAME] ([RELATION]) at [PHONE]" },
+        { input: "Visa ending in 4242 charged $1,250 on 2026-04-30", output: "[CARD] charged [AMOUNT] on [DATE]" },
+        { input: "License plate 7XYZ123 spotted at 09:14am", output: "License plate [PLATE] spotted at [TIME]" },
+        { input: "IP 192.168.1.42 accessed the record at 11:02 UTC", output: "IP [IP] accessed the record at [TIME] UTC" },
+        { input: "Patient identifier: P-554321-B; DOB 1972-08-30", output: "Patient identifier: [MRN]; DOB [DATE]" },
+        { input: "Lab results faxed to fax://555-321-9876 marked URGENT", output: "Lab results faxed to fax://[PHONE] marked URGENT" },
+        { input: "Pharmacy claim #RX2026-77123 for Maria Garcia at 800-555-0100", output: "Pharmacy claim #[CLAIM] for [NAME] at [PHONE]" },
+        { input: "Provider NPI 1234567893 referred to NPI 9876543219", output: "Provider NPI [NPI] referred to NPI [NPI]" },
+      ],
+      extract: [
+        { input: "Invoice #INV-2025-001 from Acme Corp, total $1,250.00 due 2026-06-30", output: '{"invoice_id":"INV-2025-001","vendor":"Acme Corp","total":1250.00,"due_date":"2026-06-30"}' },
+        { input: "Bill from Contoso LLC for $890.50 — invoice C-99812, paid 2026-05-01", output: '{"invoice_id":"C-99812","vendor":"Contoso LLC","total":890.50,"paid_date":"2026-05-01"}' },
+        { input: "INVOICE 4421 / Fabrikam Inc / $3,200 / net30", output: '{"invoice_id":"4421","vendor":"Fabrikam Inc","total":3200.00,"terms":"net30"}' },
+        { input: "Ref AB-771, Initech, USD 540, sent 2026-04-12", output: '{"invoice_id":"AB-771","vendor":"Initech","total":540.00,"sent_date":"2026-04-12"}' },
+        { input: "Northwind Co. — inv #N-2026-08 — €1,100 — due Jul 1, 2026", output: '{"invoice_id":"N-2026-08","vendor":"Northwind Co.","total":1100.00,"currency":"EUR","due_date":"2026-07-01"}' },
+        { input: "Wayne Enterprises billing reference WE-9981, balance $12,400", output: '{"invoice_id":"WE-9981","vendor":"Wayne Enterprises","total":12400.00}' },
+        { input: "Stark Industries · invoice S-2026-1102 · $5,750.00 · pay by 06/15/2026", output: '{"invoice_id":"S-2026-1102","vendor":"Stark Industries","total":5750.00,"due_date":"2026-06-15"}' },
+        { input: "Bill ref 9912 from Cyberdyne Systems for $440 (paid)", output: '{"invoice_id":"9912","vendor":"Cyberdyne Systems","total":440.00,"status":"paid"}' },
+        { input: "Tyrell Corp / invoice TC-001 / 980 GBP / due 2026-07-15", output: '{"invoice_id":"TC-001","vendor":"Tyrell Corp","total":980.00,"currency":"GBP","due_date":"2026-07-15"}' },
+        { input: "Ollivanders inv O-2026-5 / £125 / net 14", output: '{"invoice_id":"O-2026-5","vendor":"Ollivanders","total":125.00,"currency":"GBP","terms":"net14"}' },
+        { input: "Inv 7012 from Gringotts, 2,400 GBP, paid in cash 2026-05-09", output: '{"invoice_id":"7012","vendor":"Gringotts","total":2400.00,"currency":"GBP","status":"paid","paid_date":"2026-05-09"}' },
+        { input: "Globex Corp invoice GX-2026-44 — $999 net30 — sent today", output: '{"invoice_id":"GX-2026-44","vendor":"Globex Corp","total":999.00,"terms":"net30"}' },
+        { input: "Vehement Capital · inv VC-1 · $14,500 · due 2026-08-01", output: '{"invoice_id":"VC-1","vendor":"Vehement Capital","total":14500.00,"due_date":"2026-08-01"}' },
+        { input: "Massive Dynamic — MD-99 — USD 7,777 — paid 2026-05-15", output: '{"invoice_id":"MD-99","vendor":"Massive Dynamic","total":7777.00,"status":"paid","paid_date":"2026-05-15"}' },
+        { input: "Bluth Company / inv BL-12 / $450 / net 7", output: '{"invoice_id":"BL-12","vendor":"Bluth Company","total":450.00,"terms":"net7"}' },
+        { input: "Sterling Cooper bill SC-2026-19 — $2,200 — overdue", output: '{"invoice_id":"SC-2026-19","vendor":"Sterling Cooper","total":2200.00,"status":"overdue"}' },
+      ],
+      translate: [
+        { input: "hello", output: "Hola / Bonjour / Hallo / こんにちは / 你好 / 안녕하세요" },
+        { input: "good morning", output: "Buenos días / Bonjour / Guten Morgen / おはようございます / 早上好 / 좋은 아침" },
+        { input: "thank you", output: "Gracias / Merci / Danke / ありがとう / 谢谢 / 감사합니다" },
+        { input: "you're welcome", output: "De nada / Je vous en prie / Bitte / どういたしまして / 不客气 / 천만에요" },
+        { input: "how are you?", output: "¿Cómo estás? / Comment ça va ? / Wie geht's? / お元気ですか / 你好吗? / 어떻게 지내세요?" },
+        { input: "I'm fine, thanks", output: "Estoy bien, gracias / Ça va bien, merci / Mir geht's gut, danke / 元気です、ありがとう / 我很好,谢谢 / 잘 지내요, 감사합니다" },
+        { input: "good night", output: "Buenas noches / Bonne nuit / Gute Nacht / おやすみなさい / 晚安 / 안녕히 주무세요" },
+        { input: "see you tomorrow", output: "Hasta mañana / À demain / Bis morgen / また明日 / 明天见 / 내일 봐요" },
+        { input: "please", output: "Por favor / S'il vous plaît / Bitte / お願いします / 请 / 부탁합니다" },
+        { input: "excuse me", output: "Disculpe / Excusez-moi / Entschuldigung / すみません / 不好意思 / 실례합니다" },
+        { input: "I'm sorry", output: "Lo siento / Je suis désolé / Es tut mir leid / ごめんなさい / 对不起 / 죄송합니다" },
+        { input: "do you speak English?", output: "¿Habla inglés? / Parlez-vous anglais ? / Sprechen Sie Englisch? / 英語を話しますか / 你会说英语吗? / 영어 할 줄 아세요?" },
+      ],
+      code: [
+        { input: "TypeError: Cannot read properties of undefined (reading 'map')", output: "type-error" },
+        { input: "ReferenceError: foo is not defined at index.js:42", output: "reference-error" },
+        { input: "SyntaxError: Unexpected token } in JSON at position 891", output: "syntax-error" },
+        { input: "RangeError: Maximum call stack size exceeded", output: "stack-overflow" },
+        { input: "ECONNREFUSED 127.0.0.1:5432 — Postgres not responding", output: "network-error" },
+        { input: "ETIMEDOUT reaching api.openai.com:443 after 30s", output: "network-error" },
+        { input: "401 Unauthorized — Bearer token rejected by /v1/run", output: "auth-error" },
+        { input: "403 Forbidden — admin key required for this op", output: "auth-error" },
+        { input: "404 Not Found — /v1/recipes/unknown-slug", output: "not-found" },
+        { input: "429 Too Many Requests — rate limit 60/min exceeded", output: "rate-limit" },
+        { input: "500 Internal Server Error — uncaught at router.js:1742", output: "server-error" },
+        { input: "503 Service Unavailable — upstream HMAC verifier down", output: "server-error" },
+        { input: "ENOENT: no such file or directory, open 'config.json'", output: "fs-error" },
+        { input: "EACCES: permission denied, mkdir '/var/lib/kolm'", output: "fs-error" },
+        { input: "Out of memory: cannot allocate 2.4GB for model weights", output: "memory-error" },
+        { input: "CUDA out of memory. Tried to allocate 1.2 GiB", output: "memory-error" },
+        { input: "Test failed: expected K-score >= 0.85, got 0.71", output: "test-failure" },
+        { input: "Lint error: 'tenant' is defined but never used (no-unused-vars)", output: "lint-error" },
+        { input: "Build failed: module not found 'jszip' at app.js:14", output: "build-error" },
+        { input: "Deploy failed: Vercel function exceeded 50MB unzipped size", output: "deploy-error" },
+        { input: "Schema validation failed: 'k_threshold' must be number, got string", output: "validation-error" },
+        { input: "Dependency conflict: react@18 vs react@17 in node_modules", output: "dep-conflict" },
+      ],
+    };
+
+    trTmpls.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var key = b.getAttribute('data-template');
+        var data = TEMPLATES[key];
+        if (!data || !data.length) { dcSetStatus('template not found: ' + key, 'err'); return; }
+        trSetExamples(data.slice(), 'template/' + key);
+        dcSetStatus('loaded ' + data.length + ' template examples (' + key + ')', 'ok');
+      });
+    });
+
+    trClear.addEventListener('click', function () {
+      trSetExamples([], null);
+      trPaste.value = '';
+      trFile.value = '';
+      dcSetStatus('cleared training data', 'ok');
+    });
+
+    // initial render
+    trSetExamples([], null);
+  }
+
 })();
 </script>
+
+<!-- wave 139 . Tenant observability . polls /v1/telemetry every 10s -->
+<script>
+(function () {
+  var KS = window.KS;
+  if (!KS || typeof KS.apiKey !== 'function') return;
+  var section = document.getElementById('tenant-observability');
+  if (!section) return;
+  function $(id) { return document.getElementById(id); }
+  function fmtUs(us) {
+    if (us == null || !isFinite(us) || us === 0) return '—';
+    if (us < 1000) return us + ' us';
+    if (us < 1000000) return (us / 1000).toFixed(1) + ' ms';
+    return (us / 1000000).toFixed(2) + ' s';
+  }
+  function fmtNum(n) { if (n == null) return '—'; return Number(n).toLocaleString(); }
+  function drawSpark(points) {
+    var line = $('to-spark-line'), fill = $('to-spark-fill'), wrap = $('to-spark-wrap');
+    var arr = (points || []).filter(function (n) { return typeof n === 'number' && n >= 0; });
+    if (!arr.length) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    var W = 600, H = 60;
+    var max = Math.max.apply(null, arr) || 1;
+    $('to-spark-peak').textContent = 'peak: ' + fmtUs(max);
+    var dx = arr.length > 1 ? (W / (arr.length - 1)) : 0;
+    var pts = arr.map(function (v, i) { return (i * dx).toFixed(1) + ',' + (H - (v / max) * (H - 4) - 2).toFixed(1); });
+    line.setAttribute('points', pts.join(' '));
+    fill.setAttribute('points', '0,' + H + ' ' + pts.join(' ') + ' ' + W + ',' + H);
+  }
+  function load() {
+    var key = KS.apiKey();
+    if (!key) return;
+    fetch('/v1/telemetry', { headers: { 'authorization': 'Bearer ' + key, 'accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j) return;
+        section.hidden = false;
+        var hasRuns = (j.total_invocations || 0) > 0;
+        $('to-runs').textContent = fmtNum(j.total_invocations);
+        $('to-receipts').textContent = fmtNum(j.receipt_bearing_runs);
+        $('to-p50').textContent = fmtUs(j.p50_us);
+        $('to-p95').textContent = fmtUs(j.p95_us);
+        $('to-cache').textContent = (j.cache_hit_rate != null) ? ((j.cache_hit_rate * 100).toFixed(1) + '%') : '—';
+        drawSpark(j.sparkline || []);
+        $('to-empty').hidden = hasRuns;
+      })
+      .catch(function () {});
+  }
+  window.addEventListener('ks:key-changed', load);
+  document.addEventListener('DOMContentLoaded', load);
+  if (document.readyState !== 'loading') load();
+  setInterval(load, 10000);
+})();
+</script>
+
+<!-- v1 wave 121 . Artifact lab JS — drag-drop parse + test + serve -->
+<script>
+(function () {
+  // JSZip is vendored at /jszip.min.js (CSP forbids cross-origin scripts).
+  // Loaded on first interaction with the drop zone, not on page load.
+  var jszipPromise = null;
+  function loadJSZip() {
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    if (jszipPromise) return jszipPromise;
+    jszipPromise = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = '/jszip.min.js';
+      s.onload = function () { resolve(window.JSZip); };
+      s.onerror = function () { reject(new Error('failed to load JSZip')); };
+      document.head.appendChild(s);
+    });
+    return jszipPromise;
+  }
+
+  var els = {
+    drop:    document.getElementById('al-drop'),
+    pick:    document.getElementById('al-pick'),
+    file:    document.getElementById('al-file'),
+    error:   document.getElementById('al-error'),
+    card:    document.getElementById('al-card'),
+    name:    document.getElementById('al-name'),
+    task:    document.getElementById('al-task'),
+    model:   document.getElementById('al-model'),
+    kscore:  document.getElementById('al-kscore'),
+    gate:    document.getElementById('al-gate'),
+    size:    document.getElementById('al-size'),
+    cid:     document.getElementById('al-cid'),
+    clear:   document.getElementById('al-clear'),
+    tabs:    document.querySelectorAll('#al-card .al-tab'),
+    panes:   document.querySelectorAll('#al-card .al-pane'),
+    prompt:  document.getElementById('al-prompt'),
+    run:     document.getElementById('al-run'),
+    k:       document.getElementById('al-k'),
+    testSt:  document.getElementById('al-test-status'),
+    out:     document.getElementById('al-output'),
+    outText: document.getElementById('al-output-text'),
+    outMeta: document.getElementById('al-output-meta'),
+    outRcpt: document.getElementById('al-output-receipt'),
+    serveUrl:document.getElementById('al-serve-url'),
+    curl:    document.getElementById('al-curl'),
+    copyCurl:document.getElementById('al-copy-curl'),
+    copyUrl: document.getElementById('al-copy-url'),
+    serveSt: document.getElementById('al-serve-status'),
+    recipe:  document.getElementById('al-recipe-pre'),
+    receipt: document.getElementById('al-receipt-pre'),
+    evals:   document.getElementById('al-evals-pre'),
+  };
+  if (!els.drop) return; // not on this page
+
+  var current = null; // { manifest, recipes, evals, receipt, sizeBytes, fileName }
+
+  function showError(msg) {
+    els.error.textContent = msg;
+    els.error.hidden = false;
+    setTimeout(function () { els.error.hidden = true; }, 5000);
+  }
+  function fmtBytes(n) {
+    if (!n && n !== 0) return '—';
+    if (n < 1024) return n + ' B';
+    if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+    return (n/1024/1024).toFixed(2) + ' MB';
+  }
+  function fmtKScore(v) {
+    if (v === null || v === undefined) return '—';
+    var n = (typeof v === 'object' && v.composite !== undefined) ? v.composite : v;
+    if (typeof n !== 'number') return '—';
+    return n.toFixed(3);
+  }
+  function shortCid(c) {
+    if (!c) return '—';
+    return String(c).slice(0, 28) + '…';
+  }
+
+  async function readJSONFromZip(zip, name) {
+    var f = zip.file(name);
+    if (!f) return null;
+    try { return JSON.parse(await f.async('string')); } catch (e) { return null; }
+  }
+
+  async function parseKolm(file) {
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) { showError('file too large (max 50 MB)'); return; }
+    els.drop.classList.add('al-active');
+    try {
+      var JSZip = await loadJSZip();
+      var buf = await file.arrayBuffer();
+      var zip = await JSZip.loadAsync(buf);
+      var manifest = await readJSONFromZip(zip, 'manifest.json');
+      if (!manifest) { showError('no manifest.json in this .kolm'); return; }
+      var recipes = await readJSONFromZip(zip, 'recipes.json');
+      var receipt = await readJSONFromZip(zip, 'receipt.json');
+      var evals   = await readJSONFromZip(zip, 'evals.json');
+      current = { manifest: manifest, recipes: recipes, receipt: receipt, evals: evals, sizeBytes: file.size, fileName: file.name };
+      renderCard();
+    } catch (e) {
+      showError('failed to parse: ' + (e.message || 'unknown error'));
+    } finally {
+      els.drop.classList.remove('al-active');
+    }
+  }
+
+  function renderCard() {
+    if (!current) return;
+    var m = current.manifest || {};
+    els.name.textContent = m.task ? (m.task.slice(0, 80) + (m.task.length > 80 ? '…' : '')) : (current.fileName || 'untitled');
+    els.task.textContent = m.task || '';
+    els.model.textContent = m.base_model || m.runtime || '—';
+    els.kscore.textContent = fmtKScore(m.k_score);
+    els.gate.textContent = (m.k_score && m.k_score.gate) ? m.k_score.gate : (m.gate || '—');
+    els.size.textContent = fmtBytes(current.sizeBytes);
+    els.cid.textContent = shortCid(m.cid);
+    els.cid.title = m.cid || '';
+    els.recipe.textContent = current.recipes ? JSON.stringify(current.recipes, null, 2) : '(no recipes.json in artifact)';
+    els.receipt.textContent = current.receipt ? JSON.stringify(current.receipt, null, 2) : '(no receipt.json in artifact)';
+    els.evals.textContent = current.evals ? JSON.stringify(current.evals, null, 2) : '(no evals.json in artifact)';
+    renderServeTab();
+    els.card.hidden = false;
+    els.out.hidden = true;
+    els.testSt.textContent = '';
+    els.testSt.className = 'al-status';
+    setTimeout(function () { els.card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 40);
+  }
+
+  function renderServeTab() {
+    if (!current) return;
+    var m = current.manifest || {};
+    var cid = m.cid || 'cid:UNKNOWN';
+    var apiKey = (window.KS && KS.apiKey()) || 'kk_YOUR_API_KEY';
+    var base = location.origin || 'https://kolm.ai';
+    var url = base + '/v1/run';
+    els.serveUrl.value = url;
+    var curl = 'curl -X POST ' + url + ' \\\n' +
+      "  -H 'Authorization: Bearer " + apiKey + "' \\\n" +
+      "  -H 'Content-Type: application/json' \\\n" +
+      "  -d '" + JSON.stringify({
+        concept_id: cid,
+        input: 'your input text here',
+      }) + "'";
+    els.curl.textContent = curl;
+  }
+
+  function switchTab(tab) {
+    els.tabs.forEach(function (t) {
+      var on = t.getAttribute('data-tab') === tab;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    els.panes.forEach(function (p) {
+      p.hidden = p.getAttribute('data-pane') !== tab;
+    });
+  }
+
+  // --- wire up ---
+  els.drop.addEventListener('click', function (e) {
+    if (e.target.closest('button')) return;
+    els.file.click();
+  });
+  els.drop.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); els.file.click(); }
+  });
+  els.pick.addEventListener('click', function (e) { e.preventDefault(); els.file.click(); });
+  els.file.addEventListener('change', function () {
+    if (els.file.files && els.file.files[0]) parseKolm(els.file.files[0]);
+  });
+
+  // drag-and-drop
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    els.drop.addEventListener(ev, function (e) {
+      e.preventDefault(); e.stopPropagation();
+      els.drop.classList.add('al-active');
+    });
+  });
+  ['dragleave', 'dragend'].forEach(function (ev) {
+    els.drop.addEventListener(ev, function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (e.target === els.drop) els.drop.classList.remove('al-active');
+    });
+  });
+  els.drop.addEventListener('drop', function (e) {
+    e.preventDefault(); e.stopPropagation();
+    els.drop.classList.remove('al-active');
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) parseKolm(f);
+  });
+  // also catch window-level drops outside the zone so users don't lose the file
+  window.addEventListener('dragover', function (e) { e.preventDefault(); });
+  window.addEventListener('drop', function (e) { e.preventDefault(); });
+
+  els.clear.addEventListener('click', function () {
+    current = null;
+    els.card.hidden = true;
+    els.file.value = '';
+  });
+
+  els.tabs.forEach(function (t) {
+    t.addEventListener('click', function () { switchTab(t.getAttribute('data-tab')); });
+  });
+
+  // Test
+  els.run.addEventListener('click', async function () {
+    if (!current) { els.testSt.textContent = 'drop an artifact first'; els.testSt.className = 'al-status err'; return; }
+    var prompt = (els.prompt.value || '').trim();
+    if (!prompt) { els.testSt.textContent = 'enter a prompt'; els.testSt.className = 'al-status err'; els.prompt.focus(); return; }
+    var k = Math.max(1, Math.min(8, parseInt(els.k.value, 10) || 2));
+    els.run.disabled = true;
+    els.testSt.textContent = 'running with k=' + k + '…';
+    els.testSt.className = 'al-status';
+    els.out.hidden = true;
+    try {
+      var m = current.manifest || {};
+      var body = {
+        messages: [{ role: 'user', content: prompt }],
+        verified: {
+          k: k,
+          // Each draw must answer the same prompt; the verifier returns the most-consistent draw.
+          test_cases: [{ input: prompt }],
+        },
+      };
+      if (m.base_model && m.base_model !== 'none') body.model = m.base_model;
+      var t0 = performance.now();
+      var resp = await KS.api('/v1/wrap/verified', { method: 'POST', body: JSON.stringify(body) });
+      var ms = (performance.now() - t0).toFixed(0);
+      var text = '';
+      if (resp && Array.isArray(resp.content)) text = (resp.content.find(function(c){return c.type==='text';}) || {}).text || '';
+      els.outText.textContent = text || '(no text in response)';
+      els.outMeta.textContent = (resp.model || '—') + ' · ' + ms + 'ms · ' + (resp._kolm && resp._kolm.verified ? 'verified ✓' : 'unverified');
+      els.outRcpt.textContent = JSON.stringify(resp._kolm || resp, null, 2);
+      els.out.hidden = false;
+      els.testSt.textContent = 'done in ' + ms + 'ms';
+      els.testSt.className = 'al-status ok';
+    } catch (err) {
+      var msg = err && err.body && err.body.error ? err.body.error : (err && err.message) || 'unknown';
+      els.testSt.textContent = 'failed: ' + msg;
+      els.testSt.className = 'al-status err';
+    } finally {
+      els.run.disabled = false;
+    }
+  });
+
+  // Serve
+  function copy(text, st) {
+    try {
+      navigator.clipboard.writeText(text).then(function () {
+        st.textContent = 'copied'; st.className = 'al-status ok';
+        setTimeout(function () { st.textContent = ''; st.className = 'al-status'; }, 1600);
+      });
+    } catch (e) {
+      st.textContent = 'copy failed'; st.className = 'al-status err';
+    }
+  }
+  els.copyCurl.addEventListener('click', function () { copy(els.curl.textContent, els.serveSt); });
+  els.copyUrl.addEventListener('click', function () { copy(els.serveUrl.value, els.serveSt); });
+
+  // Update curl when api key is read/rotated elsewhere on the page
+  document.addEventListener('ks:key-changed', renderServeTab);
+})();
+</script>
+
 <script src="/nav.js" defer></script>
 </body>
 </html>

@@ -78,7 +78,7 @@
 <header class="site">
   <div class="wrap">
     <a href="/" class="logo">kolm</a>
-    <nav><a href="/use-cases">Solutions</a><a href="/docs">Developers</a><a href="/research">Research</a><a href="/enterprise">Enterprise</a><a href="/pricing">Pricing</a><a href="/dashboard" class="cta">Dashboard &rarr;</a></nav>
+    <nav><a href="/use-cases">Use cases</a><a href="/docs">Docs</a><a href="/research">Research</a><a href="/enterprise">Enterprise</a><a href="/pricing">Pricing</a><a href="/dashboard" class="cta">Dashboard &rarr;</a></nav>
   </div>
 </header>
 
@@ -91,6 +91,16 @@
 
 <div class="wrap"><div class="gridmain">
   <div>
+
+    <div class="panel" style="border-color:rgba(126,240,210,0.28)">
+      <h3><span class="step">Quick</span>One sentence. We pick the rest.</h3>
+      <p>Describe what you want your AI to do. We pick a base, distill from Claude / GPT / Gemini, and set the K-score gate. You can still customize below.</p>
+      <textarea id="quick-desc" placeholder="Example: classify support emails as billing / technical / refund / other, return JSON" style="min-height:60px"></textarea>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="cta-btn" id="quick-compile" type="button" style="width:auto;padding:11px 22px">Compile with defaults &rarr;</button>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--ink-faint)">defaults &middot; Llama 3.1 8B base &middot; Claude Sonnet teacher distill &middot; K-score 0.90 &middot; frontier prompt cache on</span>
+      </div>
+    </div>
 
     <div class="panel">
       <h3><span class="step">Step 1</span>Pick a base model</h3>
@@ -673,6 +683,37 @@
 
   compile.addEventListener('click', runLive);
 
+  // Quick path: one sentence → defaults → compile. Smart defaults are Llama 3.1 8B base
+  // (selectedBase[0]), Claude Sonnet teacher distill (via task text), K-score gate 0.90,
+  // task gate 0.85.  Without uploaded files, the server's synthesis path is triggered
+  // by embedding the description in the recipe field; the compiler will synthesize a
+  // teacher-distill corpus from the description and run SFT against the chosen base.
+  var quickDesc = document.getElementById('quick-desc');
+  var quickCompile = document.getElementById('quick-compile');
+  if (quickCompile && quickDesc) {
+    quickCompile.addEventListener('click', function () {
+      var desc = (quickDesc.value || '').trim();
+      if (!desc) {
+        quickDesc.focus();
+        logLine('describe what you want your AI to do, in one sentence.', 'ok');
+        return;
+      }
+      // Carry the description into the recipe textarea so buildTaskDescription picks it up.
+      recipeBox.value = (recipeBox.value ? recipeBox.value + '\n' : '') +
+        'task_description: ' + desc + '\n' +
+        'teacher_distill: claude-sonnet-4-6\n' +
+        'frontier_cache: on';
+      // Force the gates to defaults (idempotent if user has not touched them).
+      if (!parseFloat(kgate.value)) kgate.value = '0.90';
+      if (!parseFloat(taskgate.value)) taskgate.value = '0.85';
+      updateGates();
+      // Quick mode does not require file upload — server will synthesize from description.
+      compile.disabled = false;
+      logLine('quick mode: defaults applied (Llama 3.1 8B + Claude Sonnet distill + K≥0.90)', 'ok');
+      runLive();
+    });
+  }
+
   updateQuote();
   updateGates();
 
@@ -683,5 +724,6 @@
   }
 })();
 </script>
+<script src="/nav.js" defer></script>
 </body>
 </html>

@@ -28,7 +28,7 @@ The codebase already knows the truth. The README and long-form articles say the 
 | Local FAQ says `.kolm` contains base model and personal LoRA. | `public/faq.html` lines 86, 141, 153. | `src/artifact.js` currently writes model pointer metadata and optional pack/index slots. | Rewrite artifact-tier FAQ. |
 | Local API docs say compile fits/trains LoRA and auto-distill ships signed `.kolm`. | `public/api.html` lines 333, 510, 591-605. | `src/compile.js` marks LoRA as Sprint 3; auto-distill is bridge-dependent and can return 503. | Mark LoRA/auto-distill as preview. |
 | Mobile page claims iPhone/Pixel support and SDK/runtime performance. | `public/use-cases/mobile.html` lines 153-154, 198-214, 238-256. | The page itself says RN module is preview and today is browser-WASM via WebView. | Move tables to target/roadmap until benchmarks and SDK packages exist. |
-| Healthcare metadata says HIPAA-ready and PHI never leaves. | `public/healthcare.html` lines 176-177. | Page body has a better disclaimer that public product is not HIPAA certification. | Make SEO metadata match the disclaimer. |
+| Healthcare metadata says HIPAA Security Rule mapped and PHI stays inside the customer-hosted bridge. | `public/healthcare.html` lines 176-177. | Page body has a better disclaimer that public product is not HIPAA certification. | Make SEO metadata match the disclaimer. |
 
 ## Good Claim Patterns To Reuse
 
@@ -61,13 +61,13 @@ Avoid unqualified language until proof exists:
 - "model, LoRA, draft pack, index"
 - "student baked in"
 - "runs on a phone"
-- "HIPAA-ready"
-- "PHI never leaves"
+- "HIPAA Security Rule mapped"
+- "PHI stays inside the customer-hosted bridge"
 - "zero runtime egress" for non-recipe artifacts
 - "on-chain receipts"
 - "ed25519 verified"
-- "fully self-contained"
-- "inside your VPC" as a default hosted-product claim
+- "self-hosted"
+- "in your environment" as a default hosted-product claim
 - "every run makes it better"
 
 ## Release Gates

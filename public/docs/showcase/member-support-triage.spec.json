@@ -1,0 +1,44 @@
+{
+  "job_id": "job_member_triage_v1",
+  "task": "Triage member inquiry using only approved language. Never store PHI. Route to human if confidence < 0.90. Output { response, route_to_human, confidence, kb_refs, intent }.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_triage_v1",
+      "name": "member-support-triage",
+      "source": "function generate(input, lib){ var q = String((input && input.text) || '').toLowerCase(); var kb = (lib.pack && lib.pack.kb) || []; var best = null; var bestScore = 0; for (var i=0;i<kb.length;i++){ var entry = kb[i]; var score = 0; for (var j=0;j<entry.keywords.length;j++){ if (q.indexOf(String(entry.keywords[j]).toLowerCase()) >= 0) score++; } if (score > bestScore) { bestScore = score; best = entry; } } if (!best || bestScore === 0) return { response: 'I want to make sure you get the right answer. Connecting you with a member-services representative.', route_to_human: true, confidence: 0.45, kb_refs: [], intent: 'unknown', redaction_count: 0 }; var conf = Math.min(0.97, 0.6 + bestScore * 0.15); return { response: best.response, route_to_human: conf < 0.9, confidence: conf, kb_refs: [best.id], intent: best.intent, redaction_count: 0 }; }",
+      "tags": ["health-insurance", "member-support", "triage"],
+      "schema": {
+        "input": { "inquiry_id": "string", "channel": "string", "text": "string", "locale": "string" },
+        "output": { "response": "string", "route_to_human": "boolean", "confidence": "number" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "Approved-language starter KB. Tenants replace with their plan's approved phrasing.",
+    "kb": [
+      {
+        "id": "appeals-policy-v3.2",
+        "intent": "appeal_question",
+        "keywords": ["appeal", "denied", "denial", "overturn"],
+        "response": "You can request an internal appeal within 180 days of the denial. To start, go to the Member Portal > Claims > Appeal. We will respond within 30 days for standard appeals or 72 hours for urgent."
+      },
+      {
+        "id": "id-card-v1",
+        "intent": "id_card_request",
+        "keywords": ["id card", "member card", "replacement card"],
+        "response": "You can request a replacement member ID card from the Member Portal > Account > Cards. Digital cards are available in the app for immediate use."
+      }
+    ]
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      { "id": "appeal_match", "input": { "text": "My MRI was denied. Can I appeal?" }, "expected": { "intent": "appeal_question" } },
+      { "id": "unknown_route_to_human", "input": { "text": "I want to talk about my mother's birthday plan." }, "expected": { "route_to_human": true } }
+    ],
+    "coverage": 1.0
+  }
+}

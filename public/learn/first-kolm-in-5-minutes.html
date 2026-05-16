@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>First .kolm in 5 minutes | kolm</title>
+<meta name="description" content="A step-by-step Golden Path: install kolm, compile a PII redactor on your data, verify the signed .kolm, run it offline. Five minutes, one signed artifact, no data leaves your machine.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/learn/first-kolm-in-5-minutes">
+<meta property="og:title" content="First .kolm in 5 minutes">
+<meta property="og:description" content="Install, compile, run. One signed AI artifact, on your laptop, in five minutes.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/learn/first-kolm-in-5-minutes">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="First .kolm in 5 minutes" />
+<meta name="twitter:description" content="Install, compile, run. One signed AI artifact, on your laptop, in five minutes." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "HowTo",
+      "@id": "https://kolm.ai/learn/first-kolm-in-5-minutes#howto",
+      "name": "First .kolm in 5 minutes",
+      "description": "Install the kolm CLI, build a signed .kolm artifact for redacting PII, verify it offline, and run it on your laptop.",
+      "totalTime": "PT5M",
+      "estimatedCost": {"@type": "MonetaryAmount", "currency": "USD", "value": "0"},
+      "tool": [
+        {"@type": "HowToTool", "name": "Node.js 20+"},
+        {"@type": "HowToTool", "name": "Terminal"}
+      ],
+      "step": [
+        {"@type": "HowToStep", "position": 1, "name": "Install the CLI",       "text": "npm i -g github:sneaky-hippo/kolmogorov-stack",                     "url": "https://kolm.ai/learn/first-kolm-in-5-minutes#step-1"},
+        {"@type": "HowToStep", "position": 2, "name": "Build the artifact",    "text": "kolm build my-redactor --from redactor --yes",                       "url": "https://kolm.ai/learn/first-kolm-in-5-minutes#step-2"},
+        {"@type": "HowToStep", "position": 3, "name": "Inspect what you got",  "text": "kolm inspect my-redactor.kolm",                                       "url": "https://kolm.ai/learn/first-kolm-in-5-minutes#step-3"},
+        {"@type": "HowToStep", "position": 4, "name": "Run it offline",        "text": "echo '{\"text\":\"patient John Doe, SSN 123-45-6789\"}' | kolm run my-redactor.kolm", "url": "https://kolm.ai/learn/first-kolm-in-5-minutes#step-4"},
+        {"@type": "HowToStep", "position": 5, "name": "Eject and audit",        "text": "kolm eject my-redactor.kolm",                                          "url": "https://kolm.ai/learn/first-kolm-in-5-minutes#step-5"}
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "kolm", "item": "https://kolm.ai/"},
+        {"@type": "ListItem", "position": 2, "name": "Learn", "item": "https://kolm.ai/learn"},
+        {"@type": "ListItem", "position": 3, "name": "First .kolm in 5 minutes", "item": "https://kolm.ai/learn/first-kolm-in-5-minutes"}
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669}
+  body{background:var(--bg);color:var(--ink);font:16.5px/1.7 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .paper{padding:64px 0 48px}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 16px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:38px;line-height:1.12;font-weight:500;letter-spacing:-0.02em;margin:0 0 12px;max-width:680px}
+  .subtitle{font-size:16.5px;color:var(--ink-mute);margin:0 0 14px;line-height:1.55;max-width:640px}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:8px 0 0;letter-spacing:0.04em}
+  .promise{margin:32px 0 0;padding:20px 24px;border-left:2px solid var(--accent);background:rgba(16,185,129,0.04);font-size:15.5px;line-height:1.65;color:var(--ink-mute)}
+  .promise b{color:var(--ink);font-weight:500}
+  .timer{display:inline-flex;align-items:center;gap:8px;margin-top:24px;padding:8px 14px;border:1px solid var(--line);border-radius:6px;font-family:var(--mono);font-size:12px;color:var(--ink-mute);letter-spacing:0.06em}
+  .timer .td{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px rgba(16,185,129,0.5);animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.45}}
+  h2{font-size:21px;font-weight:500;letter-spacing:-0.01em;margin:48px 0 12px;color:var(--ink)}
+  .step-head{display:flex;align-items:baseline;gap:14px;margin:48px 0 12px}
+  .step-num{font-family:var(--mono);font-size:12px;color:var(--ink-faint);letter-spacing:0.16em;text-transform:uppercase;border:1px solid var(--line);padding:4px 10px;border-radius:4px;flex-shrink:0}
+  .step-head h2{margin:0;flex:1}
+  .step-time{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:0.04em;white-space:nowrap}
+  p{color:var(--ink-mute);margin:0 0 14px}
+  p b{color:var(--ink);font-weight:500}
+  ul,ol{color:var(--ink-mute);margin:0 0 16px;padding-left:24px}
+  li{margin:0 0 6px}
+  li b{color:var(--ink);font-weight:500}
+  code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  pre{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px 18px;overflow:auto;font-family:var(--mono);font-size:13px;line-height:1.55;margin:0 0 14px;color:var(--ink);position:relative}
+  pre code{background:transparent;border:0;padding:0}
+  pre.cmd::before{content:"$";color:var(--accent);margin-right:10px;user-select:none}
+  pre.out{background:transparent;border-style:dashed;border-color:rgba(16,185,129,0.18);color:var(--ink-mute);font-size:12.5px}
+  pre.out::before{display:none}
+  .checkpoint{margin:14px 0 24px;padding:12px 16px;background:rgba(16,185,129,0.05);border-left:2px solid var(--accent);font-family:var(--mono);font-size:12.5px;color:var(--ink-mute);line-height:1.55}
+  .checkpoint b{color:var(--accent);font-weight:500;margin-right:10px}
+  .ladder{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:36px 0 0}
+  .ladder a{display:block;padding:18px;border:1px solid var(--line);border-radius:8px;text-decoration:none;color:var(--ink);transition:border-color 160ms;background:var(--bg-elev)}
+  .ladder a:hover{border-color:var(--accent)}
+  .ladder .ln{font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:0.16em;text-transform:uppercase;margin:0 0 6px}
+  .ladder .lt{font-size:15px;font-weight:500;margin:0 0 4px;letter-spacing:-0.01em}
+  .ladder .lb{font-size:13px;color:var(--ink-mute);line-height:1.45;margin:0}
+  @media(max-width:680px){.ladder{grid-template-columns:1fr;gap:10px}}
+  .actions{display:flex;gap:12px;margin:36px 0 0;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms;background:var(--bg-elev)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:32px 0;border-top:1px solid var(--line);color:var(--ink-faint);font-size:13px;margin-top:64px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:var(--ink-mute);text-decoration:none}
+  footer.site a:hover{color:var(--ink)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr);gap:18px}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500;margin:0 0 10px}
+  .footer-grid a{display:block;padding:3px 0;font-size:13px}
+  .footer-tag{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:18px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11.5px}
+  .footer-tag span{color:var(--ink-faint)}
+</style>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/use-cases">Use cases</a><a href="/docs">Docs</a><a href="/research">Research</a><a href="/enterprise">Enterprise</a><a href="/pricing">Pricing</a><a href="/signup" class="cta">Get API key &rarr;</a></nav></div></header>
+<main>
+<section class="paper">
+<div class="wrap">
+
+<p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/learn">learn</a> &nbsp;/&nbsp; first .kolm in 5 minutes</p>
+
+<h1>First .kolm in 5 minutes.</h1>
+<p class="subtitle">By the end of this page you will have one signed <code>.kolm</code> file on your laptop. It redacts PII from any text you throw at it. It runs offline. No data leaves your machine.</p>
+<p class="stamp">Golden Path 1 of 3 . v1.0 . tested on macOS, Linux, Windows (PowerShell + cmd)</p>
+
+<div class="promise">
+<b>What you will have.</b> A <code>my-redactor.kolm</code> file (about 30 KB), K-score &ge; 0.85, HMAC-signed, content-addressable, and a verbatim copy of the spec + seeds + recipes that built it. It will redact patient names, SSNs, emails, phone numbers, and credit-card numbers from any text input you pipe in. The artifact is yours forever; uninstalling kolm does not stop it from running.
+</div>
+
+<div class="timer"><span class="td"></span>five-minute path . one terminal . zero dependencies past Node 20+</div>
+
+<h2 style="margin-top:48px">Before you start</h2>
+<p>You need Node.js 20 or newer and a terminal. That is the whole list. The CLI is one self-contained JavaScript binary; no Docker, no Python, no GPU. <code>kolm compile</code> in cloud mode pings <code>kolm.ai</code> for the build step, but every command on this page works offline once the artifact is on disk.</p>
+
+<pre class="cmd">node --version  # should print v20.x or higher</pre>
+
+<div class="step-head">
+  <span class="step-num">step 1</span>
+  <h2 id="step-1">Install the CLI.</h2>
+  <span class="step-time">30 seconds</span>
+</div>
+<p>kolm ships from GitHub. One <code>npm</code> command, then it is on your PATH as <code>kolm</code>.</p>
+
+<pre class="cmd">npm i -g github:sneaky-hippo/kolmogorov-stack</pre>
+<pre class="cmd">kolm --version</pre>
+<pre class="out">kolm v0.2.6</pre>
+
+<div class="checkpoint"><b>checkpoint</b> if <code>kolm --version</code> prints a version, you are done with step 1. If it errors, <code>npm config get prefix</code> should be on your <code>PATH</code>.</div>
+
+<div class="step-head">
+  <span class="step-num">step 2</span>
+  <h2 id="step-2">Build your first artifact.</h2>
+  <span class="step-time">90 seconds</span>
+</div>
+<p><code>kolm build</code> is the one-shot wrapper. It scaffolds a spec, generates a small seed set, compiles the artifact, verifies the signature chain, and prints the K-score. <code>--from redactor</code> picks the PII redactor template; <code>--yes</code> accepts every default.</p>
+
+<pre class="cmd">kolm build my-redactor --from redactor --yes</pre>
+<pre class="out">scaffolding spec my-redactor.spec.json (template: redactor) . ok
+generating seeds my-redactor.seeds.jsonl (10 rows) . ok
+compiling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+K-score for my-redactor.kolm: 0.874  (gate >= 0.85 - pass)
+verifying signature . ok
+artifact written: my-redactor.kolm  (28.4 KB)
+
+try it:
+  kolm run my-redactor.kolm --input &lt;sample.json&gt;
+  echo {"text":"..."} | kolm run my-redactor.kolm</pre>
+
+<div class="checkpoint"><b>checkpoint</b> verdict <b>pass</b> means K &ge; 0.85 against the held-out cases. If you see <b>fail</b>, the iterate guidance the CLI prints points at the next move; come back here when verdict reads <b>pass</b>.</div>
+
+<div class="step-head">
+  <span class="step-num">step 3</span>
+  <h2 id="step-3">Inspect what you got.</h2>
+  <span class="step-time">30 seconds</span>
+</div>
+<p><code>kolm inspect</code> prints the manifest in plain text. This is what a security reviewer sees when they audit the artifact.</p>
+
+<pre class="cmd">kolm inspect my-redactor.kolm</pre>
+<pre class="out">artifact: my-redactor.kolm
+task:     redact identifier patterns from free text
+built:    2026-05-16 14:22:08Z (12s ago)
+size:     28.4 KB on disk
+
+K-score for my-redactor.kolm: 0.874  (gate >= 0.85 - pass)
+
+runtime:    cloud
+tier:       starter
+base model: none (recipe-only)
+signature:  valid (hmac-sha256)
+recipes:    1 (redact-identifiers-v1)
+evals:      10 cases</pre>
+
+<div class="checkpoint"><b>checkpoint</b> <code>signature: valid</code> means the HMAC chain end-to-end re-verifies on your hardware. The artifact has not been tampered with since it left the compile pipeline.</div>
+
+<div class="step-head">
+  <span class="step-num">step 4</span>
+  <h2 id="step-4">Run it offline.</h2>
+  <span class="step-time">60 seconds</span>
+</div>
+<p><code>kolm run</code> executes the artifact against an input. JSON in, JSON out. The execution is local; no network call.</p>
+
+<pre class="cmd">echo {"text":"patient John Doe, SSN 123-45-6789, email j.doe@hospital.org"} | kolm run my-redactor.kolm</pre>
+<pre class="out">patient [REDACTED_NAME], SSN [REDACTED_SSN], email [REDACTED_EMAIL]
+
+recipe: redact-identifiers-v1  .  3.2 ms</pre>
+
+<p>Or with a file input (works on Windows cmd too, no quoting headaches):</p>
+
+<pre class="cmd">echo {"text":"call me at 415-555-2244"} &gt; sample.json
+kolm run my-redactor.kolm --input sample.json</pre>
+<pre class="out">call me at [REDACTED_PHONE]
+
+recipe: redact-identifiers-v1  .  2.8 ms</pre>
+
+<div class="checkpoint"><b>checkpoint</b> the artifact runs in single-digit milliseconds on a 2020-era laptop. There is no API call, no cloud round-trip, no GPU. The only thing that touched the network so far was the original <code>kolm build</code>.</div>
+
+<div class="step-head">
+  <span class="step-num">step 5</span>
+  <h2 id="step-5">Eject and audit.</h2>
+  <span class="step-time">30 seconds</span>
+</div>
+<p>The .kolm file is a zip with deterministic contents. <code>kolm eject</code> unpacks it. Nothing is hidden; nothing is encrypted. This is the "no lock-in" promise made into a verb.</p>
+
+<pre class="cmd">kolm eject my-redactor.kolm</pre>
+<pre class="out">ejected my-redactor.kolm -&gt; ./my-redactor.eject
+  9 files, sha256=a1b2c3d4e5f6...
+
+no lock-in. your AI is yours.
+  cat ./my-redactor.eject/EJECT_README.md   # what each file is
+  cat ./my-redactor.eject/manifest.json     # task, base, K-score
+  kolm inspect my-redactor.kolm              # re-verify the signature chain</pre>
+
+<p>Inside the ejected folder:</p>
+<ul>
+  <li><b>manifest.json</b> task, base model, signing mode, K-score, content hashes</li>
+  <li><b>spec.json</b> the spec you compiled from, verbatim</li>
+  <li><b>recipes/</b> deterministic JS routines kolm chose to satisfy the spec</li>
+  <li><b>evals.jsonl</b> the (input, expected) cases that produced the K-score</li>
+  <li><b>receipts/</b> HMAC chain receipts proving the compile pipeline ran end-to-end</li>
+  <li><b>signature.json</b> detached signature over manifest + recipes + evals</li>
+  <li><b>EJECT_README.md</b> plain-English guide to every file, auto-generated</li>
+</ul>
+
+<div class="checkpoint"><b>checkpoint</b> you can hand the ejected folder to a security reviewer who has never seen kolm before, and they have everything they need to audit the artifact without running our CLI.</div>
+
+<h2 style="margin-top:64px">What just happened</h2>
+<p>You compiled a spec into a deterministic AI artifact and ran it on your hardware. The artifact has a measurable accuracy score (K), a cryptographic signature, and a fully auditable bill of materials. No vendor lock-in: the file is a standard zip, the recipe inside is plain JavaScript, and the algorithm that scored it is open-source. The whole thing is 28 KB.</p>
+
+<p>This is the minimum viable kolm. Everything else in the product (cloud GPU training, team-private hub, edge export to phones, RAG attachment, agent observation loops) is built on top of this one shape.</p>
+
+<h2>What to do next</h2>
+
+<div class="ladder">
+  <a href="/learn/distill-openai-usage">
+    <p class="ln">golden path 2</p>
+    <p class="lt">Distill your OpenAI usage</p>
+    <p class="lb">Capture prompt-response pairs from your live OpenAI calls and compile them into a .kolm that runs offline.</p>
+  </a>
+  <a href="/learn/deploy-to-phone">
+    <p class="ln">golden path 3</p>
+    <p class="lt">Deploy a .kolm to a phone</p>
+    <p class="lb">Export the same artifact to iPhone or Android in five minutes. CoreML, ONNX Mobile, MLX.</p>
+  </a>
+  <a href="/hub">
+    <p class="ln">browse</p>
+    <p class="lt">Public artifact hub</p>
+    <p class="lb">Verified .kolm artifacts to fork. Healthcare, legal, finance, code, edge. All with K-scores.</p>
+  </a>
+</div>
+
+<h2 style="margin-top:48px">If something went wrong</h2>
+<ul>
+  <li><b>npm error:</b> Node version mismatch. <code>node --version</code> must be 20.0.0 or higher.</li>
+  <li><b>K-score below 0.85:</b> the iterate guidance prints next steps. Most common fix: <code>kolm seeds validate my-redactor.seeds.jsonl</code> to check the seed set, then re-run <code>kolm build</code>.</li>
+  <li><b>Windows cmd quoting:</b> single quotes around JSON do not work in <code>cmd.exe</code>. Use <code>--input &lt;file&gt;</code> or pipe via <code>echo</code> as shown above.</li>
+  <li><b>kolm: command not found:</b> <code>npm config get prefix</code> should be on your <code>PATH</code>. Or run <code>npx -y github:sneaky-hippo/kolmogorov-stack&nbsp;build my-redactor --from redactor --yes</code>.</li>
+  <li><b>Still stuck:</b> open an issue at <a href="https://github.com/sneaky-hippo/kolmogorov-stack/issues" style="color:var(--accent)">github.com/sneaky-hippo/kolmogorov-stack/issues</a> or email <a href="mailto:hello@kolm.ai" style="color:var(--accent)">hello@kolm.ai</a>.</li>
+</ul>
+
+<div class="actions">
+  <a href="/learn/distill-openai-usage" class="btn primary">Next: distill OpenAI usage &rarr;</a>
+  <a href="/spec/rs-1" class="btn">Read the .kolm format spec</a>
+  <a href="/hub" class="btn">Browse the hub</a>
+</div>
+
+</div>
+</section>
+</main>
+<footer class="site">
+<div class="wrap">
+<div class="footer-grid">
+<div><h4>Product</h4><a href="/">Home</a><a href="/quickstart">Quickstart</a><a href="/learn">Learn</a><a href="/pricing">Pricing</a><a href="/hub">Hub</a></div>
+<div><h4>Spec</h4><a href="/spec">Spec</a><a href="/spec/rs-1">RS-1</a><a href="/spec/codebase">Codebase</a><a href="/research">Research</a></div>
+<div><h4>Verticals</h4><a href="/healthcare">Healthcare</a><a href="/finance">Finance</a><a href="/legal">Legal</a><a href="/edge">Edge</a><a href="/enterprise">Enterprise</a></div>
+<div><h4>Docs</h4><a href="/docs/api">API</a><a href="/docs/k-score-methodology">K-score</a><a href="/docs/manifest-v0.1.json">Manifest</a><a href="/docs/receipt-v0.1.json">Receipt</a></div>
+<div><h4>Company</h4><a href="/manifesto">Manifesto</a><a href="mailto:hello@kolm.ai">Contact</a><a href="https://github.com/sneaky-hippo/kolmogorov-stack">GitHub</a></div>
+</div>
+<div class="footer-tag"><span>kolm . an AI compiler . one file you own</span><span>Apache-2.0 . 2026</span></div>
+</div>
+</footer>
+</body>
+</html>

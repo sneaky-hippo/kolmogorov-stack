@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>HIPAA readiness assessment &middot; kolm</title>
+<meta name="description" content="Five-question HIPAA readiness check. In 60 seconds, learn whether you need a BAA, what plan tier fits, and whether your data flow is PHI-safe.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/healthcare/assessment">
+<meta property="og:title" content="kolm HIPAA readiness assessment">
+<meta property="og:description" content="Five questions. 60 seconds. Get a tailored recommendation before you sign anything.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .as-wizard{max-width:780px;margin:30px auto;padding:32px;border:1px solid var(--line);border-radius:12px;background:var(--bg-card)}
+  .as-step{display:none}
+  .as-step.active{display:block}
+  .as-q{font-size:20px;font-weight:600;margin:0 0 6px;letter-spacing:-0.01em}
+  .as-hint{font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);letter-spacing:0.04em;margin:0 0 18px}
+  .as-opts{display:grid;gap:10px}
+  .as-opt{padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:var(--bg-elev);cursor:pointer;display:flex;justify-content:space-between;align-items:center;text-align:left;font-family:var(--sans);font-size:14.5px;color:var(--ink);transition:border-color 120ms,background 120ms}
+  .as-opt:hover{border-color:var(--accent);background:rgba(255,255,255,.02)}
+  .as-opt b{font-weight:600}
+  .as-opt span.mini{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em}
+  .as-progress{display:flex;gap:6px;margin-bottom:24px}
+  .as-progress span{flex:1;height:3px;background:var(--line);border-radius:99px}
+  .as-progress span.on{background:#7ec486}
+  .as-result{padding:28px;border:1px solid var(--line);border-radius:12px;background:var(--bg-card);margin-top:24px}
+  .as-result h3{margin:0 0 8px;font-size:24px;letter-spacing:-0.01em}
+  .as-result .verdict{display:inline-block;padding:4px 12px;border-radius:99px;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:14px}
+  .as-result .verdict.green{background:rgba(126,196,134,.12);color:#7ec486;border:1px solid #4f8a55}
+  .as-result .verdict.amber{background:rgba(218,181,82,.12);color:#dab552;border:1px solid #9b8a4a}
+  .as-result .verdict.red{background:rgba(221,119,119,.12);color:#d77;border:1px solid #a55}
+  .as-rec ul{margin:14px 0 0;padding-left:20px;font-family:var(--sans);font-size:14.5px;line-height:1.7}
+  .as-cta{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand">kolm</a>
+    <nav class="site-nav"><a href="/healthcare">Healthcare</a><a href="/health-insurance">Health insurance</a><a href="/baa">BAA</a><a href="/pricing">Pricing</a></nav>
+    <div class="site-actions"><a href="/signin">sign in</a><a href="/signup" class="cta">Get API key &rarr;</a></div>
+  </div>
+</header>
+
+<main class="page-main">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow"><span class="pulse"></span>HIPAA readiness check</div>
+      <h1>60-second assessment.</h1>
+      <p class="lede">Five questions. No email gate. Get a tailored recommendation before you talk to sales: which plan, which architecture, and whether you need a BAA on day one.</p>
+    </div>
+  </section>
+
+  <div class="as-wizard">
+    <div class="as-progress" id="progress">
+      <span class="on"></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <div class="as-step active" data-step="0">
+      <p class="as-q">1. What kind of data will your model see at run time?</p>
+      <p class="as-hint">We are asking about the data the artifact processes during inference, not the seed data you used to train it.</p>
+      <div class="as-opts">
+        <button class="as-opt" data-val="phi"><span><b>PHI</b> &mdash; patient records, claims, clinical notes, member data</span><span class="mini">healthcare/insurance</span></button>
+        <button class="as-opt" data-val="deid"><span><b>De-identified</b> health data &mdash; Safe Harbor or Expert Determination</span><span class="mini">no BAA needed</span></button>
+        <button class="as-opt" data-val="synthetic"><span><b>Synthetic</b> or fake data only &mdash; testing &amp; demos</span><span class="mini">free tier OK</span></button>
+        <button class="as-opt" data-val="public"><span><b>Public</b> data &mdash; published literature, anonymous text</span><span class="mini">no PHI exposure</span></button>
+      </div>
+    </div>
+
+    <div class="as-step" data-step="1">
+      <p class="as-q">2. Where will the artifact run?</p>
+      <p class="as-hint">.kolm artifacts are deterministic binaries. They run wherever you put them.</p>
+      <div class="as-opts">
+        <button class="as-opt" data-val="vpc"><span><b>Inside our VPC</b> &mdash; AWS / Azure / GCP under our HIPAA-eligible account</span><span class="mini">control-plane only at kolm</span></button>
+        <button class="as-opt" data-val="onprem"><span><b>On-prem</b> &mdash; our datacenter, our hardware</span><span class="mini">air-gap available</span></button>
+        <button class="as-opt" data-val="laptop"><span><b>Workstations</b> &mdash; analyst laptops, clinic kiosks</span><span class="mini">edge-friendly</span></button>
+        <button class="as-opt" data-val="cloud"><span><b>kolm-hosted cloud</b> &mdash; we want kolm to host the runtime</span><span class="mini">BAA required</span></button>
+      </div>
+    </div>
+
+    <div class="as-step" data-step="2">
+      <p class="as-q">3. What about the seed data you will use to compile?</p>
+      <p class="as-hint">Compile is the one-time training step that bakes your task into the .kolm artifact.</p>
+      <div class="as-opts">
+        <button class="as-opt" data-val="phi-seed"><span><b>Real PHI</b> &mdash; we want compile to learn from production records</span><span class="mini">bridge required</span></button>
+        <button class="as-opt" data-val="deid-seed"><span><b>De-identified</b> &mdash; Safe Harbor before compile</span><span class="mini">recommended starting point</span></button>
+        <button class="as-opt" data-val="synth-seed"><span><b>Synthetic seeds</b> &mdash; generated from spec only</span><span class="mini">fastest path to pilot</span></button>
+      </div>
+    </div>
+
+    <div class="as-step" data-step="3">
+      <p class="as-q">4. Volume expected in year one?</p>
+      <p class="as-hint">A claim, a chart, a member message &mdash; whatever your unit of work is.</p>
+      <div class="as-opts">
+        <button class="as-opt" data-val="small"><span><b>&lt; 10K runs / mo</b> &mdash; pilot scope</span><span class="mini">Pro / Teams</span></button>
+        <button class="as-opt" data-val="mid"><span><b>10K&ndash;1M runs / mo</b> &mdash; single department in production</span><span class="mini">Business</span></button>
+        <button class="as-opt" data-val="big"><span><b>1M+ runs / mo</b> &mdash; enterprise-wide</span><span class="mini">Enterprise</span></button>
+      </div>
+    </div>
+
+    <div class="as-step" data-step="4">
+      <p class="as-q">5. Who signs the BAA on your side?</p>
+      <p class="as-hint">Privacy officer, security officer, general counsel &mdash; whoever holds the pen.</p>
+      <div class="as-opts">
+        <button class="as-opt" data-val="signer-ready"><span><b>Identified</b> &mdash; we know who signs</span><span class="mini">48h turnaround</span></button>
+        <button class="as-opt" data-val="signer-soon"><span><b>Need to identify</b> &mdash; we will track them down this week</span><span class="mini">1-2 week typical</span></button>
+        <button class="as-opt" data-val="signer-tbd"><span><b>Unclear</b> &mdash; need help structuring the conversation</span><span class="mini">we can advise</span></button>
+      </div>
+    </div>
+
+    <div class="as-result" id="result" style="display:none">
+      <span class="verdict" id="verdict">recommended path</span>
+      <h3 id="result-title">Your recommended starting path</h3>
+      <p id="result-summary" class="lede" style="margin:8px 0 0"></p>
+      <div class="as-rec" id="result-rec"></div>
+      <div class="as-cta" id="result-cta"></div>
+      <p style="margin-top:24px;font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:0.04em">This recommendation is a starting point, not legal advice. The executable BAA, privacy review, and SRA are still required before processing live PHI. Talk to your privacy officer.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  const answers = {};
+  const steps = document.querySelectorAll('.as-step');
+  const progress = document.querySelectorAll('#progress span');
+  let i = 0;
+
+  function show(idx){
+    steps.forEach((s,n)=>s.classList.toggle('active', n===idx));
+    progress.forEach((p,n)=>p.classList.toggle('on', n<=idx));
+  }
+
+  document.querySelectorAll('.as-opt').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const step = btn.closest('.as-step');
+      const idx = parseInt(step.dataset.step, 10);
+      answers[idx] = btn.dataset.val;
+      if (idx < steps.length - 1) {
+        i = idx + 1;
+        show(i);
+      } else {
+        renderResult();
+      }
+    });
+  });
+
+  function renderResult(){
+    steps.forEach(s=>s.classList.remove('active'));
+    progress.forEach(p=>p.classList.add('on'));
+    document.getElementById('result').style.display = 'block';
+
+    const data = answers[0];
+    const where = answers[1];
+    const seed = answers[2];
+    const vol = answers[3];
+    const signer = answers[4];
+
+    let verdict = 'green';
+    let title = 'You are good to start today.';
+    let summary = '';
+    const recs = [];
+    const ctas = [];
+
+    if (data === 'phi' || seed === 'phi-seed' || where === 'cloud') {
+      verdict = 'amber';
+      title = 'BAA required. Start the paper today, pilot in 1-2 weeks.';
+      summary = 'You will be processing PHI in some part of the workflow. The good news: kolm is built for this. A signed BAA + the customer-hosted compile bridge keeps PHI in your control boundary end-to-end.';
+      recs.push('Email <code style="font-family:var(--mono);font-size:13px">founders@kolm.ai</code> today to request the BAA &mdash; 48-hour countersign target.');
+      recs.push('Plan: ' + (vol === 'big' ? 'Enterprise' : vol === 'mid' ? 'Business' : 'Teams (upgrade to Business when volume crosses 10K runs/mo).'));
+      recs.push('Architecture: customer-hosted bridge in your environment; PHI never transits a kolm-controlled boundary at compile time.');
+      recs.push('Compile with the <code style="font-family:var(--mono);font-size:13px">phi-redactor</code> recipe applied before any frontier-model call. K-score gate raised to &ge;0.95 in PHI mode.');
+      if (signer === 'signer-tbd') {
+        recs.push('Founder office hours: <a href="mailto:founders@kolm.ai?subject=BAA%20%E2%80%94%20help%20identifying%20signer" style="color:var(--accent)">founders@kolm.ai</a>. We will help you structure the conversation with your privacy officer.');
+      }
+      ctas.push('<a class="btn primary electric" href="/baa">Read the BAA + PHI Schedule</a>');
+      ctas.push('<a class="btn ghost" href="/pricing">Pricing</a>');
+      ctas.push('<a class="btn ghost" href="mailto:founders@kolm.ai?subject=kolm%20BAA%20%E2%80%94%20execution">Request BAA</a>');
+    } else if (data === 'deid' || seed === 'deid-seed') {
+      verdict = 'green';
+      title = 'De-identified path. No BAA needed for the pilot.';
+      summary = 'Safe Harbor or Expert Determination de-identification before kolm ever sees the data means no BAA is required to start training. You can be running by tomorrow.';
+      recs.push('Plan: ' + (vol === 'big' ? 'Business or Enterprise' : vol === 'mid' ? 'Teams or Business' : 'Pro is fine for the pilot.'));
+      recs.push('Compile with synthetic or de-identified seeds. Apply <code style="font-family:var(--mono);font-size:13px">phi-redactor</code> as a belt-and-suspenders defense even on already-de-identified data.');
+      recs.push('When you decide to move to production PHI, you can flip the BAA on at that point &mdash; nothing in the architecture changes, only the paperwork.');
+      ctas.push('<a class="btn primary electric" href="/quickstart">Start the 60s quickstart</a>');
+      ctas.push('<a class="btn ghost" href="/cookbook/phi-redactor">PHI redactor recipe</a>');
+      ctas.push('<a class="btn ghost" href="/pricing">Pricing</a>');
+    } else {
+      verdict = 'green';
+      title = 'Free tier. Start in 60 seconds.';
+      summary = 'Synthetic or public data only means no HIPAA exposure. Start on the free tier; upgrade if and when you need it.';
+      recs.push('Plan: <b>Free</b> &mdash; 250 compiles, 100K runs/mo. No card required.');
+      recs.push('Compile the cookbook recipe nearest to your task; iterate on the spec until K &ge; 0.85.');
+      recs.push('When you swap synthetic for real data, the assessment changes. Come back and re-take.');
+      ctas.push('<a class="btn primary electric" href="/quickstart">Start the 60s quickstart</a>');
+      ctas.push('<a class="btn ghost" href="/cookbook">Browse recipes</a>');
+    }
+
+    if (where === 'onprem') {
+      recs.push('Air-gap reference deployment documented at <a href="/airgap" style="color:var(--accent)">/airgap</a>. The runtime is already local; only the control plane (key issue, billing) needs kolm reachability.');
+    }
+    if (where === 'laptop') {
+      recs.push('Edge-friendly: .kolm artifacts run on the same laptop hardware your analysts already have. See <a href="/edge" style="color:var(--accent)">/edge</a> for the disconnected story.');
+    }
+
+    document.getElementById('verdict').className = 'verdict ' + verdict;
+    document.getElementById('result-title').textContent = title;
+    document.getElementById('result-summary').textContent = summary;
+    document.getElementById('result-rec').innerHTML = '<ul>' + recs.map(r=>'<li>'+r+'</li>').join('') + '</ul>';
+    document.getElementById('result-cta').innerHTML = ctas.join('');
+    window.scrollTo({top: document.querySelector('.as-wizard').offsetTop - 80, behavior: 'smooth'});
+  }
+})();
+</script>
+
+<footer style="border-top:1px solid var(--line);padding:24px 0;margin-top:60px;color:var(--ink-mute);font-size:12px;text-align:center">
+  <div class="wrap">
+    <a href="/healthcare" style="color:var(--ink-mute);margin:0 8px">Healthcare</a>
+    <a href="/health-insurance" style="color:var(--ink-mute);margin:0 8px">Health insurance</a>
+    <a href="/baa" style="color:var(--ink-mute);margin:0 8px">BAA &amp; PHI Schedule</a>
+    <a href="/subprocessors" style="color:var(--ink-mute);margin:0 8px">Subprocessors</a>
+    <a href="/security" style="color:var(--ink-mute);margin:0 8px">Security</a>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

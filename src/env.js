@@ -1,10 +1,41 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 
 export const DEV_RECEIPT_SECRET = 'ks_receipt_dev_secret_change_in_prod';
+
+// In production-like hosts (Vercel/Railway/Lambda), KOLM_ARTIFACT_DIR and
+// KOLM_DATA_DIR may be unset. /ready used to fail-closed 503 in that case.
+// Instead, resolve sane writable defaults under os.tmpdir() and create them
+// on demand so /ready is green out of the box. Operators can still override
+// with explicit env vars when they wire durable storage.
+function resolveDefaultDir(envKey, suffix) {
+  const explicit = process.env[envKey];
+  if (explicit && explicit.trim()) return explicit.trim();
+  return path.join(os.tmpdir(), suffix);
+}
+function ensureDirSync(dir) {
+  if (!dir) return false;
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+export function resolveArtifactDir() {
+  const dir = resolveDefaultDir('KOLM_ARTIFACT_DIR', 'kolm-artifacts');
+  ensureDirSync(dir);
+  return dir;
+}
+export function resolveDataDir() {
+  const dir = resolveDefaultDir('KOLM_DATA_DIR', 'kolm-data');
+  ensureDirSync(dir);
+  return dir;
+}
 
 export function isProductionRuntime() {
   return process.env.NODE_ENV === 'production' ||
@@ -66,8 +97,11 @@ export function runtimeReadiness() {
   const receiptSecretStrong = receiptSecretLooksProductionSafe(receiptSecret);
   const receiptSecretOk = !productionLike ||
     (!!receiptSecret && receiptSecretStrong);
-  const dataDir = process.env.KOLM_DATA_DIR || '';
-  const artifactDir = process.env.KOLM_ARTIFACT_DIR || '';
+  // Auto-bootstrap writable defaults so /ready does not fail-closed in a
+  // production host where the operator hasn't pre-set KOLM_*_DIR. Explicit
+  // env vars still win; this just removes the cold-start 503.
+  const dataDir = resolveDataDir();
+  const artifactDir = resolveArtifactDir();
   const storeDriver = configuredStoreDriver();
   const dataDirOk = !productionLike || directoryWritable(dataDir);
   const artifactDirOk = !productionLike || directoryWritable(artifactDir);
@@ -119,7 +153,7 @@ export function runtimeReadiness() {
       required: productionLike,
       public: 'data directory writable',
       hint: productionLike
-        ? 'set KOLM_DATA_DIR to an existing writable durable mounted volume or database-backed path'
+        ? (process.env.KOLM_DATA_DIR ? `KOLM_DATA_DIR=${process.env.KOLM_DATA_DIR}` : `auto-bootstrapped under ${dataDir} (override with KOLM_DATA_DIR for durable storage)`)
         : (process.env.KOLM_DATA_DIR ? 'KOLM_DATA_DIR is set' : 'using the default ./data directory'),
     },
     {
@@ -128,7 +162,7 @@ export function runtimeReadiness() {
       required: productionLike,
       public: 'artifact directory writable',
       hint: productionLike
-        ? 'set KOLM_ARTIFACT_DIR to an existing writable durable storage path for compiled .kolm downloads'
+        ? (process.env.KOLM_ARTIFACT_DIR ? `KOLM_ARTIFACT_DIR=${process.env.KOLM_ARTIFACT_DIR}` : `auto-bootstrapped under ${artifactDir} (override with KOLM_ARTIFACT_DIR for durable storage)`)
         : (process.env.KOLM_ARTIFACT_DIR ? 'KOLM_ARTIFACT_DIR is set' : 'using temporary artifact output by default'),
     },
   ];

@@ -30,8 +30,8 @@
   <div class="wrap">
     <a href="/" class="brand"><span>kolm</span></a>
     <nav class="site-nav" aria-label="Primary">
-      <a href="/use-cases">Solutions</a>
-      <a href="/docs">Developers</a>
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
       <a href="/research">Research</a>
       <a href="/enterprise">Enterprise</a>
       <a href="/pricing">Pricing</a>
@@ -115,7 +115,31 @@
 
   <section class="section">
     <div class="wrap">
-      <div class="eyebrow"><span class="num">04</span>execution path</div>
+      <div class="eyebrow"><span class="num">04</span>schedule 1 &middot; phi schedule</div>
+      <h2>PHI Schedule (Schedule 1 to the BAA).</h2>
+      <p class="sec-lede">This Schedule is attached to and incorporated into the executed BAA. It is the operative document for any engagement where Protected Health Information may transit a kolm-controlled boundary &mdash; including support, capture-and-distill against PHI seed data, and incident response. Plain language; legal force.</p>
+      <div class="kvtable" style="margin-top:18px">
+        <table>
+          <tr><td style="width:200px;font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute);vertical-align:top">Purpose</td><td>kolm acts as a Business Associate of Covered Entity solely to provide the kolm compile, run, and audit services contracted under the master agreement. Nothing in this Schedule permits use of PHI for product improvement, model training across tenants, marketing, or any purpose not enumerated in &sect;2 (Permitted Uses).</td></tr>
+          <tr><td style="font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute);vertical-align:top">Permitted Uses</td><td>(a) Compile PHI seed data submitted by Covered Entity into a customer-owned .kolm artifact within the customer's hosted bridge or kolm's HIPAA-eligible boundary. (b) Run the resulting artifact at Covered Entity's direction. (c) Maintain audit and receipt logs containing only metadata (sha256, K-score, timestamp, tenant ID) &mdash; no PHI payload. (d) Respond to Covered Entity's support requests where PHI may be incidentally observed; kolm does not retain copies beyond the support window.</td></tr>
+          <tr><td style="font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute);vertical-align:top">Safeguards</td><td>kolm implements: <b>(a)</b> Customer-hosted compile bridge (BYOC) so PHI stays inside the customer-hosted bridge the Covered Entity VPC at compile time. <b>(b)</b> PHI-redactor recipe applied before any frontier-model call, redacting SSN, NPI, MRN, DOB, phone, email, and address by default. <b>(c)</b> K-score gate of &ge;0.95 for any artifact tagged <code style="font-family:var(--mono);font-size:12px">phi=true</code> (vs the 0.85 baseline). <b>(d)</b> HMAC-SHA256 receipt chain (4 rings) sealing each compile and run, with break-detection on tamper. <b>(e)</b> AES-256 encryption at rest with customer-managed keys (CMK) on request; TLS 1.3 in transit. <b>(f)</b> Role-based access control with quarterly review and immediate revocation on offboarding.</td></tr>
+          <tr><td style="font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute);vertical-align:top">Breach Notification</td><td>kolm notifies Covered Entity within <b>10 business days</b> of discovery of any Breach of Unsecured PHI, in accordance with 45 CFR 164.410. Initial notice within 24 hours of discovery (operational best-effort); formal written notice and incident report within 10 business days. kolm does not contract for &ldquo;reasonable delay&rdquo; provisions. Notification is sent to the Covered Entity privacy officer of record listed on the executed BAA cover page.</td></tr>
+          <tr><td style="font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute);vertical-align:top">Subprocessors &amp; Flow-Down</td><td>kolm flows down all material terms of this BAA to any subprocessor that may access PHI. The current subprocessor inventory is published at <a href="/subprocessors" style="color:var(--accent)">/subprocessors</a> and updated within 1 business day of any change. By design, only the customer-hosted bridge handles PHI under the default architecture; Vercel, Railway, Stripe, Resend, Cloudflare, and GitHub do not receive PHI. Frontier vendors (Anthropic / OpenAI / Google) receive seed examples only at compile time and only when the customer has explicitly opted in with their own key.<br><br><b>Flow-down for opt-in subprocessors:</b> When Covered Entity chooses to enable Anthropic / OpenAI / Google by providing their own API key, the contractual relationship is between Covered Entity and the vendor directly. Covered Entity is responsible for executing its own BAA with that vendor where required. kolm passes inputs through unchanged after redaction by the customer-hosted bridge; kolm does not act as an intermediary BAA conduit for those vendors. Example flow: Acme Health is the Covered Entity; Acme has a BAA with Anthropic directly; kolm's bridge redacts PHI before any payload reaches Anthropic; the kolm tenant carries no PHI through its own subprocessor inventory.</td></tr>
+          <tr><td style="font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute);vertical-align:top">Return / Destruction</td><td>Upon termination of the master agreement, or earlier on written request, kolm returns or destroys all PHI in its possession within <b>30 days</b> and provides written certification of destruction. Where return or destruction is infeasible (e.g. PHI fragments in long-term archival receipts), kolm extends the protections of this Schedule to such PHI indefinitely and limits further use to the purposes that make return or destruction infeasible. Customer-owned .kolm artifacts are not affected; they remain in the customer's possession.</td></tr>
+          <tr><td style="font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute);vertical-align:top">Audit Rights</td><td>Covered Entity may audit kolm's compliance with this Schedule once per year on <b>30 days' written notice</b>, during business hours, under reasonable confidentiality. Audit may include review of policies, training records, access logs (redacted of other-tenant data), incident records, and subprocessor inventories. Covered Entity bears the cost of the audit unless material non-compliance is discovered, in which case kolm reimburses reasonable audit fees. Cause-based audits (e.g. following a Breach) are exempt from the 30-day notice and the annual cap.</td></tr>
+          <tr><td style="font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute);vertical-align:top">Mitigation &amp; Cooperation</td><td>kolm mitigates, to the extent practicable, any harmful effect of a use or disclosure of PHI by kolm in violation of this Schedule. kolm cooperates with Covered Entity's investigation, breach analysis, and notification obligations to individuals, HHS, and (where required) media.</td></tr>
+          <tr id="hipaa-mapping"><td style="font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute);vertical-align:top">HIPAA Security Rule Mapping</td><td>kolm maps controls to the HIPAA Security Rule administrative (45 CFR 164.308), physical (45 CFR 164.310), technical (45 CFR 164.312), organizational (45 CFR 164.314), and documentation (45 CFR 164.316) safeguards in a separate <a href="/hipaa-mapping" style="color:var(--accent)">control-mapping document</a> available at <a href="/hipaa-mapping" style="color:var(--accent)">/hipaa-mapping</a>, refreshed quarterly. SOC 2 Type II audit is in progress with target attestation Q4 2026; SOC 2 Type I scoping completed 2026-04. HITRUST CSF certification scoping in progress; target r2 attestation Q2 2027.</td></tr>
+          <tr><td style="font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-mute);vertical-align:top">Survival</td><td>The obligations of confidentiality, return-or-destruction, breach notification (for incidents discovered post-termination), and audit (for the preceding 12 months) survive termination of the master agreement.</td></tr>
+        </table>
+      </div>
+      <p style="margin-top:22px;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:0.04em">Capitalized terms not defined in this Schedule have the meaning given in the BAA or the master agreement. In any conflict, this Schedule controls for PHI-related matters; the master agreement controls otherwise.</p>
+      <p style="margin-top:10px;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:0.04em">schedule 1 v1.1 &middot; 2026-05-16 &middot; flow-down clarified for opt-in subprocessors. v1.1 (2026-05-16): Clarified flow-down responsibility for customer-opt-in inference subprocessors.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="eyebrow"><span class="num">05</span>execution path</div>
       <h2>Two emails. One signed PDF.</h2>
       <pre class="terminal">$ # 1. you mail founders@kolm.ai with org name + workload
 $ # 2. we reply within 1 business day with engagement letter
@@ -128,7 +152,7 @@ $ # 6. kick off pilot</pre>
 
   <section class="section">
     <div class="wrap">
-      <div class="eyebrow"><span class="num">05</span>request the executable copy</div>
+      <div class="eyebrow"><span class="num">06</span>request the executable copy</div>
       <h2>Send your org details. We countersign within 48h.</h2>
       <p class="sec-lede">The form below mails <a href="mailto:founders@kolm.ai" style="color:var(--accent)">founders@kolm.ai</a> with everything our paralegal needs to draft the letterhead version. You will receive a DocuSign envelope at the listed address within one business day. No phone tag.</p>
       <form action="mailto:founders@kolm.ai" method="post" enctype="text/plain" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:640px;margin-top:24px">
@@ -188,6 +212,7 @@ $ # 6. kick off pilot</pre>
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/registry">Registry</a>
         <a href="/case-studies">Case studies</a>
       </div>

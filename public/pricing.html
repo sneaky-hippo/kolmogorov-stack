@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
 <title>kolm pricing · BYO frontier key, signed receipts included</title>
-<meta name="description" content="kolm pricing: Developer free, Starter $9, Pro $49, Teams from $149, Business $1,499, Enterprise $2,999. Annual saves 17%. Local runtime always free.">
+<meta name="description" content="kolm pricing: Developer free, Starter $9, Pro $49, Teams from $149, Growth $399, Business $1,499, Enterprise $2,999. Annual saves 17%. Local runtime always free.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
 <script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
@@ -38,6 +38,7 @@
         {"@type": "Offer", "name": "Starter",   "price": "9",   "priceCurrency": "USD", "url": "https://kolm.ai/signup?plan=starter",   "availability": "https://schema.org/InStock", "description": "Solo developer plan: 50 compiles/mo."},
         {"@type": "Offer", "name": "Pro",       "price": "49",  "priceCurrency": "USD", "url": "https://kolm.ai/signup?plan=pro",       "availability": "https://schema.org/InStock", "description": "200k compile credits, private registry, 10M-vector recall pool."},
         {"@type": "Offer", "name": "Teams",     "price": "149", "priceCurrency": "USD", "url": "https://kolm.ai/signup?plan=teams",     "availability": "https://schema.org/InStock", "description": "Teams plan: starts at 2 seats, up to 10 included, +$30/extra seat. Shared cache, SSO via Google Workspace, audit log, 30M-vector recall pool."},
+        {"@type": "Offer", "name": "Growth",    "price": "399", "priceCurrency": "USD", "url": "https://kolm.ai/signup?plan=growth",    "availability": "https://schema.org/InStock", "description": "Growth plan: 15 seats included, +$35/extra seat, 75 compiles per seat per month pooled, multi-namespace registry, Okta SSO, 60M-vector recall pool, Slack 6h SLA."},
         {"@type": "Offer", "name": "Business",  "price": "1499","priceCurrency": "USD", "url": "https://kolm.ai/signup?plan=business",  "availability": "https://schema.org/InStock", "description": "25 seats, BAA on request, dedicated registry, priority compile queue."},
         {"@type": "Offer", "name": "Enterprise","price": "2999","priceCurrency": "USD", "url": "https://kolm.ai/signup?plan=enterprise","availability": "https://schema.org/InStock", "description": "Self-serve enterprise: VPC peering on request, custom retention, signed pilots."}
       ]
@@ -212,9 +213,46 @@
   }
   [data-theme=light] .bill-toggle .save { background: rgba(10,136,98,0.10); color: #0a8862; border-color: rgba(10,136,98,0.22); }
 
-  .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  @media (max-width: 980px) { .tiers { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 540px) { .tiers { grid-template-columns: 1fr; } }
+  .tiers { display: grid; gap: 14px; }
+  .tiers-primary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .tiers-secondary { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 18px; }
+  @media (max-width: 1180px) {
+    .tiers-primary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tiers-secondary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 820px) {
+    .tiers-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 540px) {
+    .tiers-primary,
+    .tiers-secondary { grid-template-columns: 1fr; }
+  }
+
+  .tier.tier-compact { padding: 20px; }
+  .tier.tier-compact .name { font-size: 26px; margin: 6px 0 4px; }
+  .tier.tier-compact .pitch { font-size: 13px; min-height: 38px; }
+  .tier.tier-compact .num { font-size: 30px; margin: 14px 0 4px; }
+  .tier.tier-compact .num .per { font-size: 12px; }
+  .tier.tier-compact ul { margin: 0 0 18px; }
+  .tier.tier-compact li { padding: 7px 0; font-size: 13px; line-height: 1.45; }
+  .tier.tier-compact .overage { margin: 0 0 16px; font-size: 10.5px; }
+
+  .tiers-secondary-heading {
+    display: flex; align-items: center; gap: 14px;
+    margin: 44px 0 10px;
+    font-family: var(--mono);
+    color: var(--ink-faint);
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .tiers-secondary-heading .tsh-eyebrow { color: var(--ink-mute); white-space: nowrap; }
+  .tiers-secondary-heading .tsh-rule { flex: 1; height: 1px; background: var(--line); }
+  .tiers-secondary-heading .tsh-note { color: var(--ink-faint); text-transform: none; letter-spacing: 0; font-family: var(--sans); font-size: 12.5px; white-space: nowrap; }
+  @media (max-width: 720px) {
+    .tiers-secondary-heading { flex-wrap: wrap; gap: 8px; }
+    .tiers-secondary-heading .tsh-note { white-space: normal; flex-basis: 100%; }
+  }
   .tier {
     background: var(--bg-elev); border: 1px solid var(--line);
     border-radius: 12px; padding: 24px;
@@ -414,6 +452,61 @@
   .vs-tbl td { color: var(--ink-mute); }
   .vs-tbl tr:last-child td { border-bottom: none; }
 
+  /* roi-calc . wave 126 . interactive savings calculator. Numbers update live. */
+  .roi-calc { display: flex; flex-direction: column; gap: 14px; }
+  .rc-help { color: var(--ink-mute); font-size: 13.5px; margin: 0 0 4px !important; }
+  .rc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .rc-field { display: flex; flex-direction: column; gap: 5px; }
+  .rc-field > span {
+    font-size: 10.5px; color: var(--ink-faint);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    font-family: var(--mono); line-height: 1.2;
+  }
+  .rc-field input, .rc-field select {
+    background: var(--bg-2, #11151b);
+    border: 1px solid var(--line, rgba(255,255,255,0.08));
+    color: var(--ink, #ece7dc);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-family: var(--mono, ui-monospace);
+    font-size: 13.5px;
+    font-variant-numeric: tabular-nums;
+    transition: border-color 160ms;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .rc-field input:focus, .rc-field select:focus {
+    outline: none; border-color: rgba(126, 240, 210, 0.55);
+  }
+  .rc-out {
+    border: 1px solid var(--line, rgba(255,255,255,0.08));
+    border-radius: 9px; padding: 12px 16px;
+    background: rgba(126, 240, 210, 0.03);
+  }
+  .rc-out .rc-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 6px 0; border: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .rc-out .rc-row .lbl { color: var(--ink-mute); font-size: 13px; }
+  .rc-out .rc-row b {
+    font-family: var(--mono); font-size: 14.5px;
+    color: var(--ink); font-weight: 500;
+  }
+  .rc-out .rc-row.rc-savings {
+    border-top: 1px solid var(--line); margin-top: 6px; padding-top: 12px;
+  }
+  .rc-out .rc-row.rc-savings .lbl { color: var(--ink); font-weight: 500; }
+  .rc-out .rc-row.rc-savings b { color: #7ef0d2; font-size: 18px; font-weight: 600; }
+  .rc-out .rc-row.rc-mult b { color: #7ef0d2; }
+  [data-theme=light] .rc-out { background: rgba(10, 136, 98, 0.04); }
+  [data-theme=light] .rc-out .rc-row.rc-savings b { color: #0a8862 !important; }
+  [data-theme=light] .rc-out .rc-row.rc-mult b { color: #0a8862 !important; }
+  .rc-fine {
+    font-size: 11.5px; color: var(--ink-faint) !important;
+    font-family: var(--mono); line-height: 1.6; margin: 4px 0 0 !important;
+  }
+
   footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); }
   footer.site .grid { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 36px; margin-bottom: 36px; }
   @media (max-width: 720px) { footer.site .grid { grid-template-columns: 1fr 1fr; } }
@@ -502,6 +595,7 @@
     .tier { padding: 26px 22px; }
   }
 </style>
+<link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
@@ -510,8 +604,8 @@
   <div class="wrap">
     <a href="/" class="brand"><span>kolm</span></a>
     <nav class="site-nav" aria-label="Primary">
-      <a href="/use-cases">Solutions</a>
-      <a href="/docs">Developers</a>
+      <a href="/use-cases">Use cases</a>
+      <a href="/docs">Docs</a>
       <a href="/research">Research</a>
       <a href="/enterprise">Enterprise</a>
       <a href="/pricing">Pricing</a>
@@ -526,7 +620,7 @@
 
 <section class="hero">
   <div class="wrap">
-    <div class="hero-eyebrow"><span class="he-dot"></span>Pricing . v7 . pay for the compile</div>
+    <div class="hero-eyebrow"><span class="he-dot"></span>Pricing . pay for the compile</div>
     <h1 class="hero-h1">Compile once.<br><span class="tone">Run it forever.</span></h1>
     <p class="lede">You pay kolm to compile. Your frontier bill stays with your frontier provider. We never resell tokens. The local runtime is always free.</p>
 
@@ -578,10 +672,10 @@
 <section>
   <div class="wrap">
     <div class="bill-toggle" role="tablist" aria-label="Billing cycle">
-      <button data-bill="monthly" type="button" role="tab" aria-selected="false">Monthly</button>
-      <button class="on" data-bill="annual" type="button" role="tab" aria-selected="true">Annual<span class="save">SAVE 17%</span></button>
+      <button class="on" data-bill="monthly" type="button" role="tab" aria-selected="true">Monthly</button>
+      <button data-bill="annual" type="button" role="tab" aria-selected="false">Annual<span class="save">SAVE 17%</span></button>
     </div>
-    <div class="tiers">
+    <div class="tiers tiers-primary">
       <div class="tier">
         <div class="tag">Developer</div>
         <div class="name">Free.</div>
@@ -600,25 +694,6 @@
           <li>Community support</li>
         </ul>
         <a href="/quickstart" class="cta">Install CLI &rarr;</a>
-      </div>
-
-      <div class="tier">
-        <div class="tag">Starter</div>
-        <div class="name">Validate.</div>
-        <div class="pitch">Validate your first private .kolm workflow.</div>
-        <div class="num"><span data-mo="$9" data-yr="$90">$90</span><span class="per" data-mo="/ month" data-yr="/ year &middot; 2 mo free">/ year &middot; 2 mo free</span></div>
-        <div class="frontier">+ your frontier model bill</div>
-        <div class="overage"><b>Overage</b> $4 / extra compile, capped at next tier.</div>
-        <ul>
-          <li><b>3</b> private artifacts</li>
-          <li>Signed <code>.kolm</code> artifacts</li>
-          <li>CLI and MCP runtime</li>
-          <li>1M-vector recall</li>
-          <li>iOS &middot; Android adapters</li>
-          <li>Priority compile queue</li>
-          <li>Email support</li>
-        </ul>
-        <a href="/signup?plan=starter" class="cta">Start for $9 &rarr;</a>
       </div>
 
       <div class="tier featured">
@@ -643,6 +718,76 @@
       </div>
 
       <div class="tier">
+        <div class="tag">Business</div>
+        <div class="name">Org.</div>
+        <div class="pitch">25-seat orgs with multi-team scopes, SCIM, and webhook bridges.</div>
+        <div class="num"><span data-mo="$1,499" data-yr="$14,990">$14,990</span><span class="per" data-mo="/ month" data-yr="/ year &middot; 2 mo free">/ year &middot; 2 mo free</span></div>
+        <div class="frontier">+ your frontier model bill</div>
+        <div class="overage"><b>Overage</b> $2 / extra compile, pooled org-wide.</div>
+        <ul>
+          <li><b>25</b> seats included, +$49 / extra seat</li>
+          <li><b>250</b> compiles per month pool</li>
+          <li>Multi-team registry with project scopes</li>
+          <li>SSO via Okta &middot; SCIM provisioning</li>
+          <li>100M-vector recall pool</li>
+          <li>Webhook-driven CI/CD bridge</li>
+          <li>Receipt export to S3 / Azure Blob</li>
+          <li>Slack support &middot; 4h SLA</li>
+          <li>Quarterly architecture review</li>
+        </ul>
+        <a href="/upgrade?plan=business" class="cta">Start Business trial &rarr;</a>
+      </div>
+
+      <div class="tier">
+        <div class="tag">Enterprise</div>
+        <div class="name">Sovereign.</div>
+        <div class="pitch">Regulated environments. Private networking, retention, and compliance paths.</div>
+        <div class="num"><span data-mo="$2,999" data-yr="$29,990">$29,990</span><span class="per" data-mo="/ month" data-yr="/ year &middot; 2 mo free">/ year &middot; 2 mo free</span></div>
+        <div class="frontier">hosted today; customer-hosted bridge by contract</div>
+        <div class="overage"><b>Overage</b> per agreement; no surprise invoices.</div>
+        <ul>
+          <li>Private registry namespace</li>
+          <li>Customer-hosted compile bridge</li>
+          <li>Private base model policy mapping</li>
+          <li>SAML &middot; SCIM &middot; signed audit log</li>
+          <li>BAA &middot; DPA &middot; DPIA paths &middot; <a href="/baa" style="color:var(--accent)">template</a></li>
+          <li>External anchoring (Sigstore / Rekor)</li>
+          <li>Dedicated support &middot; SLA by agreement</li>
+          <li>Annual invoice &middot; PO billing &middot; Net 30 &middot; ACH/wire</li>
+        </ul>
+        <a href="/upgrade?plan=enterprise" class="cta">Start Enterprise trial &rarr;</a>
+        <a href="/enterprise" style="display:block;margin-top:8px;text-align:center;color:var(--ink-mute);font-family:var(--mono);font-size:11.5px;text-decoration:none;letter-spacing:0.02em">enterprise overview &rarr;</a>
+        <a href="mailto:founders@kolm.ai?subject=kolm%20enterprise%20%E2%80%94%20intro" style="display:block;margin-top:6px;text-align:center;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;text-decoration:none;letter-spacing:0.02em">or talk to founders &rarr;</a>
+      </div>
+    </div>
+
+    <div class="tiers-secondary-heading">
+      <span class="tsh-eyebrow">Between tiers</span>
+      <span class="tsh-rule"></span>
+      <span class="tsh-note">Pick an intermediate plan if your team falls between Pro and Business</span>
+    </div>
+
+    <div class="tiers tiers-secondary">
+      <div class="tier tier-compact">
+        <div class="tag">Starter</div>
+        <div class="name">Validate.</div>
+        <div class="pitch">Validate your first private .kolm workflow.</div>
+        <div class="num"><span data-mo="$9" data-yr="$90">$90</span><span class="per" data-mo="/ month" data-yr="/ year &middot; 2 mo free">/ year &middot; 2 mo free</span></div>
+        <div class="frontier">+ your frontier model bill</div>
+        <div class="overage"><b>Overage</b> $4 / extra compile, capped at next tier.</div>
+        <ul>
+          <li><b>3</b> private artifacts</li>
+          <li>Signed <code>.kolm</code> artifacts</li>
+          <li>CLI and MCP runtime</li>
+          <li>1M-vector recall</li>
+          <li>iOS &middot; Android adapters</li>
+          <li>Priority compile queue</li>
+          <li>Email support</li>
+        </ul>
+        <a href="/signup?plan=starter" class="cta">Start for $9 &rarr;</a>
+      </div>
+
+      <div class="tier tier-compact">
         <div class="tag">Teams</div>
         <div class="name">Together.</div>
         <div class="pitch">Starts at two seats. One registry. Audit log and SSO from day one.</div>
@@ -663,47 +808,25 @@
         <a href="/signup?plan=teams&trial=14" class="cta">Start free trial &rarr;</a>
       </div>
 
-      <div class="tier">
-        <div class="tag">Business</div>
-        <div class="name">Org.</div>
-        <div class="pitch">25-seat orgs with multi-team scopes, SCIM, and webhook bridges.</div>
-        <div class="num"><span data-mo="$1,499" data-yr="$14,990">$14,990</span><span class="per" data-mo="/ month" data-yr="/ year &middot; 2 mo free">/ year &middot; 2 mo free</span></div>
+      <div class="tier tier-compact">
+        <div class="tag">Growth</div>
+        <div class="name">Scale.</div>
+        <div class="pitch">15 seats, Okta SSO, multi-namespace registry. The bridge between Teams and Business.</div>
+        <div class="num"><span data-mo="$399" data-yr="$3,990">$3,990</span><span class="per" data-mo="/ month" data-yr="/ year &middot; 2 mo free">/ year &middot; 2 mo free</span></div>
         <div class="frontier">+ your frontier model bill</div>
-        <div class="overage"><b>Overage</b> $2 / extra compile, pooled org-wide.</div>
+        <div class="overage"><b>Overage</b> $2 / extra compile, pooled across the team.</div>
         <ul>
-          <li><b>25</b> seats included, +$49 / extra seat</li>
-          <li><b>250</b> compiles per month pool</li>
-          <li>Multi-team registry with project scopes</li>
-          <li>SSO via Okta &middot; SCIM provisioning</li>
-          <li>100M-vector recall pool</li>
-          <li>Webhook-driven CI/CD bridge</li>
-          <li>Receipt export to S3 / Azure Blob</li>
-          <li>Slack support &middot; 4h SLA</li>
-          <li>Quarterly architecture review</li>
+          <li><b>15</b> seats included &middot; +$35 / extra seat</li>
+          <li><b>75</b> compiles per seat per month, pooled</li>
+          <li>Multi-namespace registry &middot; signed pulls</li>
+          <li>SSO via Google Workspace <b>or</b> Okta</li>
+          <li>Audit log &middot; signed receipts &middot; CI/CD webhook</li>
+          <li>60M-vector recall pool</li>
+          <li>Role-based access &middot; per-seat usage view</li>
+          <li>Quarterly architecture check-in</li>
+          <li>Slack support &middot; 6h SLA</li>
         </ul>
-        <a href="mailto:founders@kolm.ai?subject=kolm%20business%20-%20book%20a%20demo" class="cta">Book a demo &rarr;</a>
-      </div>
-
-      <div class="tier">
-        <div class="tag">Enterprise</div>
-        <div class="name">Sovereign.</div>
-        <div class="pitch">Regulated environments. Private networking, retention, and compliance paths.</div>
-        <div class="num"><span data-mo="$2,999" data-yr="$29,990">$29,990</span><span class="per" data-mo="/ month" data-yr="/ year &middot; 2 mo free">/ year &middot; 2 mo free</span></div>
-        <div class="frontier">hosted today; customer-hosted bridge by contract</div>
-        <div class="overage"><b>Overage</b> per agreement; no surprise invoices.</div>
-        <ul>
-          <li>Private registry namespace</li>
-          <li>Customer-hosted compile bridge</li>
-          <li>Private base model policy mapping</li>
-          <li>SAML &middot; SCIM &middot; signed audit log</li>
-          <li>BAA &middot; DPA &middot; DPIA paths &middot; <a href="/baa" style="color:var(--accent)">template</a></li>
-          <li>External anchoring (Sigstore / Rekor)</li>
-          <li>Dedicated support &middot; SLA by agreement</li>
-          <li>Annual invoice &middot; PO billing &middot; Net 30 &middot; ACH/wire</li>
-        </ul>
-        <a href="mailto:founders@kolm.ai?subject=kolm%20enterprise%20-%20intro" class="cta">Talk to us &rarr;</a>
-        <a href="/enterprise" style="display:block;margin-top:8px;text-align:center;color:var(--ink-mute);font-family:var(--mono);font-size:11.5px;text-decoration:none;letter-spacing:0.02em">enterprise overview &rarr;</a>
-        <a href="mailto:founders@kolm.ai?subject=kolm%20enterprise%20%E2%80%94%20intro" style="display:block;margin-top:6px;text-align:center;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;text-decoration:none;letter-spacing:0.02em">or talk to founders &rarr;</a>
+        <a href="/signup?plan=growth&trial=14" class="cta">Start free trial &rarr;</a>
       </div>
     </div>
   </div>
@@ -729,6 +852,16 @@
         <div style="font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);letter-spacing:0.06em;margin-bottom:10px">Artifact storage</div>
         <div style="font-weight:500;color:var(--ink);font-size:22px;margin-bottom:6px;font-family:var(--mono)">$0.10<span style="font-size:13px;color:var(--ink-mute);margin-left:6px">/ GB / month</span></div>
         <p style="margin:0;color:var(--ink-mute);font-size:13.5px;line-height:1.55">Tier inclusions are free. Add-on only kicks in past the cap. Receipt chain stays free forever.</p>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:22px 22px 20px;background:var(--bg-elev)">
+        <div style="font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);letter-spacing:0.06em;margin-bottom:10px">Verify API</div>
+        <div style="font-weight:500;color:var(--ink);font-size:22px;margin-bottom:6px;font-family:var(--mono)">$0.001<span style="font-size:13px;color:var(--ink-mute);margin-left:6px">/ verify</span></div>
+        <p style="margin:0;color:var(--ink-mute);font-size:13.5px;line-height:1.55">First 1M verifies/month free. After that, $1 per million. Third parties replay a receipt under the seal without an account.</p>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:12px;padding:22px 22px 20px;background:var(--bg-elev)">
+        <div style="font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);letter-spacing:0.06em;margin-bottom:10px">Private registry</div>
+        <div style="font-weight:500;color:var(--ink);font-size:22px;margin-bottom:6px;font-family:var(--mono)">$99<span style="font-size:13px;color:var(--ink-mute);margin-left:6px">/ month</span></div>
+        <p style="margin:0;color:var(--ink-mute);font-size:13.5px;line-height:1.55">Teams add-on. Same registry shape, your namespace only. Signed publishes, signed pulls, no public index.</p>
       </div>
     </div>
     <p style="margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--ink-faint)">All add-ons are off by default. Toggle them on per-org at <a href="/dashboard" style="color:var(--accent);text-decoration:none">/dashboard</a> &raquo; Billing.</p>
@@ -793,26 +926,88 @@
   </div>
 </section>
 
-<section>
+<section id="math">
   <div class="wrap">
     <div class="eyebrow"><span class="num">04</span><span>The math</span></div>
     <h2>What it actually costs<br><span class="tone">to ship one private AI feature.</span></h2>
     <p class="sec-lede">Pay the teacher once. Ship the artifact forever. Inference at zero marginal cost.</p>
 
     <div class="roi-grid">
-      <div class="roi-card">
-        <h3>One feature - 100,000 monthly users<br><span class="tone">Cloud frontier vs kolm + local runtime.</span></h3>
-        <p>Support-summary, 12 calls/user/month, 800 in + 250 out tokens. 1.2M frontier calls / month.</p>
-        <div class="roi-rows">
-          <div class="roi-row"><span class="lbl">Cloud frontier (Sonnet - per-call)</span><span class="val">~$5,400 / mo</span></div>
-          <div class="roi-row"><span class="lbl">+ egress and latency variance</span><span class="val">~$420 / mo</span></div>
-          <div class="roi-row tot"><span class="lbl">Year 1 cloud-only</span><span class="val">$69,840</span></div>
-          <div class="roi-row" style="margin-top:18px"><span class="lbl">kolm Pro - 12 recompiles / 1 feature</span><span class="val">$588 / yr</span></div>
-          <div class="roi-row"><span class="lbl">Frontier teacher - k-sample at compile</span><span class="val">~$1,920 / yr</span></div>
-          <div class="roi-row"><span class="lbl">On-device inference</span><span class="val">$0</span></div>
-          <div class="roi-row tot"><span class="lbl">Year 1 kolm</span><span class="val">$2,508</span></div>
+      <div class="roi-card roi-calc">
+        <h3>Calculate your savings<br><span class="tone">live numbers, your inputs.</span></h3>
+        <p class="rc-help">Defaults reflect a typical support-summary feature. Change anything &mdash; numbers update instantly.</p>
+        <div class="rc-grid">
+          <label class="rc-field"><span>Monthly active users</span><input type="number" id="rc-users" value="100000" min="100" step="1000" inputmode="numeric"></label>
+          <label class="rc-field"><span>Calls per user / mo</span><input type="number" id="rc-calls" value="12" min="1" step="1" inputmode="numeric"></label>
+          <label class="rc-field"><span>Avg input tokens</span><input type="number" id="rc-tin" value="800" min="10" step="50" inputmode="numeric"></label>
+          <label class="rc-field"><span>Avg output tokens</span><input type="number" id="rc-tout" value="250" min="10" step="50" inputmode="numeric"></label>
+          <label class="rc-field"><span>Frontier model</span><select id="rc-model">
+            <option value="sonnet" selected>Claude Sonnet ($3 / $15 per 1M)</option>
+            <option value="gpt4o">GPT-4o ($2.50 / $10 per 1M)</option>
+            <option value="opus">Claude Opus ($15 / $75 per 1M)</option>
+            <option value="haiku">Claude Haiku ($0.80 / $4 per 1M)</option>
+          </select></label>
+          <label class="rc-field"><span>kolm plan</span><select id="rc-plan">
+            <option value="49">Pro &middot; $49 / mo</option>
+            <option value="499" selected>Business &middot; $499 / mo</option>
+            <option value="2999">Enterprise (estimate) &middot; $2,999 / mo</option>
+          </select></label>
         </div>
-        <p><b>28&times; cheaper</b>. Data and receipts stay on-device.</p>
+        <div class="rc-out">
+          <div class="rc-row"><span class="lbl">Frontier per month</span><b id="rc-front">&mdash;</b></div>
+          <div class="rc-row"><span class="lbl">kolm per month (plan + 1 compile)</span><b id="rc-kolm">&mdash;</b></div>
+          <div class="rc-row rc-savings"><span class="lbl">You save</span><b id="rc-save">&mdash;</b></div>
+          <div class="rc-row rc-mult"><span class="lbl">Multiplier</span><b id="rc-x">&mdash;</b></div>
+          <div class="rc-row rc-year"><span class="lbl">Year 1 savings</span><b id="rc-year">&mdash;</b></div>
+        </div>
+        <p class="rc-fine">Frontier per-token rates from public 2026-05 pricing. kolm includes one compile / mo at teacher cost (~$160 k-sample). On-device inference costs $0 / call. Reproducible from receipts inside any .kolm.</p>
+        <script>
+        (function(){
+          var MODELS = {
+            sonnet: { in: 3.00,  out: 15.00 },
+            gpt4o:  { in: 2.50,  out: 10.00 },
+            opus:   { in: 15.00, out: 75.00 },
+            haiku:  { in: 0.80,  out:  4.00 }
+          };
+          var TEACHER_COMPILE = 160;
+          function $(id){ return document.getElementById(id); }
+          function fmt(n){
+            if (n >= 1000000) return '$' + (n/1000000).toFixed(2) + 'M';
+            if (n >= 10000)   return '$' + Math.round(n/1000).toLocaleString() + 'k';
+            return '$' + Math.round(n).toLocaleString();
+          }
+          function calc(){
+            var users = +$('rc-users').value || 0;
+            var calls = +$('rc-calls').value || 0;
+            var tin   = +$('rc-tin').value   || 0;
+            var tout  = +$('rc-tout').value  || 0;
+            var m     = MODELS[$('rc-model').value] || MODELS.sonnet;
+            var plan  = +$('rc-plan').value || 0;
+            var monthlyCalls = users * calls;
+            var frontierMo = monthlyCalls * ((tin/1e6)*m.in + (tout/1e6)*m.out);
+            var kolmMo = plan + TEACHER_COMPILE;
+            var save   = Math.max(0, frontierMo - kolmMo);
+            var mult   = kolmMo > 0 ? frontierMo / kolmMo : 0;
+            $('rc-front').textContent = fmt(frontierMo) + ' / mo';
+            $('rc-kolm').textContent  = fmt(kolmMo)     + ' / mo';
+            $('rc-save').textContent  = fmt(save)       + ' / mo';
+            $('rc-x').textContent     = mult >= 1 ? mult.toFixed(1) + '×' : '—';
+            $('rc-year').textContent  = fmt(save * 12);
+          }
+          function wire(){
+            var ids = ['rc-users','rc-calls','rc-tin','rc-tout','rc-model','rc-plan'];
+            ids.forEach(function(id){
+              var el = $(id);
+              if (!el) return;
+              el.addEventListener('input', calc);
+              el.addEventListener('change', calc);
+            });
+            calc();
+          }
+          if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+          else wire();
+        })();
+        </script>
       </div>
 
       <div class="roi-card">
@@ -1006,6 +1201,7 @@
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
         <a href="/registry">Registry</a>
         <a href="/case-studies">Case studies</a>
       </div>
@@ -1053,8 +1249,8 @@
   btns.forEach(function (b) {
     b.addEventListener('click', function () { apply(b.getAttribute('data-bill')); });
   });
-  // Initialize to whichever button has .on at boot. Default is annual.
-  var initial = 'annual';
+  // Initialize to whichever button has .on at boot. Default is monthly.
+  var initial = 'monthly';
   btns.forEach(function (b) { if (b.classList.contains('on')) initial = b.getAttribute('data-bill'); });
   apply(initial);
 })();

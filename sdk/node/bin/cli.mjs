@@ -5,7 +5,7 @@
 // to a permanent account when ready.
 //
 // Auth precedence (first match wins):
-//   1. RECIPE_API_KEY env (or KOLMOGOROV_API_KEY)
+//   1. KOLM_API_KEY env (preferred; also RECIPE_API_KEY, KOLMOGOROV_API_KEY)
 //   2. ~/.recipe/auth.json (managed by `recipe init` / `recipe claim`)
 //   3. auto-bootstrap an anonymous workspace + persist to ~/.recipe/auth.json
 
@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-const SDK_VERSION = '0.1.0';
+const SDK_VERSION = '0.2.0';
 const args = process.argv.slice(2);
 const cmd = args[0];
 
@@ -33,7 +33,17 @@ function saveAuth(rec) {
 function clearAuth() {
   try { fs.unlinkSync(AUTH_FILE); } catch {}
 }
-function envKey() { return process.env.RECIPE_API_KEY || process.env.KOLMOGOROV_API_KEY || null; }
+function envKey() {
+  return (
+    process.env.KOLM_API_KEY ||
+    process.env.RECIPE_API_KEY ||
+    process.env.KOLMOGOROV_API_KEY ||
+    null
+  );
+}
+function envBase() {
+  return process.env.KOLM_BASE_URL || process.env.RECIPE_BASE_URL || null;
+}
 
 async function ensureKey({ allowBootstrap = true } = {}) {
   if (envKey()) return { key: envKey(), source: 'env' };
@@ -72,7 +82,7 @@ async function ensureKey({ allowBootstrap = true } = {}) {
 
 function makeClient(key) {
   const rec = loadAuth();
-  return new RecipeClient({ apiKey: key, baseUrl: rec?.base_url });
+  return new RecipeClient({ apiKey: key, baseUrl: envBase() || rec?.base_url });
 }
 
 // ---------- usage / flags ----------
@@ -107,8 +117,8 @@ usage:
   recipe health
 
 env:
-  RECIPE_API_KEY     bearer token; takes precedence over auth file
-  RECIPE_BASE_URL    override the API base (default: production)
+  KOLM_API_KEY       bearer token (preferred; also RECIPE_API_KEY, KOLMOGOROV_API_KEY)
+  KOLM_BASE_URL      override the API base (also RECIPE_BASE_URL); default: https://kolm.ai
 `);
   process.exit(code);
 }
@@ -158,7 +168,12 @@ async function main() {
       const env = envKey();
       const rec = loadAuth();
       if (env) {
-        console.log(`source: env (RECIPE_API_KEY)`);
+        const envVar = process.env.KOLM_API_KEY
+          ? 'KOLM_API_KEY'
+          : process.env.RECIPE_API_KEY
+          ? 'RECIPE_API_KEY'
+          : 'KOLMOGOROV_API_KEY';
+        console.log(`source: env (${envVar})`);
         console.log(`key:    ${env.slice(0, 7)}…`);
         try {
           const c = makeClient(env);

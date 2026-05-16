@@ -27,8 +27,8 @@ Commands:
   recipe health                             health check
 
 Env:
-  RECIPE_API_KEY        bearer token (or KOLMOGOROV_API_KEY)
-  RECIPE_BASE_URL       override API base
+  KOLM_API_KEY          bearer token (preferred; also RECIPE_API_KEY, KOLMOGOROV_API_KEY)
+  KOLM_BASE_URL         override API base (also RECIPE_BASE_URL); default https://kolm.ai
 """
 
 

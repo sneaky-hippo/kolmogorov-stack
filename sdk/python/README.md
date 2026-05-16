@@ -69,7 +69,7 @@ recipe waitlist you@example.com "extract addresses from emails"
 Free 10,000 recipe-calls/month, no credit card:
 
 ```bash
-curl -X POST https://kolmogorov-stack-production.up.railway.app/v1/signup \
+curl -X POST https://kolm.ai/v1/signup \
   -H "Content-Type: application/json" \
   -d '{"email":"you@example.com"}'
 ```

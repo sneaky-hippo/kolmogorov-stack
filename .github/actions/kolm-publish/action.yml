@@ -1,0 +1,73 @@
+name: kolm publish
+description: Publish a verified .kolm to the public registry, your team registry, or a private team scope.
+author: Kolmogorov
+
+inputs:
+  artifact:
+    description: Path to the .kolm file to publish (relative to workspace root)
+    required: true
+  visibility:
+    description: One of "public", "team", "private" (default team — uses team handle from API key)
+    required: false
+    default: "team"
+  team:
+    description: Team handle override (only honored when visibility=team)
+    required: false
+    default: ""
+  api-key:
+    description: kolm API key with publish scope (use $\{\{ secrets.KOLM_KEY \}\})
+    required: true
+  base-url:
+    description: kolm API base URL (default https://kolm.ai)
+    required: false
+    default: https://kolm.ai
+
+outputs:
+  hash:
+    description: Manifest hash of the published artifact
+    value: ${{ steps.publish.outputs.hash }}
+  url:
+    description: Canonical URL of the published artifact
+    value: ${{ steps.publish.outputs.url }}
+
+runs:
+  using: composite
+  steps:
+    - name: install kolm CLI
+      shell: bash
+      run: npm i -g github:sneaky-hippo/kolmogorov-stack
+
+    - name: configure
+      shell: bash
+      env:
+        KOLM_BASE: ${{ inputs.base-url }}
+        KOLM_KEY: ${{ inputs.api-key }}
+      run: kolm config base "$KOLM_BASE"
+
+    - name: verify before publish
+      shell: bash
+      env:
+        KOLM_KEY: ${{ inputs.api-key }}
+      run: kolm verify "${{ inputs.artifact }}"
+
+    - name: publish
+      id: publish
+      shell: bash
+      env:
+        KOLM_BASE: ${{ inputs.base-url }}
+        KOLM_KEY: ${{ inputs.api-key }}
+      run: |
+        args=""
+        case "${{ inputs.visibility }}" in
+          public)  args="--public" ;;
+          private) args="--private" ;;
+          team)    if [ -n "${{ inputs.team }}" ]; then args="--team ${{ inputs.team }}"; fi ;;
+          *)       echo "::error::invalid visibility: ${{ inputs.visibility }}"; exit 2 ;;
+        esac
+        out=$(kolm publish "${{ inputs.artifact }}" $args --json)
+        echo "$out"
+        hash=$(echo "$out" | jq -r '.hash')
+        url=$(echo "$out" | jq -r '.url')
+        echo "hash=$hash" >> "$GITHUB_OUTPUT"
+        echo "url=$url" >> "$GITHUB_OUTPUT"
+        echo "Published: $url"

@@ -61,7 +61,7 @@ This can work for preview GitHub installs, but it is not a curated release artif
 kolm config base "$KOLM_BASE"
 kolm whoami
 kolm compile ... --json
-kolm verify ...
+kolm inspect ...
 ```
 
 Local probes showed:
