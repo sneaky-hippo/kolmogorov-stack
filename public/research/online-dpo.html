@@ -195,7 +195,7 @@
 
     <p>Both filters are recorded in the round's receipt with counts so the auditor can confirm the policy was trained on a sane fraction of the sampled pairs.</p>
 
-    <h2>The honesty contract</h2>
+    <h2>The provenance contract</h2>
 
     <p>Iterative DPO has a known failure mode: the policy and the judge can collude. A learned reward model rewards what it was trained on; a policy trained against that RM learns to maximize the RM's idiosyncrasies, not the user's preferences. Three guardrails:</p>
 
@@ -260,7 +260,7 @@
 
     <p><strong>Judge cost dominating.</strong> An LLM-judge round on 5000 prompts at 4 candidates each is 20K judge calls. The K-score gate after the round adds another judging pass on the held-out pack. Plan the spend before starting; the receipt records <code>judge_cost_usd</code> per round so the buyer's auditor can confirm the budget.</p>
 
-    <p><strong>Off-policy prompt drift.</strong> If the prompt set was captured weeks ago and the production distribution has moved, the loop trains on the wrong distribution. Capture fresh prompts before each loop start. The capture infrastructure (<a href="/research/capture-loop-honesty">capture-loop honesty</a>) is the right primitive.</p>
+    <p><strong>Off-policy prompt drift.</strong> If the prompt set was captured weeks ago and the production distribution has moved, the loop trains on the wrong distribution. Capture fresh prompts before each loop start. The capture infrastructure (<a href="/research/capture-loop-provenance">capture-loop fidelity</a>) is the right primitive.</p>
 
     <p><strong>Catastrophic forgetting.</strong> After many rounds, the policy can lose capabilities outside the loop's prompt distribution. The fix is to mix 10-20% of an SFT replay buffer into each round's training data; preserves baseline behavior on tasks the judge does not see.</p>
 

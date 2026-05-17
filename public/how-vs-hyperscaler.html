@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm vs hyperscaler fine-tune: model you OWN as a file</title>
+<meta name="description" content="OpenAI / Anthropic / Vertex / Bedrock fine-tuning produces a model that lives in the vendor's API. kolm produces a model you OWN as a file. Air-gap, residency, and exit cost are structural impossibilities for closed-weight tuning.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="kolm vs hyperscaler fine-tune">
+<meta property="og:description" content="A model you OWN as a file vs a model that exists only inside the vendor's API. Air-gap and exit cost are structural.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://kolm.ai/how-vs-hyperscaler">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px}
+  .lede{font-size:17.5px;line-height:1.55;color:var(--ink-mute);max-width:720px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:56px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:26px;font-weight:500;letter-spacing:-0.018em;margin:0 0 14px}
+  .section h3{font-size:18px;font-weight:500;margin:24px 0 8px;color:var(--ink)}
+  .section p{color:var(--ink-mute);margin:0 0 14px;max-width:720px}
+  .section ul{color:var(--ink-mute);padding-left:18px;margin:0 0 14px}
+  .section ul li{margin-bottom:8px}
+  .section code{font-family:var(--mono);font-size:13px;background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  table.matrix{width:100%;border-collapse:collapse;margin:20px 0;font-size:13.5px}
+  table.matrix th{font-family:var(--mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400}
+  table.matrix td{padding:14px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5;color:var(--ink-mute)}
+  table.matrix td.axis{font-weight:500;color:var(--ink);min-width:160px}
+  table.matrix td.kolm{color:var(--ink);background:var(--accent-soft)}
+  table.matrix td.kolm b{color:var(--accent);font-weight:500;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase}
+  td.no{color:var(--ink-faint)}
+  td.structural{color:var(--warn);font-family:var(--mono);font-size:11.5px;letter-spacing:0.04em}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-family:var(--mono);font-size:12.5px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  .callout{padding:18px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin:24px 0;font-size:14px;color:var(--ink-mute)}
+  .callout b{color:var(--ink)}
+  .callout.warn{border-color:rgba(240,184,107,0.32);background:rgba(240,184,107,0.04)}
+  .callout.warn b{color:var(--warn)}
+  footer.site{padding:36px 0;color:var(--ink-faint);font-size:13px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ft-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/compare">compare</a><a href="/spec/rs-1">RS-1</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/compare">compare</a> &nbsp;/&nbsp; how kolm relates to hyperscaler fine-tune</p>
+    <h1>The model you OWN as a file vs a model that lives in a vendor API.</h1>
+    <p class="lede">OpenAI fine-tuning, Anthropic custom models, Google Vertex AI tuning, AWS Bedrock customization &mdash; you upload data, you get back a model that exists only inside the vendor's API. The tuned weights stay in their infrastructure. Air-gap, residency, and exit cost are not features they don't ship; they're structural impossibilities for closed-weight fine-tuning. kolm produces a file.</p>
+    <p class="stamp">Wave 169 &middot; reviewed 2026-05-17 &middot; structural, not feature-gap</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What hyperscaler fine-tuning ships.</h2>
+    <ul>
+      <li><b>OpenAI fine-tuning</b> &mdash; supervised fine-tuning + DPO + RFT on GPT-4o-mini, GPT-4.1, o-series base models. Tuned model accessible via the standard chat-completions API with a custom model ID.</li>
+      <li><b>Anthropic custom models</b> &mdash; managed customization on Claude models, accessed via standard Messages API with a custom model identifier (Enterprise tier).</li>
+      <li><b>Google Vertex AI tuning</b> &mdash; supervised fine-tuning on Gemini bases; tuned model deployed as a Vertex AI endpoint.</li>
+      <li><b>AWS Bedrock customization</b> &mdash; supervised fine-tuning on Bedrock-hosted models (Claude, Llama, Titan, Cohere variants); tuned model accessed via Bedrock invoke-model.</li>
+      <li><b>Ease-of-start</b> &mdash; managed GPU + managed dataset upload + managed eval UX. Zero ML infrastructure to operate.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The structural impossibilities.</h2>
+    <div class="callout warn">
+      <b>This is not a feature gap.</b> No amount of vendor product velocity closes these. Closed-weight fine-tuning, by construction, cannot produce a portable signed file you ship to a phone, an air-gapped VPC, or an offshore subsidiary. The weights never leave the vendor's infrastructure. That's the trade you make when you choose the managed path.
+    </div>
+    <table class="matrix">
+      <thead><tr><th>Property</th><th>Hyperscaler fine-tune</th><th>kolm</th></tr></thead>
+      <tbody>
+        <tr><td class="axis">Where weights live</td><td class="structural">vendor infrastructure &mdash; never leaves</td><td class="kolm"><b>file on disk</b> &middot; .kolm bundle on your filesystem</td></tr>
+        <tr><td class="axis">Air-gap deploy</td><td class="structural">impossible &mdash; runtime requires vendor API</td><td class="kolm"><b>first-class</b> &middot; no runtime network; verifier rebuilds offline (W163)</td></tr>
+        <tr><td class="axis">Residency</td><td class="structural">vendor regions &mdash; you choose from their menu</td><td class="kolm"><b>your filesystem</b> &middot; deploy literally anywhere; tenant shadow corpus stays on-prem (W165)</td></tr>
+        <tr><td class="axis">Exit cost</td><td class="structural">re-train from scratch &mdash; weights not portable</td><td class="kolm"><b>zero</b> &middot; the .kolm file works without kolm.ai existing; RS-1 v2.1 Apache-2.0</td></tr>
+        <tr><td class="axis">Provenance verifiability</td><td class="structural">audit logs in vendor console &mdash; trust the vendor</td><td class="kolm"><b>cryptographic</b> &middot; 14-step receipt chain + Ed25519 (W161) + Sigstore/Rekor (W162) + auditor attestation (W166)</td></tr>
+        <tr><td class="axis">PHI/PII handling</td><td>BAA available with major vendors; data flows through their cloud</td><td class="kolm"><b>tenant boundary</b> &middot; Wave 157 redactor (18 HIPAA Safe Harbor + 3 kolm extensions); verifier check #14 confirms no raw PHI in weights</td></tr>
+        <tr><td class="axis">Cross-vendor teacher</td><td class="structural">single-vendor &mdash; OpenAI base for OpenAI tune, etc.</td><td class="kolm"><b>any teacher, any student</b> &middot; Wave 158 catalog: 5 vendors × ~6 SKUs teacher, 13 student bases (Wave 144 Doc 7 §4)</td></tr>
+        <tr><td class="axis">Frozen-eval gate</td><td>eval UX in console; no compile-time block</td><td class="kolm"><b>K-score V2 gate</b> &middot; A/T/R/F/E/Z axes; ship blocked if eval &lt; threshold</td></tr>
+        <tr><td class="axis">Drift detection</td><td>monitoring tools in vendor console</td><td class="kolm"><b>Wave 167</b> &middot; <code>kolm drift detect</code> cron + supersession chain</td></tr>
+        <tr><td class="axis">Ease-of-start</td><td><b>strong</b> &mdash; managed GPU, managed dataset upload, no infra</td><td class="kolm">requires local GPU or one-line cloud worker; CLI-first, not managed UI</td></tr>
+        <tr><td class="axis">Procurement</td><td><b>strong</b> &mdash; enterprise contracts, dedicated TAMs, vendor SLA</td><td class="kolm">build-side; pair with hyperscaler API as teacher + ship signed file separately</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The cross-vendor distillation pattern uses hyperscalers as teachers.</h2>
+    <p>This is the Wave 158 capability that the user named explicitly: "How do Chinese models distill American models." The pattern is to use a hyperscaler API (OpenAI, Anthropic, Google, xAI) as the <em>teacher</em>, capture the prompt/completion pairs into seeds.jsonl, then LoRA-fine-tune a small open-weight base. The fine-tuned student approximates the teacher on the task distribution defined by the prompts.</p>
+    <p>kolm makes this a first-class CLI flag pair:</p>
+    <table class="matrix">
+      <thead><tr><th>Flag</th><th>Behavior</th></tr></thead>
+      <tbody>
+        <tr><td class="axis"><code>--teacher=anthropic:claude-opus-4-7</code></td><td>highest-capability teacher, expensive</td></tr>
+        <tr><td class="axis"><code>--teacher=openai:gpt-5</code></td><td>OpenAI's frontier base as teacher (verify SKU)</td></tr>
+        <tr><td class="axis"><code>--teacher=local:llama-3.3-70b-instruct</code></td><td>local open-weight teacher; zero legal ambiguity for the carve-out concern</td></tr>
+        <tr><td class="axis"><code>--student-base=qwen2.5-0.5b</code></td><td>Alibaba's Apache-2.0 0.5B base; tiny, fast, multilingual</td></tr>
+        <tr><td class="axis"><code>--student-base=llama-3.2-1b</code></td><td>Meta's 1B base under Llama 3 Community License</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warn">
+      <b>Licensing note:</b> OpenAI / Anthropic / Google terms restrict using API outputs to develop "competing" general-purpose models. A narrow-task kolm artifact (phone normalizer, denial-code classifier) is not a competing general model; the legal status of the narrow-task carve-out is unsettled. The always-safe option is <code>--teacher=local:&lt;open-weight-model&gt;</code>, run on your own GPU. See <a href="/spec/rs-1#section-7-7" style="color:var(--accent)">RS-1 &sect;7.7</a> for licensing posture.
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>When hyperscaler fine-tune is the right answer.</h2>
+    <p>Your only deploy target is a hosted API. You don't need a portable artifact. Your data isn't regulated, or your regulator accepts the vendor's BAA + audit trail. Procurement wants a Series-mega vendor with enterprise contracts. Engineering wants the shortest path from "upload data" to "tuned model." Use the hyperscaler tuning UX.</p>
+    <h2 style="margin-top:32px">When kolm is the right answer.</h2>
+    <p>Air-gap deploy is a requirement, not a nice-to-have. Residency policy says the model can't sit in the vendor's cloud. Your auditor needs cryptographic provenance on the build. You want to use a hyperscaler as the teacher but ship a model you can run on a phone. The .kolm file structurally solves what closed-weight tuning structurally can't.</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/training">/training tour &rarr;</a>
+      <a class="btn" href="/compare">Back to differentiation matrix &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="ft-row">
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span><a href="/compare">/compare</a> &middot; <a href="/how-vs-lorax">vs LoRAX</a> &middot; <a href="/how-vs-predibase">vs Predibase</a> &middot; <a href="/how-vs-openpipe">vs OpenPipe</a> &middot; <a href="/how-vs-diy">vs DIY</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

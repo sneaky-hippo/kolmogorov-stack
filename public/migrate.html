@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Migrate to kolm without rewriting your fine-tune pipeline</title>
+<meta name="description" content="Five one-page migration guides from LoRAX, Predibase, OpenPipe, the DIY LoRA stack, and hyperscaler fine-tuning to kolm. Same training data, same recipe semantics, same eval set, same serving infra. You get receipt chain, K-score gate, signed artifact, portable .kolm format.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="Migrate to kolm without rewriting your fine-tune pipeline">
+<meta property="og:description" content="Five competitor migration guides. Your training data survives, recipe semantics survive, eval set survives, serving infra survives. You gain receipt chain, K-score gate, signed artifact, portable file.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Migrate to kolm: five one-page guides" />
+<meta name="twitter:description" content="LoRAX, Predibase, OpenPipe, DIY, hyperscaler. Pick your source, follow the four-step CLI." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<meta property="og:url" content="https://kolm.ai/migrate">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/migrate">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 40px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:46px;line-height:1.06;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+  .lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:64px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:30px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:780px}
+  .section p.lede{font-size:16px;max-width:780px;margin:0 0 28px}
+  .grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:24px}
+  @media(max-width:1080px){.grid-5{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.grid-5{grid-template-columns:1fr}}
+  .mcard{padding:24px 22px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:12px;text-decoration:none;color:inherit;transition:border-color 160ms,transform 160ms}
+  .mcard:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .mcard .src{font-family:var(--mono);font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint)}
+  .mcard h3{margin:0;font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .mcard p.thesis{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute);min-height:5em}
+  .mcard ol{margin:8px 0 0;padding-left:18px;font-family:var(--mono);font-size:11.5px;line-height:1.7;color:var(--ink-mute)}
+  .mcard ol li{margin-bottom:2px}
+  .mcard .tail{margin-top:auto;padding-top:10px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:0.04em}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
+  @media(max-width:820px){.grid-2{grid-template-columns:1fr}}
+  .col{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev)}
+  .col h3{margin:0 0 16px;font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .col h3 .tag{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(16,185,129,0.30);padding:2px 8px;border-radius:3px;margin-left:8px;vertical-align:middle}
+  .col h3 .tag.add{color:var(--warn);background:var(--warn-soft);border-color:rgba(240,184,107,0.30)}
+  .col ul{margin:0;padding-left:18px;font-size:14px;line-height:1.65;color:var(--ink-mute)}
+  .col ul li{margin-bottom:10px}
+  .col code{font-family:var(--mono);font-size:12.5px;background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:20px 0}
+  table.tbl th{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400;vertical-align:bottom}
+  table.tbl td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5;color:var(--ink-mute)}
+  table.tbl td.key{font-family:var(--mono);color:var(--ink);font-size:12.5px;white-space:nowrap}
+  table.tbl td code{font-family:var(--mono);font-size:12px;background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:3px;border:1px solid var(--line);color:var(--ink-faint)}
+  .pill.ok{color:var(--accent);background:var(--accent-soft);border-color:rgba(16,185,129,0.30)}
+  .pill.warn{color:var(--warn);background:var(--warn-soft);border-color:rgba(240,184,107,0.30)}
+  .pill.bad{color:var(--bad);background:var(--bad-soft);border-color:rgba(255,107,145,0.30)}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:24px}
+  @media(max-width:960px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.grid-4{grid-template-columns:1fr}}
+  .lcard{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);display:flex;flex-direction:column;gap:8px;text-decoration:none;color:inherit;transition:border-color 160ms}
+  .lcard:hover{border-color:var(--accent)}
+  .lcard .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .lcard h4{margin:0;font-size:16px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .lcard p{margin:0;font-size:13px;line-height:1.55;color:var(--ink-mute)}
+  .takeaway{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin-top:24px}
+  .takeaway b{color:var(--accent)}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr)}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:var(--ink-faint);margin:0 0 12px;font-weight:400}
+  .footer-grid a{display:block;color:var(--ink-mute);text-decoration:none;font-size:13.5px;margin-bottom:6px;border:none}
+  .footer-tag{display:flex;justify-content:space-between;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line);padding-top:20px;flex-wrap:wrap;gap:12px}
+  pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:18px 20px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:14px 0 0}
+  pre.terminal b{color:var(--accent);font-weight:400}
+  pre.terminal .warn{color:var(--warn);font-weight:400}
+  pre.terminal .mute{color:var(--ink-faint)}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; migrate to kolm</p>
+    <h1>Migrate to kolm without rewriting your fine-tune pipeline.</h1>
+    <p class="lede">Five one-page guides from the systems already running in your stack. Your training data keeps its shape, your recipe semantics survive 1:1, your eval set forwards as a frozen holdout, and the serving infra you spent months hardening still serves the artifact. kolm builds the file; everything downstream stays put. What changes: you get a receipt chain a third party can verify, a K-score gate that blocks ship when eval regresses, an Ed25519 signature, and a portable .kolm format that runs on a phone, an edge box, or an air-gapped VPC.</p>
+    <p class="stamp">Wave 188 &middot; reviewed 2026-05-17 &middot; one-page-per-source migration guides</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm</a>
+      <a class="btn" href="/compare">Compare matrix</a>
+      <a class="btn" href="/spec/rs-1">RS-1 spec</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Pick your source.</h2>
+    <p class="lede">Each card is one screen of CLI plus an honest scope. Click through for the four-step migration, a "what survives" table, and the cases where kolm is not the right answer.</p>
+    <div class="grid-5">
+
+      <a class="mcard" href="/migrate/lorax">
+        <span class="src">From LoRAX</span>
+        <h3>Add kolm to your LoRAX stack.</h3>
+        <p class="thesis">LoRAX serves adapters; kolm builds the signed adapter LoRAX serves. Complement, not replacement. Your serving cluster keeps running.</p>
+        <ol>
+          <li>kolm distill</li>
+          <li>kolm extract LoRA weights</li>
+          <li>LoRAX serves as before</li>
+        </ol>
+        <span class="tail">Read the guide &rarr;</span>
+      </a>
+
+      <a class="mcard" href="/migrate/predibase">
+        <span class="src">From Predibase</span>
+        <h3>Move the build to kolm; keep serving on Predibase.</h3>
+        <p class="thesis">Post-Rubrik acquisition Predibase governs the runtime. kolm builds the signed file you deploy onto their cluster. The build-side moves; the serving stays.</p>
+        <ol>
+          <li>kolm capture or kolm distill</li>
+          <li>kolm verify</li>
+          <li>deploy .kolm to Predibase</li>
+        </ol>
+        <span class="tail">Read the guide &rarr;</span>
+      </a>
+
+      <a class="mcard" href="/migrate/openpipe">
+        <span class="src">From OpenPipe</span>
+        <h3>Capture-then-compile instead of capture-then-hosted-endpoint.</h3>
+        <p class="thesis">OpenPipe wraps your SDK and serves the tune from their cloud. kolm captures the same shape and emits a file you keep. Same input loop, different output.</p>
+        <ol>
+          <li>kolm capture replaces SDK wrap</li>
+          <li>kolm distill from seeds.jsonl</li>
+          <li>local run or your own serve</li>
+        </ol>
+        <span class="tail">Read the guide &rarr;</span>
+      </a>
+
+      <a class="mcard" href="/migrate/diy">
+        <span class="src">From DIY stack</span>
+        <h3>Wrap your LLaMA-Factory or Axolotl pipeline.</h3>
+        <p class="thesis">kolm is shrink-wrap around the DIY stack you already run. Same trainers, same kernels, same configs &mdash; with receipts, eval gate, and a signed artifact added.</p>
+        <ol>
+          <li>kolm init imports your YAML</li>
+          <li>kolm distill calls the same backend</li>
+          <li>kolm extract drops back to raw</li>
+        </ol>
+        <span class="tail">Read the guide &rarr;</span>
+      </a>
+
+      <a class="mcard" href="/migrate/hyperscaler">
+        <span class="src">From OpenAI / Anthropic</span>
+        <h3>Distill the hyperscaler into a local .kolm.</h3>
+        <p class="thesis">Use the hyperscaler API as the teacher; ship a small open-weight student you can run on a phone. Always-safe fallback to a local teacher when license terms are tight.</p>
+        <ol>
+          <li>kolm capture against the vendor API</li>
+          <li>kolm distill with --teacher and --student-base</li>
+          <li>kolm verify, deploy anywhere</li>
+        </ol>
+        <span class="tail">Read the guide &rarr;</span>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What gets preserved when you migrate.</h2>
+    <p class="lede">kolm does not ask you to throw out the work you already did. The four load-bearing assets your team built come across with their semantics intact. The lock is on the build artifact, not the inputs to the build.</p>
+    <div class="grid-2">
+      <div class="col">
+        <h3>Preserved <span class="tag">survives 1:1</span></h3>
+        <ul>
+          <li><b>Training data.</b> <code>seeds.jsonl</code> is the canonical kolm input format: one object per row, <code>{"input","output","tags"}</code>. Your existing prompt/completion logs convert into that shape; the data does not get reshaped by kolm. If you already export to JSONL, your existing exporter is the migration tool.</li>
+          <li><b>Recipe semantics.</b> Any deterministic rule, regex, lookup table, or template you wrote becomes a kolm rule-class recipe with no behavior change. The rules run with bit-identical output. The eval that gates them is the same eval you were already running.</li>
+          <li><b>Eval set.</b> kolm forwards your existing holdout as the frozen external holdout (Wave 164). It hashes the corpus, binds the hash into the artifact, and re-runs the same eval on every rebuild. The numerics do not move just because the harness changed.</li>
+          <li><b>Team workflow.</b> The serving infrastructure you hardened stays. kolm builds the artifact, then hands it off &mdash; LoRAX, Predibase, BYO inference, hyperscaler endpoint, any of them. The handoff is a signed file, not a runtime takeover.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>What kolm adds <span class="tag add">new on top</span></h3>
+        <ul>
+          <li><b>Receipt chain.</b> The 14-step provenance ledger: spec &rarr; seeds &rarr; split &rarr; train &rarr; recipes &rarr; evals &rarr; external_holdout &rarr; tenant_shadow &rarr; auditor &rarr; supersession &rarr; drift_report &rarr; export &rarr; signatures &rarr; rekor. Every step's hash binds into <code>artifact_hash</code>; tampering at any step breaks every downstream signature.</li>
+          <li><b>K-score gate.</b> A composite gate across A / T / R / F / E / Z axes blocks the compile step when eval regresses. The gate is not a vibe-check &mdash; the threshold is part of the recipe spec and the verifier re-derives it offline.</li>
+          <li><b>Signed artifact.</b> Ed25519 signature (Wave 161) plus Sigstore + Rekor transparency log entry (Wave 162). A third party with only the public key can confirm the file matches the build the signer claimed.</li>
+          <li><b>Portable <code>.kolm</code> format.</b> The artifact is a single file. It runs on a laptop, a phone, an edge box, or an air-gapped VPC. RS-1 v2.1 is Apache-2.0 &mdash; if kolm.ai disappears, your <code>.kolm</code> still runs.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The CLI verbs you will use during migration.</h2>
+    <p class="lede">Every migration guide uses some subset of these verbs. The ones shipping today land in green; the ones called out below as <span class="pill warn">verify before ship</span> are referenced in the per-source guides but are not yet wired in <code>cli/kolm.js</code> &mdash; the verb is described so you can plan against it, with the substitute behavior named.</p>
+    <table class="tbl">
+      <thead>
+        <tr><th>Verb</th><th>What it does</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="key">kolm compile</td><td>Build a <code>.kolm</code> from a spec (offline) or from a task description (cloud). The terminal verb every migration ends with.</td><td><span class="pill ok">shipped</span></td></tr>
+        <tr><td class="key">kolm capture</td><td>Drop-in proxy for OpenAI / Anthropic that logs (input, output) pairs into a namespaced seeds.jsonl. Replaces the SDK-wrap step in OpenPipe / hyperscaler flows.</td><td><span class="pill ok">shipped</span></td></tr>
+        <tr><td class="key">kolm distill</td><td>Auto-distill a captured namespace into a local LoRA via the kolm trainer bridge. The build step for ML-class recipes.</td><td><span class="pill ok">shipped</span></td></tr>
+        <tr><td class="key">kolm verify</td><td>Run every offline check kolm makes about an artifact: 24 checks at last count, including signature, receipt chain, drift gate. The post-migration confidence step.</td><td><span class="pill ok">shipped</span></td></tr>
+        <tr><td class="key">kolm extract</td><td>Pull text out of PDFs / HTML / JSON / images. Also reused in the per-source guides to surface "extract the LoRA weights" or "extract the training config" via the artifact-as-archive layout.</td><td><span class="pill ok">shipped</span></td></tr>
+        <tr><td class="key">kolm drift</td><td>Snapshot, report, and cron the M+3 drift detection lifecycle. Used after migration to lock in the same baseline you had on the source system.</td><td><span class="pill ok">shipped</span></td></tr>
+        <tr><td class="key">kolm proxy</td><td>OpenAI-compatible HTTP proxy variant of <code>kolm capture</code> (no SDK install, base-URL swap). Per-source guides reference this as a shorter migration path from OpenPipe / hyperscaler flows.</td><td><span class="pill warn">verify before ship</span> &middot; today's substitute: <code>kolm capture --provider &lt;openai|anthropic&gt;</code></td></tr>
+        <tr><td class="key">kolm import</td><td>One-shot importer for foreign capture stores (OpenPipe project export, Predibase dataset, etc.) into seeds.jsonl. Mentioned in the OpenPipe / Predibase guides.</td><td><span class="pill warn">verify before ship</span> &middot; today's substitute: any JSONL exporter that emits <code>{"input","output"}</code> rows</td></tr>
+        <tr><td class="key">kolm wrap</td><td>Hypothetical pass-through that points a foreign trainer config at the kolm receipt-chain emitter. Mentioned in the DIY guide as a planned convenience.</td><td><span class="pill warn">verify before ship</span> &middot; today's substitute: <code>kolm compile --spec my.spec.json</code> with <code>--backend</code></td></tr>
+      </tbody>
+    </table>
+    <div class="takeaway">
+      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)">The amber verbs are referenced in the per-source guides for completeness. <b>Where they are not yet wired, the green substitute does the same job today.</b> No migration guide blocks on a verb that does not exist; every step has a path that runs against the shipped CLI right now.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where to go next.</h2>
+    <p class="lede">Migration is the start of a kolm workflow, not the end. These four surfaces are what most teams read in the week after they ship their first <code>.kolm</code>.</p>
+    <div class="grid-4">
+      <a class="lcard" href="/compare">
+        <span class="vt">compare</span>
+        <h4>Differentiation matrix.</h4>
+        <p>The canonical 15-axis matrix vs LoRAX, Predibase, OpenPipe, DIY, hyperscaler. Every YES stamped with shipping wave.</p>
+      </a>
+      <a class="lcard" href="/recipe-classes">
+        <span class="vt">recipe-classes</span>
+        <h4>Recipe class taxonomy.</h4>
+        <p>rule-class vs ml-class vs hybrid. The decision tree that picks which path your migrated workflow lives in.</p>
+      </a>
+      <a class="lcard" href="/k-score-explained">
+        <span class="vt">k-score</span>
+        <h4>K-score V2 axes.</h4>
+        <p>What the gate measures: A / T / R / F / E / Z. The thresholds your migrated artifact has to clear to ship.</p>
+      </a>
+      <a class="lcard" href="/format/v2">
+        <span class="vt">format</span>
+        <h4>.kolm format v2.</h4>
+        <p>The byte layout. What lives in the manifest, what lives in the LoRA payload, how the receipt chain hashes bind.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/training">Training</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Migrate</h4>
+        <a href="/migrate/lorax">From LoRAX</a>
+        <a href="/migrate/predibase">From Predibase</a>
+        <a href="/migrate/openpipe">From OpenPipe</a>
+        <a href="/migrate/diy">From DIY stack</a>
+        <a href="/migrate/hyperscaler">From hyperscaler</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/drift">Lifecycle &middot; drift</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai &middot; Made with .kolm &middot; Apache-2.0</span>
+      <span>Migration preserves data, recipes, eval, workflow. kolm adds the receipt.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

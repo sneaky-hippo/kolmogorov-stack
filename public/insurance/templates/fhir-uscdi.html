@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>fhir-uscdi template &mdash; kolm for US health insurers</title>
+<meta name="description" content="Pre-built kolm template that ingests FHIR R4 Bundles and emits normalized USCDI v3 JSON. Pure rule-class transformation. K-score gate 0.94. PHI redacted at the boundary inside the customer-hosted bridge in your VPC.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/insurance/templates/fhir-uscdi">
+<meta property="og:title" content="fhir-uscdi &mdash; kolm health-insurance template">
+<meta property="og:description" content="Normalize FHIR R4 Bundles to USCDI v3 JSON. Rule-class, K-score 0.94, PHI in your VPC.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/insurance/templates/fhir-uscdi">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .tpl-hero{padding:42px 0 18px;border-bottom:1px solid var(--line)}
+  .tpl-hero .crumb{font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
+  .tpl-hero .crumb a{color:var(--ink-mute)}
+  .tpl-hero h1{font-size:34px;margin:0 0 8px;line-height:1.1}
+  .tpl-hero .lede{font-size:16px;color:var(--ink-mute);max-width:760px;margin:0}
+  .tpl-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:22px 0 8px;font-family:var(--mono);font-size:11px;color:var(--ink-mute)}
+  @media(max-width:900px){.tpl-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .tpl-meta > div{padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+  .tpl-meta .k{text-transform:uppercase;letter-spacing:0.06em;font-size:10px;color:var(--ink-faint)}
+  .tpl-meta .v{display:block;color:var(--ink);margin-top:4px;font-size:13px}
+  .tpl-section{padding:28px 0;border-bottom:1px solid var(--line)}
+  .tpl-section h2{font-size:22px;margin:0 0 6px}
+  .tpl-section p.lede{font-size:14.5px;color:var(--ink-mute);margin:0 0 14px;max-width:780px}
+  .tpl-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:900px){.tpl-grid2{grid-template-columns:1fr}}
+  pre.code{margin:0;padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:#0e1115;font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--ink);overflow-x:auto}
+  pre.code .k{color:#7ec486}
+  pre.code .s{color:#d6a65a}
+  pre.code .c{color:var(--ink-faint)}
+  .tpl-receipt-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0 6px;font-family:var(--mono);font-size:11px}
+  @media(max-width:900px){.tpl-receipt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .tpl-receipt-grid > div{padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg-card)}
+  .tpl-receipt-grid .ring{color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.06em;font-size:10px;margin-bottom:4px}
+  .tpl-receipt-grid .name{color:var(--ink);font-size:12px}
+  .tpl-receipt-grid .b{color:#7ef0d2;font-size:10.5px;margin-top:4px}
+  .tpl-cta{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 4px}
+  .tpl-related{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px;font-family:var(--mono);font-size:12px}
+  @media(max-width:900px){.tpl-related{grid-template-columns:1fr 1fr}}
+  @media(max-width:600px){.tpl-related{grid-template-columns:1fr}}
+  .tpl-related a{padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg-card);color:var(--ink);display:block}
+  .tpl-related a:hover{border-color:var(--line-strong)}
+  .tpl-related .num{color:var(--ink-faint);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px}
+  .tpl-badges{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;font-family:var(--mono);font-size:11px}
+  .tpl-badges span{padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--ink-mute);background:var(--bg-card)}
+  .tpl-badges b{color:var(--ink);font-weight:normal}
+  .tpl-classmap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;font-family:var(--mono);font-size:12px;margin-top:8px}
+  @media(max-width:900px){.tpl-classmap{grid-template-columns:1fr}}
+  .tpl-classmap > div{padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg-card)}
+  .tpl-classmap .r{color:var(--ink-faint);font-size:10px;text-transform:uppercase;letter-spacing:0.06em}
+  .tpl-classmap .c{color:var(--ink);font-size:12px;margin-top:2px}
+</style>
+</head>
+<body>
+
+<header class="site-header"><div class="wrap site-bar">
+  <a class="brand" href="/"><span class="brand-dot"></span>kolm</a>
+  <nav class="site-nav">
+    <a href="/training">Training</a>
+    <a href="/health-insurance">health-insurance</a>
+    <a href="/pricing">pricing</a>
+    <a href="/docs">docs</a>
+    <a href="/quickstart">quickstart</a>
+  </nav>
+  <div class="site-actions"><a class="cta" href="/signup">get started</a></div>
+</div></header>
+
+<main class="wrap">
+
+  <section class="tpl-hero">
+    <div class="crumb"><a href="/health-insurance">health-insurance</a> &middot; <a href="/health-insurance#insurance-templates">templates</a> &middot; fhir-uscdi</div>
+    <h1>FHIR R4 USCDI v3 normalizer</h1>
+    <p class="lede">A kolm template that ingests FHIR R4 bundles (Patient + Encounter + Condition + Observation + MedicationRequest + Procedure + Immunization + AllergyIntolerance + DocumentReference + DiagnosticReport + CarePlan) and emits normalized USCDI v3 JSON shaped for analytics. Pure rule-class &mdash; no inference required for the structural mapping. USCDI v3 (the July 2022 ONC data class set) plus the v4 candidate fields are recognized; v4-only fields are passed through with a <code>_uscdi_class: "v4_candidate"</code> tag so downstream consumers can opt in.</p>
+    <div class="tpl-badges">
+      <span><b>recipe-class:</b> rule (class 0)</span>
+      <span><b>data class set:</b> USCDI v3 (Jul 2022)</span>
+      <span><b>wire format:</b> HL7 FHIR R4 Bundle</span>
+    </div>
+    <div class="tpl-meta">
+      <div><div class="k">template id</div><span class="v">fhir-uscdi</span></div>
+      <div><div class="k">k-score gate</div><span class="v">&ge; 0.94</span></div>
+      <div><div class="k">seed examples</div><span class="v">none &middot; rule-class</span></div>
+      <div><div class="k">held-out eval</div><span class="v">USCDI v3 conformance corpus</span></div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Input &amp; output spec</h2>
+    <p class="lede">Input is a FHIR R4 Bundle (the wire format every certified EHR is required to expose). Output is one normalized USCDI v3 JSON object with each data class collapsed to a flat, analytics-friendly array; coding-system priority is enforced so consumers do not have to chase concept maps.</p>
+    <div class="tpl-grid2">
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">input &middot; FHIR R4 Bundle</p>
+<pre class="code">{
+  <span class="k">"resourceType"</span>: <span class="s">"Bundle"</span>,
+  <span class="k">"type"</span>:         <span class="s">"collection"</span>,
+  <span class="k">"entry"</span>: [
+    { <span class="k">"resource"</span>: { <span class="k">"resourceType"</span>: <span class="s">"Patient"</span>,
+        <span class="k">"id"</span>: <span class="s">"pt-1"</span>,
+        <span class="k">"identifier"</span>: [{ <span class="k">"value"</span>: <span class="s">"MRN-882134"</span> }],
+        <span class="k">"name"</span>: [{ <span class="k">"family"</span>: <span class="s">"Doe"</span>, <span class="k">"given"</span>: [<span class="s">"Jane"</span>] }],
+        <span class="k">"gender"</span>: <span class="s">"female"</span>,
+        <span class="k">"birthDate"</span>: <span class="s">"1979-04-22"</span> } },
+    { <span class="k">"resource"</span>: { <span class="k">"resourceType"</span>: <span class="s">"Encounter"</span>,
+        <span class="k">"id"</span>: <span class="s">"enc-1"</span>,
+        <span class="k">"status"</span>: <span class="s">"finished"</span>,
+        <span class="k">"class"</span>: { <span class="k">"code"</span>: <span class="s">"AMB"</span> },
+        <span class="k">"period"</span>: { <span class="k">"start"</span>: <span class="s">"2026-05-09T14:30:00Z"</span> } } },
+    { <span class="k">"resource"</span>: { <span class="k">"resourceType"</span>: <span class="s">"Condition"</span>,
+        <span class="k">"code"</span>: { <span class="k">"coding"</span>: [{ <span class="k">"system"</span>: <span class="s">"http://snomed.info/sct"</span>,
+                                          <span class="k">"code"</span>: <span class="s">"38341003"</span> }] } } },
+    { <span class="k">"resource"</span>: { <span class="k">"resourceType"</span>: <span class="s">"Observation"</span>,
+        <span class="k">"code"</span>: { <span class="k">"coding"</span>: [{ <span class="k">"system"</span>: <span class="s">"http://loinc.org"</span>,
+                                          <span class="k">"code"</span>: <span class="s">"8480-6"</span> }] },
+        <span class="k">"valueQuantity"</span>: { <span class="k">"value"</span>: <span class="s">142</span>, <span class="k">"unit"</span>: <span class="s">"mm[Hg]"</span> } } }
+  ]
+}</pre>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">output &middot; USCDI v3 JSON</p>
+<pre class="code">{
+  <span class="k">"format"</span>:         <span class="s">"uscdi-v3"</span>,
+  <span class="k">"source_format"</span>:  <span class="s">"fhir-r4-bundle"</span>,
+  <span class="k">"patient"</span>: {
+    <span class="k">"mrn_redacted"</span>:        <span class="s">"&lt;hash&gt;"</span>,
+    <span class="k">"name_redacted"</span>:       <span class="s">"J.D."</span>,
+    <span class="k">"dob"</span>:                 <span class="s">"1979"</span>,    <span class="c">// year_only</span>
+    <span class="k">"gender"</span>:              <span class="s">"female"</span>,
+    <span class="k">"race"</span>:                <span class="s">null</span>,
+    <span class="k">"ethnicity"</span>:           <span class="s">null</span>,
+    <span class="k">"preferred_language"</span>:  <span class="s">null</span>
+  },
+  <span class="k">"encounters"</span>:        [{ <span class="k">"id"</span>: <span class="s">"enc-1"</span>, <span class="k">"type"</span>: <span class="s">null</span>, <span class="k">"class"</span>: <span class="s">"AMB"</span>,
+                         <span class="k">"period_start"</span>: <span class="s">"2026-05-09T14:30:00Z"</span>,
+                         <span class="k">"period_end"</span>: <span class="s">null</span>, <span class="k">"location"</span>: <span class="s">null</span>,
+                         <span class="k">"participants"</span>: [], <span class="k">"reason_codes"</span>: [] }],
+  <span class="k">"conditions"</span>:        [{ <span class="k">"snomed_ct"</span>: <span class="s">"38341003"</span>, <span class="k">"icd10"</span>: <span class="s">null</span>,
+                         <span class="k">"onset"</span>: <span class="s">null</span>, <span class="k">"clinical_status"</span>: <span class="s">null</span>,
+                         <span class="k">"verification_status"</span>: <span class="s">null</span> }],
+  <span class="k">"observations"</span>:      [{ <span class="k">"loinc"</span>: <span class="s">"8480-6"</span>, <span class="k">"value"</span>: <span class="s">142</span>,
+                         <span class="k">"unit"</span>: <span class="s">"mm[Hg]"</span>, <span class="k">"effective"</span>: <span class="s">null</span>,
+                         <span class="k">"status"</span>: <span class="s">null</span>, <span class="k">"category"</span>: <span class="s">null</span> }],
+  <span class="k">"medications"</span>:       [],
+  <span class="k">"procedures"</span>:        [],
+  <span class="k">"immunizations"</span>:     [],
+  <span class="k">"allergies"</span>:         [],
+  <span class="k">"documents"</span>:         [],
+  <span class="k">"diagnostic_reports"</span>: [],
+  <span class="k">"care_plans"</span>:        []
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>FHIR resource &rarr; USCDI v3 data class map</h2>
+    <p class="lede">Eleven FHIR resourceType values populate the USCDI v3 data class buckets that ONC published in July 2022. The map is exhaustive for v3; v4 candidate fields ride through with a <code>_uscdi_class: "v4_candidate"</code> tag so downstream consumers can opt in without breaking v3 contracts.</p>
+    <div class="tpl-classmap">
+      <div><div class="r">Patient</div><div class="c">patient_demographics</div></div>
+      <div><div class="r">Encounter</div><div class="c">encounter_information</div></div>
+      <div><div class="r">Condition</div><div class="c">problems</div></div>
+      <div><div class="r">Observation</div><div class="c">laboratory | vital_signs | smoking_status | assessment_and_plan_of_treatment</div></div>
+      <div><div class="r">MedicationRequest / MedicationStatement</div><div class="c">medications</div></div>
+      <div><div class="r">Procedure</div><div class="c">procedures</div></div>
+      <div><div class="r">Immunization</div><div class="c">immunizations</div></div>
+      <div><div class="r">AllergyIntolerance</div><div class="c">allergies_and_intolerances</div></div>
+      <div><div class="r">DocumentReference</div><div class="c">clinical_notes</div></div>
+      <div><div class="r">DiagnosticReport</div><div class="c">diagnostic_imaging | laboratory | pathology</div></div>
+      <div><div class="r">CarePlan</div><div class="c">care_team_member_information | goals | assessment_and_plan_of_treatment</div></div>
+    </div>
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);margin:14px 0 0">Coding-system priority is fixed: SNOMED CT before ICD-10-CM for problems; LOINC for observations and diagnostic reports; RxNorm before NDC for medications; CVX for immunizations; SNOMED CT before CPT for procedures. The full priority table lives in <code>pack.rules.coding_system_priority</code>.</p>
+  </section>
+
+  <section class="tpl-section">
+    <h2>4-ring receipt schema</h2>
+    <p class="lede">Every normalization ships a receipt your auditor can re-verify offline. The chain proves which bundle was ingested, which version of the resource-to-USCDI map was applied, what the output digest was, and that the PHI boundary held.</p>
+    <div class="tpl-receipt-grid">
+      <div><div class="ring">ring 01 &middot; pre-image</div><div class="name">bundle_hash + entry_count + resourceType counts</div><div class="b">tenant-rotated HMAC</div></div>
+      <div><div class="ring">ring 02 &middot; derived</div><div class="name">resource_to_uscdi_class version + coding_system_priority version</div><div class="b">bound to recipe_version</div></div>
+      <div><div class="ring">ring 03 &middot; execution</div><div class="name">output_digest + redaction_count + class_buckets_populated</div><div class="b">judge_id signed</div></div>
+      <div><div class="ring">ring 04 &middot; seal</div><div class="name">SHA-256(ring1..3) &middot; verify endpoint</div><div class="b">offline-verifiable</div></div>
+    </div>
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);margin:14px 0 0"><b style="color:var(--ink)">Verify command:</b> <code><span class="cli-verb">kolm</span> verify --hash &lt;receipt_hash&gt;</code>. Runs locally against the seal, no network required.</p>
+  </section>
+
+  <section class="tpl-section">
+    <h2>BAA fast-track</h2>
+    <p class="lede">Health plans on a BAA see kolm production-ready in two business days. The customer-hosted bridge runs in the tenant network boundary; FHIR Bundles are processed there and never cross our infrastructure; the audit log is yours to keep.</p>
+    <div class="tpl-grid2">
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">how it works</p>
+<pre class="code"><span class="c"># 1. Sign the BAA (legal-team turnaround)</span>
+[ DocuSign &middot; 48 hours typical &middot; mutual NDA in same envelope ]
+
+<span class="c"># 2. Provision the bridge in your VPC</span>
+$ kolm bridge install \
+    --provider aws \
+    --region us-east-1 \
+    --baa &lt;baa-id&gt;
+
+<span class="c"># 3. Compile this template (rule-class, no seed examples needed)</span>
+$ kolm compile --spec fhir-uscdi.spec.json \
+    --gate 0.94 \
+    --out fhir-uscdi.kolm
+
+<span class="c"># 4. Pipe FHIR R4 Bundles through it</span>
+$ kolm run fhir-uscdi.kolm \
+    --input ehr-export.bundle.json \
+    --emit uscdi-v3.jsonl</pre>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">what we sign</p>
+<pre class="code"><span class="c">- HIPAA Business Associate Agreement</span>
+<span class="c">- HIPAA Security Rule &sect;164.308 (admin safeguards)</span>
+<span class="c">- HIPAA Security Rule &sect;164.310 (physical safeguards)</span>
+<span class="c">- HIPAA Security Rule &sect;164.312 (technical safeguards)</span>
+<span class="c">- Breach Notification &sect;164.404</span>
+<span class="c">- Subcontractor flow-down (none, kolm holds no PHI)</span>
+<span class="c">- Audit-log retention (6 years, your S3 bucket)</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Get the template</h2>
+    <p class="lede">Two ways to take this live. Self-serve with the sample artifact, or kick off a BAA conversation if you need to point production EHR FHIR exports at it day one.</p>
+    <div class="tpl-cta">
+      <a class="btn primary" href="/signup?template=fhir-uscdi">Start with this template</a>
+      <a class="btn ghost" href="mailto:sales@kolm.ai?subject=BAA%20fast-track%20%E2%80%94%20fhir-uscdi">Talk to a human about BAA</a>
+      <a class="btn ghost" href="/docs/showcase/fhir-uscdi.spec.json" download>Download spec JSON</a>
+    </div>
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);margin:18px 0 0">The spec is a portable JSON file. Drop it into <code>kolm compile --spec</code> to build a private <code>.kolm</code> tagged <code>LicenseRef-kolm-default-1.0</code> by default; pass <code>--license</code> to tag it differently. Rule-class recipes do not require seed examples; the holdout set is the USCDI v3 conformance corpus.</p>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Five more templates for health plans</h2>
+    <div class="tpl-related">
+      <a href="/insurance/templates/edi-837"><div class="num">06 &middot; template</div>edi-837</a>
+      <a href="/insurance/templates/edi-835"><div class="num">07 &middot; template</div>edi-835</a>
+      <a href="/insurance/templates/edi-834"><div class="num">08 &middot; template</div>edi-834</a>
+      <a href="/insurance/templates/edi-270-271"><div class="num">09 &middot; template</div>edi-270-271</a>
+      <a href="/insurance/templates/edi-278"><div class="num">10 &middot; template</div>edi-278</a>
+      <a href="/health-insurance"><div class="num">index</div>all health-insurance</a>
+    </div>
+  </section>
+
+</main>
+
+<footer style="border-top:1px solid var(--line);margin-top:40px;padding:24px 0;text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink-faint)">
+  <span>kolm.ai &middot; Made with .kolm &middot; <a href="/license" style="color:var(--ink-faint)">Apache-2.0</a> &middot; <a href="/baa" style="color:var(--ink-faint)">BAA</a></span>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Quickstart in natural language: from idea to signed .kolm in 60 seconds | kolm</title>
+<meta name="description" content="A 60-second walkthrough that uses only natural language: kolm nl scaffolds a recipe, kolm seeds new produces candidates, kolm distill trains the artifact, kolm verify gates the ship. Every step works offline today.">
+
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="Quickstart in natural language: from idea to signed .kolm in 60 seconds">
+<meta property="og:description" content="kolm nl, kolm seeds new, kolm distill, kolm verify. Four CLI verbs, one natural-language flow. Air-gap-first, deterministic today; networked LLM path not yet wired.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/quickstart/nl">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Quickstart in natural language: from idea to signed .kolm in 60 seconds">
+<meta name="twitter:description" content="Four CLI verbs, one natural-language flow. Air-gap-first, deterministic today.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/quickstart/nl">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:46px;line-height:1.06;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+  .lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  .section{padding:64px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:30px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:780px}
+  .section p.lede{font-size:16px;max-width:780px;margin:0 0 28px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:820px){.grid-2{grid-template-columns:1fr}}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:820px){.grid-3{grid-template-columns:1fr}}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:960px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.grid-4{grid-template-columns:1fr}}
+  .card{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .card .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .card h3{margin:0;font-size:19px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .card p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+  .card code{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  .card.link{text-decoration:none;color:inherit}
+  .card.link:hover{border-color:var(--accent-soft)}
+  pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:18px 20px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:0}
+  pre.terminal b{color:var(--accent);font-weight:400}
+  pre.terminal .warn{color:var(--warn);font-weight:400}
+  pre.terminal .bad{color:var(--bad);font-weight:400}
+  pre.terminal .mute{color:var(--ink-faint)}
+  pre.terminal .key{color:#9bd1ff;font-weight:400}
+  pre.terminal .str{color:#cdb997;font-weight:400}
+  pre.terminal .num{color:#a3e1c1;font-weight:400}
+  ul.notes{font-size:14px;color:var(--ink-mute);line-height:1.65;padding-left:20px;margin:0}
+  ul.notes li{margin-bottom:10px}
+  ul.notes code{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  ul.notes b{color:var(--accent);font-weight:500}
+  .step{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:14px}
+  .step .step-head{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+  .step .step-num{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:4px 10px;border-radius:4px;border:1px solid rgba(16,185,129,0.30)}
+  .step .step-name{font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .step .step-cli{font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);background:var(--bg);padding:2px 8px;border-radius:3px;border:1px solid var(--line);letter-spacing:0.02em}
+  .step p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+  .step .step-stack{display:flex;flex-direction:column;gap:12px}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:3px;border:1px solid var(--line);color:var(--ink-faint)}
+  .pill.ok{color:var(--accent);background:var(--accent-soft);border-color:rgba(16,185,129,0.30)}
+  .pill.warn{color:var(--warn);background:var(--warn-soft);border-color:rgba(240,184,107,0.30)}
+  .pill.bad{color:var(--bad);background:var(--bad-soft);border-color:rgba(255,107,145,0.30)}
+  .takeaway{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin-top:24px}
+  .takeaway b{color:var(--accent)}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr)}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:var(--ink-faint);margin:0 0 12px;font-weight:400}
+  .footer-grid a{display:block;color:var(--ink-mute);text-decoration:none;font-size:13.5px;margin-bottom:6px;border:none}
+  .footer-tag{display:flex;justify-content:space-between;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line);padding-top:20px;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/quickstart">quickstart</a><a href="/training">training</a><a href="/research">research</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/quickstart">quickstart</a> &nbsp;/&nbsp; natural language</p>
+    <h1>From idea to a verifiable, signed <code style="font-family:var(--mono);background:var(--bg-elev);padding:2px 10px;border-radius:5px;color:var(--ink);font-size:36px;letter-spacing:-0.01em;border:1px solid var(--line)">.kolm</code> recipe in 60 seconds, using only natural language.</h1>
+    <p class="lede">Four CLI verbs compose into one flow: <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:14px;border:1px solid var(--line)">kolm nl</code> drafts a recipe from a free-text request, <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:14px;border:1px solid var(--line)">kolm seeds new</code> scaffolds candidate examples, <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:14px;border:1px solid var(--line)">kolm distill</code> runs the actual training, and <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:14px;border:1px solid var(--line)">kolm verify</code> gates the ship on K-score and the receipt chain. Every step works offline today. No black box anywhere in the path.</p>
+    <p class="stamp">Wave 200 dedicated surface &middot; Shift 5 of the W196 to W201 plan &middot; reviewed 2026-05-17</p>
+    <div class="actions">
+      <a class="btn primary" href="#step-1">Start at step 1 &rarr;</a>
+      <a class="btn" href="/quickstart">CLI quickstart (non-NL) &rarr;</a>
+      <a class="btn" href="/research/methods-2026-q2">Methods research &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Prereqs.</h2>
+    <p class="lede">Node 20 or newer, then <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13.5px;border:1px solid var(--line)">npx kolm</code> on first run (or install globally with <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13.5px;border:1px solid var(--line)">npm i -g github:sneaky-hippo/kolmogorov-stack</code>). The walkthrough below runs end to end with <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13.5px;border:1px solid var(--line)">KOLM_AIRGAP=1</code> set in your environment, so no API key is required and nothing leaves your laptop. The deterministic air-gap branch is the default today because the networked LLM path is NOT YET WIRED; see the honest-scope section below for the opt-in story when it lands.</p>
+  </div>
+</section>
+
+<section class="section" id="step-1">
+  <div class="wrap">
+    <h2>The four-step natural-language flow.</h2>
+    <p class="lede">Each step uses one CLI verb. Each verb's output is the next verb's input. Every artifact along the way carries its provenance: the NL request that drafted the scaffold, the candidate set that became the training data, the teacher/student pair that produced the LoRA, and the verifier verdict that gated the ship. A third party walking the chain can re-derive every claim from the receipts inside the <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">.kolm</code>.</p>
+
+    <div class="step-stack" style="display:flex;flex-direction:column;gap:18px;margin-top:24px">
+
+      <!-- ============================================================== -->
+      <!-- STEP 1 -->
+      <!-- ============================================================== -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">step 01</span>
+          <span class="step-name">Scaffold from a free-text request</span>
+          <span class="step-cli">kolm nl</span>
+          <span class="pill ok">shipped wave 197</span>
+        </div>
+        <p>Type your recipe idea in plain English. <code>kolm nl</code> infers the recipe class (rule, synthesized_rule, compiled_rule, distilled_model), proposes a K-score gate, drafts ten starter seed examples, and prints a JSON scaffold plus a next-steps list. The output is deterministic in air-gap mode so every developer on your team gets the same scaffold for the same prompt.</p>
+<pre class="terminal">$ KOLM_AIRGAP=1 kolm nl <span class="str">"I need a recipe that classifies denial appeal CARC codes 50/197/204/16 and writes a member-friendly appeal letter."</span> --json
+
+{
+  <span class="key">"ok"</span>: <span class="num">true</span>,
+  <span class="key">"suggested_slug"</span>: <span class="str">"denial-appeal-letter"</span>,
+  <span class="key">"recipe_class"</span>: <span class="str">"distilled_model"</span>,
+  <span class="key">"class_inference_basis"</span>: <span class="str">"keyword:appeal+letter+member"</span>,
+  <span class="key">"suggested_k_score_gate"</span>: <span class="num">0.85</span>,
+  <span class="key">"suggested_task_description"</span>: <span class="str">"Classify a CARC denial reason code and draft a member-friendly appeal letter that cites the code."</span>,
+  <span class="key">"network_status"</span>: <span class="str">"not_yet_wired"</span>,
+  <span class="key">"suggested_seed_examples"</span>: [ <span class="mute">/* 10 prompt+completion pairs, drafted offline */</span> ],
+  <span class="key">"next_steps"</span>: [
+    <span class="str">"kolm seeds new denial-appeal-letter --count=12 --out=seeds.jsonl"</span>,
+    <span class="str">"edit seeds.jsonl: replace placeholders with your real examples"</span>,
+    <span class="str">"kolm distill --local-worker --spec ./denial-appeal.spec.json --seeds ./seeds.jsonl --out ./denial-appeal.kolm --student-base=Qwen/Qwen2.5-7B-Instruct --teacher=anthropic:claude-opus-4-7"</span>,
+    <span class="str">"kolm verify ./denial-appeal.kolm --binder report.html"</span>
+  ]
+}
+
+<b>note:</b> networked LLM path is NOT YET WIRED. Today every invocation
+      uses the deterministic air-gap path. See <span class="key">kolm nl --help</span>.</pre>
+        <p style="font-size:13px;color:var(--ink-faint)">The <code>recipe_class</code> drives downstream choices (compile vs distill vs synthesize) and the <code>suggested_k_score_gate</code> becomes the floor a successor must clear before <code>kolm verify</code> passes. Both are starting points; override either with a flag if you know better than the keyword inference.</p>
+      </div>
+
+      <!-- ============================================================== -->
+      <!-- STEP 2 -->
+      <!-- ============================================================== -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">step 02</span>
+          <span class="step-name">Generate candidate seed examples</span>
+          <span class="step-cli">kolm seeds new</span>
+          <span class="pill warn">scaffold today &middot; NL-driven flow not yet wired</span>
+        </div>
+        <p>Drop the NL slug into <code>kolm seeds new</code>. The verb scaffolds a starter <code>seeds.jsonl</code> with placeholder prompt+completion rows you replace with your real examples. These are <b>candidates</b>, not labels: <code>kolm seeds new</code> never claims a row is ground truth. The honest framing is built into the CLI output every time.</p>
+<pre class="terminal">$ kolm seeds new denial-appeal-letter --out=seeds.jsonl
+<span class="mute"># (W199 NL-keyword candidate path is NOT YET WIRED; today the verb</span>
+<span class="mute">#  emits a 5-to-10 row template you replace with your real examples.)</span>
+
+wrote 10 starter rows to ./seeds.jsonl
+
+{<span class="key">"input"</span>:<span class="str">"CARC 50 denial: not deemed medically necessary."</span>,<span class="key">"output"</span>:<span class="str">"Dear Member, we are appealing your CARC 50 denial..."</span>,<span class="key">"source"</span>:<span class="str">"seed-template"</span>,<span class="key">"from_seed"</span>:<span class="num">0</span>}
+{<span class="key">"input"</span>:<span class="str">"CARC 197 denial: precert/auth required and not obtained."</span>,<span class="key">"output"</span>:<span class="str">"Dear Member, this CARC 197 denial can be appealed by..."</span>,<span class="key">"source"</span>:<span class="str">"seed-template"</span>,<span class="key">"from_seed"</span>:<span class="num">1</span>}
+{<span class="key">"input"</span>:<span class="str">"CARC 204 denial: service not covered under current plan."</span>,<span class="key">"output"</span>:<span class="str">"Dear Member, we identify three grounds to appeal..."</span>,<span class="key">"source"</span>:<span class="str">"seed-template"</span>,<span class="key">"from_seed"</span>:<span class="num">2</span>}
+<span class="mute">... 7 more candidate rows ...</span>
+
+next:
+  1. edit seeds.jsonl  replace placeholders with YOUR real examples (&gt;= 5 recommended)
+  2. compile: kolm compile --spec denial-appeal.spec.json --examples seeds.jsonl --out denial-appeal.kolm
+  3. verify:  kolm verify denial-appeal.kolm
+  4. (more)   kolm seeds generate --from seeds.jsonl --count 200   # deterministic mutation
+
+<span class="warn">honesty:</span> these starter rows are PLACEHOLDERS, not training data.
+         replace them with examples you actually want the model to learn from.
+         K-score against placeholders means nothing; K-score against your real
+         examples is the only number that should drive ship/no-ship decisions.</pre>
+        <p style="font-size:13px;color:var(--ink-faint)">The NL-driven candidate generator that turns the W197 scaffold into freshly-drafted candidates is part of Wave 199 (scheduled later in the W196 to W201 plan). Today the template path above is the honest answer: scaffold, replace with your real data, expand with <code>kolm seeds generate</code> if you need volume.</p>
+      </div>
+
+      <!-- ============================================================== -->
+      <!-- STEP 3 -->
+      <!-- ============================================================== -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">step 03</span>
+          <span class="step-name">Distill into a recipe</span>
+          <span class="step-cli">kolm distill</span>
+          <span class="pill ok">shipped &middot; local-worker mode</span>
+        </div>
+        <p>Pass your seeds plus a base student model and a teacher to <code>kolm distill --local-worker</code>. The worker runs the actual training inside an isolated package so heavy ML deps never bleed into the root install. <code>Qwen2.5-7B-Instruct</code> is the default student for the appeal-letter use case; substitute any model in the catalog (run <code>kolm distill --local-worker --list-catalog</code>). The K-score gate from step 1 enforces ship/no-ship.</p>
+<pre class="terminal">$ kolm distill --local-worker \
+    --spec=denial-appeal.spec.json \
+    --seeds=seeds.jsonl \
+    --out=denial-appeal.kolm \
+    --student-base=Qwen/Qwen2.5-7B-Instruct \
+    --teacher=anthropic:claude-opus-4-7 \
+    --redact=phi
+
+<span class="mute"># worker comes up; deps and student-base resolved locally</span>
+[doctor] node 20.18.0 ok &middot; worker @ workers/distill/distill.mjs
+[doctor] student-base Qwen/Qwen2.5-7B-Instruct ok &middot; teacher anthropic ok
+[doctor] redact-class phi ok &middot; receipts dir ./.kolm/receipts ok
+
+[split]  10 seeds  -&gt;  8 train / 1 dev / 1 holdout (split_seed=42)
+[train]  epoch 1/3  loss 1.241  k_score.composite=<span class="warn">0.612</span>  gate=0.85  status=<span class="warn">below</span>
+[train]  epoch 2/3  loss 0.673  k_score.composite=<span class="warn">0.794</span>  gate=0.85  status=<span class="warn">below</span>
+[train]  epoch 3/3  loss 0.418  k_score.composite=<b>0.871</b>  gate=0.85  status=<b>pass</b>
+
+[evals]  R=0.92 F=0.88 E=0.83 Z=0.86 T=0.91 A=0.85 S=0.90 L=0.84 C=0.88 V=0.87
+[gate]   <b>K-score 0.871 &ge; gate 0.85</b>  &middot;  <b>PASS</b>  &middot;  ship allowed
+[write]  denial-appeal.kolm (1.2 MB)  &middot;  signed  &middot;  manifest bound to artifact_hash
+
+  artifact: denial-appeal.kolm
+  hash:     7c2f9a8b1d3e4506&hellip;
+  receipts: ./.kolm/receipts/2026-05-17T08-12-30Z.json</pre>
+        <p style="font-size:13px;color:var(--ink-faint)">The training run is real: it loads the student base, applies LoRA against the seeds, scores against the dev split, gates on the dev K-score, and writes the artifact only if the gate passes. The exit code is non-zero if it fails so a CI step surfaces the rejection.</p>
+      </div>
+
+      <!-- ============================================================== -->
+      <!-- STEP 4 -->
+      <!-- ============================================================== -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">step 04</span>
+          <span class="step-name">Verify the artifact</span>
+          <span class="step-cli">kolm verify</span>
+          <span class="pill ok">shipped &middot; 24 offline checks</span>
+        </div>
+        <p>Run <code>kolm verify</code> against the freshly-built <code>.kolm</code>. The 24-check verifier walks the receipt chain, recomputes every block hash, validates the signature against the manifest, replays the K-score gate, and confirms the redactor class matches the recipe class. Every check runs offline; nothing is trusted.</p>
+<pre class="terminal">$ kolm verify denial-appeal.kolm --binder report.html
+
+[01] Format and structure                            <b>pass</b>
+[02] Spec parse                                      <b>pass</b>
+[03] Seeds parse                                     <b>pass</b>
+[04] Split deterministic                             <b>pass</b>
+[05] Train recipe bound                              <b>pass</b>
+[06] Eval recipe bound                               <b>pass</b>
+[07] K-score gate                                    <b>pass</b>  K=0.871 &ge; gate=0.85
+[08] External holdout                                <b>pass</b>
+[09] Tenant shadow corpus                            <b>pass</b>
+[10] Redactor class matches recipe                   <b>pass</b>  phi
+[11] Receipt chain integrity                         <b>pass</b>  14 nodes hashed in declared order
+[12] Manifest hash binds                             <b>pass</b>  artifact_hash=7c2f9a8b1d3e4506&hellip;
+[13] Signature                                       <b>pass</b>  matches manifest as written
+[14] Sigstore + Rekor (offline replay)               <b>pass</b>
+&hellip;
+[23] Supersession chain                              <b>pass</b>  no predecessor (genesis)
+[24] Drift report                                    <b>pass</b>  no baseline yet (genesis)
+
+<b>verdict: pass</b>  &middot;  24/24 checks green  &middot;  binder written to report.html
+
+  artifact: denial-appeal.kolm
+  K-score:  0.871  (gate=0.85, margin=+0.021)
+  signed:   yes  &middot;  Rekor anchor: pass
+  receipt:  rcp_8a1c2e4f6b09&hellip;</pre>
+        <p style="font-size:13px;color:var(--ink-faint)">Every check that fires writes a row into the HTML binder so an auditor (or your compliance team) can read the verdict alongside the receipt chain. The receipt chain itself is bound into <code>artifact_hash</code>; any tamper drifts the hash and breaks every downstream signature including the Rekor transparency log entry.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What just happened.</h2>
+    <p class="lede">Four small verbs, one composable flow. The honesty hooks at each step keep the artifact auditable end to end.</p>
+    <ul class="notes">
+      <li><b>Step 1 (nl):</b> the scaffold is a <b>starting point</b>, not a finished spec. <code>kolm nl</code> proposes a class, a gate, and ten example pairs drafted offline. You override any of them with a flag if you know better. The next-steps array tells you exactly which verb runs next.</li>
+      <li><b>Step 2 (seeds new):</b> rows in <code>seeds.jsonl</code> are <b>candidates</b>, not labels. The CLI prints the word "PLACEHOLDERS" every time so nobody walks away thinking templated rows are training data. You replace them with your real examples; the K-score against placeholders is meaningless.</li>
+      <li><b>Step 3 (distill):</b> the worker runs the <b>actual training</b>, not a stub. Heavy ML deps live in <code>workers/distill</code> so they never bleed into the root install. The training loop scores against the dev split and rejects ships that do not clear the K-score gate.</li>
+      <li><b>Step 4 (verify):</b> the verifier <b>gates the ship</b> with 24 offline checks. No step in the chain ships a black box; every claim resolves to a manifest field and a verifier check that re-derives it. The binder HTML is the artifact your auditor reads.</li>
+    </ul>
+    <div class="takeaway">
+      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)">The composed flow is intentionally <b>local-first</b>. Steps 1, 2, and 4 require nothing but the CLI. Step 3 needs a base student and a teacher you control; pass <code style="font-family:var(--mono);background:var(--bg);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">--teacher=local:&lt;model&gt;</code> if you want to keep the teacher on-disk too. The artifact at the end is portable, signed, and verifiable by anyone with the <code style="font-family:var(--mono);background:var(--bg);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">.kolm</code> file and the open-source verifier.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 8px;border-radius:4px;color:var(--ink);font-size:28px;border:1px solid var(--line)">KOLM_AIRGAP=1</code> story.</h2>
+    <p style="font-size:15.5px;line-height:1.7;color:var(--ink-mute);max-width:820px">Every step in the flow above runs offline today. <code>kolm nl</code> takes the deterministic keyword-inference branch (Wave 197 air-gap-first design). <code>kolm seeds new</code> emits templated candidates locally. <code>kolm distill --local-worker</code> trains against your seeds with whatever student and teacher you have on-disk. <code>kolm verify</code> recomputes every check from the bytes of the artifact. No step ever needs to call out to the kolm cloud or any third party; the only required network call is whatever your <code>--teacher</code> flag points at, and you control that too.</p>
+    <p style="font-size:15.5px;line-height:1.7;color:var(--ink-mute);max-width:820px;margin-top:18px">The networked LLM path (where <code>kolm nl</code> would call out to a hosted model for richer drafts) is NOT YET WIRED. When it lands, the contract is opt-in: you pass <code>--no-air-gap</code> or unset <code>KOLM_AIRGAP=1</code> to enable it, and the scaffold output carries <code>network_status: "wired"</code> instead of <code>"not_yet_wired"</code> so a downstream tool can detect which branch ran. The air-gap branch will continue to exist, will continue to be deterministic, and will continue to be the default for tenants who want byte-for-byte reproducibility across developer laptops. See the design pattern in <a href="/research/methods-2026-q2" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-soft)">/research/methods-2026-q2</a>.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What this flow does NOT do.</h2>
+    <p class="lede">Three boundaries are worth naming up front so nobody walks into the next conversation with the wrong expectation.</p>
+    <ul class="notes">
+      <li><b>Does NOT replace human eval.</b> The K-score gate scores against your dev split, not against ground truth in the world. You still need to look at the candidates in step 2, look at a sample of the model's outputs in step 3, and decide whether the artifact is fit for purpose. <code>kolm nl</code> does not know whether your real users will accept the appeal-letter tone; only you do.</li>
+      <li><b>Does NOT promote unverified examples to training data.</b> The K-score gate enforces a floor before the artifact writes to disk. If your seeds are noisy and the dev split looks bad, the artifact is not produced. There is no quiet fallback that ships a degraded model under a green light; the only way an artifact reaches your filesystem is by clearing the gate you set.</li>
+      <li><b>Does NOT do online learning.</b> Artifacts are <b>frozen</b> at ship time. If production traffic drifts six months later, the answer is supersession via <a href="/drift" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-soft)">/drift</a>: detect drift on a cadence, rebuild a successor with <code>--supersession-of</code>, retire the predecessor with reason and evidence. The supersession chain stays auditable. No artifact ever rewrites itself in place.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Next steps.</h2>
+    <p class="lede">Three short reads cover the citations, the data-volume guidance, and the non-NL CLI path.</p>
+    <div class="grid-3">
+      <a class="card link" href="/research/methods-2026-q2">
+        <span class="vt">research &middot; methods</span>
+        <h3>Methods 2026 Q2</h3>
+        <p>Every distillation, redaction, supersession, and gating technique kolm ships maps to a citation in this research dump. Verify before you ship.</p>
+      </a>
+      <a class="card link" href="/training">
+        <span class="vt">training &middot; how much data</span>
+        <h3>Training playbook</h3>
+        <p>How many seeds do you actually need? The frontier-methods table plus the per-class data-volume grid answer in five minutes.</p>
+      </a>
+      <a class="card link" href="/quickstart">
+        <span class="vt">quickstart &middot; CLI path</span>
+        <h3>Original CLI quickstart</h3>
+        <p>The non-NL path: live in-browser PHI redactor, signed <code>.kolm</code> download, 60-second CLI compile from <code>examples.jsonl</code>. No NL required.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where this fits in the wider stack.</h2>
+    <div class="grid-4">
+      <a class="card link" href="/quickstart">
+        <span class="vt">quickstart</span>
+        <h3>CLI quickstart</h3>
+        <p>Three paths to a first <code>.kolm</code>: live in-browser demo, signed download, or 60-second CLI compile. Sibling page to this one.</p>
+      </a>
+      <a class="card link" href="/training">
+        <span class="vt">training</span>
+        <h3>Training playbook</h3>
+        <p>The how-much-data per-class grid plus the frontier-methods table. Pair with this page to size your seed budget.</p>
+      </a>
+      <a class="card link" href="/research/methods-2026-q2">
+        <span class="vt">research</span>
+        <h3>Methods 2026 Q2</h3>
+        <p>Sources behind every claim in the four-step flow above. Verify before ship, cite before claim.</p>
+      </a>
+      <a class="card link" href="/training/data-sources">
+        <span class="vt">training &middot; data</span>
+        <h3>Data sources</h3>
+        <p>Per-class guidance on where seeds come from, what counts as a candidate, and how to keep the K-score honest. Lands wave 201.</p>
+      </a>
+    </div>
+    <div class="actions" style="margin-top:32px">
+      <a class="btn primary" href="#step-1">Re-read step 1 &rarr;</a>
+      <a class="btn" href="/quickstart">CLI quickstart &rarr;</a>
+      <a class="btn" href="/drift">Lifecycle: drift &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="site">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/quickstart/nl">Quickstart NL</a>
+        <a href="/training">Training</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+      </div>
+      <div>
+        <h4>Research</h4>
+        <a href="/research">Research index</a>
+        <a href="/research/methods-2026-q2">Methods 2026 Q2</a>
+        <a href="/research/k-score-whitepaper">K-score whitepaper</a>
+        <a href="/research/receipt-chains">Receipt chains</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/drift">Lifecycle &middot; drift</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>Four verbs, one NL flow. Air-gap-first, deterministic today.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

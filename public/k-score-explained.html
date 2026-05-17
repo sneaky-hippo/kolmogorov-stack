@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>K-score explained: the quality gate every .kolm must clear | kolm</title>
+<meta name="description" content="A K-score gate decides whether a .kolm ships. Four axes (groundedness, coverage, safety, behavioral_drift), four per-class default gates (rule 0.88, synthesized_rule 0.90, compiled_rule 0.92, distilled_model 0.85), one frozen holdout, one verifier check that re-derives the composite at ingest.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="K-score explained: the gate every .kolm must clear">
+<meta property="og:description" content="Four axes, four per-class default gates, one frozen holdout, one verifier check. The K-score is the compile-time quality contract; it decides whether the artifact ships.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="K-score explained: the gate every .kolm must clear">
+<meta name="twitter:description" content="Compile-time quality contract. Composite must clear the recipe-class default gate; the verifier re-derives the number at ingest. No eval, no ship.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<meta property="og:url" content="https://kolm.ai/k-score-explained">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/k-score-explained">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:46px;line-height:1.06;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+  .lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  .section{padding:64px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:30px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:780px}
+  .section p.lede{font-size:16px;max-width:780px;margin:0 0 28px}
+  .axes{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:32px 0 8px}
+  @media(max-width:960px){.axes{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.axes{grid-template-columns:1fr}}
+  .axis{padding:22px 22px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .axis .tier{font-family:var(--mono);font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent)}
+  .axis h3{margin:0;font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .axis p{margin:0;font-size:13px;line-height:1.55;color:var(--ink-mute)}
+  .axis .weight{margin-top:auto;font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:0.06em;padding-top:8px;border-top:1px solid var(--line)}
+  .axis .weight .accent{color:var(--accent)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:820px){.grid-2{grid-template-columns:1fr}}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:24px 0}
+  @media(max-width:960px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.grid-4{grid-template-columns:1fr}}
+  @media(max-width:560px){.wrap{padding:0 16px}.hero{padding:48px 0 24px}h1{font-size:32px}.lede{font-size:16px}.section{padding:40px 0}.section h2{font-size:24px}.btn{padding:10px 16px;font-size:12px}pre.terminal{font-size:11.5px;padding:14px 16px}table.tbl{font-size:12.5px}header.site nav{gap:12px;font-size:11px}}
+  .card{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .card .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .card h3{margin:0;font-size:19px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .card p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+  .card code{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:18px 20px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:0}
+  pre.terminal b{color:var(--accent);font-weight:400}
+  pre.terminal .warn{color:var(--warn);font-weight:400}
+  pre.terminal .bad{color:var(--bad);font-weight:400}
+  pre.terminal .mute{color:var(--ink-faint)}
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0}
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:20px 0;min-width:640px}
+  table.tbl th{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400;vertical-align:bottom}
+  table.tbl td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45;color:var(--ink-mute)}
+  table.tbl td.key{font-family:var(--mono);color:var(--ink);font-size:12.5px;white-space:nowrap}
+  table.tbl td.warn{color:var(--warn);font-family:var(--mono);font-size:12.5px}
+  table.tbl td.bad{color:var(--bad);font-family:var(--mono);font-size:12.5px}
+  table.tbl td.ok{color:var(--accent);font-family:var(--mono);font-size:12.5px}
+  ul.notes{font-size:13.5px;color:var(--ink-mute);line-height:1.6;padding-left:18px;margin:0}
+  ul.notes li{margin-bottom:8px}
+  ul.notes code{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  .receipt-chain{font-family:var(--mono);font-size:12.5px;color:var(--ink-mute);background:var(--bg-elev);border:1px solid var(--line);border-radius:10px;padding:18px 20px;line-height:1.8;word-break:break-word}
+  .receipt-chain b{color:var(--accent);font-weight:400}
+  .receipt-chain .new{color:var(--warn);font-weight:400}
+  .takeaway{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin-top:24px}
+  .takeaway b{color:var(--accent)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:3px;border:1px solid var(--line);color:var(--ink-faint)}
+  .pill.ok{color:var(--accent);background:var(--accent-soft);border-color:rgba(16,185,129,0.30)}
+  .pill.warn{color:var(--warn);background:var(--warn-soft);border-color:rgba(240,184,107,0.30)}
+  .pill.bad{color:var(--bad);background:var(--bad-soft);border-color:rgba(255,107,145,0.30)}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr)}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:var(--ink-faint);margin:0 0 12px;font-weight:400}
+  .footer-grid a{display:block;color:var(--ink-mute);text-decoration:none;font-size:13.5px;margin-bottom:6px;border:none}
+  .footer-tag{display:flex;justify-content:space-between;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line);padding-top:20px;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/drift">drift</a><a href="/recipe-classes">classes</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; k-score &middot; the compile-time quality gate</p>
+    <h1>A K-score gate decides whether a <code style="font-family:var(--mono);font-size:0.78em;background:var(--bg-elev);padding:3px 10px;border-radius:6px;border:1px solid var(--line)">.kolm</code> ships.</h1>
+    <p class="lede">Every artifact is scored on four axes against a frozen holdout, the axes are weighted into one composite number, and the composite is compared to the recipe-class default gate. If the gate is cleared the artifact signs and ships; if not, the compile aborts with a non-zero exit, the verifier emits <code style="font-family:var(--mono);background:var(--bg-elev);padding:2px 6px;border-radius:3px;color:var(--ink);border:1px solid var(--line)">gate_failed</code> in the receipt, and no <code style="font-family:var(--mono);background:var(--bg-elev);padding:2px 6px;border-radius:3px;color:var(--ink);border:1px solid var(--line)">.kolm</code> bytes are written. The K-score is the compile-time quality contract: no eval, no ship.</p>
+    <p class="stamp">K-score quality gate &middot; reviewed 2026-05-17 &middot; wave 185 dedicated explainer</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/spec/rs-1#section-7-6">RS-1 &sect;7.6 &rarr;</a>
+      <a class="btn" href="/recipe-classes">Recipe classes &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The four K-score axes.</h2>
+    <p class="lede">Each axis is a normalized scalar in [0, 1]. The composite is a weighted sum; the default weight per axis is 0.25, customizable per recipe via the <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">k_score_components</code> manifest field. The four-axis shape is normative in RS-1 &sect;7.6; the per-axis weight is policy and travels with the artifact bytes, so a verifier replaying the composite uses the same weights the builder used.</p>
+    <div class="axes">
+      <div class="axis">
+        <span class="tier">axis 01</span>
+        <h3>groundedness</h3>
+        <p>Fraction of the artifact's outputs whose claims can be re-derived from inputs or from the recipe's declared corpus. Hallucination is the negation of groundedness: a free-text answer that asserts a fact absent from inputs and absent from the corpus scores zero on this axis. For rule recipes the score is structural (rules cannot hallucinate by construction); for distilled-model recipes the score is judged row-by-row against the holdout.</p>
+        <span class="weight">default weight <span class="accent">0.25</span> &middot; configurable via k_score_components &middot; RS-1 &sect;7.6</span>
+      </div>
+      <div class="axis">
+        <span class="tier">axis 02</span>
+        <h3>coverage</h3>
+        <p>Fraction of declared input cases on which the artifact returns a usable output. Coverage subsumes raw accuracy: a recipe that returns a correct answer on 80 percent of inputs and refuses-with-route-to-human on 20 percent scores 1.00 on coverage; a recipe that errors out on 20 percent of inputs scores 0.80. Coverage is computed against the recipe's eval rows as declared at compile time.</p>
+        <span class="weight">default weight <span class="accent">0.25</span> &middot; configurable via k_score_components &middot; RS-1 &sect;7.6</span>
+      </div>
+      <div class="axis">
+        <span class="tier">axis 03</span>
+        <h3>safety</h3>
+        <p>Fraction of holdout rows on which the artifact's output respects the recipe's declared safety contract: PHI/PII redactor rules, route-to-human on low confidence, license-restricted refusal classes. A safety failure is not a low-quality answer; it is the wrong shape of answer (raw email in a redacted field, treatment recommendation when the recipe says route-to-human). One safety failure on a regulated workload is enough to fail the axis.</p>
+        <span class="weight">default weight <span class="accent">0.25</span> &middot; configurable via k_score_components &middot; RS-1 &sect;7.6</span>
+      </div>
+      <div class="axis">
+        <span class="tier">axis 04</span>
+        <h3>behavioral_drift</h3>
+        <p>Delta between the candidate artifact's holdout behavior and the recipe's declared reference behavior (teacher outputs for distilled recipes; canonical-rule outputs for rule recipes; previous-shipped-artifact for cadence rebuilds). Drift is measured per row and aggregated; a small drift is expected and tolerated, a large drift indicates the artifact is no longer doing the job the recipe was authored for.</p>
+        <span class="weight">default weight <span class="accent">0.25</span> &middot; configurable via k_score_components &middot; RS-1 &sect;7.6</span>
+      </div>
+    </div>
+    <div class="takeaway">
+      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)">The four axes are <b>independent</b> by design. An artifact that scores 0.95 on coverage and 0.40 on safety should not ship: averaging high accuracy with low safety hides the failure mode that matters most on a regulated workload. The composite is the weighted sum, but the per-axis floor (configurable per recipe) lets the operator say "fail the build if any single axis is below 0.50" so a strong-on-three-weak-on-one artifact gets rejected before it reaches the gate.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Default K-score gate by recipe class.</h2>
+    <p class="lede">Each of the four recipe classes (defined in <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">src/recipe-class.js</code>, surfaced at <a href="/recipe-classes" style="color:inherit;border-bottom:1px dashed var(--line)">/recipe-classes</a>) carries a different default gate. The reasoning is debugability: a class whose outputs cannot be debugged at runtime needs a stricter compile-time floor; a class whose outputs are inherently fuzzy needs a relaxed floor with a per-axis weight reshuffle.</p>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead>
+        <tr><th>recipe_class</th><th>default gate</th><th>rationale</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="key">rule</td><td class="ok">0.88</td><td>Hand-authored deterministic JS. Same input always returns the same output. The artifact can be debugged step-by-step at runtime; a strict-but-not-strictest gate catches the case where the rule code is logically wrong (correct shape, wrong answer) without requiring perfection on every fuzzy edge.</td></tr>
+        <tr><td class="key">synthesized_rule</td><td class="ok">0.90</td><td>LLM-emitted rule code, AST-validated against a constrained DSL. Strictier than rule because the teacher may emit subtly wrong code that passes the AST gate but fails the holdout on an edge case the author did not enumerate. The 0.90 floor forces the synthesis loop to iterate until the candidate clears the bar.</td></tr>
+        <tr><td class="key">compiled_rule</td><td class="ok">0.92</td><td>Strictest gate. A compiled native binary cannot be inspected at runtime without a debugger and the source mapping; a regulated tenant deploying a compiled rule to a production endpoint has no in-band remediation if the binary is wrong. The 0.92 floor pushes the compile pipeline to re-run synthesis or hand-edit the DSL until the artifact is the right answer at compile time.</td></tr>
+        <tr><td class="key">distilled_model</td><td class="ok">0.85</td><td>Relaxed gate. A neural network's outputs are inherently fuzzier than rule outputs; demanding 0.92 on a distilled model rejects most viable artifacts. The 0.85 floor matches the baseline composite gate shipped in <code>src/kscore.js</code> (GATE = 0.85). The <code>groundedness</code> axis weighted at 0.20 in <code>k_score_components</code> when class is distilled_model gives slightly less penalty for the residual hallucination LM outputs always carry; the remaining 0.05 redistributes across the other three axes.</td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-top:18px;font-size:13.5px;color:var(--ink-faint)">The class default is recovered from <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">manifest.k_score.gate</code> at verify time. A recipe can override the default by setting <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">spec.min_k</code>; the override travels with the artifact bytes and is signed inside the same receipt body the K-score block lives in, so a downstream verifier cannot strip the gate without invalidating the signature.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What happens when the gate fails.</h2>
+    <p class="lede">Gate failure is a hard stop, not a warning. Four effects fire together; no single one ships in isolation, so a tenant cannot accidentally end up with a half-built artifact whose K-score was checked but whose signature was skipped.</p>
+    <div class="grid-4">
+      <div class="card">
+        <span class="vt">effect a</span>
+        <h3>Compile aborts</h3>
+        <p>The <code>kolm compile</code> process exits non-zero (<code>$? = 2</code>). Any CI step that wraps the compile sees the failure; cron mail surfaces the alert without needing a webhook. No partial bytes are emitted to the output path.</p>
+      </div>
+      <div class="card">
+        <span class="vt">effect b</span>
+        <h3>Verifier emits gate_failed</h3>
+        <p>If the operator bypasses the compile and hand-crafts a manifest with a sub-gate composite, the verifier check <b>#4 K-score gate</b> rejects at ingest with <code>reason='gate_failed'</code>. The receipt records the rejection alongside the composite and the gate that failed.</p>
+      </div>
+      <div class="card">
+        <span class="vt">effect c</span>
+        <h3>Artifact is not signed</h3>
+        <p>The Ed25519 signer never runs on a sub-gate artifact. The signing pipeline's <code>require_k_score_pass</code> guard blocks the key from touching unverified bytes. No transparency-log anchor is created; no Rekor entry exists for a gate-failed build.</p>
+      </div>
+      <div class="card">
+        <span class="vt">effect d</span>
+        <h3>No .kolm file is written</h3>
+        <p>The output path is left untouched. If a previous build exists at the same path, the build pipeline does NOT overwrite it; the prior artifact stays on disk, the new gate-failed build is discarded, and the operator sees the failure plus the prior artifact's hash for context.</p>
+      </div>
+    </div>
+    <div class="takeaway">
+      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)">The four effects are <b>tightly coupled by design</b>. The K-score gate, the signing pipeline, and the file-write step share the same precondition: <code style="font-family:var(--mono);background:var(--bg);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">k_score.composite &ge; k_score.gate</code>. Skipping the gate is not a config flag; it requires editing <code style="font-family:var(--mono);background:var(--bg);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">src/binder.js</code> and re-installing from source. That is intentional: the verifier check #4 exists so a third-party auditor never has to trust that the operator did not bypass the gate.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The frozen-eval invariant.</h2>
+    <p class="lede">A K-score is only meaningful against a holdout the artifact has never seen. The eval set is hash-pinned at compile time and persisted as a manifest field; the verifier recomputes the K-score against the same hash at ingest. Any swap of the holdout for an easier corpus drifts the eval-set hash and the verifier rejects.</p>
+    <p style="font-size:14.5px;color:var(--ink-mute);max-width:780px;margin:18px 0">The split is enforced by the seeds module (<code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">src/seeds.js</code>, surfaced as the train/holdout-independence check, shipped wave 141 &middot; Q+2 &middot; N+1.5). At seed-loading time the rows are split by deterministic hash of the row's canonical JSON; the same input row always lands on the same side of the split across reseeding. The verifier replays the split and confirms <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">train_hashes &cap; holdout_hashes = &empty;</code>; non-empty intersection is a hard fail.</p>
+    <p style="font-size:14.5px;color:var(--ink-mute);max-width:780px;margin:0">The K-score is computed against the holdout side of the split and recorded with the holdout's content hash. Re-running <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">kolm eval</code> on the same artifact against the same holdout reproduces the same composite to four decimal places (the round4 contract in <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">src/kscore.js</code>); any non-determinism in the computation is itself a verifier failure. The frozen-eval invariant is what lets the gate be a contract instead of a marketing number.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Why these axes, not just accuracy.</h2>
+    <p class="lede">Single-axis accuracy is the wrong primitive for a compile-time gate on a regulated workload. The four-axis shape catches four failure modes that single-axis accuracy hides; each axis covers a different way an artifact can be wrong.</p>
+    <ul class="notes" style="margin-top:18px">
+      <li><b>Accuracy is one component of coverage</b>, not its complement. An artifact that returns the correct answer on 80 percent of inputs and crashes on the other 20 percent is high-accuracy and low-coverage; for a production deployment, the crashes matter more than the accuracy on the rows where the function returned at all. Folding accuracy into coverage makes the artifact's usable-output-fraction the headline number.</li>
+      <li><b>Safety catches failures accuracy misses</b>. The HIPAA Safe Harbor redactor either holds or it does not; an artifact whose redactor leaks a raw email in one row out of one thousand is still high-accuracy by every other measure, but is not shippable. The safety axis is binary in spirit: any safety failure on a regulated workload drops the axis fast, and the per-axis floor catches the case before the composite hides it.</li>
+      <li><b>Groundedness catches the hallucination class</b> single-axis accuracy cannot. A distilled-model recipe whose teacher routinely embellishes correct answers with plausible-sounding but unsourced detail scores high on raw accuracy (the answer is correct) and low on groundedness (the supporting detail is not in the inputs or the corpus). Groundedness is the axis a buyer cares about when the artifact will be deployed where a confident-but-fabricated detail has compliance cost.</li>
+      <li><b>Behavioral_drift catches the rebuild regression</b> nothing else does. A re-distilled artifact whose K-score composite is within tolerance of the predecessor's but whose row-by-row behavior has shifted (different cases pass, different cases fail) is a different artifact masquerading as a refresh. Behavioral_drift makes the row-level continuity an axis the gate enforces, not a property the operator has to spot-check by hand. The LIMA finding (Zhou et al., 2023, <a href="https://kolm.ai/research/methods-2026-q2" style="color:inherit;border-bottom:1px dashed var(--line)">cited at /research/methods-2026-q2</a>) that small-curated-dataset training produces strong generalist behavior translates to a high prior that even a small holdout will detect material drift; the drift axis is what consumes that signal.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The CLI flow, end to end.</h2>
+    <p class="lede">Four commands compose the K-score lifecycle: compute, gate-check, auto-gate at compile, read-back from a shipped receipt. The exit-code contract is uniform: zero on pass, two on gate failure, one on other error.</p>
+    <div class="grid-2">
+      <div class="card">
+        <span class="vt">01 &middot; compute</span>
+        <h3>kolm eval</h3>
+        <p>Runs the compiled artifact across the frozen holdout, scores each row on the four axes, weights into a composite. Writes the <code>k_score</code> block; does not gate. Exit zero on success, one on eval error.</p>
+        <pre class="terminal">$ kolm eval prior-auth.kolm
+
+  rows scored: 412
+  groundedness        <span><b>0.942</b></span>
+  coverage            <span><b>0.917</b></span>
+  safety              <span><b>0.988</b></span>
+  behavioral_drift    <span><b>0.901</b></span>
+
+  composite           <span><b>0.937</b></span>  <span class="mute">(weights 0.25 / 0.25 / 0.25 / 0.25)</span>
+  gate                0.92    <span class="mute">(recipe_class=compiled_rule)</span>
+  verdict             <span><b>PASS</b></span>   <span class="mute">composite &ge; gate</span></pre>
+      </div>
+      <div class="card">
+        <span class="vt">02 &middot; gate-check</span>
+        <h3>kolm verify (check #4)</h3>
+        <p>Loads the artifact's manifest, recomputes the composite from the stored axes, compares against the stored gate. Verifier check <b>#4 K-score gate</b> in <code>src/binder.js</code> emits pass with the composite-vs-gate detail or fail with the gate-failed reason.</p>
+        <pre class="terminal">$ kolm verify prior-auth.kolm
+
+  Artifact class consistency               <span><b>pass</b></span>
+  Audit chain (HMAC receipt)               <span><b>pass</b></span>
+  Receipt signature (Ed25519)              <span><b>pass</b></span>
+  K-score gate                             <span><b>pass</b></span>
+    composite 0.9370 &ge; gate 0.92
+    axes: groundedness=0.942 coverage=0.917
+          safety=0.988 behavioral_drift=0.901
+    holdout_hash=8b9c0d1e2f30&hellip; (frozen)
+  &hellip;</pre>
+      </div>
+      <div class="card">
+        <span class="vt">03 &middot; auto-gate</span>
+        <h3>kolm compile</h3>
+        <p>Runs eval as a build step, gates on the result, exits non-zero on failure before the signer touches the bytes. The <code>require_k_score_pass</code> guard inside the build pipeline blocks the Ed25519 key from signing a sub-gate artifact.</p>
+        <pre class="terminal">$ kolm compile prior-auth.spec.json
+
+  spec      &rarr; seeds &rarr; split &rarr; train
+  recipes   &rarr; evals
+  <span class="bad">eval verdict: GATE_FAIL</span>
+    composite 0.881 below gate 0.92
+    failing axes: safety=0.74 (one redactor leak)
+  <span class="bad">[abort]</span> artifact not signed; no .kolm written
+  <span class="bad">$? = 2</span></pre>
+      </div>
+      <div class="card">
+        <span class="vt">04 &middot; read-back</span>
+        <h3>kolm inspect</h3>
+        <p>Reads the frozen K-score from the receipt without re-running eval. Useful when the operator wants to confirm what the binder PDF will show without recomputing from the holdout (which may not be available on the deploy host).</p>
+        <pre class="terminal">$ kolm inspect prior-auth.kolm --k-score
+
+  k_score (from receipt, frozen at compile)
+    composite           0.9370
+    gate                0.9200   <span class="mute">(recipe_class=compiled_rule)</span>
+    groundedness        0.9420   <span class="mute">weight=0.25</span>
+    coverage            0.9170   <span class="mute">weight=0.25</span>
+    safety              0.9880   <span class="mute">weight=0.25</span>
+    behavioral_drift    0.9010   <span class="mute">weight=0.25</span>
+    holdout_hash        8b9c0d1e2f30&hellip;
+    computed_at         2026-05-17T08:00:00Z</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where the K-score lands in the receipt chain.</h2>
+    <p class="lede">The K-score is computed in the <b>evals</b> block of the receipt chain (the sixth node, after <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">spec &rarr; seeds &rarr; split &rarr; train &rarr; recipes</code>). The block hashes into <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">artifact_hash_input</code> so any post-hoc edit of the composite, the axes, or the gate drifts <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">artifact_hash</code> and breaks every downstream signature including the Rekor transparency-log anchor. The K-score is part of the artifact identity, not metadata layered on top.</p>
+    <div class="receipt-chain">
+      <b>spec</b> &rarr; <b>seeds</b> &rarr; <b>split</b> &rarr; <b>train</b> &rarr; <b>recipes</b> &rarr; <span class="new">evals</span> &rarr; <b>external_holdout</b> &rarr; <b>tenant_shadow</b> &rarr; <b>auditor_attestation</b> &rarr; <b>supersession</b> &rarr; <b>drift_report</b> &rarr; <b>export</b> &rarr; <b>signatures</b> &rarr; <b>rekor</b>
+    </div>
+    <p style="margin-top:24px;font-size:13.5px;color:var(--ink-faint)">The composite that the verifier check #4 compares against the gate is the same composite the binder PDF renders to the auditor, the same composite the inference endpoint reads when reporting the artifact's score, the same composite the registry indexes when listing the artifact. One number, one source-of-truth, one verifier-recomputed value. The receipt-chain binding is what makes the K-score a contract instead of a label.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where this fits in the wider stack.</h2>
+    <div class="grid-4">
+      <a class="card" href="/spec/rs-1#section-7-6" style="text-decoration:none;color:inherit">
+        <span class="vt">spec &middot; canonical</span>
+        <h3>RS-1 v2.1 &sect;7.6</h3>
+        <p>The normative spec section for the K-score axes, weights, and the verifier check #4 K-score gate semantics. The four-axis shape, the per-axis weight field, the gate-by-class table, the recompute-at-ingest contract.</p>
+      </a>
+      <a class="card" href="/frozen-eval" style="text-decoration:none;color:inherit">
+        <span class="vt">frozen eval &middot; invariant</span>
+        <h3>Frozen-eval invariant</h3>
+        <p>The hash-pinned holdout that the K-score is computed against. Train/holdout disjointness is enforced by the seeds module; the verifier replays the split and rejects any artifact whose train and holdout rows intersect.</p>
+      </a>
+      <a class="card" href="/drift" style="text-decoration:none;color:inherit">
+        <span class="vt">drift &middot; downstream</span>
+        <h3>Drift detection + supersession</h3>
+        <p>The K-score axes are the load-bearing signal in the drift report. When production distribution shifts past tolerance against the baseline snapshot, the drift cron exits non-zero and a successor artifact retires the predecessor with the breached signals inlined.</p>
+      </a>
+      <a class="card" href="/recipe-classes" style="text-decoration:none;color:inherit">
+        <span class="vt">classes &middot; gate-by-class</span>
+        <h3>Recipe-class taxonomy</h3>
+        <p>The four classes (rule / synthesized_rule / compiled_rule / distilled_model) that drive the default-gate table. Source-of-truth is <code>src/recipe-class.js</code>; the per-class default gate is recovered from the manifest at verify time.</p>
+      </a>
+    </div>
+    <div class="actions" style="margin-top:32px">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/spec/rs-1#section-7-6">RS-1 &sect;7.6 &rarr;</a>
+      <a class="btn" href="/compare">Back to compare matrix &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/k-score-explained">K-score gate</a>
+        <a href="/drift">Lifecycle &middot; drift</a>
+        <a href="/recipe-classes">Classes</a>
+        <a href="/compare">Compare</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>K-score binds into artifact_hash. No eval, no ship.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

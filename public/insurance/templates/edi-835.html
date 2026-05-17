@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>EDI 835 remittance transformer - kolm for US health insurers</title>
+<meta name="description" content="A kolm template that ingests EDI 835 ERA (Electronic Remittance Advice) X12 transactions (5010A1) and emits normalized payment JSON ready for posting to your AR system. Balance-checks the TS3/TS2/PLB segments against the BPR total. Pure rule-class - fully deterministic, no model inference.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/insurance/templates/edi-835">
+<meta property="og:title" content="EDI 835 remittance transformer - kolm health-insurance template">
+<meta property="og:description" content="Parse X12 5010A1 ERA into normalized payment JSON. Balance-checks BPR against CLP+PLB. Rule class, fully deterministic.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/insurance/templates/edi-835">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .tpl-hero{padding:42px 0 18px;border-bottom:1px solid var(--line)}
+  .tpl-hero .crumb{font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
+  .tpl-hero .crumb a{color:var(--ink-mute)}
+  .tpl-hero h1{font-size:34px;margin:0 0 8px;line-height:1.1}
+  .tpl-hero .lede{font-size:16px;color:var(--ink-mute);max-width:760px;margin:0}
+  .tpl-badges{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;font-family:var(--mono);font-size:11px}
+  .tpl-badges span{padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--ink-mute);background:var(--bg-card)}
+  .tpl-badges .b-class{color:#7ec486;border-color:#2a4030}
+  .tpl-badges .b-loop{color:#d6a65a;border-color:#3a2e1c}
+  .tpl-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:22px 0 8px;font-family:var(--mono);font-size:11px;color:var(--ink-mute)}
+  @media(max-width:900px){.tpl-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .tpl-meta > div{padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+  .tpl-meta .k{text-transform:uppercase;letter-spacing:0.06em;font-size:10px;color:var(--ink-faint)}
+  .tpl-meta .v{display:block;color:var(--ink);margin-top:4px;font-size:13px}
+  .tpl-section{padding:28px 0;border-bottom:1px solid var(--line)}
+  .tpl-section h2{font-size:22px;margin:0 0 6px}
+  .tpl-section p.lede{font-size:14.5px;color:var(--ink-mute);margin:0 0 14px;max-width:780px}
+  .tpl-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:900px){.tpl-grid2{grid-template-columns:1fr}}
+  pre.code{margin:0;padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:#0e1115;font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--ink);overflow-x:auto}
+  pre.code .k{color:#7ec486}
+  pre.code .s{color:#d6a65a}
+  pre.code .c{color:var(--ink-faint)}
+  .seg-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0 6px;font-family:var(--mono);font-size:11px}
+  @media(max-width:900px){.seg-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:600px){.seg-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .seg-grid > div{padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg-card)}
+  .seg-grid .seg{color:#7ef0d2;text-transform:uppercase;letter-spacing:0.06em;font-size:11px;margin-bottom:4px}
+  .seg-grid .desc{color:var(--ink-mute);font-size:11px}
+  .tpl-cta{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 4px}
+  .tpl-related{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px;font-family:var(--mono);font-size:12px}
+  @media(max-width:900px){.tpl-related{grid-template-columns:1fr 1fr}}
+  @media(max-width:600px){.tpl-related{grid-template-columns:1fr}}
+  .tpl-related a{padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg-card);color:var(--ink);display:block}
+  .tpl-related a:hover{border-color:var(--line-strong)}
+  .tpl-related .num{color:var(--ink-faint);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<header class="site-header"><div class="wrap site-bar">
+  <a class="brand" href="/"><span class="brand-dot"></span>kolm</a>
+  <nav class="site-nav">
+    <a href="/training">Training</a>
+    <a href="/health-insurance">health-insurance</a>
+    <a href="/pricing">pricing</a>
+    <a href="/docs">docs</a>
+    <a href="/quickstart">quickstart</a>
+  </nav>
+  <div class="site-actions"><a class="cta" href="/signup">get started</a></div>
+</div></header>
+
+<main class="wrap">
+
+  <section class="tpl-hero">
+    <div class="crumb"><a href="/health-insurance">health-insurance</a> &middot; <a href="/health-insurance#insurance-templates">templates</a> &middot; edi-835</div>
+    <h1>EDI 835 remittance transformer</h1>
+    <p class="lede">A kolm template that ingests EDI 835 ERA (Electronic Remittance Advice) X12 transactions (5010A1) and emits normalized payment JSON ready for posting to your AR system. Balance-checks the TS3/TS2/PLB segments against the BPR total. Pure rule-class &middot; fully deterministic, no model inference.</p>
+    <div class="tpl-badges">
+      <span class="b-class">recipe class: rule (class 0)</span>
+      <span class="b-loop">loop coverage: 5010A1 ERA</span>
+      <span>balance-check: BPR vs CLP + PLB</span>
+      <span>deterministic &middot; no LLM call</span>
+    </div>
+    <div class="tpl-meta">
+      <div><div class="k">template id</div><span class="v">edi-835</span></div>
+      <div><div class="k">k-score gate</div><span class="v">&ge; 0.94</span></div>
+      <div><div class="k">recipe class</div><span class="v">rule (class 0)</span></div>
+      <div><div class="k">held-out eval</div><span class="v">4 cases &middot; balance + status</span></div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Segments parsed</h2>
+    <p class="lede">The transformer recognizes the 5010A1 ERA segments that drive payment posting. The ISA/GS/ST envelopes are parsed for routing but their values are not load-bearing for balance.</p>
+    <div class="seg-grid">
+      <div><div class="seg">BPR</div><div class="desc">payment amount, method (ACH / CHK / NON), payment date hooks</div></div>
+      <div><div class="seg">TRN</div><div class="desc">reassociation trace number for matching to the EFT</div></div>
+      <div><div class="seg">DTM</div><div class="desc">qualifier 405 - production date of the payment</div></div>
+      <div><div class="seg">N1 PR / N1 PE</div><div class="desc">payer and payee identification with NPI (XX) and tax id (FI)</div></div>
+      <div><div class="seg">LX</div><div class="desc">header-level grouping segment, retained for parity with the 5010 loop hierarchy</div></div>
+      <div><div class="seg">CLP</div><div class="desc">claim payment - control number, status code, charge, paid, patient responsibility</div></div>
+      <div><div class="seg">CAS</div><div class="desc">claim adjustment - group code (CO / OA / PI / PR), reason code, amount</div></div>
+      <div><div class="seg">SVC</div><div class="desc">service-line payment detail, optional, attached to the open CLP</div></div>
+      <div><div class="seg">PLB</div><div class="desc">provider-level adjustment - withholds, refunds, capitation</div></div>
+      <div><div class="seg">SE / GE / IEA</div><div class="desc">trailer counts checked against parsed segment count</div></div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Input &amp; output spec</h2>
+    <p class="lede">Input is the raw X12 text of an EDI 835 ERA transaction. Output is normalized JSON with a fixed shape so your AR posting code does not need to re-parse anything.</p>
+    <div class="tpl-grid2">
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">input</p>
+<pre class="code"><span class="c"># raw X12 5010A1 ERA, segment delim ~, element *</span>
+ISA*00*          *00*          *ZZ*PAYERID...~
+GS*HP*PAYERID*PAYEEID*20260517*1200*1*X*005010X221A1~
+ST*835*0001~
+BPR*I*1500.00*C*ACH*CCP*01*021000021*DA*123456789*1512345678**01*031000053*DA*987654321*20260517~
+TRN*1*TRACE000123*1512345678~
+DTM*405*20260517~
+N1*PR*ACME HEALTH PLAN~
+N1*PE*MERCY CLINIC*XX*1234567893~
+LX*1~
+CLP*CLM2026A*1*2000.00*1500.00*500.00*HM*PCN123*11~
+CAS*PR*1*500.00~
+PLB*1234567893*20261231*WO*0~
+SE*9*0001~GE*1*1~IEA*1*000000001~</pre>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">output</p>
+<pre class="code">{
+  <span class="k">"format"</span>:               <span class="s">"835"</span>,
+  <span class="k">"payer"</span>:                { <span class="k">"name"</span>: <span class="s">"ACME HEALTH PLAN"</span>, <span class="k">"npi"</span>: <span class="s">null</span>, <span class="k">"contact"</span>: <span class="s">null</span> },
+  <span class="k">"payee"</span>:                { <span class="k">"name"</span>: <span class="s">"MERCY CLINIC"</span>, <span class="k">"npi"</span>: <span class="s">"1234567893"</span>, <span class="k">"tax_id"</span>: <span class="s">null</span> },
+  <span class="k">"payment"</span>: {
+    <span class="k">"method"</span>:             <span class="s">"ACH"</span>,    <span class="c">// or "CHK" / "NON"</span>
+    <span class="k">"total_amount"</span>:       <span class="s">1500.00</span>,
+    <span class="k">"trace_number"</span>:       <span class="s">"TRACE000123"</span>,
+    <span class="k">"payment_date"</span>:       <span class="s">"20260517"</span>
+  },
+  <span class="k">"claims"</span>: [
+    {
+      <span class="k">"claim_control_number"</span>:    <span class="s">"CLM2026A"</span>,
+      <span class="k">"status_code"</span>:             <span class="s">"1"</span>,            <span class="c">// CLP02 - Processed as Primary</span>
+      <span class="k">"total_charge"</span>:            <span class="s">2000.00</span>,
+      <span class="k">"total_paid"</span>:              <span class="s">1500.00</span>,
+      <span class="k">"patient_responsibility"</span>:  <span class="s">500.00</span>,
+      <span class="k">"adjustments"</span>: [
+        { <span class="k">"group_code"</span>: <span class="s">"PR"</span>, <span class="k">"reason_code"</span>: <span class="s">"1"</span>, <span class="k">"amount"</span>: <span class="s">500.00</span> }
+      ]
+    }
+  ],
+  <span class="k">"provider_adjustments"</span>: [],
+  <span class="k">"balance_check"</span>: {
+    <span class="k">"computed_total"</span>:     <span class="s">1500.00</span>,
+    <span class="k">"declared_total"</span>:     <span class="s">1500.00</span>,
+    <span class="k">"balanced"</span>:           <span class="s">true</span>
+  }
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Balance-check semantics</h2>
+    <p class="lede">Payment posting is unforgiving: a one-cent variance between the BPR declared total and the sum of CLP payments plus PLB adjustments breaks AR reconciliation. The transformer computes the balance inline and returns a boolean a posting job can fail-fast on.</p>
+    <div class="tpl-grid2">
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">the equation</p>
+<pre class="code"><span class="c"># declared total is BPR02</span>
+declared_total = BPR.02
+
+<span class="c"># computed total is sum of CLP04 minus sum of PLB amounts</span>
+<span class="c"># (PLB amounts are signed in the X12 spec; refunds reduce</span>
+<span class="c"># the EFT and capitation withholds reduce paid claims)</span>
+computed_total = sum(claim.total_paid for claim in claims)
+              - sum(plb.amount for plb in provider_adjustments)
+
+<span class="c"># tolerance is one cent to absorb FP rounding</span>
+balanced = abs(computed_total - declared_total) &lt; 0.01</pre>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">CLP02 status codes (real X12 5010)</p>
+<pre class="code">"1"  -&gt; Processed as Primary
+"2"  -&gt; Processed as Secondary
+"3"  -&gt; Processed as Tertiary
+"4"  -&gt; Denied
+"19" -&gt; Processed as Primary Forwarded
+"20" -&gt; Processed as Secondary Forwarded
+"22" -&gt; Reversal of Previous Payment
+"23" -&gt; Not Our Claim, Forwarded
+
+<span class="c"># CAS01 adjustment groups</span>
+CO -&gt; Contractual Obligation
+OA -&gt; Other Adjustment
+PI -&gt; Payer Initiated Reductions
+PR -&gt; Patient Responsibility</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Why rule class</h2>
+    <p class="lede">EDI 835 is a fully specified deterministic grammar. There is no language to interpret, no clinical judgement, no policy reasoning. A model would be slower, more expensive, and would introduce non-determinism into a payment-posting path that legal and compliance have already locked. This template is class 0 - rule - by design and by spec.</p>
+<pre class="code"><span class="c"># the recipe is one JavaScript function. No model file,</span>
+<span class="c"># no teacher, no weights. The verifier rejects any attempt</span>
+<span class="c"># to ship this as a distilled_model artifact.</span>
+
+$ kolm inspect edi-835.kolm
+artifact_class: rule
+recipes:
+  - name: edi-835
+    class: rule
+    runtime: sandboxed JS via node:vm
+    teacher_required: false
+    weights_required: false
+    quantization_applicable: false</pre>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Get the template</h2>
+    <p class="lede">Two ways to take this live. Self-serve with the sample artifact, or kick off a BAA conversation if you are routing live ERAs day one.</p>
+    <div class="tpl-cta">
+      <a class="btn primary" href="/signup?template=edi-835">Start with this template</a>
+      <a class="btn ghost" href="mailto:sales@kolm.ai?subject=BAA%20fast-track%20%E2%80%94%20edi-835">Talk to a human about BAA</a>
+      <a class="btn ghost" href="/docs/showcase/edi-835.spec.json" download>Download spec JSON</a>
+    </div>
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);margin:18px 0 0">The spec is a portable JSON file. Drop it into <code>kolm compile --spec</code> with any seed examples to build a private <code>.kolm</code> tagged <code>LicenseRef-kolm-default-1.0</code> by default; pass <code>--license</code> to tag it differently.</p>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Related EDI templates</h2>
+    <div class="tpl-related">
+      <a href="/insurance/templates/edi-837"><div class="num">01 &middot; template</div>edi-837 (claim)</a>
+      <a href="/insurance/templates/edi-834"><div class="num">03 &middot; template</div>edi-834 (enrollment)</a>
+      <a href="/insurance/templates/edi-270-271"><div class="num">04 &middot; template</div>edi-270-271 (eligibility)</a>
+      <a href="/insurance/templates/edi-278"><div class="num">05 &middot; template</div>edi-278 (prior auth)</a>
+      <a href="/insurance/templates/fhir-uscdi"><div class="num">06 &middot; template</div>fhir-uscdi (interop)</a>
+      <a href="/health-insurance"><div class="num">index</div>all health-insurance</a>
+    </div>
+  </section>
+
+</main>
+
+<footer style="border-top:1px solid var(--line);margin-top:40px;padding:24px 0;text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink-faint)">
+  <span>kolm.ai &middot; Made with .kolm &middot; <a href="/license" style="color:var(--ink-faint)">Apache-2.0</a> &middot; <a href="/baa" style="color:var(--ink-faint)">BAA</a></span>
+</footer>
+
+</body>
+</html>

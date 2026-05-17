@@ -74,6 +74,12 @@ const EXIT = {
   MISSING_PREREQ: 3,
   EXECUTION: 4,
   NOT_FOUND: 5,
+  // Aliases used by call sites that predate the canonical names. Kept stable so
+  // older `process.exit(EXIT.USAGE)` / `EXIT.RUNTIME` sites resolve to a defined
+  // number (W202 audit found 16+ sites referencing these as undefined, which
+  // node treats as exit 0 -- silently masking errors).
+  USAGE: 64,        // sysexits-style "command line usage error" (BSD convention)
+  RUNTIME: 4,       // synonym for EXECUTION
 };
 
 // Error-context wrapper. Wraps a cmd* invocation so any thrown error gets
@@ -291,6 +297,12 @@ COMMANDS
   train --spec <file>              alias for compile from a spec (training entry point)
   train --namespace <n>            alias for distill (after capture)
   seeds <sub>                      local-first training-data helpers (new|generate|list|bootstrap)
+  seeds new "<brief>" [opts]       free-text brief -> deterministic candidate seeds (Wave 199 air-gap)
+  trace <sub>                      structured agent/workflow trace inspector (stats|chain|export|new|span)
+  ir <sub>                         workflow IR compile + inspect (compile|stats|validate|replay)
+  device <sub>                     device capability inspector (list|profile|probe|check)
+  cc <sub>                         confidential compute attestation inspector (kinds|shape|verify)
+  fl <sub>                         federated learning helpers — local only (strategies|new-round|verify|aggregate)
   anonymize <file.jsonl> [opts]    shortcut for 'seeds generate --strategy redact-pii-templated'
   run <art.kolm> '<input>'         execute a .kolm against an input
   eval <art.kolm>                  re-run embedded evals, print this artifact's K-score
@@ -301,6 +313,9 @@ COMMANDS
   diff <a.kolm> <b.kolm>           compare two artifact manifests (cid, K, recipe, etc.)
   export <art.kolm> [opts]         convert a .kolm to GGUF / MLX / ONNX / CoreML / TensorRT (--preview = forecast JSON, no toolchain)
   verify <art.kolm> [--binder out.html]  full verification + optional printable compliance binder
+  keys <list|rotate|fingerprint|export>  Ed25519 key rotation lifecycle (wave 193, M+3)
+  auditor <keygen|sign|verify>     third-party attestation lifecycle (wave 166, N+7)
+  sigstore-attest <art.kolm>       upgrade a dry-run sigstore block to a Rekor-pinned bundle (alias: attest)
   improve <art-id> [--epsilon n]   re-distill from low-confidence captures; swap only on K improvement
   instant "<task>" [--n 64]        synthesise a recipe from a one-line task (requires teacher)
   models <sub>                     local model registry (list|info|recommend|pin|devices)
@@ -313,6 +328,7 @@ COMMANDS
   capture status [--namespace <n>] pairs captured / pairs until distill
   labels [--namespace <n>] [--out] download the captured corpus as JSONL
   distill --namespace <n>          auto-distill the namespace into a local LoRA
+  quantize --local-worker [opts]   quantize an adapter via the isolated worker (wave 195, Q+5)
   install <harness> [--apply]      wire kolm MCP into Claude Code / Cursor / Continue / Cline
   tune <sub>                       evolve a local adapter (init|capture-on|step|eval|promote|watch)
   rag <sub>                        airgapped local lookup (index|query|attach|list)
@@ -324,6 +340,7 @@ COMMANDS
   doctor                           sanity-check env (config, cloud, docker, project)
   logs [--limit n] [--artifact x]  tail local run history (~/.kolm/logs/runs.jsonl)
   ask "<question>"                 natural-language gateway: status, builds, install, compile, upgrade
+  nl "<request>"                   natural-language recipe scaffolder (free text -> spec.json + seeds stub)
   chat                             interactive natural-language session (airgap-safe)
   tui                              interactive .kolm shell (drag-drop artifacts + REST equivalents)
   config [base|api_key] [value]    inspect or set config
@@ -337,6 +354,9 @@ ENVIRONMENT
   KOLM_API_KEY          bearer token (overrides ~/.kolm/config.json)
   KOLM_DEBUG            set any non-empty to print stack traces on errors
   KOLM_NO_REST_HINT     suppress the "> REST equivalent" hint after run/verify
+  KOLM_SIGSTORE_REKOR_URL  Rekor instance URL (default: dry-run-only, no network)
+  KOLM_SIGSTORE_DISABLE    set to "1" to skip sigstore bundle emission entirely
+  KOLM_ED25519_DISABLE     set to "1" to skip Ed25519 signing (HMAC-only legacy mode)
 `,
   init: `kolm init - scaffold a kolm.yaml at the current directory.
 
@@ -522,6 +542,99 @@ OPTIONS (spec)
                                with {id, name, url, allows, requires, forbids}.
                                Default if omitted: LicenseRef-kolm-default-1.0.
                                See https://kolm.ai/license for the catalog.
+  --tokenizer <file>           bundle a tokenizer.json inside the artifact (rides
+                               in extra_files; hash binds into artifact_hash).
+  --distill-provenance <dir>   bind a workers/distill output dir as lineage. The
+                               dir must contain manifest.json + training-pairs.jsonl
+                               (per-file sha256 verified on read; drift is fatal).
+                               Sets manifest.lineage.source='distillation' and
+                               surfaces teacher_holdout fields to K-score (T axis).
+  --export-provenance <dir>    bind an apps/export output dir as exported targets.
+                               Manifest-driven (kolm_export: true manifest.json,
+                               recommended) or scan-driven (walks dir for .gguf /
+                               .onnx / .safetensors / .mlpackage / .pte / engine/ /
+                               mlx_model/). Each target's sha256 is recomputed;
+                               drift is fatal. Files ride inside the .kolm and
+                               manifest.export binds into artifact_hash.
+  --export <backend>           shortcut: bind a single already-produced model file
+                               or directory as an exported target (wave 163, P+6).
+                               <backend> one of gguf | onnx | safetensors | coreml
+                               | mlx | executorch | tensorrt. Pair with
+                               --export-from <path>. Synthesizes the same
+                               manifest.json + scan layout that
+                               --export-provenance consumes, so downstream
+                               verifier check #19 fires identically. Use this
+                               when you already have a .gguf/.onnx/etc. and just
+                               want it bundled with provenance; use
+                               --export-provenance when you have a full
+                               apps/export output dir. Mutually exclusive with
+                               --export-provenance.
+                               NOTE: this flag does NOT run the Python exporter
+                               (no quantization, no ONNX conversion). Run
+                               apps/export/run.py first; then either bundle the
+                               whole output dir via --export-provenance or pass
+                               the single target file via --export-from.
+  --export-from <path>         path to the file or directory to bundle as the
+                               --export target. Files: .gguf | .onnx |
+                               .safetensors | .pte. Directories: .mlpackage |
+                               mlx_model | engine (TensorRT). Required when
+                               --export is set.
+  --moe-provenance <dir>       bind an apps/trainer/moe_run.py output dir as a
+                               Mixture-of-Experts composition. manifest.json with
+                               kolm_moe:true marker required (foreign manifests
+                               refused). Router .pt + each expert artifact bundled
+                               inside the .kolm; per-file sha256 verified on read,
+                               drift fatal. manifest.moe binds into artifact_hash.
+  --pretokenize-provenance <dir>
+                               bind an apps/trainer/pretokenize_run.py output dir
+                               (KOLMIDX2 + KOLMPCK2). manifest.json with
+                               kolm_pretokenize:true marker required. tokens.idx +
+                               tokens.pack ride along; per-file sha256 verified,
+                               binary headers parsed to cross-check declared
+                               seq_count/vocab_size, drift fatal. manifest.pretokenize
+                               binds into artifact_hash.
+  --external-holdout <name>    score recipe against a public external benchmark holdout
+                               named in holdouts/catalog.json (kind='external'). The
+                               JSONL is loaded, normalized, scored with the same
+                               comparator as the seed-holdout, and per-holdout accuracy
+                               + file_sha256 + license + source_url binds into
+                               manifest.external_holdout_provenance. Verifier check #20
+                               re-anchors against the on-disk JSONL. Repeatable.
+                               Example: --external-holdout presidio-synthetic-v1
+  --adversarial-holdout <name> same shape as --external-holdout but kind='adversarial':
+                               each row is a paraphrase authored by an LLM family
+                               different from the one that generated the recipe's
+                               training corpus, so an artifact that overfits to one
+                               family's phrasing degrades visibly here. Repeatable.
+                               Example: --adversarial-holdout cross-family-pair-v1
+  --tenant-shadow-corpus <tenant_id>:<corpus_id>
+                               score recipe against a tenant-private corpus that
+                               NEVER leaves tenant storage (HIPAA data-never-leaves-
+                               tenant). The corpus must have been uploaded via
+                               POST /v1/eval/tenant_holdout first; it lives at
+                               \${KOLM_DATA_DIR}/tenant_holdouts/<tenant_id>/<corpus_id>.jsonl.
+                               Only {tenant_id, corpus_id, corpus_sha256, accuracy,
+                               ...} enters the manifest as
+                               tenant_shadow_corpus_provenance; the rows themselves
+                               stay on tenant infrastructure. Verifier check #21
+                               re-anchors when on-disk corpus is reachable, else
+                               validates schema + block hash only. Repeatable.
+                               Example: --tenant-shadow-corpus acme:claims-q2-2026
+  --auditor-attestation <file> bind a third-party auditor's signed attestation
+                               (wave 166, N+7). The file is an attestation.json
+                               produced offline by an independent auditor via
+                               \`kolm auditor sign\`. Each block carries the
+                               auditor's Ed25519 public key + signature + the
+                               artifact_hash / cid / eval_score / k_score
+                               composite the auditor verified. At compile time
+                               the block is cross-checked against the just-built
+                               artifact: drift => fatal so a stale attestation
+                               can't be silently shipped. Verifier check #22
+                               re-validates the signature offline and refuses
+                               artifacts where the auditor key fingerprint
+                               matches the builder key (a self-attestation is
+                               not independent). Repeatable.
+                               Example: --auditor-attestation ./acme-trustlab.attestation.json
 
 RECIPE SOURCE - two ways to author
   Inline:    "recipes": [{ "source": "function generate(input, lib) {...}" }]
@@ -692,8 +805,9 @@ EXAMPLE
   benchmark: `kolm bench - reproducible artifact benchmark (alias: benchmark).
 
 USAGE
-  kolm bench <artifact.kolm> [opts]            artifact-local benchmark JSON
-  kolm bench --reproduce <suite> [opts]         public-reproducer suite (Docker)
+  kolm bench <artifact.kolm> [opts]                  artifact-local benchmark JSON
+  kolm bench --reproduce <suite> [opts]               public-reproducer suite (Docker)
+  kolm bench --compare <artifact.kolm> [opts]         head-to-head: kolm vs LLM
 
 OPTIONS (artifact mode)
   --runs <n>                   runs per embedded eval case (default: 1)
@@ -702,6 +816,22 @@ OPTIONS (artifact mode)
   --device <name>              device label for the report
   --out <file>                 also write the JSON report to a file
   --json                       emit JSON to stdout (default; reserved for future formats)
+
+OPTIONS (--compare mode)
+  --corpus <jsonl>             external corpus (one {input,output} per line; legacy {prompt,completion} also accepted)
+  --runs <n>                   runs per case (default: 5)
+  --llm-sample <n>             cap LLM paths to first N cases (default: min(20, |corpus|))
+  --md <file>                  write Markdown report to file
+  --json <file>                write JSON report to file
+  --input '<json|string>'      single ad-hoc input when no --corpus and no embedded evals
+
+  Environment for --compare:
+    ANTHROPIC_API_KEY                 required to measure the llm-api path
+    KOLM_BENCH_LLM_MODEL              llm-api model (default: claude-haiku-4-5)
+    KOLM_BENCH_LLM_INPUT_RATE         override $/1M input tokens
+    KOLM_BENCH_LLM_OUTPUT_RATE        override $/1M output tokens
+    KOLM_BENCH_LOCAL_LLM_URL          local inference endpoint (default: http://127.0.0.1:11434)
+    KOLM_BENCH_LOCAL_LLM_MODEL        local model name (default: llama3.2:1b)
 
 The artifact-mode report follows the kolm-benchmark-1 spec. It includes k_score,
 evals.accuracy, latency_us.p50/p95, privacy.runtime_egress_attempts,
@@ -875,6 +1005,203 @@ verify runs an active 7-check audit using your tenant's HMAC receipt secret.
 For a quick passive read of just the manifest (no chain replay, no secret
 needed) use 'kolm inspect' instead.
 `,
+  'sigstore-attest': `kolm sigstore-attest - upgrade a dry-run sigstore block to a
+Rekor-pinned bundle. Useful when the build host was offline (CI, airgap, or
+no KOLM_SIGSTORE_REKOR_URL set at build time) but you now want a public
+transparency-log receipt without re-signing.
+
+USAGE
+  kolm sigstore-attest <artifact.kolm> [--rekor-url <https://rekor.example>] [--json]
+
+WHAT IT DOES
+  * reads receipt.json from the .kolm
+  * confirms signature_sigstore is present with dry_run:true
+  * sanity-verifies the existing bundle (signature + digest + key fingerprint)
+  * POSTs the existing (publicKey, signature, digest) as a hashedrekord entry
+  * merges {logIndex, integratedTime, logID, inclusionProof} back into the block
+  * sets dry_run:false and re-writes receipt.json inside the .kolm
+
+KEY INSIGHT
+  This does NOT require the original signing key. The existing dry-run bundle
+  already carries the Ed25519 signature; sigstore-attest just publishes that
+  signature to a transparency log. Any machine with network access to your
+  Rekor instance can attest.
+
+ENVIRONMENT
+  KOLM_SIGSTORE_REKOR_URL  default Rekor URL (overridden by --rekor-url)
+
+EXIT CODES
+  0  attested; receipt.json updated in place
+  3  bad args (no --rekor-url and no env var)
+  4  attestation failed (network, non-2xx, malformed receipt, already attested)
+  5  artifact not found
+`,
+  attest: `kolm attest - alias for 'kolm sigstore-attest'. See: kolm sigstore-attest --help.
+`,
+  keys: `kolm keys - Ed25519 signing key rotation lifecycle (wave 193).
+
+USAGE
+  kolm keys list                                           print known keys + status
+  kolm keys rotate [--kms <target>] [--overlap-days <N>]   generate new key, mark prior key rotated
+  kolm keys fingerprint                                    print active key fingerprint
+  kolm keys export --kms <target>                          emit KMS wrap-intent JSON
+
+SUBCOMMANDS
+  list         lists every key in the on-disk state with {fingerprint, created_at, status}.
+               status is one of active | rotated | retired. The current signing key shows
+               as 'active'; prior keys show as 'rotated' with rotated_at + overlap_until
+               timestamps. Empty result on first run (no rotation yet).
+  rotate       generates a fresh Ed25519 keypair and emits a rotation receipt with
+               {old_key_fingerprint, new_key_fingerprint, rotated_at, overlap_until,
+               kms_target}. For --kms=local the new private PEM is written to disk at
+               ~/.kolm/<fingerprint>.pem (mode 0600). For hosted KMS targets the PEM is
+               returned in-memory only and the wrap_intent.api_status is 'not_yet_wired'
+               (kolm emits the receipt; the customer's KMS hook applies the wrap).
+  fingerprint  prints the active key fingerprint (32-char short form by default).
+  export       prints a JSON wrap-intent block describing how the named KMS should
+               import the active signing key. Customer KMS hook consumes this output.
+
+FLAGS
+  --kms <target>          one of aws-kms | gcp-kms | azure-keyvault | vault | local
+                          (default: local)
+  --overlap-days <N>      grace window in which the prior key still verifies. Default 30
+                          (NIST SP 800-57 Part 1 Rev 5 recommendation for high-assurance
+                          signing keys). Customer-configurable down to 0 (compromise
+                          rotation, no overlap) or up to whatever the operator's policy
+                          allows.
+  --json                  machine-readable JSON output (otherwise: human-readable)
+
+EXAMPLES
+  kolm keys list
+  kolm keys list --json | jq '.[] | select(.status=="active")'
+  kolm keys rotate --kms=local
+  kolm keys rotate --kms=aws-kms --overlap-days=14 --json
+  kolm keys fingerprint
+  kolm keys export --kms=vault --json
+
+HONEST SCOPE
+  kolm emits the rotation receipt; the customer's KMS hook applies the wrapping. kolm
+  does not call AWS KMS, GCP KMS, Azure Key Vault, or HashiCorp Vault APIs. The wrap
+  intent block records the native API command + import format the customer wrapper
+  script consumes. The local path writes a PEM to disk; the hosted KMS paths return
+  the PEM in-memory only for the customer wrapper to push into the KMS and then shred.
+
+  Public-key directory registration (proof-of-control challenge) is a separate step
+  via /v1/keys/challenge; this verb only handles the local rotation lifecycle.
+`,
+  quantize: `kolm quantize - quantize a compiled adapter via the isolated quantize worker (wave 195).
+
+USAGE
+  kolm quantize --local-worker --method <method> --in <dir> --out <dir>
+  kolm quantize --local-worker --doctor
+
+METHODS
+  int4     bitsandbytes 4-bit weight quantization
+  int8     bitsandbytes 8-bit weight quantization
+  gptq     auto-gptq (post-training, calibration set required)
+  awq      AutoAWQ (activation-aware weight quantization)
+
+FLAGS
+  --local-worker          REQUIRED. Routes through workers/quantize/quantize.mjs. The
+                          root kolm install has no torch / bitsandbytes / auto-gptq deps;
+                          those live in the isolated @kolmogorov/quantize-worker package.
+  --doctor                check whether python3 + torch + bitsandbytes are importable.
+                          exits 0 when the toolchain is ready, 1 otherwise.
+  --in <dir>              source adapter directory (the .kolm artifact + LoRA weights)
+  --out <dir>             destination directory for quantized weights
+  --method <name>         one of int4 | int8 | gptq | awq (default: int4)
+  --json                  machine-readable JSON output
+
+EXAMPLES
+  kolm quantize --local-worker --doctor
+  kolm quantize --local-worker --method=int4 --in ./adapter --out ./adapter-int4
+  kolm quantize --local-worker --method=gptq --in ./adapter --out ./adapter-gptq --json
+
+HONEST SCOPE
+  This verb is opt-in. Without --local-worker the verb prints a scaffolding message and
+  exits 0 (no work done). The isolated worker at workers/quantize/ declares its Python
+  ML deps under package.json's "python.requires" key, NOT under "dependencies", so npm
+  install at the root never pulls torch or bitsandbytes. Customer runs
+  'cd workers/quantize && npm install' + sets up a Python venv to enable the verb.
+
+  The Node entrypoint detects whether python3 + bitsandbytes are importable and
+  invokes scripts/quantize.py only when both succeed; otherwise the worker stops
+  with an honest manifest naming what is missing. Today the python script is the
+  customer's responsibility (kolm ships the scaffolding; the heavy lifting is the
+  customer's opt-in).
+`,
+  auditor: `kolm auditor - third-party attestation lifecycle (wave 166, N+7).
+
+An auditor is an independent party who runs their own private key (in their
+own HSM / signing service / encrypted file) and publishes a public key. They
+sign a specific artifact's manifest claims (artifact_hash, cid, eval_score,
+k_score composite, external_holdout_hash, tenant_shadow_corpus_hash) so a
+relying party can be certain the verification didn't come from the builder.
+
+The tenant binds the auditor attestation at compile time:
+  kolm compile --spec my.spec.json --auditor-attestation ./acme-trustlab.attestation.json
+and the verifier (kolm verify) check #22 re-validates it offline using the
+public key embedded in the attestation block. Any drift between the signed
+claims and the on-disk artifact is fatal, so a stale attestation cannot be
+silently shipped. The verifier also rejects self-attestations (auditor key
+fingerprint must differ from the builder key fingerprint).
+
+USAGE
+  kolm auditor keygen --out <path> [--force]
+  kolm auditor sign <artifact.kolm> --key <key.pem> --auditor-id <slug>
+         [--accreditation "<text>"] [--scope "<text>"] [--notes "<text>"]
+         [--out <attestation.json>]
+  kolm auditor verify <artifact.kolm> <attestation.json>
+
+KEYGEN
+  --out <path>             writes private key to <path> (mode 0600) and
+                           public key to <path>.pub. The PRIVATE key never
+                           leaves the auditor's environment.
+  --force                  overwrite an existing file at <path>.
+
+SIGN
+  <artifact.kolm>          the artifact to attest. Must carry a
+                           receipt.artifact_hash (Ed25519-signed artifacts
+                           qualify; legacy HMAC-only artifacts do not).
+  --key <path>             the auditor's PRIVATE key (from \`kolm auditor keygen\`).
+  --auditor-id <slug>      public identifier (e.g. \`acme-trustlab-2026\`).
+                           Becomes part of the signed observation so a relying
+                           party can map the signature back to an organization.
+  --accreditation "<text>" optional accreditation reference (e.g. ISO 17020,
+                           SOC 2 Type II auditor #, AICPA license #). Free
+                           text, signed as-is, surfaced in verify output.
+  --scope "<text>"         optional scope statement (what the auditor verified).
+  --notes "<text>"         optional free-text notes.
+  --out <path>             output path (default: <artifact>.attestation.json).
+
+VERIFY
+  <artifact.kolm>          the artifact the attestation claims to cover.
+  <attestation.json>       the attestation file produced by sign.
+
+EXIT CODES
+  0  attestation OK (schema valid, signature valid, claims match artifact,
+     auditor key fingerprint differs from builder key fingerprint)
+  4  attestation failed (signature invalid, claim drift, schema drift, or
+     auditor key fingerprint matches builder key fingerprint)
+  5  artifact or attestation not found
+
+EXAMPLES
+  # the auditor (offline, in their environment):
+  kolm auditor keygen --out ~/secrets/acme-trustlab.pem
+  kolm auditor sign ./tenant-build.kolm \\
+       --key ~/secrets/acme-trustlab.pem \\
+       --auditor-id acme-trustlab-2026 \\
+       --accreditation "ISO/IEC 17020 #ACME-AB-2026-001" \\
+       --scope "phi redactor recipe, q2 2026 build" \\
+       --out ./acme-trustlab.attestation.json
+
+  # the tenant binds it at build time:
+  kolm compile --spec my.spec.json \\
+       --auditor-attestation ./acme-trustlab.attestation.json
+
+  # any relying party can verify offline (no network):
+  kolm auditor verify ./my-build.kolm ./acme-trustlab.attestation.json
+`,
   test: `kolm test - regression + adversarial probes against a .kolm artifact.
 
 USAGE
@@ -1031,10 +1358,62 @@ EXAMPLE
 
 USAGE
   kolm distill --namespace <n> [--base-model <name>] [--target <size>]
+  kolm distill --local-worker --spec <file> --seeds <file> --out <dir>
+                              [--mode stub|collect|full|doctor]
+                              [--teacher <vendor:model>] [--student-base <name>]
+                              [--teacher-version <string>]
+                              [--student-base-revision <commit-hash>]
+                              [--distillation-method lora|qlora|full-ft|prompt-distill]
+                              [--allow-unknown-student-base]
+                              [--split-seed N] [--redact phi|pci|multi|none|auto]
+                              [--no-redact]
+  kolm distill --local-worker --list-catalog
+                              show the teacher + student-base + method catalog and exit
 
 DEFAULTS
   --base-model Qwen/Qwen2.5-3B-Instruct
   --target     phi-3-mini
+  --redact     auto  (the worker detects redact_class from the spec when 'auto';
+                      use --redact=phi to force HIPAA Safe Harbor masking on
+                      every teacher call. --no-redact is equivalent to
+                      --redact=none and is rejected when --redact=<class>
+                      is also passed.)
+  --distillation-method
+                      derived: 'lora' when --mode=full + Python ML stack present,
+                      'prompt-distill' otherwise. Override to record the method
+                      you'll run downstream (qlora, full-ft).
+
+REDACT CLASSES (wave 157, Q+3a)
+  none   — no redactor; teacher sees raw input. Required only when the corpus
+           is known-clean (no PHI/PII/PCI).
+  phi    — HIPAA Safe Harbor: 18 identifiers (Names, dates, phone, email, SSN,
+           MRN, addresses, etc.) + 3 kolm extensions (NPI, DEA, Medicaid ID).
+           Receipt chain captures redaction_map_hash + teacher_call_log_hash +
+           reinjection_log_hash so verifier check #14 can replay the redactor
+           offline and prove raw PHI never left the tenant boundary.
+  pci    — payment-card masking profile (placeholder; same receipt chain).
+  multi  — phi + pci combined.
+  auto   — choose based on the spec's declared redact_class field.
+
+CROSS-VENDOR DISTILLATION (wave 158, Q+3b)
+  teachers  anthropic:<model>   claude-opus-4-7, claude-sonnet-4-6,
+                                claude-haiku-4-5-20251001, claude-3-5-*
+            openai:<model>      gpt-5, gpt-5-mini, o3, o3-mini,
+                                gpt-4.1, gpt-4.1-mini, gpt-4o, gpt-4o-mini
+            google:<model>      gemini-2.5-pro, gemini-2.5-flash,
+                                gemini-2.0-flash, gemini-1.5-pro
+            xai:<model>         grok-3, grok-3-mini, grok-2-1212
+            local:<model>       any OpenAI-compatible endpoint (vLLM, TGI,
+                                ollama, llama.cpp server) via --local-endpoint
+  students  western: smollm2-{360m,1.7b}, llama-3.2-{1b,3b}, phi-3.5-mini,
+                     gemma-2-2b, mistral-7b-v0.3
+            chinese: qwen2.5-{0.5b,1.5b,3b,7b}, deepseek-v3-distill-1.5b,
+                     glm-4-9b, yi-1.5-6b
+  Receipt chain captures teacher_vendor + teacher_model + teacher_version +
+  student_base + student_base_repo + student_base_origin + student_base_license +
+  student_base_revision + distillation_method. Verifier check #15 confirms the
+  full set is present whenever lineage.source='distillation'. Run
+  --list-catalog for the live list with licenses + verify_before_ship flags.
 
 EXIT CODES
   0  job started; the .kolm artifact is delivered to ~/.kolm/artifacts/ when done.
@@ -1042,7 +1421,170 @@ EXIT CODES
   3  not enough captured pairs yet (default threshold: 1000).
 
 If the bridge is unavailable, run \`kolm labels --namespace <n> --out corpus.jsonl\`
-and train locally with the on-prem trainer (Wave 2).
+and train locally with the on-prem trainer (Wave 2), or run the local worker
+directly (\`--local-worker\` flag above).
+`,
+  nl: `kolm nl - natural-language recipe scaffolder. Describe a recipe in
+plain English and get a structured scaffold ready to drop into spec.json +
+seeds.jsonl. Honest output: a SCAFFOLD, not a finished recipe. Refine and
+verify before you compile.
+
+USAGE
+  kolm nl "<free text request>" [--class <class>] [--out <path>] [--json] [--no-network]
+
+FLAGS
+  --class <c>      force the recipe class (one of rule, synthesized_rule,
+                   compiled_rule, distilled_model). Default: keyword-inferred
+                   from the request text.
+  --out <path>     write the scaffold to a file (default: stdout)
+  --json           machine-readable JSON output (otherwise: human-readable)
+  --no-network     force air-gap path (same as KOLM_AIRGAP=1). Today the
+                   networked path is NOT YET WIRED so every invocation is
+                   effectively air-gap; the flag exists for forward compat.
+
+EXAMPLES
+  kolm nl "parse EDI 837 claims and emit JSON rows"
+  kolm nl "draft an appeal letter for an 835 denial with code CO-97"
+  kolm nl "compute HEDIS HEDIS-HBD measure for a diabetic cohort"
+  kolm nl "redact PHI from clinical notes" --class rule --out scaffolds/phi.json
+
+OUTPUT
+  Returns a JSON object with:
+    suggested_slug                kebab-case slug derived from the request
+    suggested_task_description    the request, verbatim
+    recipe_class                  one of rule | synthesized_rule | compiled_rule | distilled_model
+    suggested_k_score_gate        a float in [0.5, 0.99]; gate floor for compile
+    suggested_seed_examples       length-10 array of {prompt, completion}
+    next_steps                    array of follow-up CLI commands
+    class_inference_basis         why this class was chosen ('keyword:edi', 'default', 'class_hint')
+    network_status                'air_gap' | 'not_yet_wired'
+
+HONEST SCOPE
+  Air-gap path is deterministic, keyword-based, and ships today. Networked
+  LLM-augmented path (which would refine seed examples and task description)
+  is NOT YET WIRED: every invocation today returns the air-gap output. When
+  the networked path lands, it will replace the placeholder fields with
+  the LLM's better suggestions.
+`,
+  moe: `kolm moe - compose multiple .kolm experts into one router-dispatched composite.
+
+USAGE
+  kolm moe compose --expert a.kolm --expert b.kolm [--expert c.kolm] \\
+                   --router <file.json|json-string> --out <composite.kolm>
+                   [--no-evals] [--max-evals-per-expert N]
+                   [--job-id <id>] [--task <text>] [--json]
+
+  kolm moe inspect <composite.kolm> [--json]
+                                  shows the moe block (experts, router, hashes)
+
+ROUTER SPECS
+  keyword       — first-match-wins regex over input.text
+                  {"type":"keyword",
+                   "rules":[{"regex":"refund|cancel","expert":"rcp_billing"}],
+                   "default":"rcp_general"}
+  intent_field  — dispatch to expert whose id matches input.<field>
+                  {"type":"intent_field","field":"intent","default":"rcp_general"}
+  first_match   — try each expert in order; first non-error wins
+                  {"type":"first_match"}
+
+PROVENANCE
+  The composite's manifest.training.moe carries every expert's artifact_sha256
+  + recipe_source_hash + router spec verbatim. A verifier can re-open the
+  composite, recompute each expert's hash from its source .kolm bytes, and
+  confirm the receipt chain matches.
+
+WHY MOE
+  Small focused experts compose better than one monolith. The Kimi/Qwen
+  pattern shipped in OSS. kolm makes each expert a signed, frozen, offline
+  artifact and the composer makes the composition a signed, frozen, offline
+  artifact too — your buyer gets one file to ship, not N.
+`,
+  tokenize: `kolm tokenize - pretokenize text with a kolm-owned byte-level BPE tokenizer.
+
+USAGE
+  kolm tokenize train --corpus <file> [--field input] [--vocab 8192] [--out tokenizer.json] [--json]
+  kolm tokenize encode "<text>" [--tokenizer tokenizer.json] [--json]
+  kolm tokenize decode "1 2 3"   [--tokenizer tokenizer.json]
+  kolm tokenize inspect [tokenizer.json] [--json]
+
+CORPUS FORMATS
+  *.jsonl / *.ndjson    one JSON object per line; --field selects which key to
+                        read (default: input). String fields and {text:"..."}
+                        objects are both accepted.
+  *.txt / *.md / other  one example per line.
+
+WHY THIS EXISTS
+  Modern model formats (gguf, onnx, safetensors) ship a tokenizer alongside
+  the weights. kolm artifacts can do the same — a tokenizer.json with its own
+  sha256 that a .kolm references via training_stats.tokenizer. Encoding is
+  pure-JS, no Python, no native deps, byte-level so every UTF-8 string round-
+  trips losslessly (emoji, CJK, control bytes all included).
+
+ROUNDTRIP GUARANTEE
+  tok.decode(tok.encode(s)) === s for any UTF-8 string. The base 256-byte
+  alphabet is always present, so no input can produce <unk>.
+`,
+  extract: `kolm extract - pull text out of PDFs, HTML, JSON, plain text, and images.
+
+USAGE
+  kolm extract <file> [--out path] [--json] [--ocr] [--vision] [--lang eng]
+
+INPUT TYPES
+  .txt .md .csv .tsv .log    read as utf-8
+  .json .jsonl .ndjson       flatten to key: value lines
+  .html .htm .xml            strip tags, keep paragraph breaks
+  .pdf                       pure-JS text-layer extractor (no native deps)
+  .png .jpg .jpeg .gif       require --ocr or --vision
+  .tif .tiff .webp .bmp      require --ocr or --vision
+
+FLAGS
+  --out <path>      write extracted text to a file (default: stdout)
+  --json            emit { kind, text, pages?, sha256, warnings } as JSON
+  --ocr             shell out to \`tesseract\` (must be on PATH); used for
+                    images and for scanned PDFs with no text layer
+  --vision          fall back to Anthropic vision API; needs ANTHROPIC_API_KEY
+  --lang <code>     tesseract language pack (default: eng); ignored when not --ocr
+
+WHY THIS EXISTS
+  Real seeds.jsonl files come from real documents (claim PDFs, denial letters,
+  appeals scans, HTML email bodies, JSON exports from a CRM). \`kolm extract\`
+  is the front door for ingesting any of those into a kolm pipeline.
+  Output ships as text; pair with \`kolm seeds bootstrap\` to turn the text
+  into training pairs.
+
+LIMITS
+  The pure-JS PDF extractor handles digitally-generated PDFs (Word, LaTeX,
+  browser print-to-PDF). It does NOT handle CID fonts with custom encodings,
+  encrypted PDFs, or image-only/scanned PDFs. For those, use --ocr or --vision.
+`,
+  doc: `kolm doc - multimodal document completeness checks.
+
+USAGE
+  kolm doc check <file> [--type <built-in>] [--spec <path.json>] [--json]
+                        [--ocr] [--vision] [--lang eng]
+  kolm doc types        list the built-in document types
+
+BUILT-IN TYPES
+  claim-packet      CMS-1500 / 837P claim packet
+  denial-letter     payer denial / adverse benefit determination
+  pa-request        prior authorization request packet
+  eob               explanation of benefits
+  appeal-letter     member or provider appeal letter
+
+WHY THIS EXISTS
+  A real claim packet missing the NPI, or a denial letter missing the appeal
+  deadline, breaks every downstream pipeline silently. \`kolm doc check\` makes
+  the "is this document usable?" check explicit, declarative, and gate-able.
+
+OUTPUT
+  Pretty (default):
+    verdict (pass / warn / fail) + completeness score + per-check status
+  --json:
+    full JSON ready for CI gates / downstream tooling
+
+EXIT CODES
+  0   verdict=pass or warn (warnings do not block)
+  2   verdict=fail (one or more error-severity checks failed)
 `,
   config: `kolm config - inspect or set config keys.
 
@@ -1064,6 +1606,78 @@ NOTES
   permanently breaks verification for any artifact signed under that key_id.
   Pass --json on any subcommand for machine-readable output.
 `,
+  redact: `kolm redact - token-level PHI/PII redaction wrapper for any teacher API call.
+
+USAGE
+  kolm redact [--input <path>] [--output <path>] [--map <path>] [--classes <list>] [--names <list>] [--ids <CLASS=value,...>] [--json]
+
+INPUT  defaults to stdin
+OUTPUT defaults to stdout
+MAP    if provided, writes the reversible token -> original map as JSON
+
+OPTIONS
+  --classes  CSV of HIPAA Safe Harbor classes to enable (default: all).
+             Available: NAME GEO DATE PHONE FAX EMAIL SSN MRN HPID ACCT LIC
+                        VEH DEV URL IP BIO OTHER NPI DEA MEDICAID
+  --names    CSV of tenant-supplied names to redact (beats the regex names)
+  --ids      CSV of "CLASS=value" pairs to force-redact (e.g., MRN=ABC123)
+  --json     append a one-line JSON summary {redacted_bytes, tokens, map_hash}
+
+EXAMPLES
+  echo "Hi Maria, MRN: 12345, ana@x.co" | kolm redact --map /tmp/m.json
+  kolm redact --input claim.txt --output claim.redacted.txt --map claim.map.json
+
+PIPELINE
+  Run redact -> send the redacted text to a teacher API (Anthropic / OpenAI /
+  local vLLM) -> pipe the teacher response back through 'kolm reinject --map'
+  to restore the original identifiers. The teacher never sees raw PHI.
+`,
+  reinject: `kolm reinject - reverse the kolm redact mapping after a teacher API call.
+
+USAGE
+  kolm reinject --map <path> [--input <path>] [--output <path>]
+
+REQUIRED
+  --map      path to the JSON map written by 'kolm redact --map'
+
+INPUT  defaults to stdin (usually piped from the teacher response)
+OUTPUT defaults to stdout
+
+NOTES
+  Unknown tokens (ones not present in the map) are left as-is so callers
+  can detect when the teacher dropped or paraphrased a placeholder.
+`,
+  'chat-tui': `kolm chat-tui - production-grade terminal UI to chat with any model in your registry.
+
+USAGE
+  kolm chat-tui [--model=<id>] [--system="<prompt>"] [--registry=<dir>] [--open=<path.kolm>]
+
+MODELS
+  kolm:<name>           a compiled artifact in your registry (e.g., kolm:echo)
+  kolm-path:<path>      an absolute path to a .kolm file
+  anthropic:<id>        Anthropic Claude model (requires ANTHROPIC_API_KEY)
+  openai:<id>           OpenAI GPT model (requires OPENAI_API_KEY)
+
+COMMANDS (inside the TUI)
+  /help                 list available commands
+  /model <id>           switch model
+  /models               list every model bridge-able from this shell
+  /open <path>          preload a .kolm into the registry for kolm:<name> use
+  /artifacts            show every .kolm currently visible in the registry
+  /system <prompt>      set or replace the system prompt for this session
+  /clear                wipe the message history (keeps system prompt)
+  /research <file.jsonl> log every message as JSONL events for later replay
+  /save <file.json>     write the full session to disk
+  /quit                 exit
+
+NOTES
+  - Real TTY mode uses an alt-screen with a hideable cursor; piped/non-TTY
+    mode degrades to plain prompt/reply so the same binary works in CI.
+  - Every kolm:* answer prints a one-line provenance footer:
+    sha256 / recipe / k-score / latency.
+  - The TUI shares the kolm registry with kolm run / kolm chat and the
+    OpenAI-compatible completions server.
+`,
   tui: `kolm tui - interactive shell for .kolm artifacts.
 
 USAGE
@@ -1081,6 +1695,28 @@ COMMANDS (inside the REPL)
 NOTES
   Each successful local action prints the equivalent REST call beneath the
   result, so the TUI doubles as a one-click "show me the API call" tool.
+`,
+  repl: `kolm repl - generic interactive REPL that dispatches any kolm verb.
+
+USAGE
+  kolm repl                            launch the REPL (TTY required)
+  echo "version" | kolm repl           script-mode (read commands from stdin)
+
+COMMANDS (inside the REPL)
+  <verb> [args...]                     run any kolm verb (same as 'kolm <verb>')
+  help                                 print the list of verbs
+  exit, quit                           leave the session (also: Ctrl+C, Ctrl+D)
+
+NOTES
+  Differs from 'kolm tui' (artifact-centric) and 'kolm chat' (NL session): repl
+  is a thin wrapper that re-uses the main dispatch table so any verb works.
+  Each input line is parsed shell-style and dispatched via withErrorContext; an
+  error in one verb does not exit the REPL. Use Ctrl+C to abort gracefully.
+
+HONEST SCOPE
+  No history persistence, no completion, no fancy keybindings. The single goal
+  is "give me a prompt where I can run several kolm verbs without paying the
+  cold-start cost each time". Add features in later waves only after demand.
 `,
   version: `kolm version - print CLI version and the server contract version.
 
@@ -1254,15 +1890,29 @@ EXAMPLES
   seeds: `kolm seeds - honest, local-first training-data helpers.
 
 USAGE
-  kolm seeds new <name>                                 scaffold a seeds.jsonl with starter rows
+  kolm seeds new <name>                                 scaffold a seeds.jsonl from a template
+  kolm seeds new "<brief>" [--class c] [--count N]      (Wave 199) brief -> candidate rows (air-gap default)
   kolm seeds validate <file>                            shape + parseability check before compile
   kolm seeds generate --from <file> --count <N> [opts]  rule-based mutate seeds into N rows
   kolm seeds list                                       list files under ~/.kolm/seeds with counts
   kolm seeds bootstrap --task <name>                    install a public-domain starter dataset
 
-NEW
+NEW (template route)
   Templates: phi-redactor, ticket-classifier, invoice-extractor, generic
   Writes to ./seeds.jsonl in the current directory (refuses to overwrite).
+
+NEW (brief route, Wave 199)
+  kolm seeds new "<free-text brief>" [flags]
+    --class <c>   force one of: rule | synthesized_rule | compiled_rule | distilled_model
+    --count <N>   candidate row count (default 10)
+    --out <path>  write JSONL candidates to <path> (each row carries synthesized:true)
+    --json        full JSON output instead of a human-readable summary
+    --air-gap     deterministic per-class candidate library (default today)
+    --no-air-gap  reserved for the networked teacher path (NOT YET WIRED today)
+
+  Honest scope: brief-route rows are CANDIDATES, not labels. Each carries
+  synthesized:true. The flow is scaffold -> \`kolm seeds split\` -> \`kolm eval\`
+  -> \`kolm verify\`. K-score against scaffolded candidates is not ground truth.
 
 GENERATE
   --from <file>            jsonl input. each row is {"input": "...", "output": "...", ...}
@@ -1300,6 +1950,8 @@ VALIDATE
 
 EXAMPLES
   kolm seeds new phi-redactor
+  kolm seeds new "teach me about denial codes 50 ways" --count 12       # brief route, Wave 199
+  kolm seeds new "draft a denial appeal letter" --class distilled_model --out seeds.jsonl
   kolm seeds validate ./seeds.jsonl
   kolm seeds generate --from seeds.jsonl --count 200 --strategy redact-pii-templated --seed-rng 42
   kolm seeds bootstrap --task phi-redactor
@@ -2555,11 +3207,20 @@ async function cmdCompile(args) {
       }
     }
 
-    // --examples <file.jsonl> (alias --seeds): merge user-provided eval rows
-    // into spec.evals.cases. Without this the user's training data is invisible
-    // to compile and the K-score reflects only the spec's embedded test set.
-    // Each row needs at minimum {input, expected} or {input, output}.
-    const exFlag = pickFlag(args, '--examples') || pickFlag(args, '--seeds');
+    // Q+2 demo-ready gate flags (Wave 144). `--seeds <file>` triggers the new
+    // train/holdout split path: the file is split 80/20 by deterministic
+    // hash, the recipe is scored against UNSEEN holdout rows, and the
+    // artifact's manifest records seed_provenance. `--examples` keeps the
+    // legacy merge-into-spec.evals.cases behavior for buyers who have not
+    // migrated yet (e.g., the four fixture builds). They are mutually
+    // exclusive: pass one or the other, not both, or `--examples` wins with
+    // a warning.
+    const seedsFlag = pickFlag(args, '--seeds');
+    const exFlag = pickFlag(args, '--examples');
+    let seedsForGate = null;
+    if (seedsFlag && exFlag) {
+      console.error(`warning: both --seeds and --examples passed; using --examples (legacy merge). pass only --seeds to use the Q+2 train/holdout gate.`);
+    }
     if (exFlag) {
       let exPath;
       try { exPath = fs.realpathSync(exFlag); }
@@ -2605,6 +3266,34 @@ async function cmdCompile(args) {
       spec.evals.cases = merged;
       spec.evals.n = merged.length;
       console.log(`loaded ${added} user examples from ${path.relative(process.cwd(), exPath) || exPath} (merged into evals, total ${merged.length} cases)`);
+    } else if (seedsFlag) {
+      try { seedsForGate = fs.realpathSync(seedsFlag); }
+      catch { console.error(`error: cannot find seeds file: ${seedsFlag}\nhint: run \`kolm seeds new <template>\` to scaffold seeds.jsonl, or pass an existing path.`); process.exit(EXIT.NOT_FOUND); }
+    }
+
+    // Wave 144 flag set for the demo-ready gate. Each is optional; sensible
+    // defaults if omitted. Validated before compileSpec is called so the
+    // failure mode is a clear CLI error instead of a stack trace.
+    const classFlag = pickFlag(args, '--class');
+    const comparatorFlag = pickFlag(args, '--comparator');
+    const splitSeedFlag = pickFlag(args, '--split-seed');
+    const holdoutRatioFlag = pickFlag(args, '--holdout-ratio');
+    if (classFlag && !['rule', 'compiled_rule', 'distilled_model'].includes(classFlag)) {
+      console.error(`error: --class must be one of: rule, compiled_rule, distilled_model (got '${classFlag}')`);
+      process.exit(EXIT.BAD_ARGS);
+    }
+    if (comparatorFlag && !['exact', 'normalized_string', 'json_subset', 'label'].includes(comparatorFlag)) {
+      console.error(`error: --comparator must be one of: exact, normalized_string, json_subset, label (got '${comparatorFlag}')`);
+      process.exit(EXIT.BAD_ARGS);
+    }
+    let holdoutRatioParsed = null;
+    if (holdoutRatioFlag) {
+      const v = Number(holdoutRatioFlag);
+      if (!Number.isFinite(v) || v <= 0 || v >= 1) {
+        console.error(`error: --holdout-ratio must be a number in (0, 1) (got '${holdoutRatioFlag}')`);
+        process.exit(EXIT.BAD_ARGS);
+      }
+      holdoutRatioParsed = v;
     }
     const outIdxL = args.indexOf('--out');
     const outArg = outIdxL >= 0 ? args[outIdxL + 1] : null;
@@ -2633,8 +3322,329 @@ async function cmdCompile(args) {
     if (!preOk) { console.error('PreCompile hook blocked compile (exit 2)'); process.exit(2); }
     const { compileSpec } = await import('../src/spec-compile.js');
     const wantJsonCompile = args.includes('--json');
+    const tokenizerFlag = pickFlag(args, '--tokenizer');
+    if (tokenizerFlag && !fs.existsSync(tokenizerFlag)) {
+      console.error(`error: --tokenizer ${tokenizerFlag}: not found`);
+      process.exit(EXIT.NOT_FOUND);
+    }
+    // Wave 144 — `--distill-provenance <dir>` points at a workers/distill output
+    // (or any dir that follows the worker's manifest.json shape). The compiler
+    // reads it, recomputes hashes, and binds a lineage block into the artifact.
+    const distillProvFlag = pickFlag(args, '--distill-provenance');
+    if (distillProvFlag && !fs.existsSync(distillProvFlag)) {
+      console.error(`error: --distill-provenance ${distillProvFlag}: not found`);
+      process.exit(EXIT.NOT_FOUND);
+    }
+    // Wave 146 — `--export-provenance <dir>` points at an apps/export output dir
+    // (manifest-driven preferred; scan-driven fallback). Each declared target
+    // (.gguf / .onnx / .mlpackage / .pte / engine/ / mlx_model/) is hashed,
+    // bundled inside the .kolm zip, and bound into manifest.export +
+    // artifact_hash via the export_block.
+    let exportProvFlag = pickFlag(args, '--export-provenance');
+    if (exportProvFlag && !fs.existsSync(exportProvFlag)) {
+      console.error(`error: --export-provenance ${exportProvFlag}: not found`);
+      process.exit(EXIT.NOT_FOUND);
+    }
+    // Wave 163 (P+6) — shorthand `--export=<backend> --export-from <path>` builds
+    // a temp scan-driven export dir on the fly and feeds it to the same Wave 146
+    // bridge. `<path>` is either a single file (.gguf / .onnx / .safetensors /
+    // .pte) or a directory containing one or more recognized targets. Heavy
+    // ML conversion (e.g. quantization to GGUF q4_k_m) is intentionally NOT
+    // run from this path — that lives in apps/export/run.py. The shortcut's
+    // job is to take an already-produced native artifact and bind it with full
+    // provenance into the .kolm in one command instead of two.
+    const exportBackendFlag = pickFlag(args, '--export');
+    const exportFromFlag = pickFlag(args, '--export-from');
+    if (exportBackendFlag || exportFromFlag) {
+      if (!exportBackendFlag) {
+        console.error('error: --export-from requires --export=<backend> (e.g. --export=gguf)');
+        process.exit(EXIT.BAD_ARGS);
+      }
+      if (!exportFromFlag) {
+        console.error('error: --export=<backend> requires --export-from <file-or-dir> (or use --export-provenance <dir> if you have a kolm_export manifest already)');
+        process.exit(EXIT.BAD_ARGS);
+      }
+      const VALID_BACKENDS = ['gguf', 'onnx', 'safetensors', 'coreml', 'mlx', 'executorch', 'tensorrt'];
+      if (!VALID_BACKENDS.includes(exportBackendFlag)) {
+        console.error(`error: --export must be one of: ${VALID_BACKENDS.join(' | ')} (got '${exportBackendFlag}')`);
+        process.exit(EXIT.BAD_ARGS);
+      }
+      if (exportProvFlag) {
+        console.error('error: --export/--export-from and --export-provenance are mutually exclusive; pick one. --export-provenance points at an existing apps/export dir; --export=<backend> --export-from <path> is the shortcut for an already-produced file.');
+        process.exit(EXIT.BAD_ARGS);
+      }
+      if (!fs.existsSync(exportFromFlag)) {
+        console.error(`error: --export-from ${exportFromFlag}: not found`);
+        process.exit(EXIT.NOT_FOUND);
+      }
+      // Synthesize a temp dir mirroring apps/export/run.py output shape: copy
+      // the input file(s) in, write manifest.json with kolm_export:true so the
+      // bridge picks it up as authoritative. For directory input, copy the
+      // directory entries by name (preserving subdir structure so .mlpackage
+      // and mlx_model targets keep working).
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kolm-export-shortcut-'));
+      const fromAbs = path.resolve(exportFromFlag);
+      const fromStat = fs.statSync(fromAbs);
+      const targetsToBundle = [];
+      if (fromStat.isFile()) {
+        const baseName = path.basename(fromAbs);
+        const destAbs = path.join(tmpDir, baseName);
+        fs.copyFileSync(fromAbs, destAbs);
+        const buf = fs.readFileSync(destAbs);
+        const sha = crypto.createHash('sha256').update(buf).digest('hex');
+        targetsToBundle.push({
+          format: exportBackendFlag,
+          filename: baseName,
+          sha256: sha,
+          size_bytes: buf.length,
+        });
+      } else if (fromStat.isDirectory()) {
+        // Walk the dir, infer recognized targets, copy in. Same recognition
+        // patterns as src/export-provenance.js FORMAT_PATTERNS.
+        const entries = fs.readdirSync(fromAbs).sort();
+        const RECOGNIZED_FILE = /\.(gguf|onnx|safetensors|pte)$/i;
+        const RECOGNIZED_DIR = /(\.mlpackage|mlx_model|^engine)$/i;
+        for (const name of entries) {
+          if (name === 'manifest.json') continue;
+          const childAbs = path.join(fromAbs, name);
+          const st = fs.statSync(childAbs);
+          if (st.isFile() && RECOGNIZED_FILE.test(name)) {
+            const destAbs = path.join(tmpDir, name);
+            fs.copyFileSync(childAbs, destAbs);
+            const buf = fs.readFileSync(destAbs);
+            const sha = crypto.createHash('sha256').update(buf).digest('hex');
+            targetsToBundle.push({
+              format: exportBackendFlag,
+              filename: name,
+              sha256: sha,
+              size_bytes: buf.length,
+            });
+          } else if (st.isDirectory() && RECOGNIZED_DIR.test(name)) {
+            const destAbs = path.join(tmpDir, name);
+            fs.mkdirSync(destAbs, { recursive: true });
+            const walk = (rel) => {
+              const items = fs.readdirSync(path.join(childAbs, rel || '')).sort();
+              for (const it of items) {
+                const r = rel ? path.join(rel, it) : it;
+                const src = path.join(childAbs, r);
+                const dst = path.join(destAbs, r);
+                const ss = fs.statSync(src);
+                if (ss.isDirectory()) { fs.mkdirSync(dst, { recursive: true }); walk(r); }
+                else if (ss.isFile()) { fs.copyFileSync(src, dst); }
+              }
+            };
+            walk('');
+            // Directory hash will be recomputed by the bridge from the
+            // copied tree; targets entry just declares filename + format.
+            targetsToBundle.push({
+              format: exportBackendFlag,
+              filename: name,
+              // sha256 omitted: bridge re-hashes via hashDir() and asserts
+              // against any declared value; absent means "compute and accept".
+            });
+          }
+        }
+        if (targetsToBundle.length === 0) {
+          console.error(`error: --export-from ${exportFromFlag} has no recognized targets (expected .gguf/.onnx/.safetensors/.pte file, or .mlpackage/mlx_model/engine directory)`);
+          process.exit(EXIT.BAD_ARGS);
+        }
+      } else {
+        console.error(`error: --export-from ${exportFromFlag} is neither file nor directory`);
+        process.exit(EXIT.BAD_ARGS);
+      }
+      // Recompute target sha256s after copying (file path) — already done
+      // above. For dir targets we leave sha256 unset and let the bridge fill.
+      const exportManifest = {
+        kolm_export: true,
+        kolm_export_version: '0.1.0',
+        backend: exportBackendFlag,
+        exported_at: new Date().toISOString(),
+        targets: targetsToBundle,
+        options: { shortcut: 'kolm-compile-export-from', source: fromAbs },
+      };
+      fs.writeFileSync(path.join(tmpDir, 'manifest.json'), JSON.stringify(exportManifest, null, 2));
+      exportProvFlag = tmpDir;
+    }
+    // Wave 147 — `--moe-provenance <dir>` points at an apps/trainer/moe_run.py
+    // output dir (manifest.json with kolm_moe:true marker required; foreign
+    // manifests are refused). Router + per-expert files are hashed, bundled
+    // inside the .kolm zip, and bound into manifest.moe + artifact_hash via
+    // the moe_block. K-score remains gated on holdout independence as before.
+    const moeProvFlag = pickFlag(args, '--moe-provenance');
+    if (moeProvFlag && !fs.existsSync(moeProvFlag)) {
+      console.error(`error: --moe-provenance ${moeProvFlag}: not found`);
+      process.exit(EXIT.NOT_FOUND);
+    }
+    // Wave 148 — `--pretokenize-provenance <dir>` points at an
+    // apps/trainer/pretokenize_run.py output dir (manifest.json with
+    // kolm_pretokenize:true + tokens.idx KOLMIDX2 + tokens.pack KOLMPCK2).
+    // The bridge re-hashes both binary files, cross-checks their headers
+    // against manifest claims, and binds the resulting block into
+    // artifact_hash via pretokenize_hash.
+    const preTokProvFlag = pickFlag(args, '--pretokenize-provenance');
+    if (preTokProvFlag && !fs.existsSync(preTokProvFlag)) {
+      console.error(`error: --pretokenize-provenance ${preTokProvFlag}: not found`);
+      process.exit(EXIT.NOT_FOUND);
+    }
+    // Wave 164 (N+3 / N+4) — `--external-holdout <name>` and
+    // `--adversarial-holdout <name>` are repeatable flags that pull a holdout
+    // by name from holdouts/catalog.json, run the compiled recipe over it,
+    // and bind the resulting per-holdout accuracy + file_sha256 + license +
+    // source_url into manifest.external_holdout_provenance. Verifier check
+    // #20 re-anchors against the on-disk JSONL.
+    const collectRepeated = (flag) => {
+      const out = [];
+      for (let i = 0; i < args.length; i++) {
+        if (args[i] === flag && i + 1 < args.length && !args[i + 1].startsWith('-')) {
+          out.push(args[i + 1]);
+        } else if (args[i].startsWith(flag + '=')) {
+          out.push(args[i].slice(flag.length + 1));
+        }
+      }
+      return out;
+    };
+    const externalHoldoutsFlag = collectRepeated('--external-holdout');
+    const adversarialHoldoutsFlag = collectRepeated('--adversarial-holdout');
+    // Wave 165 (N+5) — `--tenant-shadow-corpus <tenant_id>:<corpus_id>` (repeatable).
+    // Parse colon-pair into {tenant_id, corpus_id}; fail-fast on bad shape so
+    // the user sees the problem before spec-compile spawns. Storage lives at
+    // ${KOLM_DATA_DIR}/tenant_holdouts/<tenant_id>/<corpus_id>.jsonl — the
+    // corpus must already be uploaded via POST /v1/eval/tenant_holdout (or
+    // saved directly via the tenant-holdout module by an offline tool).
+    const tenantShadowFlag = collectRepeated('--tenant-shadow-corpus');
+    const tenantShadowParsed = [];
+    for (const ref of tenantShadowFlag) {
+      const idx = ref.indexOf(':');
+      if (idx <= 0 || idx === ref.length - 1) {
+        console.error(`error: --tenant-shadow-corpus '${ref}': expected '<tenant_id>:<corpus_id>'`);
+        process.exit(EXIT.USAGE);
+      }
+      tenantShadowParsed.push({ tenant_id: ref.slice(0, idx), corpus_id: ref.slice(idx + 1) });
+    }
+    // Wave 166 (N+7) — `--auditor-attestation <file>` (repeatable). Each path
+    // points at an attestation.json produced offline by a third-party auditor
+    // (kolm auditor sign). The compiler loads + schema-validates each block,
+    // binds them into manifest.auditor_attestation_provenance + artifact_hash,
+    // then cross-checks every block's signed claims (artifact_hash, cid,
+    // eval_score, k_score composite, external_holdout_hash, tenant_shadow_corpus_hash)
+    // against the just-built artifact. Drift between attestation and current
+    // build is fatal so a stale attestation can't be silently shipped.
+    const auditorAttestationFlag = collectRepeated('--auditor-attestation');
+    for (const filePath of auditorAttestationFlag) {
+      if (!fs.existsSync(filePath)) {
+        console.error(`error: --auditor-attestation ${filePath}: not found`);
+        process.exit(EXIT.NOT_FOUND);
+      }
+    }
+    // Wave 167 (M+4) — `--supersession-of <predecessor.kolm>` + required
+    // `--supersession-reason <reason>` (drift_detected|scheduled_rebuild|
+    // security_patch|recipe_revision|policy_change|tenant_request). Optional
+    // `--supersession-drift-report <report.json>` when reason='drift_detected'
+    // (so the evidence for retiring the predecessor is bound into the new
+    // artifact's manifest). Optional `--supersession-authorized-by <id>` and
+    // `--supersession-notes <text>` for audit-trail metadata. The compiler
+    // loads the predecessor .kolm, pulls its artifact_hash + cid from the
+    // receipt, constructs the supersession block, and binds it into the new
+    // artifact_hash via artifact_hash_input.supersession_hash.
+    const supersessionOfFlag = pickFlag(args, '--supersession-of');
+    const supersessionReasonFlag = pickFlag(args, '--supersession-reason');
+    const supersessionDriftReportFlag = pickFlag(args, '--supersession-drift-report');
+    const supersessionAuthorizedByFlag = pickFlag(args, '--supersession-authorized-by');
+    const supersessionNotesFlag = pickFlag(args, '--supersession-notes');
+    let supersessionInput = null;
+    if (supersessionOfFlag || supersessionReasonFlag) {
+      if (!supersessionOfFlag) {
+        console.error('error: --supersession-reason supplied without --supersession-of <predecessor.kolm>');
+        process.exit(EXIT.BAD_ARGS);
+      }
+      if (!supersessionReasonFlag) {
+        console.error('error: --supersession-of supplied without --supersession-reason <reason>');
+        console.error('  valid reasons: drift_detected, scheduled_rebuild, security_patch, recipe_revision, policy_change, tenant_request');
+        process.exit(EXIT.BAD_ARGS);
+      }
+      if (!fs.existsSync(supersessionOfFlag)) {
+        console.error(`error: --supersession-of ${supersessionOfFlag}: not found`);
+        process.exit(EXIT.NOT_FOUND);
+      }
+      const { loadArtifact } = await import('../src/artifact-runner.js');
+      let predecessorBundle;
+      try {
+        predecessorBundle = loadArtifact(supersessionOfFlag);
+      } catch (e) {
+        console.error(`error: --supersession-of ${supersessionOfFlag} failed to load: ${e.message}`);
+        process.exit(EXIT.MISSING_PREREQ);
+      }
+      const predHash = predecessorBundle.receipt?.artifact_hash;
+      const predCid = predecessorBundle.manifest?.cid || null;
+      if (!predHash || !/^[0-9a-f]{64}$/.test(predHash)) {
+        console.error(`error: --supersession-of ${supersessionOfFlag}: predecessor receipt missing artifact_hash`);
+        process.exit(EXIT.MISSING_PREREQ);
+      }
+      supersessionInput = {
+        predecessor_artifact_hash: predHash,
+        reason: supersessionReasonFlag,
+        supersession_date: new Date().toISOString(),
+      };
+      if (predCid) supersessionInput.predecessor_cid = predCid;
+      if (supersessionAuthorizedByFlag) supersessionInput.authorized_by = supersessionAuthorizedByFlag;
+      if (supersessionNotesFlag) supersessionInput.notes = supersessionNotesFlag;
+      // drift_detected MUST carry evidence. Load the drift report if provided.
+      if (supersessionDriftReportFlag) {
+        if (!fs.existsSync(supersessionDriftReportFlag)) {
+          console.error(`error: --supersession-drift-report ${supersessionDriftReportFlag}: not found`);
+          process.exit(EXIT.NOT_FOUND);
+        }
+        try {
+          const { loadDriftReport } = await import('../src/drift-supersession.js');
+          const report = loadDriftReport(supersessionDriftReportFlag);
+          supersessionInput.drift_report_hash = report.hash;
+          // Embed the breached + drifted signals (NOT the within ones) so the
+          // supersession block stays compact while still self-contained.
+          supersessionInput.drift_signals = report.signals
+            .filter(s => s.status !== 'within')
+            .map(s => {
+              const sig = { axis: s.axis, baseline: s.baseline, current: s.current, status: s.status };
+              if (typeof s.delta === 'number') sig.delta = s.delta;
+              if (typeof s.tolerance_fail === 'number') sig.tolerance_fail = s.tolerance_fail;
+              return sig;
+            });
+        } catch (e) {
+          console.error(`error: --supersession-drift-report ${supersessionDriftReportFlag}: ${e.message}`);
+          process.exit(EXIT.MISSING_PREREQ);
+        }
+      }
+    }
+    // Wave 167 (M+3) — `--drift-report <report.json>` embeds a drift report
+    // block into the new artifact's manifest. Verifier surfaces verdict via
+    // binder check #24 (within → pass, drift → pass+warn, breach → fail).
+    const driftReportFlag = pickFlag(args, '--drift-report');
+    if (driftReportFlag && !fs.existsSync(driftReportFlag)) {
+      console.error(`error: --drift-report ${driftReportFlag}: not found`);
+      process.exit(EXIT.NOT_FOUND);
+    }
     try {
-      const r = await compileSpec(spec, { outDir: outDirL, outPath, license: licenseArg });
+      const r = await compileSpec(spec, {
+        outDir: outDirL,
+        outPath,
+        license: licenseArg,
+        seedsPath: seedsForGate,
+        comparator: comparatorFlag || undefined,
+        splitSeed: splitSeedFlag || undefined,
+        holdoutRatio: holdoutRatioParsed != null ? holdoutRatioParsed : undefined,
+        artifactClass: classFlag || undefined,
+        allowSeedAutoResolve: false,
+        tokenizerPath: tokenizerFlag || undefined,
+        distillProvenancePath: distillProvFlag || undefined,
+        exportProvenancePath: exportProvFlag || undefined,
+        moeProvenancePath: moeProvFlag || undefined,
+        pretokenizeProvenancePath: preTokProvFlag || undefined,
+        externalHoldouts: externalHoldoutsFlag.length ? externalHoldoutsFlag : undefined,
+        adversarialHoldouts: adversarialHoldoutsFlag.length ? adversarialHoldoutsFlag : undefined,
+        tenantShadowCorpora: tenantShadowParsed.length ? tenantShadowParsed : undefined,
+        auditorAttestations: auditorAttestationFlag.length ? auditorAttestationFlag : undefined,
+        supersession: supersessionInput || undefined,
+        drift_report: driftReportFlag || undefined,
+      });
       const composite = r.k_score && typeof r.k_score.composite === 'number' ? r.k_score.composite : null;
       const gate = kGate();
       const verdict = composite == null ? null : (composite >= gate ? 'pass' : 'fail');
@@ -2901,6 +3911,13 @@ async function withBenchmark(fn) {
   return fn(m);
 }
 
+// Wave 151 — taxonomy lookup for `kolm inspect`. Lazy-imported so cold-start
+// commands that never display a class badge (whoami, --help) pay nothing.
+async function withTaxonomy(fn) {
+  const m = await import('../src/recipe-class.js');
+  return fn(m);
+}
+
 function resolveArtifact(p) {
   if (!p) return null;
   if (fs.existsSync(p)) return path.resolve(p);
@@ -3104,6 +4121,14 @@ async function cmdBenchmark(args) {
   if (args.includes('--reproduce')) {
     return cmdBenchReproduce(args);
   }
+  // `kolm bench --compare <artifact.kolm> [--corpus seeds.jsonl] [--md out.md]`
+  // runs the head-to-head comparison: kolm-js vs kolm-native vs llm-api vs
+  // local-llm on the same corpus. This is the answer to "is the compiled
+  // artifact actually faster and cheaper than an LLM call?" — measured, not
+  // claimed. See src/benchmark-compare.js for the per-path probe rules.
+  if (args.includes('--compare')) {
+    return cmdBenchCompare(args);
+  }
   const ap = resolveArtifact(args[0]);
   if (!ap) {
     const err = new Error(`artifact not found: ${args[0]}`);
@@ -3139,6 +4164,66 @@ async function cmdBenchmark(args) {
     appendRunLog({ command: 'bench', artifact: ap, runs: report.runs ?? null, k_composite: k, latency_us: lat, ok: true });
     await dispatchBench('PostBench', { command: 'bench', cwd: process.cwd(), artifact: ap, runs: report.runs, summary: report.summary || null }, { onResult: printHookResult });
   });
+}
+
+// `kolm bench --compare <artifact.kolm> [opts]`
+// Head-to-head benchmark: kolm-js vs kolm-native vs llm-api vs local-llm
+// over the same input set. Used to answer "is the compiled artifact actually
+// faster + cheaper + at-least-as-correct as an LLM?" with observed numbers.
+async function cmdBenchCompare(args) {
+  // strip --compare so the rest of arg parsing is positional-friendly
+  const rest = args.filter(a => a !== '--compare');
+  const positional = rest.find(a => !a.startsWith('-'));
+  const ap = positional ? resolveArtifact(positional) : null;
+  if (!ap) {
+    console.error('error: kolm bench --compare requires an artifact path');
+    console.error('usage: kolm bench --compare <artifact.kolm> [--corpus seeds.jsonl] [--runs N] [--llm-sample N] [--md out.md] [--json out.json]');
+    process.exit(EXIT.USAGE || 64);
+  }
+  const value = (flag) => {
+    const i = rest.indexOf(flag);
+    return i >= 0 ? rest[i + 1] : undefined;
+  };
+  const corpusPath = value('--corpus');
+  const runs = value('--runs') ? Number(value('--runs')) : undefined;
+  const llmSampleN = value('--llm-sample') ? Number(value('--llm-sample')) : undefined;
+  const mdOut = value('--md');
+  const jsonOut = value('--json');
+  const inputRaw = value('--input');
+  let input;
+  if (inputRaw !== undefined) {
+    try { input = JSON.parse(inputRaw); } catch { input = inputRaw; }
+  }
+
+  const { compareArtifact, readCorpusJsonl } = await import('../src/benchmark-compare.js');
+  let cases;
+  if (corpusPath) {
+    if (!fs.existsSync(corpusPath)) {
+      console.error(`error: --corpus file not found: ${corpusPath}`);
+      process.exit(EXIT.NOT_FOUND);
+    }
+    cases = readCorpusJsonl(corpusPath);
+    if (cases.length === 0) {
+      console.error(`error: --corpus ${corpusPath} contained no usable rows`);
+      process.exit(EXIT.USAGE || 64);
+    }
+    process.stderr.write(`[bench --compare] loaded ${cases.length} rows from ${corpusPath}\n`);
+  }
+  const report = await compareArtifact(ap, { cases, input, runs, llmSampleN });
+
+  if (jsonOut) {
+    fs.writeFileSync(jsonOut, JSON.stringify(report, null, 2) + '\n');
+    process.stderr.write(`[bench --compare] JSON report written to ${jsonOut}\n`);
+  }
+  if (mdOut) {
+    const { renderMarkdownReport } = await import('../src/bench-report-md.js');
+    fs.writeFileSync(mdOut, renderMarkdownReport(report));
+    process.stderr.write(`[bench --compare] Markdown report written to ${mdOut}\n`);
+  }
+  // Default stdout: JSON (machine-readable). If --md is the only output
+  // requested, also emit JSON to stdout so the user always has a parseable
+  // surface — Markdown is for humans, JSON is for jq pipes.
+  console.log(JSON.stringify(report, null, 2));
 }
 
 // `kolm bench --reproduce <suite> [--seed N] [--n N] [--out path] [--dry-run]`
@@ -3365,6 +4450,22 @@ async function cmdInspect(args) {
     console.log(`runtime:    ${m.runtime || '?'}`);
     console.log(`tier:       ${m.tier || '?'}`);
     console.log(`base model: ${m.base_model || 'none'}`);
+    // Wave 151 — honest recipe-class taxonomy badge. Every artifact declares
+    // exactly one of: rule / synthesized_rule / compiled_rule / distilled_model.
+    // The badge shows the rolled-up class and, when the bundle mixes classes,
+    // the per-class count so a reader sees "5 rule + 1 distilled_model" instead
+    // of just "distilled_model".
+    const klass = m.artifact_class || 'rule';
+    const badge = await withTaxonomy(({ classBadge }) => classBadge(klass));
+    console.log(`class:      ${badge}`);
+    const bd = m.artifact_class_breakdown;
+    if (bd && Object.keys(bd).length > 1) {
+      const breakdownLine = Object.entries(bd)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, n]) => `${n} ${k}`)
+        .join(' + ');
+      console.log(`            breakdown: ${breakdownLine}`);
+    }
     const sigMode = m.signature_mode || '?';
     const sigStatus = m.signature_valid === true ? 'valid' : (m.signature_valid === false ? 'INVALID' : 'unknown');
     console.log(`signature:  ${sigStatus} (${sigMode})`);
@@ -3770,6 +4871,131 @@ async function cmdVerify(args) {
     const err = new Error('verification failed');
     err.exitCode = EXIT.EXECUTION;
     throw err;
+  }
+}
+
+// Wave 150 — sigstore post-build upgrade. Takes a .kolm whose receipt has a
+// dry-run signature_sigstore block, POSTs the existing (publicKey, signature,
+// digest) to a Rekor transparency log, merges the resulting log entry back
+// into the bundle, and re-writes the .kolm in place. The private key is NOT
+// required (we re-submit the existing signature) — any machine with network
+// access to the configured Rekor instance can attest.
+async function cmdSigstoreAttest(args) {
+  if (maybeHelp('sigstore-attest', args)) return;
+  const jsonOut = args.includes('--json');
+  const positional = args.filter(a => !a.startsWith('--'));
+  const ap = resolveArtifact(positional[0]);
+  if (!ap) {
+    const err = new Error(`artifact not found: ${positional[0] || '(no artifact specified)'}`);
+    err.exitCode = EXIT.NOT_FOUND;
+    throw err;
+  }
+  const rekorIdx = args.indexOf('--rekor-url');
+  const rekorOverride = (rekorIdx >= 0 && args[rekorIdx + 1] && !args[rekorIdx + 1].startsWith('--'))
+    ? args[rekorIdx + 1] : null;
+  const explicitRekor = rekorOverride || process.env.KOLM_SIGSTORE_REKOR_URL || null;
+  if (!explicitRekor) {
+    const err = new Error('no rekor url: set KOLM_SIGSTORE_REKOR_URL or pass --rekor-url <https://rekor.example>');
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  let AdmZip;
+  try {
+    ({ default: AdmZip } = await import('adm-zip'));
+  } catch (e) {
+    const err = new Error('adm-zip not available; reinstall kolm from a fresh global');
+    err.exitCode = EXIT.MISSING_PREREQ;
+    throw err;
+  }
+  const { submitToRekor, verifySigstoreBundle } = await import(new URL('../src/sigstore.js', import.meta.url).href);
+  const { canonicalJson } = await import(new URL('../src/cid.js', import.meta.url).href);
+
+  const buf = fs.readFileSync(ap);
+  let zip;
+  try { zip = new AdmZip(buf); }
+  catch (e) {
+    const err = new Error(`could not parse ${path.basename(ap)} as .kolm: ${e.message}`);
+    err.exitCode = EXIT.EXECUTION;
+    throw err;
+  }
+  const receiptEntry = zip.getEntry('receipt.json');
+  if (!receiptEntry) {
+    const err = new Error('artifact has no receipt.json; cannot attest');
+    err.exitCode = EXIT.NOT_FOUND;
+    throw err;
+  }
+  let receipt;
+  try { receipt = JSON.parse(receiptEntry.getData().toString('utf8')); }
+  catch (e) {
+    const err = new Error(`receipt.json is not valid JSON: ${e.message}`);
+    err.exitCode = EXIT.EXECUTION;
+    throw err;
+  }
+  if (!receipt.signature_sigstore) {
+    const err = new Error('receipt has no signature_sigstore block; rebuild with Wave 150+ first');
+    err.exitCode = EXIT.EXECUTION;
+    throw err;
+  }
+  if (receipt.signature_sigstore.dry_run !== true) {
+    const err = new Error(`receipt is already attested (rekor logIndex=${receipt.signature_sigstore?.rekor_log_entry?.logIndex})`);
+    err.exitCode = EXIT.EXECUTION;
+    throw err;
+  }
+  const existing = receipt.signature_sigstore;
+  const { signature_sigstore, ...payloadWithoutSigstore } = receipt;
+  void signature_sigstore;
+  const payloadCanonical = canonicalJson(payloadWithoutSigstore);
+
+  const sanity = verifySigstoreBundle(existing, payloadCanonical);
+  if (!sanity.ok) {
+    const err = new Error(`existing sigstore bundle does not verify locally: ${sanity.reason}`);
+    err.exitCode = EXIT.EXECUTION;
+    throw err;
+  }
+  const pkB64 = existing?.bundle?.verificationMaterial?.publicKey?.rawBytes;
+  const sigB64 = existing?.bundle?.messageSignature?.signature;
+  const digestB64 = existing?.bundle?.messageSignature?.messageDigest?.digest;
+  const publicKey = Buffer.from(pkB64, 'base64').toString('utf8');
+  const digestHex = Buffer.from(digestB64, 'base64').toString('hex');
+
+  if (!jsonOut) console.error(`submitting to Rekor: ${explicitRekor} (digest=${digestHex.slice(0, 16)}…)`);
+  const entry = await submitToRekor({
+    publicKey,
+    signatureB64: sigB64,
+    digestHex,
+    url: explicitRekor,
+  });
+  if (!entry) {
+    const err = new Error(`Rekor submission failed (network error or non-2xx from ${explicitRekor})`);
+    err.exitCode = EXIT.EXECUTION;
+    throw err;
+  }
+  const merged = { ...existing, rekor_log_entry: entry, dry_run: false };
+  receipt.signature_sigstore = merged;
+  const updatedReceipt = Buffer.from(JSON.stringify(receipt, null, 2));
+  zip.updateFile('receipt.json', updatedReceipt);
+  zip.writeZip(ap);
+  if (jsonOut) {
+    console.log(JSON.stringify({
+      ok: true,
+      artifact: path.basename(ap),
+      rekor_url: entry.rekor_url || explicitRekor,
+      rekor_log_index: entry.logIndex,
+      rekor_uuid: entry.uuid,
+      integrated_time: entry.integratedTime,
+      log_id: entry.logID,
+      digest_hex: digestHex,
+    }, null, 2));
+  } else {
+    console.log(`attested ${path.basename(ap)}`);
+    console.log(`  rekor:       ${entry.rekor_url || explicitRekor}`);
+    console.log(`  log index:   ${entry.logIndex}`);
+    console.log(`  uuid:        ${entry.uuid}`);
+    console.log(`  integrated:  ${entry.integratedTime ? new Date(entry.integratedTime * 1000).toISOString() : '?'}`);
+    console.log(`  log id:      ${entry.logID || '?'}`);
+    console.log(`  digest:      ${digestHex}`);
+    console.log('');
+    console.log('hint: kolm verify <artifact> will now report sigstore check as pass');
   }
 }
 
@@ -4255,6 +5481,803 @@ async function cmdHmac(args) {
   process.exit(EXIT.BAD_ARGS || 2);
 }
 
+// kolm keygen [--out <path>] [--force]
+//
+//   Wave 149. Generate a fresh Ed25519 keypair for receipt signing. By
+//   default writes the private key to `~/.kolm/signing-key.pem` (mode 0600)
+//   and prints the public key + fingerprint to stdout. The next `kolm
+//   compile` automatically picks up the cached key and signs receipts with
+//   it — no env var needed. Use --out to write to a different path; use
+//   --force to overwrite an existing key (DANGEROUS — receipts signed with
+//   the old key won't verify against the new fingerprint).
+async function cmdKeygen(args) {
+  if (maybeHelp('keygen', args)) return;
+  const path = await import('node:path');
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const { generateKeyPair, keyFingerprint } = await import('../src/ed25519.js');
+  const outFlag = pickFlag(args, '--out');
+  const force = args.includes('--force');
+  const outPath = outFlag || path.default.join(os.default.homedir(), '.kolm', 'signing-key.pem');
+  if (fs.default.existsSync(outPath) && !force) {
+    console.error(`refused: ${outPath} already exists. pass --force to overwrite (will rotate signing fingerprint).`);
+    process.exit(EXIT.ALREADY_EXISTS || 2);
+  }
+  const { publicKey, privateKey } = generateKeyPair();
+  try {
+    fs.default.mkdirSync(path.default.dirname(outPath), { recursive: true, mode: 0o700 });
+    fs.default.writeFileSync(outPath, privateKey, { mode: 0o600 });
+  } catch (e) {
+    console.error('cannot write key file: ' + e.message);
+    process.exit(EXIT.IO_ERROR || 2);
+  }
+  const fp = keyFingerprint(publicKey);
+  console.log('generated ed25519 keypair');
+  console.log('  private  : ' + outPath + ' (mode 0600)');
+  console.log('  fingerprint: ' + fp);
+  console.log('  short_fp   : ' + fp.slice(0, 32));
+  console.log('');
+  console.log('public key (paste into /v1/keys/register or share with verifiers):');
+  console.log(publicKey.trimEnd());
+  console.log('');
+  console.log('next steps:');
+  console.log('  kolm pubkey                            # confirm cached key is in use');
+  console.log('  kolm compile <spec>                    # signs receipts with this key by default');
+  console.log('  curl -X POST $KOLM_BASE/v1/keys/challenge -d \'{}\'   # publish key for third-party verification');
+}
+
+// kolm pubkey [--key <path>] [--json]
+//
+//   Wave 149. Print the public key + fingerprint of the active signing key
+//   (env var if set, else cached ~/.kolm/signing-key.pem). With --json,
+//   emits machine-readable output for scripting (`kolm pubkey --json |
+//   jq -r .public_key`).
+async function cmdPubkey(args) {
+  if (maybeHelp('pubkey', args)) return;
+  const path = await import('node:path');
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const crypto = await import('node:crypto');
+  const { keyFingerprint } = await import('../src/ed25519.js');
+  const keyFlag = pickFlag(args, '--key');
+  const wantJson = args.includes('--json');
+  let pem = null;
+  let source = null;
+  if (keyFlag) {
+    if (!fs.default.existsSync(keyFlag)) {
+      console.error('no such file: ' + keyFlag);
+      process.exit(EXIT.NOT_FOUND || 2);
+    }
+    pem = fs.default.readFileSync(keyFlag, 'utf8');
+    source = 'file:' + keyFlag;
+  } else if (process.env.KOLM_ED25519_PRIVATE_KEY) {
+    pem = process.env.KOLM_ED25519_PRIVATE_KEY;
+    source = 'env:KOLM_ED25519_PRIVATE_KEY';
+  } else if (process.env.KOLM_ED25519_PRIVATE_KEY_PATH) {
+    pem = fs.default.readFileSync(process.env.KOLM_ED25519_PRIVATE_KEY_PATH, 'utf8');
+    source = 'env:KOLM_ED25519_PRIVATE_KEY_PATH (' + process.env.KOLM_ED25519_PRIVATE_KEY_PATH + ')';
+  } else {
+    const cached = path.default.join(os.default.homedir(), '.kolm', 'signing-key.pem');
+    if (fs.default.existsSync(cached)) {
+      pem = fs.default.readFileSync(cached, 'utf8');
+      source = 'cache:' + cached;
+    }
+  }
+  if (!pem) {
+    if (wantJson) { console.log(JSON.stringify({ ok: false, error: 'no signing key configured' })); return; }
+    console.error('no signing key configured.');
+    console.error('  run: kolm keygen     # generates ~/.kolm/signing-key.pem');
+    process.exit(EXIT.NOT_FOUND || 2);
+  }
+  let publicKey;
+  try {
+    const keyObj = crypto.default.createPrivateKey(pem);
+    publicKey = crypto.default.createPublicKey(keyObj).export({ type: 'spki', format: 'pem' });
+  } catch (e) {
+    console.error('cannot derive public key from private key: ' + e.message);
+    process.exit(EXIT.BAD_INPUT || 2);
+  }
+  const fp = keyFingerprint(publicKey);
+  if (wantJson) {
+    console.log(JSON.stringify({
+      ok: true, alg: 'ed25519', source, fingerprint: fp, short_fingerprint: fp.slice(0, 32), public_key: publicKey.trimEnd(),
+    }));
+    return;
+  }
+  console.log('ed25519 public key');
+  console.log('  source       : ' + source);
+  console.log('  fingerprint  : ' + fp);
+  console.log('  short_fp     : ' + fp.slice(0, 32));
+  console.log('');
+  console.log(publicKey.trimEnd());
+}
+
+// kolm keys: wave 193 (M+3). Ed25519 signing key rotation lifecycle.
+//
+//   list         enumerate keys in on-disk state (active | rotated | retired)
+//   rotate       generate fresh keypair + emit rotation receipt
+//   fingerprint  print active key fingerprint
+//   export       emit KMS wrap-intent JSON for the active key
+//
+// Air-gap-first: the verb works fully offline. The KMS wrap intent is
+// emitted as JSON; the customer's KMS hook applies it. kolm never calls
+// AWS / GCP / Azure / Vault APIs directly.
+async function cmdKeys(args) {
+  if (maybeHelp('keys', args)) return;
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (!sub) { usage('keys'); process.exit(EXIT.BAD_ARGS); }
+  const { rotateKey, listKeys, exportKmsIntent, activeFingerprint, KMS_TARGETS, DEFAULT_OVERLAP_DAYS } = await import('../src/keys.js');
+  const wantJson = rest.includes('--json');
+
+  if (sub === 'list') {
+    const keys = listKeys({});
+    if (wantJson) {
+      console.log(JSON.stringify(keys, null, 2));
+      return;
+    }
+    if (keys.length === 0) {
+      console.log('no keys in rotation state yet.');
+      console.log('  run: kolm keys rotate         # generate first key + record state');
+      console.log('  or:  kolm keygen              # legacy single-key path');
+      return;
+    }
+    console.log('fingerprint                       status   created_at                kms_target');
+    for (const k of keys) {
+      const fp = (k.key_fingerprint || '').slice(0, 32);
+      const status = (k.status || '').padEnd(8);
+      const created = (k.created_at || '').slice(0, 24);
+      const target = k.kms_target || 'local';
+      console.log(`${fp.padEnd(34)}${status} ${created.padEnd(25)} ${target}`);
+    }
+    return;
+  }
+
+  if (sub === 'rotate') {
+    const kmsTarget = pickFlagEq(rest, '--kms') || 'local';
+    if (!KMS_TARGETS.includes(kmsTarget)) {
+      const msg = `--kms must be one of [${KMS_TARGETS.join(', ')}]; got ${kmsTarget}`;
+      if (wantJson) { console.log(JSON.stringify({ ok: false, error: msg })); process.exit(EXIT.BAD_ARGS); }
+      console.error('error: ' + msg);
+      process.exit(EXIT.BAD_ARGS);
+    }
+    const overlapDaysArg = pickFlagEq(rest, '--overlap-days');
+    const overlapDays = overlapDaysArg !== null ? Number(overlapDaysArg) : DEFAULT_OVERLAP_DAYS;
+    const oldKeyId = activeFingerprint({});
+    let manifest;
+    try {
+      manifest = rotateKey({ oldKeyId, kmsTarget, overlapDays });
+    } catch (e) {
+      if (wantJson) { console.log(JSON.stringify({ ok: false, error: e.message })); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    // Strip the private PEM from the JSON receipt; the receipt is meant for
+    // logs + the receipt chain. The PEM is for the customer's KMS hook to
+    // pick up via the on-disk file path (local target) or via the in-memory
+    // object the verb already wrote (hosted targets need a wrapper script).
+    const receipt = { ...manifest };
+    delete receipt.private_key_pem;
+    if (wantJson) {
+      console.log(JSON.stringify({ ok: true, rotation: receipt }, null, 2));
+      return;
+    }
+    console.log('rotation receipt');
+    console.log('  old_key_fingerprint: ' + (receipt.old_key_fingerprint || '(none — first key)'));
+    console.log('  new_key_fingerprint: ' + receipt.new_key_fingerprint);
+    console.log('  rotated_at:          ' + receipt.rotated_at);
+    console.log('  overlap_until:       ' + receipt.overlap_until + ` (${receipt.overlap_days} days)`);
+    console.log('  kms_target:          ' + receipt.kms_target);
+    console.log('  wrap_intent.api_status: ' + receipt.wrap_intent.api_status);
+    if (receipt.wrap_intent.new_key_path) {
+      console.log('  new_key_path:        ' + receipt.wrap_intent.new_key_path);
+    }
+    console.log('');
+    console.log('honest scope: kolm emits rotation receipt; customer KMS hook applies the wrapping.');
+    return;
+  }
+
+  if (sub === 'fingerprint') {
+    const fp = activeFingerprint({});
+    if (!fp) {
+      // Fall back to the legacy single-key path (~/.kolm/signing-key.pem) so
+      // tenants who never rotated still get a useful answer.
+      const { default: pathMod } = await import('node:path');
+      const { default: osMod } = await import('node:os');
+      const { default: fsMod } = await import('node:fs');
+      const cached = pathMod.join(osMod.homedir(), '.kolm', 'signing-key.pem');
+      if (fsMod.existsSync(cached)) {
+        const { keyFingerprint: kfp } = await import('../src/ed25519.js');
+        const { default: cryptoMod } = await import('node:crypto');
+        const pem = fsMod.readFileSync(cached, 'utf8');
+        const keyObj = cryptoMod.createPrivateKey(pem);
+        const pub = cryptoMod.createPublicKey(keyObj).export({ type: 'spki', format: 'pem' });
+        const f = kfp(pub);
+        if (wantJson) { console.log(JSON.stringify({ ok: true, fingerprint: f, short_fingerprint: f.slice(0, 32), source: 'legacy:cache' })); return; }
+        console.log(f.slice(0, 32));
+        return;
+      }
+      if (wantJson) { console.log(JSON.stringify({ ok: false, error: 'no active key' })); process.exit(EXIT.NOT_FOUND || 2); }
+      console.error('no active key. run: kolm keys rotate');
+      process.exit(EXIT.NOT_FOUND || 2);
+    }
+    if (wantJson) { console.log(JSON.stringify({ ok: true, fingerprint: fp, short_fingerprint: fp.slice(0, 32), source: 'rotation-state' })); return; }
+    console.log(fp.slice(0, 32));
+    return;
+  }
+
+  if (sub === 'export') {
+    const kmsTarget = pickFlagEq(rest, '--kms');
+    if (!kmsTarget) {
+      const msg = '--kms required for export. one of [' + KMS_TARGETS.join(', ') + ']';
+      if (wantJson) { console.log(JSON.stringify({ ok: false, error: msg })); process.exit(EXIT.BAD_ARGS); }
+      console.error('error: ' + msg);
+      process.exit(EXIT.BAD_ARGS);
+    }
+    if (!KMS_TARGETS.includes(kmsTarget)) {
+      const msg = `--kms must be one of [${KMS_TARGETS.join(', ')}]; got ${kmsTarget}`;
+      if (wantJson) { console.log(JSON.stringify({ ok: false, error: msg })); process.exit(EXIT.BAD_ARGS); }
+      console.error('error: ' + msg);
+      process.exit(EXIT.BAD_ARGS);
+    }
+    const fp = activeFingerprint({});
+    const intent = exportKmsIntent({ kmsTarget, fingerprint: fp });
+    if (wantJson) {
+      console.log(JSON.stringify({ ok: true, export: intent }, null, 2));
+      return;
+    }
+    console.log('kms wrap intent');
+    console.log('  kms_target:    ' + intent.kms_target);
+    console.log('  import_format: ' + intent.import_format);
+    console.log('  native_api:    ' + intent.native_api);
+    console.log('  api_status:    ' + intent.api_status);
+    console.log('  fingerprint:   ' + (intent.key_fingerprint ? intent.key_fingerprint.slice(0, 32) : '(no active key)'));
+    console.log('');
+    console.log('honest scope: kolm emits export intent; customer KMS hook performs the import.');
+    return;
+  }
+
+  console.error('unknown subcommand: ' + sub);
+  usage('keys');
+  process.exit(EXIT.BAD_ARGS);
+}
+
+// Helper: pick a flag value supporting both `--name=value` and `--name value`.
+function pickFlagEq(args, name) {
+  const eq = args.find((a) => a.startsWith(name + '='));
+  if (eq) return eq.slice(name.length + 1);
+  const i = args.indexOf(name);
+  if (i >= 0 && args[i + 1] !== undefined && !args[i + 1].startsWith('--')) {
+    return args[i + 1];
+  }
+  return null;
+}
+
+// kolm quantize: wave 195 (Q+5). Quantize an adapter via the isolated
+// quantize worker. Without --local-worker prints a scaffolding message and
+// exits 0 (no work done). With --local-worker spawns workers/quantize/
+// quantize.mjs which detects whether python3 + bitsandbytes are importable
+// and falls back to an honest manifest if missing.
+async function cmdQuantize(args) {
+  if (maybeHelp('quantize', args)) return;
+  if (!args.includes('--local-worker')) {
+    console.log('kolm quantize requires --local-worker flag.');
+    console.log('The worker lives at workers/quantize/. Run:');
+    console.log('  cd workers/quantize && npm install');
+    console.log('  python3 -m venv .venv && .venv/bin/pip install -r requirements.txt');
+    console.log('to enable. Today the verb returns this scaffolding message; the python');
+    console.log('path runs only when the worker is installed and detected.');
+    console.log('');
+    console.log('See: kolm quantize --help for the supported methods + flag list.');
+    return;
+  }
+  return cmdQuantizeLocalWorker(args);
+}
+
+async function cmdQuantizeLocalWorker(args) {
+  const cliDir = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]):/, '$1:'));
+  const workerPath = path.resolve(cliDir, '..', 'workers', 'quantize', 'quantize.mjs');
+  if (!fs.existsSync(workerPath)) {
+    console.error('local quantize worker not found at workers/quantize/quantize.mjs');
+    console.error('  (this CLI was packaged without the worker — install from source)');
+    process.exit(EXIT.MISSING_PREREQ);
+  }
+  const pick = (n) => {
+    const eq = args.find((a) => a.startsWith(n + '='));
+    if (eq) return eq.slice(n.length + 1);
+    const v = pickFlag(args, n);
+    return v === null ? null : v;
+  };
+  const doctor = args.includes('--doctor');
+  const method = pick('--method') || 'int4';
+  const inDir = pick('--in');
+  const outDir = pick('--out');
+  const wantJson = args.includes('--json');
+
+  const passthru = [];
+  if (doctor) {
+    passthru.push('--doctor');
+  } else {
+    passthru.push(`--method=${method}`);
+    if (inDir) passthru.push(`--in=${inDir}`);
+    if (outDir) passthru.push(`--out=${outDir}`);
+  }
+  if (wantJson) passthru.push('--json');
+
+  const { spawn } = await import('node:child_process');
+  await new Promise((resolve) => {
+    const child = spawn(process.execPath, [workerPath, ...passthru], {
+      stdio: 'inherit',
+      env: process.env,
+    });
+    child.on('exit', (code) => {
+      if (code !== 0 && code !== null) process.exit(code);
+      resolve();
+    });
+    child.on('error', (err) => {
+      console.error('failed to spawn local quantize worker: ' + err.message);
+      process.exit(EXIT.EXECUTION);
+    });
+  });
+}
+
+// kolm auditor — wave 166 (N+7). Third-party auditor attestation lifecycle.
+//
+//   keygen  generate the auditor's own Ed25519 keypair (independent of builder)
+//   sign    attest a specific artifact: read manifest + receipt, sign the
+//           observation block, write attestation.json
+//   verify  given (artifact, attestation), validate signature + cross-check
+//           the signed claims against the on-disk artifact + ensure the
+//           auditor key fingerprint differs from the builder's
+//
+//   The independence model: the auditor runs `kolm auditor` from an
+//   environment they control (their HSM, their signing service, their
+//   air-gapped laptop). They publish the public key separately. The tenant
+//   embeds the attestation at compile time via `kolm compile
+//   --auditor-attestation <file>`. The verifier (`kolm verify`) check #22
+//   re-validates the signature offline using the public key embedded in the
+//   attestation block; no network call needed.
+async function cmdAuditor(args) {
+  if (maybeHelp('auditor', args)) return;
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (!sub) {
+    console.error('usage: kolm auditor <keygen|sign|verify> [...]');
+    console.error('');
+    console.error('  kolm auditor keygen --out <path>');
+    console.error('  kolm auditor sign <artifact.kolm> --key <key.pem> --auditor-id <slug>');
+    console.error('         [--accreditation "<text>"] [--scope "<text>"] [--notes "<text>"]');
+    console.error('         [--out <attestation.json>]');
+    console.error('  kolm auditor verify <artifact.kolm> <attestation.json>');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  if (sub === 'keygen') return cmdAuditorKeygen(rest);
+  if (sub === 'sign')   return cmdAuditorSign(rest);
+  if (sub === 'verify') return cmdAuditorVerify(rest);
+  console.error(`unknown subcommand: kolm auditor ${sub}`);
+  console.error('try: kolm auditor keygen | sign | verify');
+  process.exit(EXIT.BAD_ARGS);
+}
+
+async function cmdAuditorKeygen(args) {
+  const pathMod = await import('node:path');
+  const fsMod = await import('node:fs');
+  const { generateAuditorKeyPair } = await import('../src/auditor-attestation.js');
+  const outFlag = pickFlag(args, '--out');
+  const force = args.includes('--force');
+  if (!outFlag) {
+    console.error('usage: kolm auditor keygen --out <path>');
+    console.error('  writes private key to <path> (mode 0600) and public key to <path>.pub');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  if (fsMod.default.existsSync(outFlag) && !force) {
+    console.error(`refused: ${outFlag} already exists. pass --force to overwrite.`);
+    process.exit(EXIT.ALREADY_EXISTS || 2);
+  }
+  const { publicKey, privateKey, fingerprint } = generateAuditorKeyPair();
+  try {
+    fsMod.default.mkdirSync(pathMod.default.dirname(pathMod.default.resolve(outFlag)), { recursive: true, mode: 0o700 });
+    fsMod.default.writeFileSync(outFlag, privateKey, { mode: 0o600 });
+    fsMod.default.writeFileSync(outFlag + '.pub', publicKey);
+  } catch (e) {
+    console.error('cannot write key file: ' + e.message);
+    process.exit(EXIT.IO_ERROR || 2);
+  }
+  console.log('generated auditor ed25519 keypair');
+  console.log('  private    : ' + outFlag + ' (mode 0600)');
+  console.log('  public     : ' + outFlag + '.pub');
+  console.log('  fingerprint: ' + fingerprint);
+  console.log('  short_fp   : ' + fingerprint.slice(0, 32));
+  console.log('');
+  console.log('next steps:');
+  console.log('  kolm auditor sign <artifact.kolm> --key ' + outFlag + ' --auditor-id <slug>');
+  console.log('  publish the public key (' + outFlag + '.pub) so verifiers can identify your attestations.');
+}
+
+async function cmdAuditorSign(args) {
+  const fsMod = await import('node:fs');
+  const pathMod = await import('node:path');
+  const {
+    loadAuditorKeyFromFile, buildAuditorAttestationBlock, extractObservationFromManifest, writeAttestationFile,
+  } = await import('../src/auditor-attestation.js');
+  const { loadArtifact } = await import('../src/artifact-runner.js');
+  const artifactPath = args.find(a => !a.startsWith('-'));
+  if (!artifactPath) {
+    console.error('usage: kolm auditor sign <artifact.kolm> --key <key.pem> --auditor-id <slug>');
+    console.error('         [--accreditation "<text>"] [--scope "<text>"] [--notes "<text>"]');
+    console.error('         [--out <attestation.json>]');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  if (!fsMod.default.existsSync(artifactPath)) {
+    console.error(`no such artifact: ${artifactPath}`);
+    process.exit(EXIT.NOT_FOUND || 2);
+  }
+  const keyPath = pickFlag(args, '--key');
+  if (!keyPath) {
+    console.error('error: --key <path-to-auditor-private-key.pem> is required.');
+    console.error('       run: kolm auditor keygen --out ./my-auditor-key.pem');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  if (!fsMod.default.existsSync(keyPath)) {
+    console.error(`no such key file: ${keyPath}`); process.exit(EXIT.NOT_FOUND || 2);
+  }
+  const auditorId = pickFlag(args, '--auditor-id');
+  if (!auditorId) {
+    console.error('error: --auditor-id <slug> is required (e.g. --auditor-id acme-trustlab-2026).');
+    console.error('       this is the public identifier other parties use to recognize you.');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  const accreditation = pickFlag(args, '--accreditation') || null;
+  const scope = pickFlag(args, '--scope') || null;
+  const notes = pickFlag(args, '--notes') || null;
+  const outFlag = pickFlag(args, '--out') || (artifactPath.replace(/\.kolm$/i, '') + '.attestation.json');
+
+  // Load the artifact so the auditor sees what the tenant sees.
+  let bundle;
+  try { bundle = loadArtifact(artifactPath); }
+  catch (e) { console.error(`cannot load artifact: ${e.message}`); process.exit(EXIT.BAD_INPUT || 2); }
+  const manifest = bundle.manifest || {};
+  const receipt = bundle.receipt || {};
+  const artifactHash = receipt.artifact_hash;
+  if (!artifactHash) {
+    console.error('error: artifact has no receipt.artifact_hash. Cannot attest an unsigned/legacy artifact.');
+    process.exit(EXIT.BAD_INPUT || 2);
+  }
+  // Extract the observation the auditor will sign: the on-disk facts about
+  // this artifact at this moment. The auditor's signature binds these
+  // claims so any later drift between attestation and artifact is detectable.
+  // extractObservationFromManifest expects an artifact_hash_input shape
+  // (object) for the third arg, not the raw artifact_hash string — so we
+  // reconstruct the relevant inputs from the manifest first.
+  const cryptoMod = await import('node:crypto');
+  const canonicalJsonLocal = (v) => {
+    if (v === null || typeof v !== 'object') return JSON.stringify(v);
+    if (Array.isArray(v)) return '[' + v.map(canonicalJsonLocal).join(',') + ']';
+    const k = Object.keys(v).sort();
+    return '{' + k.map(x => JSON.stringify(x) + ':' + canonicalJsonLocal(v[x])).join(',') + '}';
+  };
+  const tenantShadowBlocks = Array.isArray(manifest.tenant_shadow_corpus_provenance)
+    ? manifest.tenant_shadow_corpus_provenance : [];
+  const tenantShadowCorpusHash = tenantShadowBlocks.length > 0
+    ? cryptoMod.default.createHash('sha256').update(canonicalJsonLocal(
+        tenantShadowBlocks.map(b => ({ tenant_id: b.tenant_id, corpus_id: b.corpus_id, hash: b.hash }))
+      )).digest('hex')
+    : null;
+  const hashInput = {
+    external_holdout_hash: manifest.external_holdout_provenance?.hash || null,
+    tenant_shadow_corpus_hash: tenantShadowCorpusHash,
+  };
+  const observation = extractObservationFromManifest(manifest, receipt, hashInput);
+
+  // Sign with the auditor's own key (NOT the builder's).
+  let signer;
+  try { signer = loadAuditorKeyFromFile(keyPath); }
+  catch (e) { console.error(`cannot load auditor key: ${e.message}`); process.exit(EXIT.BAD_INPUT || 2); }
+  let block;
+  try {
+    block = buildAuditorAttestationBlock({
+      signerKey: signer,
+      observation,
+      identity: { auditor_id: auditorId, accreditation, scope, notes },
+    });
+  } catch (e) {
+    console.error('cannot build attestation block: ' + e.message);
+    process.exit(EXIT.EXECUTION || 2);
+  }
+  try { writeAttestationFile(outFlag, block); }
+  catch (e) { console.error(`cannot write attestation: ${e.message}`); process.exit(EXIT.IO_ERROR || 2); }
+
+  console.log('auditor attestation written');
+  console.log('  file         : ' + outFlag);
+  console.log('  auditor_id   : ' + block.auditor_id);
+  console.log('  fingerprint  : ' + block.key_fingerprint);
+  console.log('  short_fp     : ' + block.key_fingerprint.slice(0, 32));
+  console.log('  artifact_hash: ' + block.artifact_hash);
+  console.log('  cid          : ' + (block.cid || '(none)'));
+  console.log('  eval_score   : ' + (block.eval_score == null ? '(absent)' : block.eval_score));
+  console.log('  k_composite  : ' + (block.k_score && block.k_score.composite != null ? block.k_score.composite : '(absent)'));
+  console.log('  block.hash   : ' + block.hash);
+  console.log('  signed_at    : ' + block.signed_at);
+  console.log('');
+  console.log('share this file with the tenant. they bind it via:');
+  console.log('  kolm compile --spec <spec.json> --auditor-attestation ' + pathMod.default.basename(outFlag));
+  console.log('and verifiers re-validate it offline via:');
+  console.log('  kolm auditor verify ' + pathMod.default.basename(artifactPath) + ' ' + pathMod.default.basename(outFlag));
+}
+
+async function cmdAuditorVerify(args) {
+  const fsMod = await import('node:fs');
+  const {
+    loadAttestationFile, crossCheckAttestation, validateAuditorAttestationBlock,
+  } = await import('../src/auditor-attestation.js');
+  const { keyFingerprint } = await import('../src/ed25519.js');
+  const { loadArtifact } = await import('../src/artifact-runner.js');
+  const positional = args.filter(a => !a.startsWith('-'));
+  const artifactPath = positional[0];
+  const attestationPath = positional[1];
+  if (!artifactPath || !attestationPath) {
+    console.error('usage: kolm auditor verify <artifact.kolm> <attestation.json>');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  if (!fsMod.default.existsSync(artifactPath)) { console.error(`no such artifact: ${artifactPath}`); process.exit(EXIT.NOT_FOUND || 2); }
+  if (!fsMod.default.existsSync(attestationPath)) { console.error(`no such attestation: ${attestationPath}`); process.exit(EXIT.NOT_FOUND || 2); }
+  let block;
+  try { block = loadAttestationFile(attestationPath); }
+  catch (e) { console.error('attestation failed schema/signature validation: ' + e.message); process.exit(EXIT.EXECUTION || 4); }
+  // Re-run validation explicitly to confirm.
+  try { validateAuditorAttestationBlock(block); }
+  catch (e) { console.error('attestation block invalid: ' + e.message); process.exit(EXIT.EXECUTION || 4); }
+  let bundle;
+  try { bundle = loadArtifact(artifactPath); }
+  catch (e) { console.error(`cannot load artifact: ${e.message}`); process.exit(EXIT.BAD_INPUT || 2); }
+  const manifest = bundle.manifest || {};
+  const receipt = bundle.receipt || {};
+  const artifactHash = receipt.artifact_hash;
+  if (!artifactHash) {
+    console.error('error: artifact has no receipt.artifact_hash.');
+    process.exit(EXIT.BAD_INPUT || 2);
+  }
+  // Compute auxiliary hashes the cross-check needs.
+  const crypto = await import('node:crypto');
+  const canonicalJson = (v) => {
+    if (v === null || typeof v !== 'object') return JSON.stringify(v);
+    if (Array.isArray(v)) return '[' + v.map(canonicalJson).join(',') + ']';
+    const k = Object.keys(v).sort();
+    return '{' + k.map(x => JSON.stringify(x) + ':' + canonicalJson(v[x])).join(',') + '}';
+  };
+  const tenantShadow = Array.isArray(manifest.tenant_shadow_corpus_provenance)
+    ? manifest.tenant_shadow_corpus_provenance : [];
+  const tenantShadowHash = tenantShadow.length > 0
+    ? crypto.default.createHash('sha256').update(canonicalJson(
+        tenantShadow.map(b => ({ tenant_id: b.tenant_id, corpus_id: b.corpus_id, hash: b.hash }))
+      )).digest('hex')
+    : null;
+  const crossManifest = {
+    ...manifest,
+    __artifact_hash: artifactHash,
+    __external_holdout_hash: manifest.external_holdout_provenance?.hash || null,
+    __tenant_shadow_corpus_hash: tenantShadowHash,
+  };
+  const cc = crossCheckAttestation(block, crossManifest);
+  if (!cc.ok) {
+    console.error(`attestation does NOT match this artifact: ${cc.reason}`);
+    console.error('the attestation was likely produced against a different (earlier or unrelated) build.');
+    process.exit(EXIT.EXECUTION || 4);
+  }
+  // Independence guard: builder key must differ from auditor key.
+  const builderFingerprint = (() => {
+    const sb = receipt.signed_by;
+    if (typeof sb === 'string' && sb.startsWith('ed25519:')) return sb.slice('ed25519:'.length);
+    if (receipt.signature_ed25519 && receipt.signature_ed25519.key_fingerprint) return receipt.signature_ed25519.key_fingerprint;
+    return null;
+  })();
+  if (builderFingerprint && builderFingerprint === block.key_fingerprint.slice(0, builderFingerprint.length)) {
+    console.error('attestation FAILED independence check: auditor key fingerprint matches builder key.');
+    console.error(`  builder : ${builderFingerprint}`);
+    console.error(`  auditor : ${block.key_fingerprint}`);
+    console.error('a self-attestation is not independent; obtain a signature from a separate party.');
+    process.exit(EXIT.EXECUTION || 4);
+  }
+  // Re-derive fingerprint from embedded public key as final sanity check.
+  let derivedFp;
+  try { derivedFp = keyFingerprint(block.public_key); }
+  catch (e) { console.error('cannot re-derive auditor fingerprint: ' + e.message); process.exit(EXIT.EXECUTION || 4); }
+  if (derivedFp !== block.key_fingerprint) {
+    console.error('attestation FAILED: re-derived public-key fingerprint does not match block.key_fingerprint.');
+    console.error(`  embedded : ${block.key_fingerprint}`);
+    console.error(`  derived  : ${derivedFp}`);
+    process.exit(EXIT.EXECUTION || 4);
+  }
+  console.log('auditor attestation OK');
+  console.log('  artifact     : ' + artifactPath);
+  console.log('  attestation  : ' + attestationPath);
+  console.log('  auditor_id   : ' + block.auditor_id);
+  console.log('  fingerprint  : ' + block.key_fingerprint);
+  console.log('  artifact_hash: ' + block.artifact_hash);
+  console.log('  cid          : ' + (block.cid || '(none)'));
+  if (block.accreditation) console.log('  accreditation: ' + block.accreditation);
+  if (block.scope)         console.log('  scope        : ' + block.scope);
+  if (Array.isArray(block.checks_passed) && block.checks_passed.length) {
+    console.log('  checks       : ' + block.checks_passed.join(', '));
+  }
+  console.log('  signed_at    : ' + block.signed_at);
+  console.log('  independence : builder ≠ auditor key fingerprints');
+}
+
+// kolm drift — wave 167 (M+3 + M+4). Drift detection + supersession chain.
+//
+//   kolm drift detect <current.kolm> --baseline <baseline.kolm> [--out report.json] [--json] [--tolerances <file>]
+//     Compare two artifacts, emit a DriftReport. Verdict: within | drift | breach.
+//
+//   kolm drift cron --baseline <path> --current <path> --cadence "<5-field-cron>"
+//                   [--out drift-cron.json] [--alert-webhook <url>] [--alert-on within,drift,breach]
+//     Emit a JSON cron config + crontab line a tenant drops into their scheduler.
+//
+//   kolm drift verify <report.json>
+//     Re-validate a DriftReport from disk (schema + hash + embedded snapshots).
+async function cmdDrift(args) {
+  if (maybeHelp('drift', args)) return;
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (!sub) {
+    console.error('usage: kolm drift <detect|cron|verify> [...]');
+    console.error('  kolm drift detect <current.kolm> --baseline <baseline.kolm> [--out report.json]');
+    console.error('  kolm drift cron --baseline <path> --current <path> --cadence "<cron-expr>"');
+    console.error('  kolm drift verify <report.json>');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  if (sub === 'detect') return cmdDriftDetect(rest);
+  if (sub === 'cron')   return cmdDriftCron(rest);
+  if (sub === 'verify') return cmdDriftVerify(rest);
+  console.error(`unknown subcommand: kolm drift ${sub}`);
+  console.error('try: kolm drift detect | cron | verify');
+  process.exit(EXIT.BAD_ARGS);
+}
+
+async function cmdDriftDetect(args) {
+  const {
+    snapshotFromManifest, detectDrift, buildDriftReport, writeDriftReport,
+    DEFAULT_TOLERANCES,
+  } = await import('../src/drift-supersession.js');
+  const { loadArtifact } = await import('../src/artifact-runner.js');
+  const positional = args.filter(a => !a.startsWith('-'));
+  const currentPath = positional[0];
+  const baselinePath = pickFlag(args, '--baseline');
+  const outPath = pickFlag(args, '--out');
+  const tolerancesPath = pickFlag(args, '--tolerances');
+  const wantJson = args.includes('--json');
+  if (!currentPath || !baselinePath) {
+    console.error('usage: kolm drift detect <current.kolm> --baseline <baseline.kolm> [--out report.json] [--json] [--tolerances <file>]');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  if (!fs.existsSync(currentPath)) { console.error(`no such artifact: ${currentPath}`); process.exit(EXIT.NOT_FOUND); }
+  if (!fs.existsSync(baselinePath)) { console.error(`no such artifact: ${baselinePath}`); process.exit(EXIT.NOT_FOUND); }
+  let tolerances = undefined;
+  if (tolerancesPath) {
+    if (!fs.existsSync(tolerancesPath)) { console.error(`no such tolerances file: ${tolerancesPath}`); process.exit(EXIT.NOT_FOUND); }
+    try {
+      const raw = JSON.parse(fs.readFileSync(tolerancesPath, 'utf8'));
+      tolerances = { ...DEFAULT_TOLERANCES, ...raw };
+    } catch (e) {
+      console.error(`tolerances file failed to parse: ${e.message}`);
+      process.exit(EXIT.BAD_ARGS);
+    }
+  }
+  let baselineBundle, currentBundle;
+  try { baselineBundle = loadArtifact(baselinePath); }
+  catch (e) { console.error(`cannot load baseline: ${e.message}`); process.exit(EXIT.EXECUTION); }
+  try { currentBundle = loadArtifact(currentPath); }
+  catch (e) { console.error(`cannot load current: ${e.message}`); process.exit(EXIT.EXECUTION); }
+  const baselineSnap = snapshotFromManifest(baselineBundle.manifest, baselineBundle.receipt);
+  const currentSnap = snapshotFromManifest(currentBundle.manifest, currentBundle.receipt);
+  const signals = detectDrift(baselineSnap, currentSnap, tolerances);
+  const report = buildDriftReport({
+    baseline_snapshot: baselineSnap,
+    current_snapshot: currentSnap,
+    signals,
+    tolerances,
+  });
+  if (outPath) {
+    writeDriftReport(outPath, report);
+  }
+  if (wantJson) {
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    console.log(`drift report verdict=${report.verdict}`);
+    console.log(`  baseline    : ${baselinePath} (${baselineSnap.artifact_hash.slice(0, 12)}…)`);
+    console.log(`  current     : ${currentPath} (${currentSnap.artifact_hash.slice(0, 12)}…)`);
+    console.log(`  signals     : ${signals.length} (${report.breach_count} breach, ${report.drift_count} drift)`);
+    for (const s of signals) {
+      const tag = s.status === 'breach' ? '[BREACH]' : (s.status === 'drift' ? '[drift]' : '       ');
+      const delta = (typeof s.delta === 'number') ? ` delta=${s.delta.toFixed(6)}` : '';
+      console.log(`  ${tag} ${s.axis} baseline=${JSON.stringify(s.baseline)} current=${JSON.stringify(s.current)}${delta}`);
+    }
+    if (outPath) console.log(`  written     : ${outPath} (hash ${report.hash.slice(0, 12)}…)`);
+  }
+  if (report.verdict === 'breach') {
+    process.exit(EXIT.GATE_FAIL);
+  }
+}
+
+async function cmdDriftCron(args) {
+  const { buildDriftCronConfig, toCrontabLine } = await import('../src/drift-supersession.js');
+  const baselinePath = pickFlag(args, '--baseline');
+  const currentPath = pickFlag(args, '--current');
+  const cadence = pickFlag(args, '--cadence');
+  const outPath = pickFlag(args, '--out');
+  const reportOut = pickFlag(args, '--report-out') || (outPath ? outPath.replace(/\.json$/, '.report.json') : 'drift-report.json');
+  const alertWebhook = pickFlag(args, '--alert-webhook');
+  const alertOnRaw = pickFlag(args, '--alert-on');
+  const tolerancesPath = pickFlag(args, '--tolerances');
+  if (!baselinePath || !currentPath || !cadence) {
+    console.error('usage: kolm drift cron --baseline <baseline.kolm> --current <current.kolm> --cadence "<cron-expr>" [--out drift-cron.json] [--report-out drift-report.json] [--alert-webhook <url>] [--alert-on within,drift,breach]');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  const input = {
+    cadence_cron: cadence,
+    baseline_artifact_path: baselinePath,
+    current_artifact_path: currentPath,
+    out_report_path: reportOut,
+  };
+  if (alertWebhook) input.alert_webhook = alertWebhook;
+  if (alertOnRaw) input.alert_on = alertOnRaw.split(',').map(s => s.trim()).filter(Boolean);
+  if (tolerancesPath) {
+    if (!fs.existsSync(tolerancesPath)) { console.error(`no such tolerances file: ${tolerancesPath}`); process.exit(EXIT.NOT_FOUND); }
+    try {
+      input.tolerances = JSON.parse(fs.readFileSync(tolerancesPath, 'utf8'));
+    } catch (e) {
+      console.error(`tolerances file failed to parse: ${e.message}`);
+      process.exit(EXIT.BAD_ARGS);
+    }
+  }
+  let cfg;
+  try { cfg = buildDriftCronConfig(input); }
+  catch (e) { console.error(`drift cron config invalid: ${e.message}`); process.exit(EXIT.BAD_ARGS); }
+  const crontabLine = toCrontabLine(cfg);
+  if (outPath) {
+    fs.writeFileSync(outPath, JSON.stringify(cfg, null, 2));
+  }
+  console.log('drift cron config:');
+  console.log('  cadence     : ' + cfg.cadence_cron);
+  console.log('  baseline    : ' + cfg.baseline_artifact_path);
+  console.log('  current     : ' + cfg.current_artifact_path);
+  console.log('  out report  : ' + cfg.out_report_path);
+  if (cfg.alert_webhook) console.log('  webhook     : ' + cfg.alert_webhook);
+  if (cfg.alert_on) console.log('  alert on    : ' + cfg.alert_on.join(', '));
+  if (outPath) console.log('  written     : ' + outPath + ` (hash ${cfg.hash.slice(0, 12)}…)`);
+  console.log('');
+  console.log('crontab line (drop into your scheduler):');
+  console.log('  ' + crontabLine);
+  console.log('');
+  console.log('the wrapped `kolm drift detect` command exits non-zero on breach so');
+  console.log('cron mail delivery surfaces the alert without needing the webhook.');
+}
+
+async function cmdDriftVerify(args) {
+  const { loadDriftReport } = await import('../src/drift-supersession.js');
+  const positional = args.filter(a => !a.startsWith('-'));
+  const reportPath = positional[0];
+  if (!reportPath) {
+    console.error('usage: kolm drift verify <report.json>');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  if (!fs.existsSync(reportPath)) { console.error(`no such report: ${reportPath}`); process.exit(EXIT.NOT_FOUND); }
+  let report;
+  try { report = loadDriftReport(reportPath); }
+  catch (e) { console.error(`drift report failed validation: ${e.message}`); process.exit(EXIT.EXECUTION); }
+  console.log('drift report OK');
+  console.log('  report      : ' + reportPath);
+  console.log('  hash        : ' + report.hash);
+  console.log('  verdict     : ' + report.verdict);
+  console.log('  signals     : ' + report.signals.length + ` (${report.breach_count} breach, ${report.drift_count} drift)`);
+  console.log('  baseline    : ' + report.baseline_snapshot.artifact_hash);
+  console.log('  current     : ' + report.current_snapshot.artifact_hash);
+  console.log('  computed_at : ' + report.computed_at);
+  if (report.verdict === 'breach') {
+    process.exit(EXIT.GATE_FAIL);
+  }
+}
+
 // kolm capture --provider <openai|anthropic> --as <task> --namespace <n>
 //   Writes ~/.kolm/capture/<task>.json with the upstream URL + headers the
 //   customer should use. Customer points OPENAI_BASE_URL or ANTHROPIC_API_URL
@@ -4400,8 +6423,16 @@ async function cmdLabels(args) {
 // kolm distill --namespace <n> [--base-model <m>] [--target <size>]
 //   Triggers auto-distill via the kolm trainer bridge. Returns 503 with a clear
 //   operator hint until the server has KOLM_TRAINER_BRIDGE_URL configured.
+//
+// kolm distill --local-worker --spec <path> --seeds <path> --out <path>
+//                             [--mode stub|collect|full|doctor]
+//                             [--teacher vendor:model] [--student-base name]
+//                             [--no-redact] [--split-seed N]
+//   Runs the isolated distill worker at workers/distill/ instead of calling
+//   kolm cloud. No login required. Heavy ML deps stay in the worker package.
 async function cmdDistill(args) {
   if (maybeHelp('distill', args)) return;
+  if (args.includes('--local-worker')) return cmdDistillLocalWorker(args);
   const c = loadConfig();
   if (!c.api_key) { console.error('not logged in. run: kolm login'); process.exit(EXIT.MISSING_PREREQ); }
   const ns = pickFlag(args, '--namespace') || pickFlag(args, '-n') || 'default';
@@ -4438,6 +6469,114 @@ async function cmdDistill(args) {
   console.log('  target:    ' + j.target_size);
   console.log('  pairs:     ' + j.pair_count);
   if (j.status_url) console.log('  status:    ' + j.status_url);
+}
+
+// kolm distill --local-worker --spec <path> --seeds <path> --out <path>
+//                             [--mode stub|collect|full|doctor]
+//                             [--teacher vendor:model] [--student-base name]
+//                             [--redact phi|pci|multi|none|auto] [--no-redact]
+//                             [--split-seed N]
+//   Spawns workers/distill/distill.mjs in this repo. The worker is intentionally
+//   isolated so its ML dependencies (torch/transformers/peft) never bleed into
+//   the root kolm install. Forwards stdio so doctor + manifest land in the
+//   caller's terminal unchanged.
+//
+// Wave 157 — `--redact <class>` maps to the worker's `--redact-class <class>`
+// flag. The CLI-side spelling matches the user-facing docs in the distill
+// HELP block above (`--redact=phi` is the customer-facing knob); the worker
+// uses the longer name internally to keep its flag-space self-documenting.
+async function cmdDistillLocalWorker(args) {
+  const cliDir = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]):/, '$1:'));
+  const workerPath = path.resolve(cliDir, '..', 'workers', 'distill', 'distill.mjs');
+  if (!fs.existsSync(workerPath)) {
+    console.error('local distill worker not found at workers/distill/distill.mjs');
+    console.error('  (this CLI was packaged without the worker — install from source)');
+    process.exit(EXIT.MISSING_PREREQ);
+  }
+  // The local worker accepts both `--key value` (this CLI's convention) and
+  // `--key=value` (the worker's native node:util parseArgs convention). Users
+  // routinely type the worker's equals-form so the CLI accepts both.
+  const pick = (n) => {
+    const v = pickFlag(args, n);
+    if (v !== null) return v;
+    const eq = args.find(a => a.startsWith(n + '='));
+    return eq ? eq.slice(n.length + 1) : null;
+  };
+  const mode = pick('--mode') || 'stub';
+  const spec = pick('--spec');
+  const seeds = pick('--seeds');
+  const out = pick('--out');
+  const teacher = pick('--teacher');
+  const studentBase = pick('--student-base');
+  const splitSeed = pick('--split-seed');
+  const redactClass = pick('--redact');
+  const noRedact = args.includes('--no-redact');
+  // wave 158 — Q+3b cross-vendor distillation provenance flags.
+  const teacherVersion = pick('--teacher-version');
+  const studentBaseRevision = pick('--student-base-revision');
+  const distillationMethod = pick('--distillation-method');
+  const allowUnknownStudentBase = args.includes('--allow-unknown-student-base');
+  const listCatalog = args.includes('--list-catalog');
+  const doctor = mode === 'doctor' || args.includes('--doctor');
+
+  // Validate redact class on the CLI side so the user gets the hint without
+  // round-tripping through worker spawn. The worker re-validates so direct
+  // invocations are still safe.
+  const VALID_REDACT = ['none', 'phi', 'pci', 'multi', 'auto'];
+  if (redactClass && !VALID_REDACT.includes(redactClass)) {
+    console.error(`error: --redact must be one of [${VALID_REDACT.join(', ')}]; got ${redactClass}`);
+    process.exit(EXIT.MISSING_PREREQ);
+  }
+  if (noRedact && redactClass && redactClass !== 'none') {
+    console.error(`error: --no-redact conflicts with --redact=${redactClass}; pick one`);
+    process.exit(EXIT.MISSING_PREREQ);
+  }
+  // wave 158 — validate distillation method early so a typo doesn't survive
+  // the worker spawn and land as a fail at verifier check #15.
+  const VALID_METHOD = ['lora', 'qlora', 'full-ft', 'prompt-distill'];
+  if (distillationMethod && !VALID_METHOD.includes(distillationMethod)) {
+    console.error(`error: --distillation-method must be one of [${VALID_METHOD.join(', ')}]; got ${distillationMethod}`);
+    process.exit(EXIT.MISSING_PREREQ);
+  }
+
+  const passthru = [];
+  if (listCatalog) {
+    // Catalog dump is a worker-side concern (single source of truth lives
+    // in workers/distill/catalog.mjs); just forward and exit on the child.
+    passthru.push('--list-catalog');
+  } else if (doctor) {
+    passthru.push('--doctor');
+  } else {
+    passthru.push(`--mode=${mode}`);
+    if (spec) passthru.push(`--spec=${spec}`);
+    if (seeds) passthru.push(`--seeds=${seeds}`);
+    if (out) passthru.push(`--out=${out}`);
+    if (teacher) passthru.push(`--teacher=${teacher}`);
+    if (studentBase) passthru.push(`--student-base=${studentBase}`);
+    if (splitSeed) passthru.push(`--split-seed=${splitSeed}`);
+    if (redactClass) passthru.push(`--redact-class=${redactClass}`);
+    if (noRedact) passthru.push('--no-redact');
+    if (teacherVersion) passthru.push(`--teacher-version=${teacherVersion}`);
+    if (studentBaseRevision) passthru.push(`--student-base-revision=${studentBaseRevision}`);
+    if (distillationMethod) passthru.push(`--distillation-method=${distillationMethod}`);
+    if (allowUnknownStudentBase) passthru.push('--allow-unknown-student-base');
+  }
+
+  const { spawn } = await import('node:child_process');
+  await new Promise((resolve) => {
+    const child = spawn(process.execPath, [workerPath, ...passthru], {
+      stdio: 'inherit',
+      env: process.env,
+    });
+    child.on('exit', (code) => {
+      if (code !== 0) process.exit(code || EXIT.EXECUTION);
+      resolve();
+    });
+    child.on('error', (err) => {
+      console.error('failed to spawn local distill worker: ' + err.message);
+      process.exit(EXIT.EXECUTION);
+    });
+  });
 }
 
 function pickFlag(args, name) {
@@ -4759,6 +6898,461 @@ export function appendRunLog(entry) {
     const row = { ts: new Date().toISOString(), ...entry };
     fs.appendFileSync(path.join(dir, 'runs.jsonl'), JSON.stringify(row) + '\n');
   } catch {}
+}
+
+// ---------- kolm moe (Mixture-of-Experts composer) ----------
+// kolm moe compose --expert a.kolm --expert b.kolm --router <file|json> --out moe.kolm
+// kolm moe inspect <moe.kolm>
+//
+// The Kimi/Qwen pattern made portable: take N signed .kolm experts, compose
+// them into ONE signed .kolm via a router. Each expert's recipe source is
+// inlined inside its own IIFE so helpers don't collide. Provenance (each
+// expert's sha256 + recipe source hash + router spec) lives in
+// training_stats.moe so the receipt chain captures the composition exactly.
+async function cmdMoe(args) {
+  if (maybeHelp('moe', args)) return;
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (sub === 'compose') return cmdMoeCompose(rest);
+  if (sub === 'inspect') return cmdMoeInspect(rest);
+  console.error('usage: kolm moe <compose|inspect> [options]');
+  console.error('  compose   — combine N expert .kolm files into one composite');
+  console.error('  inspect   — show the moe block of a composite .kolm');
+  process.exit(EXIT.USAGE);
+}
+
+// ---------- kolm nl (Wave 197) ----------
+// Natural-language recipe scaffolder. Routes to src/assistant.js'
+// scaffoldRecipeFromNl. The networked LLM path is NOT YET WIRED — every
+// invocation today exercises the deterministic air-gap path.
+async function cmdNl(args) {
+  if (maybeHelp('nl', args)) return;
+
+  // Flag parsing first (must run before we extract the free-text prompt).
+  const wantJson = args.includes('--json');
+  const wantNoNet = args.includes('--no-network')
+    || args.includes('--airgap')
+    || args.includes('--offline')
+    || process.env.KOLM_AIRGAP === '1'
+    || fs.existsSync(path.join(KOLM_DIR, 'airgap.env'));
+  const outPath = pickFlag(args, '--out') || pickFlag(args, '-o');
+  const classHint = pickFlag(args, '--class');
+
+  // Anything that is neither a flag nor a flag's value is part of the prompt.
+  const KNOWN_VALUE_FLAGS = new Set(['--class', '--out', '-o']);
+  const KNOWN_BOOL_FLAGS  = new Set(['--json', '--no-network', '--airgap', '--offline']);
+  const promptParts = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (KNOWN_BOOL_FLAGS.has(a)) continue;
+    if (KNOWN_VALUE_FLAGS.has(a)) { i++; continue; }
+    if (a.startsWith('-')) continue; // skip unknown flags silently
+    promptParts.push(a);
+  }
+  const prompt = promptParts.join(' ').replace(/^["']|["']$/g, '').trim();
+
+  if (!prompt) {
+    console.error('usage: kolm nl "<free text request>" [--class <c>] [--out <path>] [--json] [--no-network]');
+    console.error('  see `kolm nl --help` for the full flag list and examples.');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  if (classHint && !['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'].includes(classHint)) {
+    console.error(`error: --class must be one of rule | synthesized_rule | compiled_rule | distilled_model; got ${JSON.stringify(classHint)}`);
+    process.exit(EXIT.BAD_ARGS);
+  }
+
+  // The networked path (`useNetwork`) is reserved for the wave that wires
+  // a real LLM. Today we always take the air-gap branch so output is
+  // deterministic and runs offline. We still honor --no-network so the
+  // semantics match the documented contract.
+  const useNetwork = !wantNoNet; // reserved; currently unused
+  void useNetwork;
+
+  const { scaffoldRecipeFromNl } = await import('../src/assistant.js');
+  const scaffold = scaffoldRecipeFromNl({
+    text: prompt,
+    classHint,
+    airGap: true, // wave 197: networked path NOT YET WIRED
+  });
+
+  // Output: JSON to file, JSON to stdout, or human-readable to stdout.
+  if (outPath) {
+    fs.writeFileSync(outPath, JSON.stringify(scaffold, null, 2) + '\n');
+    if (!wantJson) {
+      console.log(`scaffold written: ${outPath}`);
+      console.log(`  recipe class: ${scaffold.recipe_class}`);
+      console.log(`  k-score gate: ${scaffold.suggested_k_score_gate}`);
+      console.log(`  seed examples: ${scaffold.suggested_seed_examples.length}`);
+    } else {
+      process.stdout.write(JSON.stringify({ ok: true, out: outPath }) + '\n');
+    }
+    return;
+  }
+
+  if (wantJson) {
+    process.stdout.write(JSON.stringify(scaffold, null, 2) + '\n');
+    return;
+  }
+
+  // Human-readable rendering. Verbatim labels "recipe class:" and
+  // "k-score gate:" are load-bearing: wave 197 tests grep for them.
+  console.log('');
+  console.log(`suggested slug: ${scaffold.suggested_slug}`);
+  console.log(`recipe class:   ${scaffold.recipe_class}  (basis: ${scaffold.class_inference_basis})`);
+  console.log(`k-score gate:   ${scaffold.suggested_k_score_gate}`);
+  console.log(`task:           ${scaffold.suggested_task_description}`);
+  console.log(`network:        ${scaffold.network_status}`);
+  console.log('');
+  console.log(`seed examples (${scaffold.suggested_seed_examples.length}):`);
+  for (let i = 0; i < scaffold.suggested_seed_examples.length; i++) {
+    const ex = scaffold.suggested_seed_examples[i];
+    const p = String(ex.prompt).slice(0, 60);
+    const c = String(ex.completion).slice(0, 60);
+    console.log(`  ${String(i + 1).padStart(2, ' ')}. ${p}  ->  ${c}`);
+  }
+  console.log('');
+  console.log('next steps:');
+  for (const s of scaffold.next_steps) {
+    console.log(`  - ${s}`);
+  }
+  console.log('');
+  if (scaffold.network_status === 'not_yet_wired') {
+    console.log('note: networked LLM path is NOT YET WIRED. Today every invocation');
+    console.log('      uses the deterministic air-gap path. See `kolm nl --help`.');
+    console.log('');
+  }
+  console.log('honest scope: scaffolds are starting points. refine + verify before compile.');
+}
+
+async function cmdMoeCompose(args) {
+  const expertPaths = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--expert' && i + 1 < args.length) {
+      expertPaths.push(args[i + 1]); i++;
+    }
+  }
+  const routerArg = pickFlag(args, '--router');
+  const out = pickFlag(args, '--out') || pickFlag(args, '-o');
+  const jobId = pickFlag(args, '--job-id');
+  const task = pickFlag(args, '--task');
+  const includeEvalsFlag = !args.includes('--no-evals');
+  const maxEvalsPerExpert = Number(pickFlag(args, '--max-evals-per-expert') || 50);
+  const jsonOut = args.includes('--json');
+
+  if (expertPaths.length < 2) {
+    console.error('error: pass at least two --expert <path/to/expert.kolm> flags');
+    process.exit(EXIT.USAGE);
+  }
+  if (!routerArg) {
+    console.error('error: --router <file.json|json-string> required');
+    console.error('  Example router specs:');
+    console.error('    {"type":"keyword","rules":[{"regex":"refund|cancel","expert":"rcp_billing"}],"default":"rcp_general"}');
+    console.error('    {"type":"intent_field","field":"intent","default":"rcp_general"}');
+    console.error('    {"type":"first_match"}');
+    process.exit(EXIT.USAGE);
+  }
+  if (!out) {
+    console.error('error: --out <path/to/composite.kolm> required');
+    process.exit(EXIT.USAGE);
+  }
+
+  let router;
+  if (fs.existsSync(routerArg)) {
+    try { router = JSON.parse(fs.readFileSync(routerArg, 'utf8')); }
+    catch (e) { console.error(`error: router file ${routerArg} is not valid JSON: ${e.message}`); process.exit(EXIT.USAGE); }
+  } else {
+    try { router = JSON.parse(routerArg); }
+    catch (e) { console.error(`error: --router is neither an existing file nor inline JSON: ${e.message}`); process.exit(EXIT.USAGE); }
+  }
+
+  const { composeMoe } = await import('../src/moe.js');
+  let result;
+  try {
+    result = await composeMoe({
+      experts: expertPaths,
+      router,
+      outPath: path.resolve(out),
+      jobId,
+      task,
+      includeEvals: includeEvalsFlag,
+      maxEvalsPerExpert,
+    });
+  } catch (e) {
+    console.error(`moe compose failed: ${e.message}`);
+    if (e.code) console.error(`  code: ${e.code}`);
+    process.exit(EXIT.RUNTIME);
+  }
+
+  if (jsonOut) {
+    process.stdout.write(JSON.stringify({
+      out: result.outPath,
+      bytes: result.bytes,
+      k_score: result.k_score,
+      experts: result.moe.experts,
+      router: result.moe.router,
+    }, null, 2) + '\n');
+    return;
+  }
+  console.log(`composed ${result.moe.experts.length} experts → ${result.outPath}`);
+  console.log(`  bytes:      ${result.bytes}`);
+  console.log(`  k_score:    ${result.k_score?.composite ?? '-'}`);
+  console.log(`  router:     ${router.type}`);
+  for (const e of result.moe.experts) {
+    console.log(`  expert:     ${e.id}  sha256=${String(e.sha256).slice(0, 16)}…`);
+  }
+}
+
+async function cmdMoeInspect(args) {
+  const ap = args.find(a => !a.startsWith('--'));
+  if (!ap) { console.error('usage: kolm moe inspect <composite.kolm>'); process.exit(EXIT.USAGE); }
+  if (!fs.existsSync(ap)) { console.error(`not found: ${ap}`); process.exit(EXIT.MISSING_PREREQ); }
+  const { readMoeBlock } = await import('../src/moe.js');
+  const moe = readMoeBlock(path.resolve(ap));
+  if (!moe) {
+    console.error(`${ap} is not a MoE composite (training.moe missing)`);
+    process.exit(EXIT.RUNTIME);
+  }
+  if (args.includes('--json')) {
+    process.stdout.write(JSON.stringify(moe, null, 2) + '\n');
+    return;
+  }
+  console.log(`MoE composite: ${moe.spec}`);
+  console.log(`  composed_at:  ${moe.composed_at}`);
+  console.log(`  router.type:  ${moe.router?.type}`);
+  console.log(`  experts (${moe.experts?.length || 0}):`);
+  for (const e of (moe.experts || [])) {
+    console.log(`    ${e.id}  sha256=${String(e.artifact_sha256).slice(0, 16)}…  recipe=${e.recipe_id}`);
+  }
+}
+
+// ---------- kolm tokenize (pure-JS byte-level BPE tokenizer for .kolm) ----------
+async function cmdTokenize(args) {
+  if (maybeHelp('tokenize', args)) return;
+  const sub = args[0];
+  if (!sub) { usage('tokenize'); process.exit(EXIT.BAD_ARGS); }
+  const rest = args.slice(1);
+  switch (sub) {
+    case 'train':   return cmdTokenizeTrain(rest);
+    case 'encode':  return cmdTokenizeEncode(rest);
+    case 'decode':  return cmdTokenizeDecode(rest);
+    case 'inspect': return cmdTokenizeInspect(rest);
+    default:
+      console.error(`unknown subcommand: kolm tokenize ${sub}`);
+      usage('tokenize');
+      process.exit(EXIT.USAGE);
+  }
+}
+
+function readJsonlField(filePath, field) {
+  const lines = fs.readFileSync(filePath, 'utf-8').split(/\r?\n/);
+  const out = [];
+  for (const ln of lines) {
+    const t = ln.trim();
+    if (!t) continue;
+    try {
+      const obj = JSON.parse(t);
+      const v = obj[field];
+      if (typeof v === 'string' && v.length > 0) out.push(v);
+      else if (typeof v === 'object' && v !== null && typeof v.text === 'string') out.push(v.text);
+    } catch { /* skip malformed */ }
+  }
+  return out;
+}
+
+async function cmdTokenizeTrain(args) {
+  const corpusPath = pickFlag(args, '--corpus');
+  const field = pickFlag(args, '--field') || 'input';
+  const outPath = pickFlag(args, '--out') || 'tokenizer.json';
+  const vocabSize = parseInt(pickFlag(args, '--vocab') || '8192', 10);
+  if (!corpusPath) { console.error('usage: kolm tokenize train --corpus <file> [--field input] [--vocab 8192] [--out tokenizer.json]'); process.exit(EXIT.USAGE); }
+  if (!fs.existsSync(corpusPath)) { console.error(`not found: ${corpusPath}`); process.exit(EXIT.MISSING_PREREQ); }
+  const ext = path.extname(corpusPath).toLowerCase();
+  let corpus = [];
+  if (ext === '.jsonl' || ext === '.ndjson') {
+    corpus = readJsonlField(corpusPath, field);
+  } else if (ext === '.txt' || ext === '.md') {
+    corpus = fs.readFileSync(corpusPath, 'utf-8').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  } else {
+    corpus = fs.readFileSync(corpusPath, 'utf-8').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  }
+  if (corpus.length === 0) { console.error(`corpus empty after parse: ${corpusPath}`); process.exit(EXIT.RUNTIME); }
+
+  const { trainTokenizer, summarizeTokenizer } = await import('../src/tokenizer.js');
+  const tok = trainTokenizer(corpus, { vocab_size: vocabSize });
+  const summary = summarizeTokenizer(tok);
+  fs.writeFileSync(outPath, JSON.stringify(tok.toJSON()));
+  if (args.includes('--json')) {
+    process.stdout.write(JSON.stringify({ out: outPath, summary }, null, 2) + '\n');
+    return;
+  }
+  console.log(`trained tokenizer: ${outPath}`);
+  console.log(`  corpus_rows:  ${corpus.length} (from ${corpusPath} field=${field})`);
+  console.log(`  vocab_size:   ${summary.vocab_size}  (specials=${summary.by_kind.special} bytes=${summary.by_kind.byte} merges=${summary.by_kind.merge})`);
+  console.log(`  sha256:       ${summary.sha256}`);
+}
+
+async function cmdTokenizeEncode(args) {
+  const tokPath = pickFlag(args, '--tokenizer') || 'tokenizer.json';
+  if (!fs.existsSync(tokPath)) { console.error(`tokenizer not found: ${tokPath}`); process.exit(EXIT.MISSING_PREREQ); }
+  const text = args.find(a => !a.startsWith('--'));
+  if (text === undefined) { console.error('usage: kolm tokenize encode "<text>" [--tokenizer tokenizer.json] [--json]'); process.exit(EXIT.USAGE); }
+  const { KolmTokenizer } = await import('../src/tokenizer.js');
+  const tok = KolmTokenizer.fromJSON(JSON.parse(fs.readFileSync(tokPath, 'utf-8')));
+  const ids = tok.encode(text);
+  if (args.includes('--json')) {
+    process.stdout.write(JSON.stringify({ ids, count: ids.length, bytes: Buffer.byteLength(text, 'utf-8') }) + '\n');
+    return;
+  }
+  console.log(ids.join(' '));
+}
+
+async function cmdTokenizeDecode(args) {
+  const tokPath = pickFlag(args, '--tokenizer') || 'tokenizer.json';
+  if (!fs.existsSync(tokPath)) { console.error(`tokenizer not found: ${tokPath}`); process.exit(EXIT.MISSING_PREREQ); }
+  const raw = args.find(a => !a.startsWith('--'));
+  if (raw === undefined) { console.error('usage: kolm tokenize decode "1 2 3" [--tokenizer tokenizer.json]'); process.exit(EXIT.USAGE); }
+  const ids = raw.split(/[\s,]+/).filter(Boolean).map((x) => parseInt(x, 10));
+  if (ids.some((x) => !Number.isFinite(x))) { console.error('decode: ids must be a whitespace/comma separated list of integers'); process.exit(EXIT.BAD_ARGS); }
+  const { KolmTokenizer } = await import('../src/tokenizer.js');
+  const tok = KolmTokenizer.fromJSON(JSON.parse(fs.readFileSync(tokPath, 'utf-8')));
+  process.stdout.write(tok.decode(ids));
+  if (process.stdout.isTTY) process.stdout.write('\n');
+}
+
+async function cmdTokenizeInspect(args) {
+  const tokPath = args.find(a => !a.startsWith('--')) || 'tokenizer.json';
+  if (!fs.existsSync(tokPath)) { console.error(`tokenizer not found: ${tokPath}`); process.exit(EXIT.MISSING_PREREQ); }
+  const { KolmTokenizer, summarizeTokenizer } = await import('../src/tokenizer.js');
+  const tok = KolmTokenizer.fromJSON(JSON.parse(fs.readFileSync(tokPath, 'utf-8')));
+  const s = summarizeTokenizer(tok);
+  if (args.includes('--json')) {
+    process.stdout.write(JSON.stringify(s, null, 2) + '\n');
+    return;
+  }
+  console.log(`tokenizer: ${tokPath}`);
+  console.log(`  spec:        ${s.spec}`);
+  console.log(`  type:        ${s.type}`);
+  console.log(`  vocab_size:  ${s.vocab_size}`);
+  console.log(`  by_kind:     special=${s.by_kind.special} byte=${s.by_kind.byte} merge=${s.by_kind.merge}`);
+  console.log(`  merges:      ${s.merges_count}`);
+  console.log(`  specials:    ${s.specials.join(' ')}`);
+  console.log(`  sha256:      ${s.sha256}`);
+}
+
+// ---------- kolm extract (PDF / HTML / image / json -> text) ----------
+async function cmdExtract(args) {
+  if (maybeHelp('extract', args)) return;
+  const filePath = args.find(a => !a.startsWith('--'));
+  if (!filePath) { usage('extract'); process.exit(EXIT.BAD_ARGS); }
+  if (!fs.existsSync(filePath)) { console.error(`not found: ${filePath}`); process.exit(EXIT.MISSING_PREREQ); }
+  const outPath = pickFlag(args, '--out');
+  const lang    = pickFlag(args, '--lang') || 'eng';
+  const ocr     = args.includes('--ocr');
+  const vision  = args.includes('--vision');
+  const asJson  = args.includes('--json');
+  const { extractFile } = await import('../src/extract.js');
+  let result;
+  try {
+    result = await extractFile(filePath, { ocr, vision, lang });
+  } catch (e) {
+    console.error(`extract failed: ${e.message}`);
+    process.exit(EXIT.RUNTIME);
+  }
+  if (outPath) {
+    fs.writeFileSync(outPath, result.text);
+  }
+  if (asJson) {
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+    return;
+  }
+  if (!outPath) {
+    process.stdout.write(result.text);
+    if (process.stdout.isTTY && !result.text.endsWith('\n')) process.stdout.write('\n');
+  } else {
+    console.log(`extracted: ${outPath}`);
+    console.log(`  kind:     ${result.kind}`);
+    if (result.pages !== undefined) console.log(`  pages:    ${result.pages}`);
+    console.log(`  bytes:    ${Buffer.byteLength(result.text, 'utf-8')}`);
+    console.log(`  sha256:   ${result.sha256}`);
+    if (result.warnings && result.warnings.length) {
+      console.log(`  warnings: ${result.warnings.join(', ')}`);
+    }
+  }
+}
+
+// ---------- kolm doc check (multimodal completeness gate) ----------
+async function cmdDoc(args) {
+  if (maybeHelp('doc', args)) return;
+  const sub = args[0];
+  const rest = args.slice(1);
+  if (!sub) { usage('doc'); process.exit(EXIT.BAD_ARGS); }
+  if (sub === 'types') return cmdDocTypes(rest);
+  if (sub === 'check') return cmdDocCheck(rest);
+  console.error(`unknown subcommand: kolm doc ${sub}`);
+  usage('doc');
+  process.exit(EXIT.BAD_ARGS);
+}
+
+async function cmdDocTypes(args) {
+  const { BUILTIN_SPECS } = await import('../src/doc-check.js');
+  if (args.includes('--json')) {
+    const out = Object.entries(BUILTIN_SPECS).map(([k, v]) => ({
+      type: k, description: v.description, checks: (v.required_patterns?.length || 0) + (v.required_sections?.length || 0),
+    }));
+    process.stdout.write(JSON.stringify(out, null, 2) + '\n');
+    return;
+  }
+  console.log('built-in document types:');
+  for (const [k, v] of Object.entries(BUILTIN_SPECS)) {
+    const n = (v.required_patterns?.length || 0) + (v.required_sections?.length || 0);
+    console.log(`  ${k.padEnd(16)} ${v.description}  (${n} required checks)`);
+  }
+}
+
+async function cmdDocCheck(args) {
+  const filePath = args.find(a => !a.startsWith('--'));
+  if (!filePath) { console.error('usage: kolm doc check <file> [--type <built-in>|--spec <path>] [--json]'); process.exit(EXIT.BAD_ARGS); }
+  if (!fs.existsSync(filePath)) { console.error(`not found: ${filePath}`); process.exit(EXIT.MISSING_PREREQ); }
+  const type    = pickFlag(args, '--type');
+  const specArg = pickFlag(args, '--spec');
+  const lang    = pickFlag(args, '--lang') || 'eng';
+  const ocr     = args.includes('--ocr');
+  const vision  = args.includes('--vision');
+  const asJson  = args.includes('--json');
+  if (!type && !specArg) { console.error('--type <built-in> or --spec <path> required'); process.exit(EXIT.BAD_ARGS); }
+
+  const { extractFile } = await import('../src/extract.js');
+  const { checkDocument, loadBuiltinSpec, loadSpecFromFile } = await import('../src/doc-check.js');
+  let spec;
+  try { spec = specArg ? loadSpecFromFile(specArg) : loadBuiltinSpec(type); }
+  catch (e) { console.error(`spec load failed: ${e.message}`); process.exit(EXIT.BAD_ARGS); }
+
+  let extracted;
+  try { extracted = await extractFile(filePath, { ocr, vision, lang }); }
+  catch (e) { console.error(`extract failed: ${e.message}`); process.exit(EXIT.EXECUTION); }
+  if (!extracted.text || extracted.text.trim().length === 0) {
+    console.error(`extract returned empty text for ${filePath}; try --ocr or --vision`);
+    process.exit(EXIT.EXECUTION);
+  }
+
+  const result = checkDocument(extracted.text, spec);
+  const payload = { file: filePath, source_kind: extracted.kind, source_sha256: extracted.sha256, ...result };
+  if (asJson) {
+    process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
+  } else {
+    const v = result.verdict;
+    const tag = v === 'pass' ? 'PASS' : (v === 'warn' ? 'WARN' : 'FAIL');
+    console.log(`${tag}  ${spec.name}  score=${result.score}  words=${result.word_count}  errors=${result.counts.errors}  warnings=${result.counts.warnings}`);
+    console.log(`file:    ${filePath}  (kind=${extracted.kind})`);
+    for (const c of result.checks) {
+      const mark = c.passed ? 'ok' : (c.severity === 'error' ? 'XX' : '!!');
+      const where = c.kind === 'word_count'
+        ? ` ${c.detail.observed}/${c.detail.threshold}`
+        : (c.passed ? ` "${(c.detail?.match || '').slice(0, 60)}"` : ` (missing)`);
+      console.log(`  [${mark}] ${c.kind.padEnd(18)} ${c.name.padEnd(20)}${where}`);
+    }
+  }
+  if (result.verdict === 'fail') process.exit(EXIT.GATE_FAIL);
 }
 
 // ---------- kolm tune (skeleton LoRA -> evolving adapter) ----------
@@ -6137,6 +8731,46 @@ function chatBuildFunnelExtractEmbeddedTask(prompt) {
   if (task.length < 6) return null;
   task = task.replace(/\s*[,\.;]\s*(i\s+have|we\s+have)\s+(a\s+few\s+|some\s+)?examples?.*$/i, '').trim();
   return task && task.length >= 4 ? task : null;
+}
+
+// kolm chat-tui — production-grade terminal UI for chatting with a kolm
+// artifact, an Anthropic model, an OpenAI model, or any model exposed by the
+// local completions server. Wraps src/tui-chat.js runTuiChat(); the full
+// implementation (alt-screen, slash commands, research mode, kolm receipts)
+// lives there and is exercised by tests/wave144-tui-chat.test.js so changes
+// here stay surgical.
+async function cmdChatTui(args) {
+  args = args || [];
+  if (args.indexOf('--help') >= 0 || args.indexOf('-h') >= 0) {
+    console.log(HELP['chat-tui']);
+    return;
+  }
+  const opts = {};
+  const registryDirs = [];
+  const openArtifacts = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a.startsWith('--model=')) opts.model = a.slice('--model='.length);
+    else if (a === '--model' && args[i + 1]) { opts.model = args[++i]; }
+    else if (a.startsWith('--system=')) opts.systemPrompt = a.slice('--system='.length);
+    else if (a === '--system' && args[i + 1]) { opts.systemPrompt = args[++i]; }
+    else if (a.startsWith('--registry=')) registryDirs.push(a.slice('--registry='.length));
+    else if (a === '--registry' && args[i + 1]) { registryDirs.push(args[++i]); }
+    else if (a.startsWith('--open=')) openArtifacts.push(a.slice('--open='.length));
+    else if (a === '--open' && args[i + 1]) { openArtifacts.push(args[++i]); }
+  }
+  if (registryDirs.length) opts.registryDirs = registryDirs;
+  if (openArtifacts.length) opts.openArtifacts = openArtifacts;
+
+  // Lazy import so the TUI module's runtime cost (readline, alt-screen
+  // setup) only lands when the user actually opens the TUI. Keeps cold
+  // start for every OTHER verb unaffected.
+  const { runTuiChat } = await import('../src/tui-chat.js');
+  await runTuiChat({
+    input: process.stdin,
+    output: process.stdout,
+    opts,
+  });
 }
 
 async function cmdChat(args) {
@@ -7588,12 +10222,15 @@ function looksLikeNaturalLanguage(cmd, rest) {
 // scripts consume. Keep this in sync with the dispatch switch below.
 const COMPLETION_VERBS = [
   'init', 'signup', 'login', 'whoami', 'new', 'build', 'compile', 'train', 'run', 'eval', 'benchmark', 'bench',
-  'score', 'list', 'ls', 'inspect', 'eject', 'diff', 'verify', 'serve', 'publish', 'pull', 'hub', 'capture', 'labels', 'distill',
+  'score', 'list', 'ls', 'inspect', 'eject', 'diff', 'verify', 'serve', 'tui', 'repl', 'publish', 'pull', 'hub', 'capture', 'labels', 'distill', 'moe', 'tokenize',
   'config', 'hmac', 'install', 'tune', 'rag', 'team', 'tunnel', 'cloud', 'airgap',
-  'compute', 'doctor', 'logs', 'ask', 'chat', 'version', 'help', 'completion', 'upgrade', 'update',
-  'models', 'gpu', 'export', 'seeds', 'anonymize', 'improve', 'instant',
+  'compute', 'doctor', 'logs', 'ask', 'nl', 'chat', 'chat-tui', 'version', 'help', 'completion', 'upgrade', 'update', 'self-update',
+  'models', 'gpu', 'export', 'seeds', 'anonymize', 'redact', 'reinject', 'improve', 'instant', 'extract', 'doc',
+  'keygen', 'pubkey', 'keys', 'auditor', 'quantize',
+  'sigstore-attest', 'attest', 'test', 'drift', 'trace', 'ir', 'device', 'cc', 'fl',
 ];
 const COMPLETION_SUBS = {
+  auditor: ['keygen', 'sign', 'verify'],
   compute: ['list', 'detect', 'pick', 'use', 'info', 'test', 'status'],
   airgap:  ['status', 'enable', 'disable', 'verify'],
   team:    ['create', 'list', 'show', 'invite', 'accept', 'members', 'role', 'remove', 'transfer', 'delete'],
@@ -7601,6 +10238,9 @@ const COMPLETION_SUBS = {
   cloud:   ['train', 'targets', 'deploy', 'list', 'show', 'destroy'],
   hub:     ['list', 'ls', 'show'],
   tune:    ['init', 'capture-on', 'capture-off', 'step', 'eval', 'promote', 'rollback', 'watch', 'status'],
+  tokenize:['train', 'encode', 'decode', 'inspect'],
+  moe:     ['compose', 'inspect'],
+  doc:     ['check', 'types'],
   rag:     ['index', 'query', 'attach', 'list'],
   capture: ['status'],
   install: ['claude-code', 'cursor', 'continue', 'cline'],
@@ -7609,6 +10249,8 @@ const COMPLETION_SUBS = {
   gpu:     ['detect', 'doctor', 'setup', 'stress'],
   seeds:   ['new', 'generate', 'list', 'bootstrap', 'validate'],
   hmac:    ['status', 'rotate', 'prune'],
+  keys:    ['list', 'rotate', 'fingerprint', 'export'],
+  quantize:['int4', 'int8', 'gptq', 'awq', 'doctor'],
 };
 
 function emitBashCompletion() {
@@ -8470,20 +11112,64 @@ const SEED_TEMPLATE_ALIASES = {
   blank: 'generic',
 };
 
-// `kolm seeds new <name>`
+// `kolm seeds new <name>`  OR  `kolm seeds new "<free-text brief>"`  (Wave 199)
+//
+// Two routes share this verb:
+//   1. Template route — first positional matches a known SEED_TEMPLATES name
+//      or SEED_TEMPLATE_ALIASES alias. Behavior is unchanged from W199-.
+//   2. Brief route (Wave 199) — first positional is a free-text brief
+//      (multi-word, or single-word that is not a known template). Calls
+//      seedsNewFromBrief() in src/synthesis.js. Air-gap mode is the
+//      shipping default; the networked teacher path is NOT YET WIRED.
 async function cmdSeedsNew(args) {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log('kolm seeds new - scaffold a seeds.jsonl\n\n' +
+      'USAGE\n' +
+      '  kolm seeds new <template>                              starter scaffold from a known template\n' +
+      '  kolm seeds new "<free-text brief>" [flags]             deterministic candidate seeds from a brief (Wave 199)\n\n' +
+      'TEMPLATE NAMES\n' +
+      '  ' + Object.keys(SEED_TEMPLATES).join(', ') + '\n' +
+      '  (aliases: ' + Object.keys(SEED_TEMPLATE_ALIASES).join(', ') + ')\n\n' +
+      'BRIEF FLAGS (Wave 199)\n' +
+      '  --class <c>     force recipe class: rule | synthesized_rule | compiled_rule | distilled_model\n' +
+      '  --count <N>     candidate count (default: 10)\n' +
+      '  --out <path>    write JSONL candidates to <path> (with synthesized:true tag)\n' +
+      '  --json          full JSON output (instead of human-readable summary)\n' +
+      '  --air-gap       deterministic candidates from a per-class library (default)\n' +
+      '  --no-air-gap    reserved for the networked teacher path (NOT YET WIRED today)\n\n' +
+      'HONEST SCOPE\n' +
+      '  Brief-mode rows are CANDIDATES, not labels. Each row carries synthesized:true.\n' +
+      '  The flow is scaffold -> kolm seeds split -> kolm eval -> kolm verify. K-score\n' +
+      '  against scaffolded candidates is not ground truth — run them through your gate.\n\n' +
+      'EXAMPLES\n' +
+      '  kolm seeds new phi-redactor\n' +
+      '  kolm seeds new "teach me about denial codes 50 ways" --count 12\n' +
+      '  kolm seeds new "draft a denial appeal letter" --class distilled_model --out seeds.jsonl\n' +
+      '  kolm seeds new "compute HEDIS CBP measure" --json');
+    return;
+  }
   const positional = args.find(a => !a.startsWith('--'));
   if (!positional) {
-    const err = new Error('kolm seeds new <name>  (one of: ' + Object.keys(SEED_TEMPLATES).join(', ') + ')');
+    const err = new Error('usage: kolm seeds new <template-or-brief>\n' +
+      '  templates: ' + Object.keys(SEED_TEMPLATES).join(', ') + '\n' +
+      '  or pass a free-text brief: kolm seeds new "teach me about denial codes 50 ways"');
     err.exitCode = EXIT.BAD_ARGS;
     throw err;
   }
   const rawName = String(positional).toLowerCase();
   const name = SEED_TEMPLATE_ALIASES[rawName] || rawName;
   const tmpl = SEED_TEMPLATES[name];
+  // Brief-route trigger: first positional is not a known template name and
+  // also not a known alias. Multi-word strings (with spaces) always route
+  // here too because no template name has spaces. The brief route is what
+  // Wave 199 ships.
+  const looksLikeBrief = !tmpl && (rawName.indexOf(' ') >= 0 || /[a-z]{4,}/i.test(rawName));
+  if (!tmpl && looksLikeBrief) {
+    return cmdSeedsNewFromBrief(args);
+  }
   if (!tmpl) {
     const valid = Object.keys(SEED_TEMPLATES).concat(Object.keys(SEED_TEMPLATE_ALIASES));
-    const err = new Error(`unknown template "${rawName}". choose: ${Object.keys(SEED_TEMPLATES).join(', ')} (or aliases: ${Object.keys(SEED_TEMPLATE_ALIASES).join(', ')})`);
+    const err = new Error(`unknown template "${rawName}". choose: ${Object.keys(SEED_TEMPLATES).join(', ')} (or aliases: ${Object.keys(SEED_TEMPLATE_ALIASES).join(', ')})\n  (or pass a free-text brief instead, e.g. kolm seeds new "teach me about denial codes 50 ways")`);
     err.exitCode = EXIT.BAD_ARGS;
     throw err;
   }
@@ -8532,6 +11218,124 @@ async function cmdSeedsNew(args) {
   console.log('         replace them with examples you actually want the model to learn from.');
   console.log('         K-score against placeholders means nothing; K-score against your real');
   console.log('         examples is the only number that should drive ship/no-ship decisions.');
+}
+
+// `kolm seeds new "<brief>" [--class c] [--count N] [--out p] [--json] [--air-gap | --no-air-gap]`
+// Wave 199: brief route. Calls seedsNewFromBrief() from src/synthesis.js.
+async function cmdSeedsNewFromBrief(args) {
+  // Flag parsing first. KNOWN flag tables follow the same pattern as cmdNl
+  // (W197) so the two verbs feel symmetric.
+  const KNOWN_VALUE_FLAGS = new Set(['--class', '--count', '--out', '-o']);
+  const KNOWN_BOOL_FLAGS  = new Set(['--json', '--air-gap', '--airgap', '--no-air-gap', '--no-airgap', '--no-network', '--offline']);
+
+  const wantJson = args.includes('--json');
+  const noAirGap = args.includes('--no-air-gap') || args.includes('--no-airgap');
+  const explicitAirGap = args.includes('--air-gap') || args.includes('--airgap') || args.includes('--offline')
+    || process.env.KOLM_AIRGAP === '1'
+    || fs.existsSync(path.join(KOLM_DIR, 'airgap.env'));
+  // Default: air-gap on. The networked teacher path is NOT YET WIRED in W199.
+  const airGap = noAirGap ? false : (explicitAirGap || true);
+
+  const classHint = pickFlag(args, '--class') || null;
+  const countFlag = pickFlag(args, '--count');
+  const count = countFlag ? Math.max(1, parseInt(countFlag, 10) || 10) : 10;
+  const outFlag = pickFlag(args, '--out') || pickFlag(args, '-o');
+
+  if (classHint && !['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'].includes(classHint)) {
+    const err = new Error(`--class must be one of rule | synthesized_rule | compiled_rule | distilled_model; got ${JSON.stringify(classHint)}`);
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+
+  // Reassemble brief from any positionals that are not flags or flag values.
+  const briefParts = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (KNOWN_BOOL_FLAGS.has(a)) continue;
+    if (KNOWN_VALUE_FLAGS.has(a)) { i++; continue; }
+    if (a.startsWith('-')) continue;
+    briefParts.push(a);
+  }
+  const brief = briefParts.join(' ').replace(/^["']|["']$/g, '').trim();
+  if (!brief) {
+    const err = new Error('usage: kolm seeds new "<free-text brief>" [--class <c>] [--count N] [--out <path>] [--json] [--air-gap]');
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+
+  const { seedsNewFromBrief } = await import('../src/synthesis.js');
+  const result = seedsNewFromBrief({
+    brief,
+    classHint,
+    count,
+    airGap,
+    teacherVendor: 'anthropic',
+  });
+
+  // Write candidates as JSONL when --out is given. Each row is one JSON
+  // object per line with the synthesized:true tag preserved.
+  if (outFlag) {
+    const outPath = path.resolve(process.cwd(), outFlag);
+    const dir = path.dirname(outPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const body = result.candidates.map(r => JSON.stringify(r)).join('\n') + '\n';
+    fs.writeFileSync(outPath, body);
+    if (wantJson) {
+      process.stdout.write(JSON.stringify({ ok: true, out: outPath, count: result.candidates.length, class: result.class }) + '\n');
+      return;
+    }
+    console.log(`wrote ${result.candidates.length} candidate row(s) to ${outPath}`);
+    console.log(`  class:           ${result.class}  (basis: ${result.class_inference_basis})`);
+    console.log(`  k-score gate:    ${result.gate_suggestion}`);
+    console.log(`  network status:  ${result.network_status}`);
+    console.log('');
+    console.log('honest scope: these are CANDIDATES, not labels. Run `kolm seeds split`');
+    console.log('              + `kolm eval` to score against your K-score gate before');
+    console.log('              promoting any row to ground truth (scaffold, not ship).');
+    return;
+  }
+
+  if (wantJson) {
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+    return;
+  }
+
+  // Human-readable. Verbatim load-bearing labels: "class:", "k-score gate:",
+  // "candidates", "scaffold", "kolm seeds split". Wave 199 tests grep for
+  // these.
+  console.log('');
+  console.log(`brief:           ${brief.slice(0, 120)}`);
+  console.log(`class:           ${result.class}  (basis: ${result.class_inference_basis})`);
+  console.log(`k-score gate:    ${result.gate_suggestion}`);
+  console.log(`network status:  ${result.network_status}`);
+  console.log(`candidates:      ${result.candidates.length}`);
+  console.log('');
+  console.log(`candidate rows (showing first ${Math.min(5, result.candidates.length)}):`);
+  for (let i = 0; i < Math.min(5, result.candidates.length); i++) {
+    const r = result.candidates[i];
+    const inp = String(r.input).slice(0, 70);
+    const out = String(r.output).slice(0, 70);
+    console.log(`  ${String(i + 1).padStart(2, ' ')}. ${inp}`);
+    console.log(`      -> ${out}`);
+  }
+  if (result.candidates.length > 5) {
+    console.log(`  ...${result.candidates.length - 5} more (pass --out <path> to write them all to JSONL)`);
+  }
+  console.log('');
+  console.log('next steps:');
+  for (const s of result.next_steps) {
+    console.log(`  - ${s}`);
+  }
+  console.log('');
+  if (result.network_status === 'not_yet_wired') {
+    console.log('note: networked teacher path is NOT YET WIRED. Today every invocation');
+    console.log('      uses the deterministic air-gap library. Pass --air-gap explicitly');
+    console.log('      to silence this notice. See `kolm seeds new --help`.');
+    console.log('');
+  }
+  console.log('honest scope: these are CANDIDATES, not labels — this is a scaffold,');
+  console.log('              not a finished dataset. Run `kolm seeds split` + `kolm eval`');
+  console.log('              to score against your K-score gate before promotion.');
 }
 
 // `kolm seeds generate --from <file> --count N [--strategy s] [--seed-rng N] [--out p]`
@@ -8815,6 +11619,106 @@ async function cmdSeedsBootstrap(args) {
   console.log(`  kolm seeds generate --from ${path.relative(process.cwd(), outPath)} --count 200 --strategy redact-pii-templated`);
 }
 
+// `kolm redact` - token-level PHI/PII redaction. Reads stdin (or --input
+// <path>), runs the Wave Q+3a redactor (src/phi-redactor.js), writes the
+// redacted text to stdout (or --output) and the reversible map to --map
+// <path>. Designed as the "opus-in-the-middle" wrapper around any teacher
+// API call so raw PHI never leaves the tenant boundary.
+async function cmdRedact(args) {
+  args = args || [];
+  if (args.indexOf('--help') >= 0 || args.indexOf('-h') >= 0) {
+    console.log(HELP.redact);
+    return;
+  }
+  const inputPath = pickFlag(args, '--input');
+  const outputPath = pickFlag(args, '--output');
+  const mapPath = pickFlag(args, '--map');
+  const jsonOut = args.includes('--json');
+  const classesStr = pickFlag(args, '--classes');
+  const namesStr = pickFlag(args, '--names');
+  const idsStr = pickFlag(args, '--ids'); // CSV of CLASS=value pairs
+
+  const opts = {};
+  if (classesStr) opts.classes = classesStr.split(',').map(s => s.trim()).filter(Boolean);
+  if (namesStr) opts.names = namesStr.split(',').map(s => s.trim()).filter(Boolean);
+  if (idsStr) {
+    opts.ids = {};
+    for (const pair of idsStr.split(',')) {
+      const [k, v] = pair.split('=').map(s => s && s.trim());
+      if (!k || !v) continue;
+      if (!opts.ids[k]) opts.ids[k] = [];
+      opts.ids[k].push(v);
+    }
+  }
+
+  const input = inputPath
+    ? fs.readFileSync(path.resolve(process.cwd(), inputPath), 'utf8')
+    : await readStdinAll();
+
+  const { redact, mapHash } = await import('../src/phi-redactor.js');
+  const { redacted, map } = redact(input, opts);
+
+  if (outputPath) fs.writeFileSync(path.resolve(process.cwd(), outputPath), redacted);
+  else process.stdout.write(redacted);
+  if (mapPath) fs.writeFileSync(path.resolve(process.cwd(), mapPath), JSON.stringify(map, null, 2));
+
+  if (jsonOut) {
+    process.stdout.write('\n' + JSON.stringify({
+      redacted_bytes: Buffer.byteLength(redacted),
+      tokens: Object.keys(map).length,
+      map_hash: mapHash(map),
+    }) + '\n');
+  } else if (!outputPath) {
+    process.stdout.write('\n');
+  }
+}
+
+// `kolm reinject` - reverse of kolm redact. Reads stdin (or --input <path>),
+// loads the map written by `kolm redact --map`, substitutes every known
+// token back into its original value, writes to stdout (or --output). Used
+// after a teacher API call returns redacted text.
+async function cmdReinject(args) {
+  args = args || [];
+  if (args.indexOf('--help') >= 0 || args.indexOf('-h') >= 0) {
+    console.log(HELP.reinject);
+    return;
+  }
+  const inputPath = pickFlag(args, '--input');
+  const outputPath = pickFlag(args, '--output');
+  const mapPath = pickFlag(args, '--map');
+  if (!mapPath) {
+    const err = new Error('kolm reinject requires --map <path>');
+    err.exitCode = EXIT.BAD_ARGS;
+    throw err;
+  }
+  const mapRaw = fs.readFileSync(path.resolve(process.cwd(), mapPath), 'utf8');
+  const map = JSON.parse(mapRaw);
+  const input = inputPath
+    ? fs.readFileSync(path.resolve(process.cwd(), inputPath), 'utf8')
+    : await readStdinAll();
+
+  const { reinject } = await import('../src/phi-redactor.js');
+  const out = reinject(input, map);
+  if (outputPath) fs.writeFileSync(path.resolve(process.cwd(), outputPath), out);
+  else process.stdout.write(out);
+  if (!outputPath) process.stdout.write('\n');
+}
+
+function readStdinAll() {
+  return new Promise((resolve, reject) => {
+    if (process.stdin.isTTY) {
+      // No piped input — return empty string so the caller surfaces a clean
+      // "nothing to do" rather than blocking on a closed TTY.
+      resolve('');
+      return;
+    }
+    const chunks = [];
+    process.stdin.on('data', (c) => chunks.push(c));
+    process.stdin.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    process.stdin.on('error', reject);
+  });
+}
+
 // `kolm anonymize <file>` - rule-based PII redaction. Default is 1:1 (N input
 // rows -> N output rows with PII permuted, no expansion). Use --expand to opt
 // in to the multi-row mutation behavior (was the old default; renamed to make
@@ -9056,6 +11960,269 @@ async function cmdSeeds(args) {
   err.exitCode = EXIT.BAD_ARGS;
   throw err;
 }
+
+// ---------- trace / ir / device / cc / fl (Wave 144 platform-module surfaces) ----------
+//
+// These verbs expose the new src/* modules through the CLI without any
+// vendored heuristics. Each one is a thin shell over the module's exported
+// API and prints JSON when --json is passed (default human-readable).
+//
+// Honest scope: these surfaces do not call out to a network service. They
+// operate on local files under KOLM_HOME and on JSON the user pipes in.
+// Anything that requires a real frontier API call (e.g., `kolm distill`)
+// stays in its dedicated command.
+function _printJson(v) { console.log(JSON.stringify(v, null, 2)); }
+async function _readJsonArg(maybePathOrJson) {
+  if (!maybePathOrJson) return null;
+  if (maybePathOrJson === '-') {
+    const chunks = [];
+    for await (const c of process.stdin) chunks.push(c);
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  }
+  try { return JSON.parse(maybePathOrJson); }
+  catch { /* fall through to file read */ }
+  const fs = await import('node:fs/promises');
+  const buf = await fs.readFile(maybePathOrJson, 'utf8');
+  return JSON.parse(buf);
+}
+// Accept either a raw IR or a compile-pass result of shape {ir, dropped}.
+// Lets `kolm ir compile <tid> > /tmp/ir.json && kolm ir stats /tmp/ir.json`
+// work without an explicit unwrap.
+function _unwrapIr(j) {
+  if (j && typeof j === 'object' && j.spec === 'wir-v1') return j;
+  if (j && typeof j === 'object' && j.ir && j.ir.spec === 'wir-v1') return j.ir;
+  return j;
+}
+
+async function cmdTrace(args) {
+  const sub = args && args[0];
+  const rest = (args || []).slice(1);
+  const jsonOut = rest.includes('--json');
+  const tc = await import('../src/trace-capture.js');
+  if (!sub || sub === '--help' || sub === '-h' || sub === 'help') {
+    console.log('kolm trace - structured agent/workflow trace inspector\n\n' +
+      'USAGE\n' +
+      '  kolm trace stats <trace_id>\n' +
+      '  kolm trace chain <trace_id>\n' +
+      '  kolm trace export <trace_id>      print all spans as JSON\n' +
+      '  kolm trace new                    generate a new trace_id (32 hex)\n' +
+      '  kolm trace span                   generate a new span_id (16 hex)');
+    return;
+  }
+  if (sub === 'new')   { console.log(tc.newTraceId()); return; }
+  if (sub === 'span')  { console.log(tc.newSpanId()); return; }
+  const trace_id = rest.find(a => /^[0-9a-f]{32}$/.test(a));
+  if (sub === 'stats') {
+    if (!trace_id) throw _badArgs('kolm trace stats requires a 32-hex trace_id');
+    const s = await tc.stats(trace_id);
+    if (jsonOut) return _printJson(s);
+    console.log(`trace ${s.trace_id}`);
+    console.log(`  spans:     ${s.total_spans}`);
+    console.log(`  llm:       ${s.llm_calls} calls, ${s.total_llm_ms}ms`);
+    console.log(`  tools:     ${s.by_kind.tool_call || 0} calls, ${s.total_tool_ms}ms`);
+    console.log(`  cost:      $${s.total_cost_usd}`);
+    console.log(`  by_kind:   ${JSON.stringify(s.by_kind)}`);
+    return;
+  }
+  if (sub === 'chain') {
+    if (!trace_id) throw _badArgs('kolm trace chain requires a 32-hex trace_id');
+    const r = await tc.chain(trace_id);
+    if (jsonOut) return _printJson(r);
+    console.log(r.ok ? `ok  length=${r.length} head=${r.head}` : `BROKEN at ${r.broke_at}: ${r.reason}`);
+    return;
+  }
+  if (sub === 'export') {
+    if (!trace_id) throw _badArgs('kolm trace export requires a 32-hex trace_id');
+    const spans = await tc.readTrace(trace_id);
+    return _printJson(spans);
+  }
+  throw _badArgs(`unknown trace subcommand: ${sub}`);
+}
+
+async function cmdIr(args) {
+  const sub = args && args[0];
+  const rest = (args || []).slice(1);
+  const jsonOut = rest.includes('--json');
+  const wir = await import('../src/workflow-ir.js');
+  const cir = await import('../src/compile-ir.js');
+  if (!sub || sub === '--help' || sub === '-h' || sub === 'help') {
+    console.log('kolm ir - workflow IR compile + inspect\n\n' +
+      'USAGE\n' +
+      '  kolm ir compile <trace_id> [trace_id2 ...]   trace(s) -> IR (JSON to stdout)\n' +
+      '  kolm ir stats <ir.json>                       print {nodes, edges, seeds, hash}\n' +
+      '  kolm ir validate <ir.json>                    structural validation only\n' +
+      '  kolm ir replay <ir.json>                      replay seeds; exits non-zero on mismatch');
+    return;
+  }
+  if (sub === 'compile') {
+    const traceIds = rest.filter(a => /^[0-9a-f]{32}$/.test(a));
+    if (traceIds.length === 0) throw _badArgs('kolm ir compile requires at least one 32-hex trace_id');
+    const result = traceIds.length === 1
+      ? await cir.traceToIr(traceIds[0])
+      : await cir.tracesToIr(traceIds);
+    return _printJson(result);
+  }
+  const irArg = rest.find(a => !a.startsWith('--'));
+  if (sub === 'stats') {
+    if (!irArg) throw _badArgs('kolm ir stats requires an IR file');
+    const ir = _unwrapIr(await _readJsonArg(irArg));
+    const s = wir.stats(ir);
+    if (jsonOut) return _printJson(s);
+    console.log(`ir ${s.hash}`);
+    console.log(`  nodes: ${s.nodes}`);
+    console.log(`  edges: ${s.edges}`);
+    console.log(`  seeds: ${s.seeds}`);
+    console.log(`  by_kind: ${JSON.stringify(s.by_kind)}`);
+    return;
+  }
+  if (sub === 'validate') {
+    if (!irArg) throw _badArgs('kolm ir validate requires an IR file');
+    const ir = _unwrapIr(await _readJsonArg(irArg));
+    wir.validateIr(ir);
+    console.log('ok');
+    return;
+  }
+  if (sub === 'replay') {
+    if (!irArg) throw _badArgs('kolm ir replay requires an IR file');
+    const ir = _unwrapIr(await _readJsonArg(irArg));
+    const r = await wir.replaySeeds(ir);
+    if (jsonOut) return _printJson(r);
+    console.log(r.ok ? `ok  total=${r.total}` : `MISMATCH ${r.mismatches.length}/${r.total}`);
+    if (!r.ok) { process.exitCode = 1; for (const m of r.mismatches) console.error('  ', JSON.stringify(m)); }
+    return;
+  }
+  throw _badArgs(`unknown ir subcommand: ${sub}`);
+}
+
+async function cmdDevice(args) {
+  const sub = args && args[0];
+  const rest = (args || []).slice(1);
+  const jsonOut = rest.includes('--json');
+  const dc = await import('../src/device-capabilities.js');
+  if (!sub || sub === '--help' || sub === '-h' || sub === 'help') {
+    console.log('kolm device - device capability inspector\n\n' +
+      'USAGE\n' +
+      '  kolm device list                          list every device profile\n' +
+      '  kolm device profile <device-id>           one device profile as JSON\n' +
+      '  kolm device probe                         detect local host + emit profile\n' +
+      '  kolm device check <target.json> <device-id>   does host meet a target?');
+    return;
+  }
+  if (sub === 'list') {
+    const all = dc.allProfiles();
+    if (jsonOut) return _printJson(all);
+    for (const p of all) {
+      console.log(`${p.device_id.padEnd(28)}  arch=${(p.arch||'').padEnd(14)}  vram=${(p.vram_gb||0)}gb  tee=${p.tee||'-'}`);
+    }
+    return;
+  }
+  if (sub === 'profile') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) throw _badArgs('kolm device profile requires a device-id');
+    const p = dc.profileFor(id);
+    if (!p) throw _badArgs(`unknown device: ${id}`);
+    return _printJson(p);
+  }
+  if (sub === 'probe') {
+    const p = await dc.probeHost();
+    return _printJson(p);
+  }
+  if (sub === 'check') {
+    const argsNoFlags = rest.filter(a => !a.startsWith('--'));
+    const [targetArg, deviceId] = argsNoFlags;
+    if (!targetArg || !deviceId) throw _badArgs('kolm device check requires <target.json> <device-id>');
+    const target = await _readJsonArg(targetArg);
+    const r = dc.meetsRequirement(target, deviceId);
+    if (jsonOut) return _printJson(r);
+    console.log(r.ok ? 'ok' : `FAIL ${r.reason}` + (r.want ? `  want=${JSON.stringify(r.want)} got=${JSON.stringify(r.got)}` : ''));
+    if (!r.ok) process.exitCode = 1;
+    return;
+  }
+  throw _badArgs(`unknown device subcommand: ${sub}`);
+}
+
+async function cmdCc(args) {
+  const sub = args && args[0];
+  const rest = (args || []).slice(1);
+  const jsonOut = rest.includes('--json');
+  const cc = await import('../src/confidential-compute.js');
+  if (!sub || sub === '--help' || sub === '-h' || sub === 'help') {
+    console.log('kolm cc - confidential compute attestation inspector\n\n' +
+      'USAGE\n' +
+      '  kolm cc kinds                            list supported attestation kinds\n' +
+      '  kolm cc verify <kind> <report.json>      shape-check (and crypt-verify if a verifier is registered)\n' +
+      '  kolm cc shape <kind>                     print the expected report shape for a kind\n\n' +
+      'Honest default: shape verification only returns CRYPTOGRAPHICALLY_VERIFIED\n' +
+      'when a real verifier has been registered via registerAttestationVerifier().');
+    return;
+  }
+  if (sub === 'kinds') {
+    return _printJson(Object.values(cc.KINDS));
+  }
+  if (sub === 'shape') {
+    const kind = rest.find(a => !a.startsWith('--'));
+    if (!kind) throw _badArgs('kolm cc shape requires a kind');
+    const shape = cc.REPORT_SHAPES[kind];
+    if (!shape) throw _badArgs(`unknown attestation kind: ${kind}`);
+    return _printJson(shape);
+  }
+  if (sub === 'verify') {
+    const argsNoFlags = rest.filter(a => !a.startsWith('--'));
+    const [kind, reportArg] = argsNoFlags;
+    if (!kind || !reportArg) throw _badArgs('kolm cc verify requires <kind> <report.json>');
+    const report = await _readJsonArg(reportArg);
+    const r = await cc.verifyAttestation(kind, report);
+    if (jsonOut) return _printJson(r);
+    console.log(`state=${r.state}  verifier=${r.verifier}  verified=${r.verified}`);
+    if (r.reason) console.log(`reason: ${r.reason}`);
+    return;
+  }
+  throw _badArgs(`unknown cc subcommand: ${sub}`);
+}
+
+async function cmdFl(args) {
+  const sub = args && args[0];
+  const rest = (args || []).slice(1);
+  const jsonOut = rest.includes('--json');
+  const fl = await import('../src/federated-learning.js');
+  if (!sub || sub === '--help' || sub === '-h' || sub === 'help') {
+    console.log('kolm fl - federated learning helpers (LOCAL ONLY; no network)\n\n' +
+      'USAGE\n' +
+      '  kolm fl strategies                       list supported aggregation strategies\n' +
+      '  kolm fl new-round <opts.json>            mint a new training round\n' +
+      '  kolm fl verify <contribution.json>       verify a single contribution\n' +
+      '  kolm fl aggregate <round.json> <contribs.json>   FedAvg/FedSGD/FedProx fold\n\n' +
+      'Honest scope: this is the protocol layer only. It does NOT include network\n' +
+      'transport, multi-party computation, or Byzantine-robust filtering beyond\n' +
+      'duplicate detection.');
+    return;
+  }
+  if (sub === 'strategies') return _printJson(Object.values(fl.STRATEGIES));
+  if (sub === 'new-round') {
+    const opts = await _readJsonArg(rest.find(a => !a.startsWith('--')));
+    if (!opts) throw _badArgs('kolm fl new-round requires a JSON opts file');
+    return _printJson(fl.newRound(opts));
+  }
+  if (sub === 'verify') {
+    const contrib = await _readJsonArg(rest.find(a => !a.startsWith('--')));
+    if (!contrib) throw _badArgs('kolm fl verify requires a contribution JSON file');
+    return _printJson(fl.verifyContribution(contrib));
+  }
+  if (sub === 'aggregate') {
+    const argsNoFlags = rest.filter(a => !a.startsWith('--'));
+    const [roundArg, contribsArg] = argsNoFlags;
+    if (!roundArg || !contribsArg) throw _badArgs('kolm fl aggregate requires <round.json> <contribs.json>');
+    const round = await _readJsonArg(roundArg);
+    const contributions = await _readJsonArg(contribsArg);
+    const r = fl.aggregate({ round, contributions });
+    if (jsonOut) return _printJson(r);
+    console.log(`round=${round.round_id}  participants=${r.receipt.participant_count}  strategy=${r.receipt.strategy}`);
+    return;
+  }
+  throw _badArgs(`unknown fl subcommand: ${sub}`);
+}
+
+function _badArgs(msg) { const e = new Error(msg); e.exitCode = EXIT.BAD_ARGS; return e; }
 
 // ---------- update ----------
 // `kolm update` self-installs the latest commit from the canonical github
@@ -9644,6 +12811,97 @@ function ensureLocalReceiptSecretInEnv() {
 // kolm tui — interactive REPL for working with .kolm artifacts.
 // Drag-drop a file path, run inference against it, inspect the manifest +
 // receipt chain, and see the equivalent REST call for any local action.
+// Minimal generic REPL (W203). Wraps the main dispatch table so any kolm verb
+// works inside the prompt. Intentionally tiny: no history persistence, no
+// completion, no fancy keybindings. The goal is to amortise cold-start over
+// several verbs in one session.
+//
+// Parses each input line shell-style (quotes preserved as a single arg, no
+// brace/glob expansion). Empty lines re-prompt without error. exit/quit
+// terminate cleanly with EXIT.OK. SIGINT prints "bye." and exits 0.
+//
+// Re-uses dispatchRepl (subset of the main switch) so error propagation
+// (withErrorContext + EXIT.* honoring) stays identical to non-interactive use.
+async function cmdRepl(args) {
+  if (maybeHelp('repl', args)) return;
+  const isTty = !!(process.stdin && process.stdin.isTTY);
+  if (isTty) {
+    console.log('kolm interactive | type a verb (e.g. "version") | "help" for verbs | "exit" to quit');
+  }
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: isTty ? 'kolm> ' : '',
+    terminal: isTty,
+  });
+  let busy = false;
+  const quit = (code) => {
+    try { rl.close(); } catch {}
+    process.exit(Number.isInteger(code) ? code : EXIT.OK);
+  };
+  rl.on('SIGINT', () => {
+    if (isTty) process.stdout.write('\nbye.\n');
+    quit(EXIT.OK);
+  });
+  rl.on('close', () => { if (!busy) quit(EXIT.OK); });
+  rl.prompt();
+  rl.on('line', async (raw) => {
+    const line = (raw || '').trim();
+    if (!line) { rl.prompt(); return; }
+    if (line === 'exit' || line === 'quit' || line === ':q') { quit(EXIT.OK); return; }
+    if (line === 'help' || line === '?') {
+      console.log('verbs: ' + COMPLETION_VERBS.join(' '));
+      console.log('(run "<verb> --help" for per-verb help, "exit" to quit)');
+      rl.prompt();
+      return;
+    }
+    // Shell-lite parse: respect "..." and '...' quoting; everything else
+    // splits on whitespace. Good enough for "verify ./art.kolm --json".
+    const argv = [];
+    const re = /"([^"]*)"|'([^']*)'|(\S+)/g;
+    let mm;
+    while ((mm = re.exec(line)) !== null) argv.push(mm[1] !== undefined ? mm[1] : (mm[2] !== undefined ? mm[2] : mm[3]));
+    const verb = argv.shift();
+    if (!verb) { rl.prompt(); return; }
+    busy = true;
+    try {
+      await dispatchRepl(verb, argv);
+    } catch (e) {
+      console.error('error:', e && e.message ? e.message : String(e));
+      if (process.env.KOLM_DEBUG) console.error(e && e.stack);
+    } finally {
+      busy = false;
+      rl.prompt();
+    }
+  });
+}
+
+// Subset of the main switch reused by cmdRepl. Lives next to cmdRepl so any
+// new verb added to the main dispatch must be explicitly opted into REPL use,
+// keeping the surface tight on purpose.
+async function dispatchRepl(verb, rest) {
+  switch (verb) {
+    case 'version': return withErrorContext('version', () => cmdVersion(rest));
+    case 'help': case '--help': case '-h':
+      usage(rest && rest[0]); return;
+    case 'whoami': return withErrorContext('whoami', () => cmdWhoami(rest));
+    case 'list': case 'ls': return withErrorContext('list', () => cmdList(rest));
+    case 'inspect': return withErrorContext('inspect', () => cmdInspect(rest));
+    case 'verify': return withErrorContext('verify', () => cmdVerify(rest));
+    case 'score': return withErrorContext('score', () => cmdScore(rest));
+    case 'doctor': return withErrorContext('doctor', () => cmdDoctor(rest));
+    case 'config': return withErrorContext('config', () => cmdConfig(rest));
+    case 'logs': return withErrorContext('logs', () => cmdLogs(rest));
+    case 'seeds': return withErrorContext('seeds', () => cmdSeeds(rest));
+    case 'nl': return withErrorContext('nl', () => cmdNl(rest));
+    case 'ask': return withErrorContext('ask', () => cmdAsk(rest));
+    default:
+      console.error('repl: verb "' + verb + '" not available inside repl. try one of:');
+      console.error('  version whoami list inspect verify score doctor config logs seeds nl ask');
+      console.error('  (for verbs that take stdin / spawn workers / open TUIs, run them from a fresh shell)');
+  }
+}
+
 async function cmdTui(args) {
   if (maybeHelp('tui', args)) return;
   const c = loadConfig();
@@ -9863,17 +13121,31 @@ async function main() {
       case 'eject':    await withErrorContext('eject',    () => cmdEject(rest)); break;
       case 'diff':     await withErrorContext('diff',     () => cmdDiff(rest)); break;
       case 'verify':   await withErrorContext('verify',   () => cmdVerify(rest)); break;
+      case 'sigstore-attest':
+      case 'attest':   await withErrorContext('sigstore-attest', () => cmdSigstoreAttest(rest)); break;
       case 'test':     await withErrorContext('test',     () => cmdTest(rest)); break;
       case 'serve':    await withErrorContext('serve',    () => cmdServe(rest)); break;
       case 'tui':      await withErrorContext('tui',      () => cmdTui(rest)); break;
+      case 'repl':     await withErrorContext('repl',     () => cmdRepl(rest)); break;
       case 'publish':  await withErrorContext('publish',  () => cmdPublish(rest)); break;
       case 'pull':     await withErrorContext('pull',     () => cmdPull(rest)); break;
       case 'hub':      await withErrorContext('hub',      () => cmdHub(rest)); break;
       case 'capture':  await withErrorContext('capture',  () => cmdCapture(rest)); break;
       case 'labels':   await withErrorContext('labels',   () => cmdLabels(rest)); break;
       case 'distill':  await withErrorContext('distill',  () => cmdDistill(rest)); break;
+      case 'moe':      await withErrorContext('moe',      () => cmdMoe(rest)); break;
+      case 'nl':       await withErrorContext('nl',       () => cmdNl(rest)); break;
+      case 'tokenize': await withErrorContext('tokenize', () => cmdTokenize(rest)); break;
+      case 'extract':  await withErrorContext('extract',  () => cmdExtract(rest)); break;
+      case 'doc':      await withErrorContext('doc',      () => cmdDoc(rest)); break;
       case 'config':   await withErrorContext('config',   () => cmdConfig(rest)); break;
       case 'hmac':     await withErrorContext('hmac',     () => cmdHmac(rest)); break;
+      case 'keygen':   await withErrorContext('keygen',   () => cmdKeygen(rest)); break;
+      case 'pubkey':   await withErrorContext('pubkey',   () => cmdPubkey(rest)); break;
+      case 'keys':     await withErrorContext('keys',     () => cmdKeys(rest)); break;
+      case 'auditor':  await withErrorContext('auditor',  () => cmdAuditor(rest)); break;
+      case 'quantize': await withErrorContext('quantize', () => cmdQuantize(rest)); break;
+      case 'drift':    await withErrorContext('drift',    () => cmdDrift(rest)); break;
       case 'install':  await withErrorContext('install',  () => cmdInstall(rest)); break;
       case 'tune':     await withErrorContext('tune',     () => cmdTune(rest)); break;
       case 'rag':      await withErrorContext('rag',      () => cmdRag(rest)); break;
@@ -9886,6 +13158,7 @@ async function main() {
       case 'logs':     await withErrorContext('logs',     () => cmdLogs(rest)); break;
       case 'ask':      await withErrorContext('ask',      () => cmdAsk(rest)); break;
       case 'chat':     await withErrorContext('chat',     () => cmdChat(rest)); break;
+      case 'chat-tui': await withErrorContext('chat-tui', () => cmdChatTui(rest)); break;
       case 'completion': await withErrorContext('completion', () => cmdCompletion(rest)); break;
       case 'upgrade':  await withErrorContext('upgrade',  () => cmdUpgrade(rest)); break;
       case 'update':
@@ -9894,7 +13167,14 @@ async function main() {
       case 'gpu':      await withErrorContext('gpu',      () => cmdGpu(rest)); break;
       case 'export':   await withErrorContext('export',   () => cmdExport(rest)); break;
       case 'seeds':    await withErrorContext('seeds',    () => cmdSeeds(rest)); break;
+      case 'trace':    await withErrorContext('trace',    () => cmdTrace(rest)); break;
+      case 'ir':       await withErrorContext('ir',       () => cmdIr(rest)); break;
+      case 'device':   await withErrorContext('device',   () => cmdDevice(rest)); break;
+      case 'cc':       await withErrorContext('cc',       () => cmdCc(rest)); break;
+      case 'fl':       await withErrorContext('fl',       () => cmdFl(rest)); break;
       case 'anonymize':await withErrorContext('anonymize',() => cmdAnonymize(rest)); break;
+      case 'redact':   await withErrorContext('redact',   () => cmdRedact(rest)); break;
+      case 'reinject': await withErrorContext('reinject', () => cmdReinject(rest)); break;
       case 'improve':  await withErrorContext('improve',  () => cmdImprove(rest)); break;
       case 'instant':  await withErrorContext('instant',  () => cmdInstant(rest)); break;
       case 'version':  await withErrorContext('version',  () => cmdVersion(rest)); break;

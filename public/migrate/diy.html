@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Wrap your LLaMA-Factory / Axolotl / Unsloth pipeline with kolm | Migrate to kolm</title>
+<meta name="description" content="kolm is shrink-wrap around the DIY LoRA stack you already run. Same LLaMA-Factory or Axolotl configs, same Unsloth kernels, same TRL trainer classes. kolm adds receipt chain, eval gate, signed artifact, drop-out at any time.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="From DIY: wrap your LLaMA-Factory / Axolotl pipeline">
+<meta property="og:description" content="Same trainers, same kernels, same configs &mdash; with receipts, eval gate, and a signed artifact added on top.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://kolm.ai/migrate/diy">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:72px 0 32px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:38px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px}
+  .lede{font-size:17px;line-height:1.55;color:var(--ink-mute);max-width:760px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:52px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:760px}
+  .section p{color:var(--ink-mute);margin:0 0 14px;max-width:760px;font-size:15px;line-height:1.6}
+  .section code{font-family:var(--mono);font-size:12.5px;background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  .grid-4{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:24px}
+  @media(max-width:760px){.grid-4{grid-template-columns:1fr}}
+  .step{padding:18px 20px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .step .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .step h3{margin:0;font-size:16px;font-weight:500;color:var(--ink);letter-spacing:-0.01em}
+  .step p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute);max-width:none}
+  pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;font:12px/1.55 var(--mono);margin:0}
+  pre.terminal b{color:var(--accent);font-weight:400}
+  pre.terminal .mute{color:var(--ink-faint)}
+  pre.terminal .warn{color:var(--warn);font-weight:400}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
+  @media(max-width:760px){.grid-2{grid-template-columns:1fr}}
+  .col{padding:22px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev)}
+  .col h3{margin:0 0 14px;font-size:16px;font-weight:500;color:var(--ink);letter-spacing:-0.01em}
+  .col h3 .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(16,185,129,0.30);padding:2px 8px;border-radius:3px;margin-left:8px;vertical-align:middle}
+  .col h3 .tag.add{color:var(--warn);background:var(--warn-soft);border-color:rgba(240,184,107,0.30)}
+  .col ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.6;color:var(--ink-mute)}
+  .col ul li{margin-bottom:8px}
+  .col code{font-family:var(--mono);font-size:12px;background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  .stack-diagram{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin:20px 0;font-family:var(--mono);font-size:13px;line-height:2;color:var(--ink-mute)}
+  .stack-diagram b{color:var(--accent);font-weight:400}
+  .stack-diagram .layer{padding:6px 12px;border:1px solid var(--line);border-radius:6px;margin:6px 0;background:var(--bg);display:inline-block}
+  .stack-diagram .layer.kolm{border-color:var(--accent);background:var(--accent-soft)}
+  .honest{padding:20px 22px;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:8px;background:var(--bg-elev);margin-top:24px}
+  .honest b{color:var(--warn)}
+  .honest p{margin:0 0 10px;font-size:14px;line-height:1.6;color:var(--ink-mute);max-width:none}
+  .honest p:last-child{margin-bottom:0}
+  .links{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
+  @media(max-width:760px){.links{grid-template-columns:1fr}}
+  .lcard{padding:16px 18px;border:1px solid var(--line);border-radius:8px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:6px;transition:border-color 160ms}
+  .lcard:hover{border-color:var(--accent)}
+  .lcard .vt{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent)}
+  .lcard h4{margin:0;font-size:14.5px;font-weight:500;color:var(--ink)}
+  .lcard p{margin:0;font-size:12.5px;color:var(--ink-mute);line-height:1.5;max-width:none}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ft-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/migrate">migrate</a> &nbsp;/&nbsp; from DIY stack</p>
+    <h1>Wrap your LLaMA-Factory or Axolotl pipeline with kolm.</h1>
+    <p class="lede">LLaMA-Factory, Axolotl, Unsloth, TRL, PEFT &mdash; the DIY LoRA stack is what kolm builds on, not what kolm competes with. kolm is shrink-wrap around the stack you already run. The trainer call kolm emits is the same trainer call you were making by hand; the kernel optimizations Unsloth provides still apply; the YAML configs you tuned over six months keep working. What changes: the build now emits a signed artifact with a receipt chain, the eval is gated by a frozen K-score threshold, and there's an explicit drop-out path back to raw <code>llamafactory-cli train</code> at any time.</p>
+    <p class="stamp">Wave 188 &middot; from DIY stack &middot; shrink-wrap migration</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The stack with kolm wrapped around it.</h2>
+    <p>kolm does not replace any layer below. It sits above LLaMA-Factory / Axolotl, calls the same trainers, lets Unsloth kernels keep doing what they do, and writes the build outputs into a signed envelope. The DIY stack is the foundation; kolm is the production-readiness wrap.</p>
+    <div class="stack-diagram">
+      <div class="layer kolm"><b>kolm</b> &middot; receipt chain + eval gate + Ed25519 + Sigstore + PHI redactor + cross-vendor manifest + drift cron</div>
+      <div style="text-align:center;color:var(--ink-faint);font-size:12px">&darr;</div>
+      <div class="layer">LLaMA-Factory / Axolotl (YAML configs)</div>
+      <div style="text-align:center;color:var(--ink-faint);font-size:12px">&darr;</div>
+      <div class="layer">Unsloth (fast kernels) &middot; TRL (trainers) &middot; PEFT (LoRA primitives)</div>
+      <div style="text-align:center;color:var(--ink-faint);font-size:12px">&darr;</div>
+      <div class="layer">PyTorch &middot; HuggingFace &middot; bitsandbytes</div>
+    </div>
+    <p>The contract: kolm never hides the underlying stack. The manifest names which backend was invoked, which base was loaded, which trainer class ran, which LoRA rank and alpha were used. <code>kolm extract --target=training-config</code> dumps the YAML; <code>llamafactory-cli train --config dump.yaml</code> rebuilds bit-identical weights. If kolm goes away, the DIY stack still runs your config.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The four-step migration.</h2>
+    <div class="grid-4">
+      <div class="step">
+        <span class="vt">01 &middot; reuse your dataset</span>
+        <h3>Point kolm at the JSONL you already curated.</h3>
+        <p>Whatever dataset your LLaMA-Factory or Axolotl config currently reads is the kolm input. Conform to <code>{"input","output","tags"}</code> and you're done.</p>
+<pre class="terminal"><span class="mute"># your existing LLaMA-Factory dataset already</span>
+<span class="mute"># lives somewhere like data/alpaca.json &mdash; reshape</span>
+$ jq -c '{input: .instruction, output: .output}' \
+    data/alpaca.json &gt; seeds.jsonl
+$ wc -l seeds.jsonl
+  <b>52002 seeds.jsonl</b></pre>
+      </div>
+      <div class="step">
+        <span class="vt">02 &middot; wrap the trainer call</span>
+        <h3>kolm distill calls the same backend.</h3>
+        <p>Pass <code>--backend=unsloth</code> or <code>--backend=llamafactory</code> and kolm shells out to the same trainer your YAML would have invoked. Deterministic flags pinned into the manifest.</p>
+<pre class="terminal">$ <b>kolm distill</b> alpaca-style \
+    --backend=unsloth \
+    --student-base=llama-3.2-1b \
+    --seeds seeds.jsonl \
+    --eval-gate=0.85
+
+  USING unsloth backend &middot; SFTTrainer
+  &nbsp; lora_rank: 16, lora_alpha: 32
+  PASS  K-score 0.873
+  WROTE alpaca-style.kolm</pre>
+      </div>
+      <div class="step">
+        <span class="vt">03 &middot; inspect the wrap</span>
+        <h3>Confirm kolm called the trainer you expected.</h3>
+        <p><code>kolm inspect</code> renders the actual backend invocation from the artifact manifest. Auditor-readable; debuggable; matches what your YAML would have produced.</p>
+<pre class="terminal">$ <b>kolm inspect</b> alpaca-style.kolm \
+    --field=training_config
+  backend:     unsloth
+  base_model:  meta-llama/Llama-3.2-1B
+  trainer:     SFTTrainer
+  lora_rank:   16
+  lora_alpha:  32
+  optim:       adamw_8bit
+  max_steps:   1000
+  seed:        42</pre>
+      </div>
+      <div class="step">
+        <span class="vt">04 &middot; drop out anytime</span>
+        <h3>kolm extract dumps a runnable YAML config.</h3>
+        <p>The escape hatch is first-class. Extract the training config from the manifest, hand it to <code>llamafactory-cli train</code>, and you're back in raw DIY. Same flags, bit-identical weights.</p>
+<pre class="terminal">$ <b>kolm extract</b> alpaca-style.kolm \
+    --target=training-config \
+    --out train.yaml
+  <span class="warn">verify before ship</span> &middot; today: unzip
+    alpaca-style.kolm and read manifest
+
+$ <b>llamafactory-cli train</b> --config train.yaml
+  &mdash; same backend, same flags, identical weights</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What survives, what kolm adds.</h2>
+    <div class="grid-2">
+      <div class="col">
+        <h3>Survives the migration <span class="tag">unchanged</span></h3>
+        <ul>
+          <li><b>LLaMA-Factory / Axolotl</b> as the trainer driver. kolm wraps; doesn't replace.</li>
+          <li><b>Unsloth kernels</b>. 2-5x speedup and lower VRAM still apply because kolm shells out to the same backend.</li>
+          <li><b>TRL trainer classes</b> &mdash; SFTTrainer, DPOTrainer, GRPOTrainer. kolm passes the trainer choice through.</li>
+          <li><b>PEFT primitives</b>. LoRA, QLoRA, IA3, prefix tuning &mdash; whichever you used before keeps working.</li>
+          <li><b>Your YAML config</b>. Tuned over months; the kolm spec layer is a thin envelope over it. <code>kolm extract</code> dumps the YAML back.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>kolm adds on top <span class="tag add">new</span></h3>
+        <ul>
+          <li><b>Signed artifact</b>. Ed25519 + Sigstore / Rekor. The DIY stack doesn't sign.</li>
+          <li><b>Receipt chain</b>. 14-step provenance ledger over spec, seeds, split, train, recipes, evals, signatures.</li>
+          <li><b>K-score gate</b>. Compile blocks if eval is below threshold &mdash; the DIY stack runs to completion regardless.</li>
+          <li><b>Cross-vendor teacher</b> manifest. <code>--teacher=anthropic:</code> / <code>openai:</code> / <code>local:</code> with Wave 158 catalog tracking who saw what.</li>
+          <li><b>PHI redactor</b> (Wave 157). Pre-teacher-call redaction; verifier check #14 confirms no raw PHI in weights.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where raw DIY is the right answer.</h2>
+    <div class="honest">
+      <p><b>Stay with raw DIY</b> when you are a research team iterating on training methods themselves &mdash; new optimizers, new LoRA variants, custom kernels, ablations. The shortest path is the rawest one. <code>llamafactory-cli train</code> or a notebook gives you full control with no wrap to fight. The receipts kolm produces are valuable for production deployments; for a research run that won't ship, the wrap is overhead.</p>
+      <p><b>Stay with raw DIY</b> when no one is asking for receipts. If your buyer doesn't request a provenance chain, your data isn't regulated, and your serving target is something you control end-to-end, the DIY stack is free, mature, and well-documented. The DIY stack is excellent on its own. Don't pay a wrap tax for a workflow whose value is the training experiment itself.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where to go next.</h2>
+    <div class="links">
+      <a class="lcard" href="/migrate">
+        <span class="vt">migrate index</span>
+        <h4>Back to the migration hub.</h4>
+        <p>Four other source systems with the same one-page guide shape.</p>
+      </a>
+      <a class="lcard" href="/how-vs-diy">
+        <span class="vt">how-vs deep dive</span>
+        <h4>kolm vs DIY teardown.</h4>
+        <p>Full stack diagram and the drop-out-to-raw-DIY contract in detail.</p>
+      </a>
+      <a class="lcard" href="/compare">
+        <span class="vt">compare</span>
+        <h4>Differentiation matrix.</h4>
+        <p>15-axis grid of kolm vs every competitor, every YES stamped with wave.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="site">
+  <div class="wrap">
+    <div class="ft-row">
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span><a href="/migrate">/migrate</a> &middot; <a href="/migrate/lorax">from LoRAX</a> &middot; <a href="/migrate/predibase">from Predibase</a> &middot; <a href="/migrate/openpipe">from OpenPipe</a> &middot; <a href="/migrate/hyperscaler">from hyperscaler</a></span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

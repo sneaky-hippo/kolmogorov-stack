@@ -404,6 +404,13 @@ export function inspectArtifact(artifactPath) {
     signature_valid: bundle.signature_valid,
     signature_mode: bundle.signature_mode || 'hmac-local',
     recipe_names: (bundle.recipes.recipes || []).slice(0, 8).map(r => r.name),
+    // Wave 151 — honest taxonomy surface on every inspect result. Callers
+    // (CLI text mode, /r/:hash page, the binder, third-party tooling) read
+    // artifact_class to know what they are looking at without having to parse
+    // recipes.json. artifact_class_breakdown lets them show "6 rule + 1
+    // distilled_model" instead of just the rolled-up label.
+    artifact_class: bundle.manifest.artifact_class || 'rule',
+    artifact_class_breakdown: bundle.manifest.artifact_class_breakdown || null,
     license: bundle.manifest.license || null,
   };
 }

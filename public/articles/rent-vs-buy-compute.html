@@ -289,7 +289,7 @@ kolm inspect ~/.kolm/artifacts/<span class="arg">prod-tickets.kolm</span></pre>
     <p>The privacy model is straightforward: we are a passthrough, the data is yours, the artifact is yours, the receipts let you prove it.</p>
 
     <h2 id="receipts">Why the signed receipt matters.</h2>
-    <p>When the artifact ships, it carries a receipt. The receipt is an HMAC-SHA256 chain over (a) the captured corpus content hash, (b) the verifier configuration, (c) the holdout eval set hash, (d) the resulting K-score, (e) the base model identity and the LoRA delta hash, and (f) the build environment manifest. The chain is anchored optionally to Sigstore Rekor for cross-organization audit.</p>
+    <p>When the artifact ships, it carries a receipt. In v0.2 the receipt is an HMAC-SHA256 chain over (a) the captured corpus content hash, (b) the verifier configuration, (c) the holdout eval set hash, (d) the resulting K-score, (e) the base model identity (and the LoRA delta hash when the roadmap-tier weight bridge is engaged), and (f) the build environment manifest. The chain is anchored optionally to Sigstore Rekor for cross-organization audit.</p>
     <p>What this buys you in practice: a counsel review can reproduce the exact dataset that produced the exact LoRA that produced the exact eval score. <b>"Did we train on PII"</b> becomes a query against the receipt, not a forensic exercise. <b>"Has this model drifted"</b> becomes a comparison of two receipts. <b>"Is this the model we deployed"</b> becomes a verify call.</p>
     <p>The same receipt is the answer to the auditor question that kills most internal-AI projects: <b>what is in this thing.</b> The receipt is the bill of materials. The signature says we did not change it after the fact.</p>
 

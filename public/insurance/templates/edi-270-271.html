@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>edi-270/271 template &middot; kolm for US health insurers</title>
+<meta name="description" content="Pre-built kolm template that handles both sides of the X12 5010A1 eligibility loop: 270 inquiries from providers and 271 responses from payers. One symmetric transformer, rule-class, deterministic. K-score gate 0.94. Runs inside the BAA bridge in your VPC.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/insurance/templates/edi-270-271">
+<meta property="og:title" content="edi-270/271 &middot; kolm health-insurance template">
+<meta property="og:description" content="Symmetric transformer for the X12 5010A1 eligibility loop: 270 inquiry + 271 response. Rule-class, deterministic, BAA-ready.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/insurance/templates/edi-270-271">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .tpl-hero{padding:42px 0 18px;border-bottom:1px solid var(--line)}
+  .tpl-hero .crumb{font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
+  .tpl-hero .crumb a{color:var(--ink-mute)}
+  .tpl-hero h1{font-size:34px;margin:0 0 8px;line-height:1.1}
+  .tpl-hero .lede{font-size:16px;color:var(--ink-mute);max-width:720px;margin:0}
+  .tpl-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:22px 0 8px;font-family:var(--mono);font-size:11px;color:var(--ink-mute)}
+  @media(max-width:900px){.tpl-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .tpl-meta > div{padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+  .tpl-meta .k{text-transform:uppercase;letter-spacing:0.06em;font-size:10px;color:var(--ink-faint)}
+  .tpl-meta .v{display:block;color:var(--ink);margin-top:4px;font-size:13px}
+  .tpl-section{padding:28px 0;border-bottom:1px solid var(--line)}
+  .tpl-section h2{font-size:22px;margin:0 0 6px}
+  .tpl-section p.lede{font-size:14.5px;color:var(--ink-mute);margin:0 0 14px;max-width:760px}
+  .tpl-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:900px){.tpl-grid2{grid-template-columns:1fr}}
+  pre.code{margin:0;padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:#0e1115;font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--ink);overflow-x:auto}
+  pre.code .k{color:#7ec486}
+  pre.code .s{color:#d6a65a}
+  pre.code .c{color:var(--ink-faint)}
+  .tpl-receipt-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0 6px;font-family:var(--mono);font-size:11px}
+  @media(max-width:900px){.tpl-receipt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .tpl-receipt-grid > div{padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg-card)}
+  .tpl-receipt-grid .ring{color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.06em;font-size:10px;margin-bottom:4px}
+  .tpl-receipt-grid .name{color:var(--ink);font-size:12px}
+  .tpl-receipt-grid .b{color:#7ef0d2;font-size:10.5px;margin-top:4px}
+  .tpl-cta{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 4px}
+  .tpl-related{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px;font-family:var(--mono);font-size:12px}
+  @media(max-width:900px){.tpl-related{grid-template-columns:1fr 1fr}}
+  @media(max-width:600px){.tpl-related{grid-template-columns:1fr}}
+  .tpl-related a{padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg-card);color:var(--ink);display:block}
+  .tpl-related a:hover{border-color:var(--line-strong)}
+  .tpl-related .num{color:var(--ink-faint);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px}
+</style>
+</head>
+<body>
+
+<header class="site-header"><div class="wrap site-bar">
+  <a class="brand" href="/"><span class="brand-dot"></span>kolm</a>
+  <nav class="site-nav">
+    <a href="/training">Training</a>
+    <a href="/health-insurance">health-insurance</a>
+    <a href="/pricing">pricing</a>
+    <a href="/docs">docs</a>
+    <a href="/quickstart">quickstart</a>
+  </nav>
+  <div class="site-actions"><a class="cta" href="/signup">get started</a></div>
+</div></header>
+
+<main class="wrap">
+
+  <section class="tpl-hero">
+    <div class="crumb"><a href="/health-insurance">health-insurance</a> &middot; <a href="/health-insurance#insurance-templates">templates</a> &middot; edi-270-271</div>
+    <h1>EDI 270/271 eligibility pair</h1>
+    <p class="lede">A kolm template that handles both sides of the eligibility loop: the 270 inquiry from provider to payer asking "is this member covered for these services?" and the 271 response back with active/inactive benefits, service-type-codes, and copay/deductible. One symmetric transformer with <code>--direction inquiry|response</code>. Pure rule-class; deterministic; no model inference.</p>
+    <div class="tpl-meta">
+      <div><div class="k">template id</div><span class="v">edi-270-271</span></div>
+      <div><div class="k">k-score gate</div><span class="v">&ge; 0.94</span></div>
+      <div><div class="k">recipe class</div><span class="v">rule (class 0)</span></div>
+      <div><div class="k">loop coverage</div><span class="v">5010A1 (270+271)</span></div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Input &amp; output spec</h2>
+    <p class="lede">Input is raw X12 5010A1 text for either a 270 inquiry or a 271 response. Direction is auto-detected from the ST01 functional identifier (270 vs 271). The output schema is symmetric: the same envelope wraps both sides of the loop so downstream code does not branch on direction.</p>
+    <div class="tpl-grid2">
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">input &middot; 270 inquiry (X12 5010A1)</p>
+<pre class="code"><span class="c">ISA*00*          *00*          *ZZ*PROVIDER001   *ZZ*PAYER00001    *260517*1430*^*00501*000000042*0*P*:~</span>
+<span class="c">GS*HS*PROVIDER001*PAYER00001*20260517*1430*42*X*005010X279A1~</span>
+<span class="c">ST*270*0001*005010X279A1~</span>
+<span class="c">BHT*0022*13*ELIG-REQ-42*20260517*1430~</span>
+<span class="c">HL*1**20*1~</span>
+<span class="c">NM1*PR*2*PAYER NATIONAL HEALTH*****PI*PAYER00001~</span>
+<span class="c">HL*2*1*21*1~</span>
+<span class="c">NM1*1P*2*FAMILY CLINIC OF MAIN ST*****XX*1234567893~</span>
+<span class="c">HL*3*2*22*0~</span>
+<span class="c">TRN*1*ELIG-REQ-42*9PROVIDER1~</span>
+<span class="c">NM1*IL*1*DOE*JANE****MI*W123456789~</span>
+<span class="c">REF*6P*GRP-PPO-GOLD-2026~</span>
+<span class="c">DMG*D8*19850412*F~</span>
+<span class="c">DTP*291*D8*20260517~</span>
+<span class="c">EQ*30~</span>
+<span class="c">EQ*98~</span>
+<span class="c">SE*15*0001~</span>
+<span class="c">GE*1*42~</span>
+<span class="c">IEA*1*000000042~</span></pre>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">input &middot; 271 response (X12 5010A1)</p>
+<pre class="code"><span class="c">ISA*00*          *00*          *ZZ*PAYER00001    *ZZ*PROVIDER001   *260517*1431*^*00501*000000043*0*P*:~</span>
+<span class="c">GS*HB*PAYER00001*PROVIDER001*20260517*1431*43*X*005010X279A1~</span>
+<span class="c">ST*271*0001*005010X279A1~</span>
+<span class="c">BHT*0022*11*ELIG-REQ-42*20260517*1431~</span>
+<span class="c">HL*1**20*1~</span>
+<span class="c">NM1*PR*2*PAYER NATIONAL HEALTH*****PI*PAYER00001~</span>
+<span class="c">HL*2*1*21*1~</span>
+<span class="c">NM1*1P*2*FAMILY CLINIC OF MAIN ST*****XX*1234567893~</span>
+<span class="c">HL*3*2*22*0~</span>
+<span class="c">TRN*2*ELIG-REQ-42*9PROVIDER1~</span>
+<span class="c">NM1*IL*1*DOE*JANE****MI*W123456789~</span>
+<span class="c">REF*6P*GRP-PPO-GOLD-2026~</span>
+<span class="c">DMG*D8*19850412*F~</span>
+<span class="c">EB*1**30**PPO-GOLD-2026~</span>
+<span class="c">EB*C*IND*98***27*250.00~</span>
+<span class="c">EB*B*IND*98***27*25.00~</span>
+<span class="c">MSG*Office visit copay applies after deductible.~</span>
+<span class="c">SE*17*0001~</span>
+<span class="c">GE*1*43~</span>
+<span class="c">IEA*1*000000043~</span></pre>
+      </div>
+    </div>
+    <div style="margin-top:18px">
+      <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">output &middot; normalized JSON (symmetric for 270 and 271)</p>
+<pre class="code">{
+  <span class="k">"format"</span>:           <span class="s">"270"</span>,           <span class="c">// or "271"</span>
+  <span class="k">"direction"</span>:        <span class="s">"inquiry"</span>,       <span class="c">// or "response" (auto-detected from ST01)</span>
+  <span class="k">"payer"</span>: {
+    <span class="k">"name"</span>:             <span class="s">"PAYER NATIONAL HEALTH"</span>,
+    <span class="k">"payer_id"</span>:         <span class="s">"PAYER00001"</span>
+  },
+  <span class="k">"provider"</span>: {
+    <span class="k">"name"</span>:             <span class="s">"FAMILY CLINIC OF MAIN ST"</span>,
+    <span class="k">"npi"</span>:              <span class="s">"1234567893"</span>
+  },
+  <span class="k">"subscriber"</span>: {
+    <span class="k">"redacted_member_id"</span>: <span class="s">"&lt;hash&gt;"</span>,
+    <span class="k">"name"</span>:               <span class="s">"&lt;redacted&gt;"</span>,
+    <span class="k">"dob"</span>:                <span class="s">"&lt;redacted&gt;"</span>,
+    <span class="k">"group_number"</span>:       <span class="s">"GRP-PPO-GOLD-2026"</span>
+  },
+  <span class="k">"dependents"</span>:       [],
+
+  <span class="c">// present when format=270</span>
+  <span class="k">"inquiry"</span>: {
+    <span class="k">"service_type_codes"</span>: [<span class="s">"30"</span>, <span class="s">"98"</span>],  <span class="c">// EQ01: Health Plan Coverage, Office Visit</span>
+    <span class="k">"date_of_service"</span>:    <span class="s">"2026-05-17"</span>
+  },
+
+  <span class="c">// present when format=271</span>
+  <span class="k">"response"</span>: {
+    <span class="k">"eligibility"</span>:        <span class="s">"active"</span>,         <span class="c">// or "inactive" / "pending"</span>
+    <span class="k">"benefits"</span>: [
+      {
+        <span class="k">"service_type_code"</span>:           <span class="s">"30"</span>,
+        <span class="k">"coverage_level"</span>:              <span class="s">"FAM"</span>,
+        <span class="k">"plan_coverage_description"</span>:   <span class="s">"PPO-GOLD-2026"</span>,
+        <span class="k">"time_period_qualifier"</span>:       <span class="s">"27"</span>,
+        <span class="k">"monetary_amount"</span>:             <span class="s">null</span>,
+        <span class="k">"percentage"</span>:                  <span class="s">null</span>,
+        <span class="k">"message"</span>:                     <span class="s">null</span>
+      },
+      {
+        <span class="k">"service_type_code"</span>:           <span class="s">"98"</span>,
+        <span class="k">"coverage_level"</span>:              <span class="s">"IND"</span>,
+        <span class="k">"plan_coverage_description"</span>:   <span class="s">null</span>,
+        <span class="k">"time_period_qualifier"</span>:       <span class="s">"27"</span>,
+        <span class="k">"monetary_amount"</span>:             <span class="s">25.00</span>,
+        <span class="k">"percentage"</span>:                  <span class="s">null</span>,
+        <span class="k">"message"</span>:                     <span class="s">"Office visit copay applies after deductible."</span>
+      }
+    ],
+    <span class="k">"errors"</span>: []                            <span class="c">// populated from AAA segments on reject</span>
+  }
+}</pre>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Service-type-code semantics</h2>
+    <p class="lede">EQ01 on the 270 side and EB03 on the 271 side use the same X12 service-type-code vocabulary. The pack ships the load-bearing codes literally; tenants can extend the dictionary at run time without recompiling the recipe.</p>
+    <div class="tpl-grid2">
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">eq01 / eb03 service types</p>
+<pre class="code"><span class="k">"1"</span>:  <span class="s">"Medical Care"</span>
+<span class="k">"2"</span>:  <span class="s">"Surgical"</span>
+<span class="k">"30"</span>: <span class="s">"Health Benefit Plan Coverage"</span>
+<span class="k">"33"</span>: <span class="s">"Chiropractic"</span>
+<span class="k">"35"</span>: <span class="s">"Dental Care"</span>
+<span class="k">"47"</span>: <span class="s">"Hospital"</span>
+<span class="k">"48"</span>: <span class="s">"Hospital Inpatient"</span>
+<span class="k">"50"</span>: <span class="s">"Hospital Outpatient"</span>
+<span class="k">"86"</span>: <span class="s">"Emergency Services"</span>
+<span class="k">"88"</span>: <span class="s">"Pharmacy"</span>
+<span class="k">"98"</span>: <span class="s">"Professional (Physician) Visit - Office"</span>
+<span class="k">"AL"</span>: <span class="s">"Vision (Optometry)"</span>
+<span class="k">"MH"</span>: <span class="s">"Mental Health"</span>
+<span class="k">"UC"</span>: <span class="s">"Urgent Care"</span></pre>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">eb01 eligibility &amp; aaa rejects</p>
+<pre class="code"><span class="c"># EB01 eligibility codes</span>
+<span class="k">"1"</span>: <span class="s">"Active Coverage"</span>
+<span class="k">"2"</span>: <span class="s">"Active - Full Risk Capitation"</span>
+<span class="k">"3"</span>: <span class="s">"Active - Services Capitated"</span>
+<span class="k">"6"</span>: <span class="s">"Inactive"</span>
+<span class="k">"7"</span>: <span class="s">"Inactive - Pending Eligibility Update"</span>
+<span class="k">"8"</span>: <span class="s">"Inactive - Pending Investigation"</span>
+<span class="k">"I"</span>: <span class="s">"Non-Covered"</span>
+<span class="k">"V"</span>: <span class="s">"Cannot Process"</span>
+
+<span class="c"># AAA reject reason codes (271 errors)</span>
+<span class="k">"15"</span>: <span class="s">"Required application data missing"</span>
+<span class="k">"33"</span>: <span class="s">"Input Errors"</span>
+<span class="k">"41"</span>: <span class="s">"Authorization/Access Restrictions"</span>
+<span class="k">"42"</span>: <span class="s">"Unable to Respond at Current Time"</span>
+<span class="k">"72"</span>: <span class="s">"Invalid/Missing Subscriber/Insured ID"</span>
+<span class="k">"73"</span>: <span class="s">"Invalid/Missing Subscriber/Insured Name"</span>
+<span class="k">"75"</span>: <span class="s">"Subscriber/Insured Not Found"</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>4-ring receipt schema</h2>
+    <p class="lede">Every transform ships a receipt your auditor can re-verify offline. Because this is a rule-class recipe the execution ring carries a deterministic hash of the parsed BHT, HL, NM1, EQ, EB, and AAA segments rather than a model judge id; the seal is identical to the model-class templates so downstream verifier code does not branch on recipe class.</p>
+    <div class="tpl-receipt-grid">
+      <div><div class="ring">ring 01 &middot; pre-image</div><div class="name">isa_control_num + trn_trace_id + member_hash</div><div class="b">tenant-rotated HMAC</div></div>
+      <div><div class="ring">ring 02 &middot; derived</div><div class="name">eq_dict_hash + eb_dict_hash + aaa_dict_hash</div><div class="b">bound to recipe_version</div></div>
+      <div><div class="ring">ring 03 &middot; execution</div><div class="name">direction + parsed_segments_hash + benefit_count</div><div class="b">deterministic, no judge</div></div>
+      <div><div class="ring">ring 04 &middot; seal</div><div class="name">SHA-256(ring1..3) &middot; verify endpoint</div><div class="b">offline-verifiable</div></div>
+    </div>
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);margin:14px 0 0"><b style="color:var(--ink)">Verify command:</b> <code><span class="cli-verb">kolm</span> verify --hash &lt;receipt_hash&gt;</code>. Runs locally against the seal, no network required.</p>
+  </section>
+
+  <section class="tpl-section">
+    <h2>BAA fast-track</h2>
+    <p class="lede">Health plans on a BAA see kolm production-ready in two business days. The customer-hosted bridge runs in the tenant network boundary; PHI in the 270/271 envelope (subscriber name, member id, DOB, group number) is hashed inside the bridge and never crosses our infrastructure; the audit log is yours to keep.</p>
+    <div class="tpl-grid2">
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">how it works</p>
+<pre class="code"><span class="c"># 1. Sign the BAA (legal-team turnaround)</span>
+[ DocuSign &middot; 48 hours typical &middot; mutual NDA in same envelope ]
+
+<span class="c"># 2. Provision the bridge in your VPC</span>
+$ kolm bridge install \
+    --provider aws \
+    --region us-east-1 \
+    --baa &lt;baa-id&gt;
+
+<span class="c"># 3. Compile this template (rule-class, no seed examples required)</span>
+$ kolm compile --spec edi-270-271.spec.json \
+    --gate 0.94 \
+    --out edi-270-271.kolm
+
+<span class="c"># 4. Stream production 270/271 traffic through it</span>
+$ kolm run edi-270-271.kolm \
+    --input eligibility.x12 \
+    --direction inquiry \
+    --emit normalized.jsonl
+
+<span class="c"># 5. On the payer side, run the same artifact in response mode</span>
+$ kolm run edi-270-271.kolm \
+    --input responses.x12 \
+    --direction response \
+    --emit normalized.jsonl</pre>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">what we sign</p>
+<pre class="code"><span class="c">- HIPAA Business Associate Agreement</span>
+<span class="c">- HIPAA Security Rule §164.308 (admin safeguards)</span>
+<span class="c">- HIPAA Security Rule §164.310 (physical safeguards)</span>
+<span class="c">- HIPAA Security Rule §164.312 (technical safeguards)</span>
+<span class="c">- Breach Notification §164.404</span>
+<span class="c">- Subcontractor flow-down (none — kolm holds no PHI)</span>
+<span class="c">- Audit-log retention (6 years, your S3 bucket)</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Get the template</h2>
+    <p class="lede">Two ways to take this live. Self-serve with the sample artifact, or kick off a BAA conversation if you need PHI day one.</p>
+    <div class="tpl-cta">
+      <a class="btn primary" href="/signup?template=edi-270-271">Start with this template</a>
+      <a class="btn ghost" href="mailto:sales@kolm.ai?subject=BAA%20fast-track%20%E2%80%94%20edi-270-271">Talk to a human about BAA</a>
+      <a class="btn ghost" href="/docs/showcase/edi-270-271.spec.json" download>Download spec JSON</a>
+    </div>
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);margin:18px 0 0">The spec is a portable JSON file. Drop it into <code>kolm compile --spec</code> to build a private <code>.kolm</code> tagged <code>LicenseRef-kolm-default-1.0</code> by default; pass <code>--license</code> to tag it differently. Rule-class recipes do not require seed examples; the holdout set is the X12 5010A1 270/271 conformance corpus.</p>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Five more templates for health plans</h2>
+    <div class="tpl-related">
+      <a href="/insurance/templates/edi-837"><div class="num">07 &middot; template</div>edi-837</a>
+      <a href="/insurance/templates/edi-835"><div class="num">08 &middot; template</div>edi-835</a>
+      <a href="/insurance/templates/edi-834"><div class="num">09 &middot; template</div>edi-834</a>
+      <a href="/insurance/templates/edi-278"><div class="num">10 &middot; template</div>edi-278</a>
+      <a href="/insurance/templates/fhir-uscdi"><div class="num">11 &middot; template</div>fhir-uscdi</a>
+      <a href="/health-insurance"><div class="num">index</div>all health-insurance</a>
+    </div>
+  </section>
+
+</main>
+
+<footer style="border-top:1px solid var(--line);margin-top:40px;padding:24px 0;text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink-faint)">
+  <span>kolm.ai &middot; Made with .kolm &middot; <a href="/license" style="color:var(--ink-faint)">Apache-2.0</a> &middot; <a href="/baa" style="color:var(--ink-faint)">BAA</a></span>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Add kolm to your LoRAX stack | Migrate to kolm</title>
+<meta name="description" content="LoRAX is the strongest multi-LoRA serving infrastructure in market. kolm builds the signed adapter LoRAX serves. The migration is additive: keep your serving cluster, add kolm on the build side, the contract between them is the signed .kolm file.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="Add kolm to your LoRAX stack">
+<meta property="og:description" content="kolm builds the signed adapter; LoRAX serves it. The migration is additive, not a rip-and-replace.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://kolm.ai/migrate/lorax">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:72px 0 32px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:38px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px}
+  .lede{font-size:17px;line-height:1.55;color:var(--ink-mute);max-width:760px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:52px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:760px}
+  .section p{color:var(--ink-mute);margin:0 0 14px;max-width:760px;font-size:15px;line-height:1.6}
+  .section code{font-family:var(--mono);font-size:12.5px;background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  .grid-4{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:24px}
+  @media(max-width:760px){.grid-4{grid-template-columns:1fr}}
+  .step{padding:18px 20px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .step .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .step h3{margin:0;font-size:16px;font-weight:500;color:var(--ink);letter-spacing:-0.01em}
+  .step p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute);max-width:none}
+  pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;font:12px/1.55 var(--mono);margin:0}
+  pre.terminal b{color:var(--accent);font-weight:400}
+  pre.terminal .mute{color:var(--ink-faint)}
+  pre.terminal .warn{color:var(--warn);font-weight:400}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
+  @media(max-width:760px){.grid-2{grid-template-columns:1fr}}
+  .col{padding:22px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev)}
+  .col h3{margin:0 0 14px;font-size:16px;font-weight:500;color:var(--ink);letter-spacing:-0.01em}
+  .col h3 .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(16,185,129,0.30);padding:2px 8px;border-radius:3px;margin-left:8px;vertical-align:middle}
+  .col h3 .tag.add{color:var(--warn);background:var(--warn-soft);border-color:rgba(240,184,107,0.30)}
+  .col ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.6;color:var(--ink-mute)}
+  .col ul li{margin-bottom:8px}
+  .col code{font-family:var(--mono);font-size:12px;background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  .stack-diagram{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin:20px 0;font-family:var(--mono);font-size:13px;line-height:2;color:var(--ink-mute)}
+  .stack-diagram b{color:var(--accent);font-weight:400}
+  .stack-diagram .arr{color:var(--ink-faint);margin:0 8px}
+  .honest{padding:20px 22px;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:8px;background:var(--bg-elev);margin-top:24px}
+  .honest b{color:var(--warn)}
+  .honest p{margin:0 0 10px;font-size:14px;line-height:1.6;color:var(--ink-mute);max-width:none}
+  .honest p:last-child{margin-bottom:0}
+  .links{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
+  @media(max-width:760px){.links{grid-template-columns:1fr}}
+  .lcard{padding:16px 18px;border:1px solid var(--line);border-radius:8px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:6px;transition:border-color 160ms}
+  .lcard:hover{border-color:var(--accent)}
+  .lcard .vt{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent)}
+  .lcard h4{margin:0;font-size:14.5px;font-weight:500;color:var(--ink)}
+  .lcard p{margin:0;font-size:12.5px;color:var(--ink-mute);line-height:1.5;max-width:none}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ft-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/migrate">migrate</a> &nbsp;/&nbsp; from LoRAX</p>
+    <h1>Add kolm to your LoRAX stack.</h1>
+    <p class="lede">LoRAX (Apache-2.0, github.com/predibase/lorax) is the strongest multi-LoRA serving infrastructure in market &mdash; heterogeneous continuous batching, adapter exchange scheduling, the SGMV kernel. Nothing about your serving cluster needs to change. The migration is additive: add <b>kolm</b> on the build side so the LoRA bytes LoRAX serves arrive with a signed receipt chain attached, then keep serving them exactly as you do today. The signed <code>.kolm</code> file is the contract between the build team and the serve team. Complement, not replacement.</p>
+    <p class="stamp">Wave 188 &middot; from LoRAX &middot; complement migration</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The stack with kolm added.</h2>
+    <p>Today: you train a LoRA somewhere (HuggingFace AutoTrain, a notebook, raw <code>peft</code>), drop the weights into LoRAX, and serve. Tomorrow: kolm sits where the training happened, captures the inputs to the build, runs the same train, and emits a signed file that contains the same LoRA bytes plus the manifest a verifier needs.</p>
+    <div class="stack-diagram">
+      seeds.jsonl<span class="arr">&rarr;</span><b>kolm distill</b><span class="arr">&rarr;</span>signed .kolm + LoRA weights<span class="arr">&rarr;</span><b>LoRAX</b><span class="arr">&rarr;</span>OpenAI-compatible endpoint
+    </div>
+    <p>The LoRA weights LoRAX loads are bit-identical to what they would have been without kolm. The signed file is a superset: same LoRA payload, plus the manifest the receipt chain needs. LoRAX ignores the manifest fields; kolm verify reads them when an auditor asks for proof.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The four-step migration.</h2>
+    <div class="grid-4">
+      <div class="step">
+        <span class="vt">01 &middot; reshape the data</span>
+        <h3>Point your existing data at seeds.jsonl.</h3>
+        <p>Whatever exporter currently feeds your LoRA trainer is your migration tool. kolm reads JSONL with <code>{"input","output","tags"}</code>. Most teams already export this shape; if you don't, a one-liner converts.</p>
+<pre class="terminal"><span class="mute"># bring your existing pairs into the kolm canonical shape</span>
+$ jq -c '{input: .prompt, output: .completion}' \
+    train.jsonl &gt; seeds.jsonl
+$ wc -l seeds.jsonl
+  <b>12847 seeds.jsonl</b></pre>
+      </div>
+      <div class="step">
+        <span class="vt">02 &middot; build the signed adapter</span>
+        <h3>kolm distill calls the same trainer.</h3>
+        <p>The trainer call is the one you were already making (TRL / Unsloth / PEFT). kolm wraps it so the inputs hash into the receipt chain and the output gets signed.</p>
+<pre class="terminal">$ <b>kolm distill</b> phone-normalizer \
+    --teacher=anthropic:claude-opus-4-7 \
+    --student-base=qwen2.5-0.5b \
+    --redact=phi --eval-gate=0.85
+
+  PASS  K-score 0.917 (R/F/E/Z)
+  PASS  PHI redactor &middot; no leakage
+  WROTE phone-normalizer.kolm</pre>
+      </div>
+      <div class="step">
+        <span class="vt">03 &middot; hand the LoRA to LoRAX</span>
+        <h3>Extract the bytes LoRAX already knows.</h3>
+        <p>The artifact is a tar-ish archive; the LoRA payload sits at a stable path inside. Extract it into the adapter directory your LoRAX cluster mounts.</p>
+<pre class="terminal"><span class="mute"># extract LoRA payload from the signed artifact</span>
+$ <b>kolm extract</b> phone-normalizer.kolm \
+    --target=lora-weights \
+    --out=./adapters/phone-normalizer
+  <span class="warn">verify before ship</span> &middot; today: unzip phone-normalizer.kolm
+
+<span class="mute"># LoRAX serves it exactly as before</span>
+$ <b>docker run</b> --gpus all -v ./adapters:/data \
+    ghcr.io/predibase/lorax:latest \
+    --model-id Qwen/Qwen2.5-0.5B --adapter-source local</pre>
+      </div>
+      <div class="step">
+        <span class="vt">04 &middot; verify the contract</span>
+        <h3>kolm verify proves what the LoRA was built from.</h3>
+        <p>Any party with the public key can confirm the LoRA LoRAX is serving matches what kolm signed at compile time. Receipt chain, eval gate, PHI redactor &mdash; all re-derivable offline.</p>
+<pre class="terminal">$ <b>kolm verify</b> phone-normalizer.kolm
+  PASS  24/24 checks
+  PASS  Ed25519 + Sigstore validated
+  PASS  receipt chain intact
+  PASS  K-score gate cleared
+  PASS  redactor produced no PHI leak</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What survives, what kolm adds.</h2>
+    <div class="grid-2">
+      <div class="col">
+        <h3>Survives the migration <span class="tag">unchanged</span></h3>
+        <ul>
+          <li><b>LoRAX cluster.</b> Your Helm chart, your GPU pool, your routing config, your tenant adapter directory layout. Nothing changes server-side.</li>
+          <li><b>Base model</b> selection. Whatever Llama / Mistral / Qwen / Zephyr base you serve LoRAs against today is the <code>--student-base</code> you pass to <code>kolm distill</code>.</li>
+          <li><b>OpenAI-compatible API</b> surface your clients call. LoRAX still exposes <code>/v1/chat/completions</code>; clients don't need a base-URL change.</li>
+          <li><b>Multi-tenant batching</b>. SGMV kernel + adapter exchange scheduling continue to do their job. kolm has zero opinion about how the bytes are served.</li>
+          <li><b>LoRA weights themselves</b>. The bytes LoRAX loads are the same bytes <code>kolm distill</code> wrote &mdash; the signed file wraps them, doesn't reshape them.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>kolm adds on top <span class="tag add">new</span></h3>
+        <ul>
+          <li><b>Receipt chain</b> &middot; spec &rarr; seeds &rarr; split &rarr; train &rarr; recipes &rarr; evals &rarr; signatures. Auditor walks the chain offline.</li>
+          <li><b>Ed25519 + Sigstore signature</b>. The bytes LoRAX loads can be proven to match what the build team signed.</li>
+          <li><b>PHI redactor</b> (Wave 157) before the teacher call. 18 HIPAA Safe Harbor + 3 kolm extensions. Verifier check #14 confirms no raw PHI in the LoRA weights.</li>
+          <li><b>K-score gate</b> on the build &mdash; compile blocks if eval is below threshold. The bytes LoRAX serves are bytes that passed a gate.</li>
+          <li><b>Drift detection</b> (Wave 167). When the artifact ages out, the supersession chain documents the replacement.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where LoRAX alone is the right answer.</h2>
+    <div class="honest">
+      <p><b>Stay with LoRAX alone</b> when your team controls the LoRA training pipeline, the data isn't regulated, no auditor is asking for a receipt, and you don't need the artifact to be portable beyond your serving cluster. LoRAX is excellent on its own &middot; running it bare is the cheapest path to multi-tenant adapter serving and the production-readiness pieces kolm adds carry build-time cost (signing, attestation, redactor pre-pass). If none of those land on your roadmap, you're paying for receipts no one is going to read.</p>
+      <p><b>Stay with LoRAX alone</b> if your one-and-only deploy target is the LoRAX cluster itself and you have no air-gap, no edge, no on-prem mirror requirement. The .kolm format earns its keep when the artifact has to travel. If it never leaves your hosted cluster, the portability tax is wasted.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where to go next.</h2>
+    <div class="links">
+      <a class="lcard" href="/migrate">
+        <span class="vt">migrate index</span>
+        <h4>Back to the migration hub.</h4>
+        <p>Four other source systems with the same one-page guide shape.</p>
+      </a>
+      <a class="lcard" href="/how-vs-lorax">
+        <span class="vt">how-vs deep dive</span>
+        <h4>kolm + LoRAX teardown.</h4>
+        <p>The full complement-not-competitor case with axis-by-axis matrix.</p>
+      </a>
+      <a class="lcard" href="/compare">
+        <span class="vt">compare</span>
+        <h4>Differentiation matrix.</h4>
+        <p>15-axis grid of kolm vs every competitor, every YES stamped with wave.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="site">
+  <div class="wrap">
+    <div class="ft-row">
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span><a href="/migrate">/migrate</a> &middot; <a href="/migrate/predibase">from Predibase</a> &middot; <a href="/migrate/openpipe">from OpenPipe</a> &middot; <a href="/migrate/diy">from DIY</a> &middot; <a href="/migrate/hyperscaler">from hyperscaler</a></span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

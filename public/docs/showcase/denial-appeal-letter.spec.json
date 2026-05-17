@@ -1,0 +1,126 @@
+{
+  "job_id": "job_denial_appeal_letter_v1",
+  "task": "Generate a structured appeal letter responding to a payer denial. Input: { denial_code, denial_reason_text, claim, member, policy_index }. Output: { letter_subject, letter_body, citations[], regulatory_basis, recommended_attachments[], confidence }. The letter must cite the specific policy section + medical-necessity criteria the original denial missed; every citation is grounded in policy_index, the model cannot invent sources. Recommended attachments are picked from the pack.rules.attachment_library.",
+  "base_model": "Qwen/Qwen2.5-7B-Instruct",
+  "license": "LicenseRef-kolm-default-1.0",
+  "epochs": 3,
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.05,
+  "lr": 2e-4,
+  "max_seq_len": 4096,
+  "seeds_path": "./seeds.jsonl",
+  "k_score_gate": 0.92,
+  "k_score_components": {
+    "accuracy": 0.35,
+    "size": 0.10,
+    "latency": 0.15,
+    "cost": 0.10,
+    "coverage": 0.10,
+    "groundedness": 0.20
+  },
+  "recipes": [
+    {
+      "id": "rcp_denial_appeal_letter_v1",
+      "name": "denial-appeal-letter",
+      "class": "distilled_model",
+      "teacher_vendor": "tenant-configurable",
+      "weights_file": "model.gguf",
+      "tags": ["health-insurance", "denial", "appeal", "letter-generation", "model-class", "grounded-output"],
+      "schema": {
+        "input": {
+          "denial_code": "string",
+          "denial_reason_text": "string",
+          "claim": "object",
+          "member": "object",
+          "policy_index": "object"
+        },
+        "output": {
+          "letter_subject": "string",
+          "letter_body": "string",
+          "citations": "array",
+          "regulatory_basis": "object",
+          "recommended_attachments": "array",
+          "confidence": "number"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "Reference rules for denial-appeal letter generation. regulatory_basis_by_state maps the four largest US insurance markets to their external-review statute and the standard payer response window. attachment_library is the closed set the model may draw from when populating recommended_attachments. Tenants extend these tables per state and per plan at compile time.",
+    "rules": {
+      "regulatory_basis_by_state": {
+        "CA": { "statute": "Insurance Code §10169 (IMR)", "days_to_respond": 30 },
+        "TX": { "statute": "Insurance Code §1271.155", "days_to_respond": 30 },
+        "FL": { "statute": "Insurance Code §627.6043", "days_to_respond": 30 },
+        "NY": { "statute": "Insurance Law §4914 (External Appeal)", "days_to_respond": 30 }
+      },
+      "attachment_library": [
+        "medical_records_relevant_dos",
+        "treating_physician_letter_of_medical_necessity",
+        "peer_reviewed_evidence_treatment_guideline",
+        "prior_auth_request_and_outcome",
+        "patient_statement",
+        "claims_history_with_payer"
+      ],
+      "carc_reference": {
+        "50": "These are non-covered services because this is not deemed a 'medical necessity' by the payer.",
+        "197": "Precertification/authorization/notification/pre-treatment absent.",
+        "204": "This service/equipment/drug is not covered under the patient's current benefit plan.",
+        "16": "Claim/service lacks information or has submission/billing error(s)."
+      }
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "carc_50_mri_brain_refractory_migraine_ca",
+        "input": {
+          "denial_code": "50",
+          "denial_reason_text": "These are non-covered services because this is not deemed a medical necessity by the payer.",
+          "claim": { "cpt": ["70553"], "icd10": ["G43.909", "R51"], "dos": "2026-04-12", "billed": 1840.00, "member_id_redacted": "<hash>" },
+          "member": { "age": 41, "plan_code": "PPO-Gold-2026", "prior_auth_history": [] },
+          "policy_index": { "plan_doc_ref": "PPO-Gold-2026 §4.7", "mcg_ref": "MCG 25th ed. ACG-A-0193", "state": "CA" }
+        },
+        "expected": {
+          "letter_body_non_empty": true,
+          "citations_non_empty": true,
+          "regulatory_basis": { "state": "CA", "statute": "Insurance Code §10169 (IMR)", "days_to_respond": 30 }
+        }
+      },
+      {
+        "id": "carc_197_precert_absent_emergency_tx",
+        "input": {
+          "denial_code": "197",
+          "denial_reason_text": "Precertification/authorization/notification/pre-treatment absent.",
+          "claim": { "cpt": ["99284"], "icd10": ["R07.9"], "dos": "2026-03-22", "billed": 2105.00, "member_id_redacted": "<hash>" },
+          "member": { "age": 58, "plan_code": "PPO-Silver-2026", "prior_auth_history": [] },
+          "policy_index": { "plan_doc_ref": "PPO-Silver-2026 §6.2 (emergency services exception)", "state": "TX" }
+        },
+        "expected": {
+          "letter_body_non_empty": true,
+          "citations_non_empty": true,
+          "regulatory_basis": { "state": "TX", "statute": "Insurance Code §1271.155", "days_to_respond": 30 }
+        }
+      },
+      {
+        "id": "carc_204_not_covered_specialty_drug_ny",
+        "input": {
+          "denial_code": "204",
+          "denial_reason_text": "This service/equipment/drug is not covered under the patient's current benefit plan.",
+          "claim": { "cpt": ["J3490"], "icd10": ["L40.0"], "dos": "2026-04-01", "billed": 9425.00, "member_id_redacted": "<hash>" },
+          "member": { "age": 47, "plan_code": "HMO-Bronze-2026", "prior_auth_history": ["PA-2026-007"] },
+          "policy_index": { "plan_doc_ref": "HMO-Bronze-2026 §8.3 (specialty pharmacy)", "state": "NY" }
+        },
+        "expected": {
+          "letter_body_non_empty": true,
+          "citations_non_empty": true,
+          "regulatory_basis": { "state": "NY", "statute": "Insurance Law §4914 (External Appeal)", "days_to_respond": 30 }
+        }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

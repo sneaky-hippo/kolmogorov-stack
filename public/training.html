@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#050607;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#050607;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Train your AI from 5 examples to 50,000 &middot; kolm</title>
+<meta name="description" content="Six tiers, one CLI. From a single rule recipe to a quantized multi-expert MoE bundle. Every tier signs, gates, and ships. Pick a teacher, point at your task, deploy the receipt.">
+<meta name="keywords" content="training, distillation, LoRA, QLoRA, quantization, INT4, GGUF, ONNX, cross-vendor, teacher, student, MoE, K-score, .kolm">
+<meta property="og:title" content="Train your AI from 5 examples to 50,000 &middot; kolm">
+<meta property="og:description" content="Six tiers. Same CLI. From a rule recipe in 30 seconds to a quantized 7B distill in an afternoon to a multi-expert MoE bundle.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/training">
+<meta property="og:image" content="https://kolm.ai/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Train your AI from 5 examples to 50,000">
+<meta name="twitter:description" content="Six tiers. Same CLI. Verifiable artifact at every step.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://kolm.ai/training">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #0e1314; --bg-card-2: #131918;
+    --line: rgba(255,255,255,0.06); --line-2: rgba(255,255,255,0.12); --line-strong: rgba(255,255,255,0.22);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --good: #7ef0d2; --warm: #f3b15a; --cool: #7cbcf1; --violet: #b89cf7; --rose: #f29bbb;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  [data-theme=light] {
+    --bg: #f7f4ec; --bg-elev: #efeadc; --bg-card: #ffffff; --bg-card-2: #f3eedf;
+    --line: rgba(0,0,0,0.08); --line-2: rgba(0,0,0,0.14); --line-strong: rgba(0,0,0,0.24);
+    --ink: #1c1f1d; --ink-mute: #4a4e4c; --ink-faint: #777c79;
+  }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; margin: 0; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+  a { color: inherit; text-decoration: none; }
+  .crumbs { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 16px; }
+  .crumbs a { color: inherit; border-bottom: 1px dashed var(--line); }
+  h1 { font-size: 44px; line-height: 1.06; font-weight: 500; letter-spacing: -0.024em; margin: 0 0 18px; max-width: 880px; }
+  h1 em { font-style: normal; background: linear-gradient(94deg, var(--good) 0%, var(--cool) 50%, var(--violet) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  h2 { font-size: 28px; line-height: 1.18; font-weight: 500; letter-spacing: -0.014em; margin: 64px 0 16px; }
+  h3 { font-size: 19px; font-weight: 500; margin: 0 0 8px; }
+  .lede { font-size: 18.5px; line-height: 1.5; color: var(--ink-mute); max-width: 760px; margin: 0 0 28px; }
+  .hero { padding: 72px 0 36px; border-bottom: 1px solid var(--line); position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; inset: -30% -10% 50% 50%; background: radial-gradient(50% 50% at 50% 50%, rgba(184, 156, 247, 0.12) 0%, transparent 70%); pointer-events: none; }
+  .hero::after { content: ''; position: absolute; inset: 50% 50% -30% -10%; background: radial-gradient(50% 50% at 50% 50%, rgba(126, 240, 210, 0.10) 0%, transparent 70%); pointer-events: none; }
+  .hero .wrap { position: relative; }
+  .pcap { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px; }
+  .hero-meta { display: flex; gap: 18px; font-family: var(--mono); font-size: 12px; color: var(--ink-mute); margin: 22px 0 0; flex-wrap: wrap; }
+  .hero-meta b { color: var(--ink); font-weight: 500; }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 22px 0 0; }
+  .cta { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 10px; font-family: var(--mono); font-size: 13px; letter-spacing: 0.02em; border: 1px solid var(--line); transition: border-color 120ms, background 120ms; }
+  .cta.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .cta.primary:hover { background: var(--good); border-color: var(--good); color: var(--bg); }
+  .cta:not(.primary):hover { border-color: var(--line-strong); }
+
+  /* ladder visual */
+  .ladder { padding: 56px 0 24px; }
+  .ladder-svg { display: block; width: 100%; max-width: 1000px; margin: 28px auto 0; height: auto; }
+  .ladder-cap { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); text-align: center; margin: 14px 0 0; }
+
+  /* tier deep dives */
+  .tiers { padding: 36px 0 24px; }
+  .tier { display: grid; grid-template-columns: 240px 1fr; gap: 36px; padding: 36px 0; border-top: 1px solid var(--line); }
+  @media (max-width: 920px) { .tier { grid-template-columns: 1fr; gap: 18px; } }
+  .tier:last-child { border-bottom: 1px solid var(--line); }
+  .tier-id { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.14em; }
+  .tier-id b { display: block; font-size: 13px; color: var(--ink); margin-top: 4px; font-weight: 500; }
+  .tier-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 18px 0 0; font-family: var(--mono); font-size: 12.5px; }
+  .tier-meta div { padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px; }
+  .tier-meta span { display: block; color: var(--ink-faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+  .tier-body p { font-size: 15.5px; line-height: 1.6; color: var(--ink-mute); margin: 0 0 14px; max-width: 780px; }
+  .tier-body p b { color: var(--ink); font-weight: 500; }
+  .tier-body pre { font-family: var(--mono); font-size: 12.5px; padding: 16px 18px; background: rgba(0,0,0,0.34); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; line-height: 1.6; color: var(--ink); margin: 12px 0; }
+  [data-theme=light] .tier-body pre { background: rgba(0,0,0,0.04); color: var(--ink); }
+  .tier-callout { display: inline-block; padding: 4px 9px; font-family: var(--mono); font-size: 11px; border-radius: 4px; margin-right: 6px; }
+  .tier-callout.rule { background: rgba(126,240,210,0.14); color: var(--good); }
+  .tier-callout.synth { background: rgba(184,156,247,0.16); color: var(--violet); }
+  .tier-callout.distill { background: rgba(243,177,90,0.16); color: var(--warm); }
+  .tier-callout.moe { background: rgba(242,155,187,0.18); color: var(--rose); }
+  .tier-svg-wrap { background: var(--bg-card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin: 18px 0; }
+  .tier-svg-wrap svg { display: block; width: 100%; height: auto; }
+  .tier-svg-wrap figcaption { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); margin-top: 12px; }
+
+  /* comparison matrix */
+  .matrix { padding: 56px 0; border-top: 1px solid var(--line); }
+  .matrix .wrap { max-width: 1200px; }
+  .matrix-scroll { overflow-x: auto; margin: 18px -32px 0; padding: 0 32px 8px; }
+  .matrix table { width: 100%; min-width: 920px; border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; }
+  .matrix th, .matrix td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .matrix th { color: var(--ink-faint); font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; }
+  .matrix td:first-child b { color: var(--ink); font-weight: 500; font-size: 13px; }
+  .matrix td:first-child span { display: block; color: var(--ink-faint); font-size: 11px; margin-top: 2px; }
+  .matrix .good { color: var(--good); }
+  .matrix .warm { color: var(--warm); }
+  .matrix .cool { color: var(--cool); }
+  .matrix .violet { color: var(--violet); }
+  .matrix .rose { color: var(--rose); }
+
+  /* pipeline visual */
+  .pipeline { padding: 56px 0; border-top: 1px solid var(--line); }
+  .pipeline-svg-wrap { background: var(--bg-card); border: 1px solid var(--line); border-radius: 18px; padding: 28px; margin: 28px 0 0; }
+  .pipeline-svg-wrap svg { display: block; width: 100%; height: auto; max-width: 1120px; margin: 0 auto; }
+
+  /* vendor grid */
+  .vendors { padding: 56px 0; border-top: 1px solid var(--line); }
+  .vendor-grid-wrap { background: var(--bg-card); border: 1px solid var(--line); border-radius: 16px; padding: 28px; margin: 28px 0 0; overflow-x: auto; }
+  .vendor-grid { display: grid; gap: 1px; background: var(--line); min-width: 720px; }
+  .vg-cell { background: var(--bg-card); padding: 12px 14px; font-family: var(--mono); font-size: 12px; color: var(--ink-mute); }
+  .vg-cell.h { color: var(--ink); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.08em; }
+  .vg-cell.t { font-weight: 500; color: var(--ink); }
+  .vg-cell.dot { display: flex; justify-content: center; align-items: center; }
+  .vg-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .vg-dot.ok { background: var(--good); box-shadow: 0 0 8px rgba(126,240,210,0.55); }
+  .vg-dot.warn { background: var(--warm); box-shadow: 0 0 6px rgba(243,177,90,0.42); }
+  .vg-dot.no { background: rgba(255,255,255,0.10); }
+  .vg-cap { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); margin-top: 16px; }
+
+  /* receipt chain */
+  .receipt { padding: 56px 0; border-top: 1px solid var(--line); }
+  .receipt-svg-wrap { background: var(--bg-card); border: 1px solid var(--line); border-radius: 16px; padding: 28px; margin: 28px 0 0; }
+
+  /* cli ref */
+  .cliref { padding: 56px 0; border-top: 1px solid var(--line); }
+  .cliref pre { font-family: var(--mono); font-size: 12.5px; padding: 18px 22px; background: rgba(0,0,0,0.36); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; line-height: 1.6; color: var(--ink); margin: 14px 0; }
+  [data-theme=light] .cliref pre { background: rgba(0,0,0,0.04); }
+
+  /* closer */
+  .close { padding: 64px 0 96px; border-top: 1px solid var(--line); text-align: center; }
+  .close h2 { margin: 0 0 16px; }
+  .close p { color: var(--ink-mute); max-width: 640px; margin: 0 auto 24px; }
+
+  /* wave 198 - frontier methods + how-much-data */
+  .frontier { padding: 56px 0; border-top: 1px solid var(--line); }
+  .frontier .lede { margin-bottom: 22px; }
+  .frontier-scroll { overflow-x: auto; margin: 18px -32px 0; padding: 0 32px 8px; }
+  .frontier table { width: 100%; min-width: 880px; border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; }
+  .frontier th, .frontier td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .frontier th { color: var(--ink-faint); font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; }
+  .frontier td b { color: var(--ink); font-weight: 500; }
+  .frontier td a { color: inherit; border-bottom: 1px dashed var(--line-2); }
+  .frontier td a:hover { border-bottom-color: var(--line-strong); }
+  .status-pill { display: inline-block; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 9px; border-radius: 999px; vertical-align: middle; }
+  .status-pill.shipped { color: var(--good); background: rgba(126,240,210,0.10); border: 1px solid rgba(126,240,210,0.30); }
+  .status-pill.roadmap { color: var(--warm); background: rgba(243,177,90,0.10); border: 1px solid rgba(243,177,90,0.30); }
+  .frontier-foot { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); margin: 18px 0 0; }
+  .frontier-foot a { color: var(--ink-mute); border-bottom: 1px dashed var(--line-2); }
+
+  .howmuch { padding: 56px 0; border-top: 1px solid var(--line); }
+  .howmuch .lede { margin-bottom: 24px; }
+  .howmuch-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin: 18px 0 0; }
+  @media (max-width: 820px) { .howmuch-grid { grid-template-columns: 1fr; } }
+  .howmuch-card { background: var(--bg-card); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; }
+  .howmuch-card .rank { display: inline-block; font-family: var(--mono); font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; }
+  .howmuch-card h3 { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--ink); margin: 6px 0 14px; }
+  .howmuch-card .row { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13.5px; line-height: 1.55; }
+  .howmuch-card .row:first-of-type { border-top: none; }
+  .howmuch-card .row .k { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; padding-top: 2px; }
+  .howmuch-card .row .v { color: var(--ink-mute); }
+  .howmuch-card .row .v b { color: var(--ink); font-weight: 500; }
+  .howmuch-card .worked { margin: 14px 0 0; padding: 12px 14px; background: rgba(255,255,255,0.02); border-left: 2px solid var(--good); border-radius: 0 6px 6px 0; font-family: var(--mono); font-size: 11.5px; color: var(--ink-mute); line-height: 1.55; }
+  [data-theme=light] .howmuch-card .worked { background: rgba(0,0,0,0.03); }
+  .howmuch-card .worked b { color: var(--ink); font-weight: 500; }
+  .howmuch-callout { margin: 22px 0 0; padding: 16px 20px; background: var(--bg-card-2); border: 1px solid var(--line); border-radius: 12px; font-size: 14.5px; line-height: 1.6; color: var(--ink-mute); }
+  .howmuch-callout b { color: var(--ink); font-weight: 500; }
+  /* Wave 208 mobile audit: 360-560px hero+section padding+font shrink. */
+  @media (max-width: 560px) {
+    .wrap { padding: 0 18px; }
+    .hero { padding: 48px 0 24px; }
+    h1 { font-size: 32px; line-height: 1.1; }
+    h2 { font-size: 23px; margin: 40px 0 12px; }
+    .lede { font-size: 16px; }
+    .tier { padding: 24px 0; }
+    .tier-body pre, .cliref pre { font-size: 11.5px; padding: 12px 14px; }
+    .matrix, .pipeline, .vendors, .receipt, .cliref, .frontier, .howmuch { padding: 36px 0; }
+    .close { padding: 40px 0 64px; }
+    .cta { padding: 10px 14px; font-size: 12.5px; }
+    .matrix-scroll, .frontier-scroll { margin: 18px -18px 0; padding: 0 18px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="kolm-mark" aria-label="kolm home"><img src="/logo-mark.svg" alt="" width="28" height="28"></a>
+  </div>
+</header>
+
+<main id="main">
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; training</p>
+    <p class="pcap">Six tiers. Same CLI. Verifiable artifact at every step.</p>
+    <h1>Train your AI from <em>five examples</em> to <em>fifty thousand</em></h1>
+    <p class="lede">A rule recipe in thirty seconds. A synthesized rule in five minutes. A distilled 7B in an afternoon. Or compose four specialists into one MoE bundle. Same CLI, same receipt chain, same <code>.kolm</code> file on the other end.</p>
+    <div class="cta-row">
+      <a href="#tier-0" class="cta primary">Start at tier 0 &rarr;</a>
+      <a href="/distill" class="cta">Distillation deep dive</a>
+      <a href="/anatomy" class="cta">Inside a .kolm file</a>
+    </div>
+    <div class="hero-meta">
+      <span><b>5</b> teacher vendors</span>
+      <span><b>13</b> student bases</span>
+      <span><b>4</b> distillation methods</span>
+      <span><b>6</b> training tiers</span>
+      <span><b>21</b> PHI redaction classes</span>
+      <span><b>15</b> verifier checks</span>
+    </div>
+  </div>
+</section>
+
+<section class="ladder">
+  <div class="wrap">
+    <h2>The training ladder</h2>
+    <p class="lede">Each rung is a tier. The CLI is the same. The artifact gets bigger; the trust chain gets longer; the K-score gets calibrated against an ever-larger holdout.</p>
+    <svg class="ladder-svg" viewBox="0 0 1000 460" role="img" aria-label="Training ladder from rule recipe to MoE bundle">
+      <defs>
+        <linearGradient id="lad-grad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#7ef0d2"/>
+          <stop offset="33%" stop-color="#b89cf7"/>
+          <stop offset="66%" stop-color="#f3b15a"/>
+          <stop offset="100%" stop-color="#f29bbb"/>
+        </linearGradient>
+        <radialGradient id="lad-glow" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0%" stop-color="rgba(126,240,210,0.55)"/>
+          <stop offset="100%" stop-color="rgba(126,240,210,0)"/>
+        </radialGradient>
+        <filter id="lad-soft" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2"/>
+        </filter>
+      </defs>
+      <rect x="0" y="0" width="1000" height="460" fill="transparent"/>
+      <line x1="80" y1="380" x2="940" y2="380" stroke="url(#lad-grad)" stroke-width="2" opacity="0.55"/>
+      <line x1="80" y1="380" x2="80" y2="60" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>
+
+      <!-- y-axis tick labels -->
+      <text x="62" y="380" text-anchor="end" font-family="ui-monospace, monospace" font-size="10" fill="#737c73">0%</text>
+      <text x="62" y="282" text-anchor="end" font-family="ui-monospace, monospace" font-size="10" fill="#737c73">0.85</text>
+      <text x="62" y="200" text-anchor="end" font-family="ui-monospace, monospace" font-size="10" fill="#737c73">0.90</text>
+      <text x="62" y="120" text-anchor="end" font-family="ui-monospace, monospace" font-size="10" fill="#737c73">0.95</text>
+      <text x="62" y="65" text-anchor="end" font-family="ui-monospace, monospace" font-size="10" fill="#737c73">A/T</text>
+
+      <!-- ladder rungs -->
+      <g>
+        <!-- tier 0 -->
+        <circle cx="160" cy="340" r="28" fill="rgba(126,240,210,0.08)" stroke="#7ef0d2" stroke-width="1.5"/>
+        <text x="160" y="345" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="#7ef0d2">0</text>
+        <text x="160" y="408" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b5bdb1">5 ex.</text>
+        <text x="160" y="424" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">rule</text>
+        <text x="160" y="320" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#7ef0d2">A=0.72</text>
+
+        <!-- tier 1 -->
+        <circle cx="300" cy="298" r="28" fill="rgba(184,156,247,0.10)" stroke="#b89cf7" stroke-width="1.5"/>
+        <text x="300" y="303" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="#b89cf7">1</text>
+        <text x="300" y="408" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b5bdb1">50 ex.</text>
+        <text x="300" y="424" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">synth-rule</text>
+        <text x="300" y="278" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#b89cf7">A=0.86</text>
+
+        <!-- tier 2 -->
+        <circle cx="440" cy="240" r="30" fill="rgba(243,177,90,0.10)" stroke="#f3b15a" stroke-width="1.5"/>
+        <text x="440" y="246" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="#f3b15a">2</text>
+        <text x="440" y="408" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b5bdb1">500 ex.</text>
+        <text x="440" y="424" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">distill 0.5B</text>
+        <text x="440" y="218" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#f3b15a">A=0.90 A/T=0.92</text>
+
+        <!-- tier 3 -->
+        <circle cx="580" cy="184" r="32" fill="rgba(243,177,90,0.12)" stroke="#f3b15a" stroke-width="1.5"/>
+        <text x="580" y="190" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="#f3b15a">3</text>
+        <text x="580" y="408" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b5bdb1">5,000 ex.</text>
+        <text x="580" y="424" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">distill 1B</text>
+        <text x="580" y="160" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#f3b15a">A=0.94 A/T=0.96</text>
+
+        <!-- tier 4 -->
+        <circle cx="720" cy="128" r="34" fill="rgba(243,177,90,0.14)" stroke="#f3b15a" stroke-width="1.5"/>
+        <text x="720" y="134" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="#f3b15a">4</text>
+        <text x="720" y="408" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b5bdb1">50,000 ex.</text>
+        <text x="720" y="424" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">distill 7B</text>
+        <text x="720" y="100" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#f3b15a">A=0.96 A/T=0.98</text>
+
+        <!-- tier 5 (MoE) -->
+        <circle cx="860" cy="82" r="36" fill="rgba(242,155,187,0.14)" stroke="#f29bbb" stroke-width="1.5"/>
+        <text x="860" y="88" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="#f29bbb">5</text>
+        <text x="860" y="408" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b5bdb1">4 experts</text>
+        <text x="860" y="424" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">MoE bundle</text>
+        <text x="860" y="52" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#f29bbb">composite</text>
+
+        <!-- connecting curve through rungs -->
+        <path d="M160 340 Q230 320, 300 298 T440 240 Q510 220, 580 184 T720 128 Q790 100, 860 82" stroke="url(#lad-grad)" stroke-width="2" fill="none" opacity="0.7"/>
+      </g>
+
+      <!-- axis label -->
+      <text x="500" y="450" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">data size &rarr; recipe class &rarr; calibrated holdout accuracy</text>
+    </svg>
+    <p class="ladder-cap">K-score figures are typical holdout outcomes after Q+2 train/holdout gating, not promises. Your seeds set the ceiling.</p>
+  </div>
+</section>
+
+<section class="tiers" id="tiers">
+  <div class="wrap">
+    <h2>Six tiers, one CLI</h2>
+    <p class="lede">Each tier names the smallest recipe class that can pass its K-score gate. You can always stay at a lower tier if your seeds are clean and your task is narrow.</p>
+
+    <article class="tier" id="tier-0">
+      <div class="tier-id">
+        <span>tier 0</span>
+        <b>Rule recipe</b>
+        <div class="tier-meta">
+          <div><span>data</span>5 seeds</div>
+          <div><span>class</span>rule</div>
+          <div><span>artifact</span>50&ndash;200&nbsp;KB</div>
+          <div><span>latency</span>&lt;&nbsp;1&nbsp;ms</div>
+          <div><span>teacher</span>none</div>
+          <div><span>K-score A</span>0.70&ndash;0.95</div>
+        </div>
+      </div>
+      <div class="tier-body">
+        <span class="tier-callout rule">no model</span>
+        <span class="tier-callout rule">no GPU</span>
+        <span class="tier-callout rule">deterministic</span>
+        <p><b>What it is.</b> A hand-authored JavaScript function. Same input always returns the same output. There is no model file because there is no model. Five seeds is enough when the task is regex-shaped: phone-number normalization, SSN redaction, ICD-10 lookup, denial-code classification with explicit rules.</p>
+        <p><b>How you make one.</b> Write your seeds. Hand the spec to <code>kolm compile</code>. The CLI normalizes the legacy <code>{prompt, completion}</code> shape, splits 80/20 by row hash, lets you author the rule against the train pairs, then scores it against the held-out 20% as independent ground truth. K-score is exact-match unless the recipe declares a different comparator.</p>
+        <pre>kolm seeds bootstrap phone-normalizer
+kolm compile recipes/phone-normalizer.spec.json --class rule
+kolm verify dist/phone-normalizer.kolm
+kolm run dist/phone-normalizer.kolm "+1 (415) 555-2671"</pre>
+        <p><b>Where it runs.</b> Any JavaScript runtime. Node, Bun, browser, Cloudflare Workers, Deno Deploy, V8 sandbox inside a Postgres procedure. The artifact is a zip with a manifest and a function; no model weights, no GPU dependency, no platform-specific binaries.</p>
+        <p><b>What you get.</b> Sub-millisecond latency. Bit-identical output across machines. Bundle so small it can ship inside a JSON column. Receipt chain: <code>seeds_hash &rarr; train_hash &rarr; holdout_hash &rarr; recipe_hash &rarr; eval_result_hash</code>. Ed25519-signed.</p>
+      </div>
+    </article>
+
+    <article class="tier" id="tier-1">
+      <div class="tier-id">
+        <span>tier 1</span>
+        <b>Synthesized rule</b>
+        <div class="tier-meta">
+          <div><span>data</span>50 seeds</div>
+          <div><span>class</span>synthesized_rule</div>
+          <div><span>artifact</span>120&ndash;400&nbsp;KB</div>
+          <div><span>latency</span>1&ndash;3&nbsp;ms</div>
+          <div><span>teacher</span>required</div>
+          <div><span>K-score A</span>0.85&ndash;0.97</div>
+        </div>
+      </div>
+      <div class="tier-body">
+        <span class="tier-callout synth">LLM-authored code</span>
+        <span class="tier-callout synth">AST-validated</span>
+        <span class="tier-callout synth">no weights</span>
+        <p><b>What it is.</b> A frontier model emits candidate JavaScript that satisfies the spec. The candidate is parsed into a constrained AST (no I/O, no FFI, bounded loops), fuzzed against the train split, and gated on K-score against the holdout. The final artifact contains <em>rule code</em>, not weights &mdash; but the rule code was authored by an LLM, not by a human. Verifiable distinction: this is rule code generation, not knowledge distillation.</p>
+        <p><b>Why a step up from tier 0.</b> Fifty seeds give the synthesizer enough coverage to find edge cases (e.g., extension numbers, vanity letters, international prefixes) that a five-seed hand-author misses. The teacher_vendor + teacher_model lands in the manifest so a verifier can replay.</p>
+        <pre>kolm compile recipes/denial-code-classifier.spec.json \
+  --class synthesized_rule \
+  --teacher anthropic:claude-sonnet-4-6
+kolm verify dist/denial-code-classifier.kolm
+# manifest.lineage.source = "synthesis"
+# manifest.lineage.teacher_vendor = "anthropic"
+# manifest.lineage.teacher_model = "claude-sonnet-4-6"</pre>
+        <p><b>Where it runs.</b> Same JavaScript runtimes as tier 0. The artifact is still pure code; the teacher only touches the build pipeline, never inference time.</p>
+        <p><b>What you get.</b> Single-digit-millisecond latency. Deterministic output across machines. AST guarantee: provably terminating, no I/O side effects, bounded resource use. Manifest carries teacher provenance + train/holdout hashes.</p>
+      </div>
+    </article>
+
+    <article class="tier" id="tier-2">
+      <div class="tier-id">
+        <span>tier 2</span>
+        <b>Distilled, sub-billion</b>
+        <div class="tier-meta">
+          <div><span>data</span>500 seeds</div>
+          <div><span>class</span>distilled_model</div>
+          <div><span>artifact</span>250&ndash;500&nbsp;MB</div>
+          <div><span>latency</span>20&ndash;80&nbsp;ms</div>
+          <div><span>teacher</span>frontier API</div>
+          <div><span>K-score A</span>0.88&ndash;0.94</div>
+        </div>
+      </div>
+      <div class="tier-body">
+        <span class="tier-callout distill">real weights</span>
+        <span class="tier-callout distill">INT4 quantized</span>
+        <span class="tier-callout distill">on-device</span>
+        <p><b>What it is.</b> A real neural network. The teacher (Claude Sonnet, GPT-5-mini, Gemini Flash) generates training pairs from your train split, the PHI redactor strips Safe Harbor identifiers before the call, the reinjector restores them after. A small open-weight base (Qwen2.5-0.5B, SmolLM2-360M, or Llama-3.2-1B) is LoRA-fine-tuned, GPTQ/AWQ-quantized to INT4, and exported as GGUF.</p>
+        <p><b>When it earns its keep.</b> When the task has too many edge cases for a rule to cover (free-text classification, intent extraction, summarization with strict structure) and you want the artifact to run on the user's device. iPhone 15 Pro, M3 Mac, Jetson Orin Nano &mdash; all run a quantized 0.5B inline.</p>
+        <pre>kolm distill recipes/prior-auth-extractor.spec.json \
+  --teacher anthropic:claude-sonnet-4-6 \
+  --student-base qwen2.5-0.5b \
+  --distillation-method lora \
+  --redact phi \
+  --eval-gate 0.88 \
+  --quantize int4-awq</pre>
+        <p><b>Where it runs.</b> Onnxruntime, llama.cpp, candle. Web via WASM build. Mobile via CoreML/NNAPI export. The same <code>.kolm</code> contains every target.</p>
+        <p><b>What you get.</b> Sub-100ms first-token on a phone. Receipt chain extension: <code>redaction_map_hash &rarr; teacher_call_log_hash &rarr; reinjection_log_hash &rarr; teacher_vendor &rarr; teacher_model &rarr; student_base &rarr; distillation_method</code>. Verifier check #15 rejects the artifact if any of those four lineage fields are missing.</p>
+      </div>
+    </article>
+
+    <article class="tier" id="tier-3">
+      <div class="tier-id">
+        <span>tier 3</span>
+        <b>Distilled, 1&ndash;3B</b>
+        <div class="tier-meta">
+          <div><span>data</span>5,000 seeds</div>
+          <div><span>class</span>distilled_model</div>
+          <div><span>artifact</span>700&nbsp;MB&ndash;1.6&nbsp;GB</div>
+          <div><span>latency</span>60&ndash;180&nbsp;ms</div>
+          <div><span>teacher</span>frontier API</div>
+          <div><span>K-score A</span>0.92&ndash;0.96</div>
+        </div>
+      </div>
+      <div class="tier-body">
+        <span class="tier-callout distill">multi-shard</span>
+        <span class="tier-callout distill">adapter merge</span>
+        <span class="tier-callout distill">workstation deploy</span>
+        <p><b>What it is.</b> Same pipeline as tier 2, larger base. Llama-3.2-1B, Llama-3.2-3B, Qwen2.5-1.5B, Phi-3.5-mini, or Gemma-2-2b. Training shards run in parallel; adapter weights are merged before quantization. The student now has enough capacity to match the teacher on the long tail of your distribution.</p>
+        <p><b>When it earns its keep.</b> When tier 2 misses on rare cases and you have the seed volume to teach those cases. Documents with multi-page context, transactions that need cross-row reasoning, summaries that must hold style across paragraphs.</p>
+        <pre>kolm distill recipes/claims-summarizer.spec.json \
+  --teacher anthropic:claude-opus-4-7 \
+  --student-base llama-3.2-1b \
+  --distillation-method lora \
+  --lora-rank 16 \
+  --redact phi \
+  --eval-gate 0.92 \
+  --quantize int4-gptq</pre>
+        <p><b>Where it runs.</b> M3 Mac, Jetson Orin AGX, RTX 4090 desktop, server-class CPU with AVX-512. Same artifact runs every target via runtime detect.</p>
+      </div>
+    </article>
+
+    <article class="tier" id="tier-4">
+      <div class="tier-id">
+        <span>tier 4</span>
+        <b>Distilled, 7B+</b>
+        <div class="tier-meta">
+          <div><span>data</span>50,000 seeds</div>
+          <div><span>class</span>distilled_model</div>
+          <div><span>artifact</span>3&ndash;5&nbsp;GB INT4</div>
+          <div><span>latency</span>180&ndash;400&nbsp;ms</div>
+          <div><span>teacher</span>frontier API</div>
+          <div><span>K-score A</span>0.95&ndash;0.98</div>
+        </div>
+      </div>
+      <div class="tier-body">
+        <span class="tier-callout distill">QLoRA</span>
+        <span class="tier-callout distill">multi-GPU</span>
+        <span class="tier-callout distill">server-class</span>
+        <p><b>What it is.</b> QLoRA on a 7B-class open-weight base (Qwen2.5-7B, Mistral-7B-v0.3, Yi-1.5-6B). Multi-GPU training; checkpoint sharding to fit in 24GB cards. The student now closes the A/T fidelity ratio above 0.97 on most tasks. This is the tier that replaces a frontier API call entirely.</p>
+        <p><b>When it earns its keep.</b> When the per-call frontier-API spend dwarfs the one-time distillation spend, and you need the result inside your own perimeter. Health insurers, banks, government, regulated SaaS.</p>
+        <pre>kolm distill recipes/eligibility-resolver.spec.json \
+  --teacher anthropic:claude-opus-4-7 \
+  --student-base qwen2.5-7b \
+  --distillation-method qlora \
+  --lora-rank 32 \
+  --redact phi \
+  --eval-gate 0.95 \
+  --quantize int4-gptq \
+  --teacher-version 2026-04-15</pre>
+        <p><b>Where it runs.</b> 24GB consumer GPU, dual H100 server, on-prem accelerator pool. Vendor-neutral: same artifact runs on RTX 4090, MI300X, Gaudi 3, TPU v5e via ONNX.</p>
+      </div>
+    </article>
+
+    <article class="tier" id="tier-5">
+      <div class="tier-id">
+        <span>tier 5</span>
+        <b>MoE bundle</b>
+        <div class="tier-meta">
+          <div><span>data</span>4&times; tier-3</div>
+          <div><span>class</span>composed</div>
+          <div><span>artifact</span>2&ndash;6&nbsp;GB</div>
+          <div><span>latency</span>routed &lt;&nbsp;300&nbsp;ms</div>
+          <div><span>teacher</span>per-expert</div>
+          <div><span>K-score</span>per-expert + composite</div>
+        </div>
+      </div>
+      <div class="tier-body">
+        <span class="tier-callout moe">router</span>
+        <span class="tier-callout moe">composed</span>
+        <span class="tier-callout moe">one bundle</span>
+        <p><b>What it is.</b> The Kimi/Qwen pattern: many small experts, each LoRA-fine-tuned on a narrow slice, glued together with a learned router so the bundle behaves like a much larger model. Each expert is itself a tier-2 or tier-3 distill. <code>kolm compose</code> links them, fuzzes the router on the union of holdouts, and emits a single <code>.kolm</code>.</p>
+        <p><b>When it earns its keep.</b> Health-insurance back-office (PA + denial coding + eligibility + appeals), legal triage, finance KYC. Different tasks, different teachers, different bases, one artifact that ships under one signature.</p>
+        <pre>kolm compose dist/bundle.kolm \
+  --expert phi-redactor=dist/phi-redactor.kolm \
+  --expert denial-coder=dist/denial-coder.kolm \
+  --expert prior-auth=dist/prior-auth.kolm \
+  --expert eligibility=dist/eligibility-resolver.kolm \
+  --route-by class \
+  --router-train holdouts/router.jsonl</pre>
+        <p><b>Where it runs.</b> Same targets as the heaviest expert it contains. The router itself is a sub-millisecond classifier; the dispatch cost is dominated by the activated expert.</p>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<section class="matrix">
+  <div class="wrap">
+    <h2>What each tier costs and ships</h2>
+    <p class="lede">All figures are typical, not promised. Your seeds, your teacher choice, your quantization target move every number.</p>
+    <div class="matrix-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>tier</th>
+          <th>seeds</th>
+          <th>recipe class</th>
+          <th>teacher</th>
+          <th>student base</th>
+          <th>artifact</th>
+          <th>latency</th>
+          <th>K-score A</th>
+          <th>A/T</th>
+          <th>deploy targets</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>0</b><span>rule</span></td>
+          <td>5</td>
+          <td class="good">rule</td>
+          <td>&mdash;</td>
+          <td>&mdash;</td>
+          <td>50&ndash;200 KB</td>
+          <td>&lt; 1 ms</td>
+          <td class="good">0.70&ndash;0.95</td>
+          <td>&mdash;</td>
+          <td>any JS runtime</td>
+        </tr>
+        <tr>
+          <td><b>1</b><span>synth</span></td>
+          <td>50</td>
+          <td class="violet">synthesized_rule</td>
+          <td>sonnet / mini</td>
+          <td>&mdash;</td>
+          <td>120&ndash;400 KB</td>
+          <td>1&ndash;3 ms</td>
+          <td class="violet">0.85&ndash;0.97</td>
+          <td>&mdash;</td>
+          <td>any JS runtime</td>
+        </tr>
+        <tr>
+          <td><b>2</b><span>distill 0.5B</span></td>
+          <td>500</td>
+          <td class="warm">distilled_model</td>
+          <td>sonnet / flash</td>
+          <td>smollm2-360m, qwen2.5-0.5b</td>
+          <td>250&ndash;500 MB</td>
+          <td>20&ndash;80 ms</td>
+          <td class="warm">0.88&ndash;0.94</td>
+          <td class="warm">0.90&ndash;0.94</td>
+          <td>iPhone, M-series, Orin Nano</td>
+        </tr>
+        <tr>
+          <td><b>3</b><span>distill 1&ndash;3B</span></td>
+          <td>5,000</td>
+          <td class="warm">distilled_model</td>
+          <td>opus / pro</td>
+          <td>llama-3.2-1b, qwen2.5-1.5b, phi-3.5-mini</td>
+          <td>700 MB&ndash;1.6 GB</td>
+          <td>60&ndash;180 ms</td>
+          <td class="warm">0.92&ndash;0.96</td>
+          <td class="warm">0.94&ndash;0.97</td>
+          <td>M3 Mac, Orin AGX, RTX 4090</td>
+        </tr>
+        <tr>
+          <td><b>4</b><span>distill 7B+</span></td>
+          <td>50,000</td>
+          <td class="warm">distilled_model</td>
+          <td>opus</td>
+          <td>qwen2.5-7b, mistral-7b-v0.3</td>
+          <td>3&ndash;5 GB INT4</td>
+          <td>180&ndash;400 ms</td>
+          <td class="warm">0.95&ndash;0.98</td>
+          <td class="warm">0.96&ndash;0.99</td>
+          <td>24 GB GPU, on-prem rack</td>
+        </tr>
+        <tr>
+          <td><b>5</b><span>MoE</span></td>
+          <td>4&times; tier-3</td>
+          <td class="rose">composed</td>
+          <td>per-expert</td>
+          <td>per-expert</td>
+          <td>2&ndash;6 GB</td>
+          <td>routed &lt; 300 ms</td>
+          <td class="rose">per-expert</td>
+          <td class="rose">per-expert</td>
+          <td>same as heaviest expert</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<section class="pipeline">
+  <div class="wrap">
+    <h2>What happens when you run <code>kolm distill</code></h2>
+    <p class="lede">The pipeline is the same shape at tier 2, 3, and 4. The boxes get bigger, the wall-clock time grows, the receipt chain never changes.</p>
+    <div class="pipeline-svg-wrap">
+      <svg viewBox="0 0 1120 360" role="img" aria-label="Distillation pipeline diagram">
+        <defs>
+          <linearGradient id="pl-grad-teacher" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#b89cf7" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#b89cf7" stop-opacity="0.04"/>
+          </linearGradient>
+          <linearGradient id="pl-grad-student" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#f3b15a" stop-opacity="0.20"/>
+            <stop offset="100%" stop-color="#f3b15a" stop-opacity="0.05"/>
+          </linearGradient>
+          <linearGradient id="pl-grad-ship" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7ef0d2" stop-opacity="0.22"/>
+            <stop offset="100%" stop-color="#7ef0d2" stop-opacity="0.05"/>
+          </linearGradient>
+          <marker id="pl-arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,9 L9,4.5 z" fill="#737c73"/>
+          </marker>
+        </defs>
+
+        <!-- step 1: seeds -->
+        <g transform="translate(20, 70)">
+          <rect x="0" y="0" width="150" height="220" rx="14" fill="#0e1314" stroke="rgba(255,255,255,0.10)"/>
+          <text x="75" y="28" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">STEP 1</text>
+          <text x="75" y="52" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" fill="#faf2e1" font-weight="500">seeds.jsonl</text>
+          <text x="75" y="78" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b5bdb1">your captured I/O</text>
+          <line x1="20" y1="100" x2="130" y2="100" stroke="rgba(255,255,255,0.08)"/>
+          <text x="75" y="124" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#7ef0d2">80% train</text>
+          <text x="75" y="146" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b89cf7">20% holdout</text>
+          <text x="75" y="174" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#737c73">split by row hash</text>
+          <text x="75" y="190" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#737c73">train &cap; holdout = &empty;</text>
+        </g>
+        <line x1="180" y1="180" x2="218" y2="180" stroke="#737c73" stroke-width="1.5" marker-end="url(#pl-arrow)"/>
+
+        <!-- step 2: redactor + teacher -->
+        <g transform="translate(228, 70)">
+          <rect x="0" y="0" width="200" height="220" rx="14" fill="url(#pl-grad-teacher)" stroke="#b89cf7" stroke-opacity="0.4"/>
+          <text x="100" y="28" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">STEP 2</text>
+          <text x="100" y="52" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" fill="#faf2e1" font-weight="500">redact &rarr; teacher</text>
+          <text x="100" y="78" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b5bdb1">PHI tokens out</text>
+          <line x1="20" y1="100" x2="180" y2="100" stroke="rgba(255,255,255,0.08)"/>
+          <text x="100" y="124" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#b89cf7">claude opus / sonnet</text>
+          <text x="100" y="142" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#b89cf7">gpt-5 / o3</text>
+          <text x="100" y="160" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#b89cf7">gemini 2.5 pro/flash</text>
+          <text x="100" y="178" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#b89cf7">grok-3 / local</text>
+          <text x="100" y="206" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#737c73">reinject after call</text>
+        </g>
+        <line x1="438" y1="180" x2="476" y2="180" stroke="#737c73" stroke-width="1.5" marker-end="url(#pl-arrow)"/>
+
+        <!-- step 3: student train -->
+        <g transform="translate(486, 70)">
+          <rect x="0" y="0" width="200" height="220" rx="14" fill="url(#pl-grad-student)" stroke="#f3b15a" stroke-opacity="0.42"/>
+          <text x="100" y="28" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">STEP 3</text>
+          <text x="100" y="52" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" fill="#faf2e1" font-weight="500">LoRA / QLoRA</text>
+          <text x="100" y="78" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b5bdb1">small open-weight base</text>
+          <line x1="20" y1="100" x2="180" y2="100" stroke="rgba(255,255,255,0.08)"/>
+          <text x="100" y="124" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#f3b15a">smollm2 / qwen2.5</text>
+          <text x="100" y="142" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#f3b15a">llama-3.2 / phi-3.5</text>
+          <text x="100" y="160" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#f3b15a">gemma-2 / mistral-7b</text>
+          <text x="100" y="178" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#f3b15a">deepseek / glm-4 / yi</text>
+          <text x="100" y="206" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#737c73">adapter weights only</text>
+        </g>
+        <line x1="696" y1="180" x2="734" y2="180" stroke="#737c73" stroke-width="1.5" marker-end="url(#pl-arrow)"/>
+
+        <!-- step 4: quantize -->
+        <g transform="translate(744, 70)">
+          <rect x="0" y="0" width="160" height="220" rx="14" fill="#0e1314" stroke="rgba(255,255,255,0.10)"/>
+          <text x="80" y="28" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">STEP 4</text>
+          <text x="80" y="52" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" fill="#faf2e1" font-weight="500">quantize</text>
+          <text x="80" y="78" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b5bdb1">INT4 / INT8</text>
+          <line x1="20" y1="100" x2="140" y2="100" stroke="rgba(255,255,255,0.08)"/>
+          <text x="80" y="124" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#cccccc">GPTQ</text>
+          <text x="80" y="146" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#cccccc">AWQ</text>
+          <text x="80" y="168" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#cccccc">bitsandbytes</text>
+          <text x="80" y="200" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#737c73">GGUF / ONNX export</text>
+        </g>
+        <line x1="914" y1="180" x2="952" y2="180" stroke="#737c73" stroke-width="1.5" marker-end="url(#pl-arrow)"/>
+
+        <!-- step 5: ship -->
+        <g transform="translate(962, 70)">
+          <rect x="0" y="0" width="140" height="220" rx="14" fill="url(#pl-grad-ship)" stroke="#7ef0d2" stroke-opacity="0.44"/>
+          <text x="70" y="28" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#737c73">STEP 5</text>
+          <text x="70" y="52" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="14" fill="#faf2e1" font-weight="500">.kolm</text>
+          <text x="70" y="78" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10.5" fill="#b5bdb1">one signed file</text>
+          <line x1="20" y1="100" x2="120" y2="100" stroke="rgba(255,255,255,0.08)"/>
+          <text x="70" y="124" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#7ef0d2">manifest</text>
+          <text x="70" y="142" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#7ef0d2">model.gguf</text>
+          <text x="70" y="160" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#7ef0d2">receipt chain</text>
+          <text x="70" y="178" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#7ef0d2">Ed25519 sig</text>
+          <text x="70" y="206" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#737c73">15 verifier checks</text>
+        </g>
+
+        <!-- footer band -->
+        <g transform="translate(20, 310)">
+          <rect x="0" y="0" width="1080" height="32" rx="6" fill="rgba(126,240,210,0.06)" stroke="rgba(126,240,210,0.20)"/>
+          <text x="20" y="20" font-family="ui-monospace, monospace" font-size="11" fill="#7ef0d2">receipt chain extends across every step: seeds_hash &rarr; split_seed &rarr; redaction_map_hash &rarr; teacher_call_log_hash &rarr; reinjection_log_hash &rarr; train_hash &rarr; recipe_hash &rarr; binary_hash &rarr; eval_result_hash &rarr; signature</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="vendors">
+  <div class="wrap">
+    <h2>Cross-vendor teacher &times; student matrix</h2>
+    <p class="lede">Five teacher vendors. Thirteen student bases. Four distillation methods. <code>--teacher</code> and <code>--student-base</code> are first-class CLI flags. The catalog is a data file at <code>workers/distill/catalog.mjs</code>; <code>kolm distill --list-catalog</code> prints it.</p>
+    <div class="vendor-grid-wrap">
+      <div class="vendor-grid" style="grid-template-columns: 170px repeat(5, 1fr);">
+        <div class="vg-cell h">student \ teacher</div>
+        <div class="vg-cell h">anthropic</div>
+        <div class="vg-cell h">openai</div>
+        <div class="vg-cell h">google</div>
+        <div class="vg-cell h">xai</div>
+        <div class="vg-cell h">local (vLLM/TGI)</div>
+
+        <div class="vg-cell t">smollm2-360m <span style="color:#737c73">Apache-2.0</span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok" title="recommended"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">smollm2-1.7b <span style="color:#737c73">Apache-2.0</span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">llama-3.2-1b <span style="color:#737c73">Meta Llama</span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">llama-3.2-3b <span style="color:#737c73">Meta Llama</span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">phi-3.5-mini <span style="color:#737c73">MIT</span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">gemma-2-2b <span style="color:#737c73">Gemma ToU</span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn" title="verify license"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">mistral-7b-v0.3 <span style="color:#737c73">Apache-2.0</span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">qwen2.5-0.5b <span style="color:#737c73">Apache-2.0</span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">qwen2.5-1.5b <span style="color:#737c73">Apache-2.0</span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">qwen2.5-3b <span style="color:#737c73">Qwen Research</span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">qwen2.5-7b <span style="color:#737c73">Apache-2.0</span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">deepseek-v3-distill-1.5b <span style="color:#737c73">verify</span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">glm-4-9b <span style="color:#737c73">verify</span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot warn"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+
+        <div class="vg-cell t">yi-1.5-6b <span style="color:#737c73">Apache-2.0</span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+        <div class="vg-cell dot"><span class="vg-dot ok"></span></div>
+      </div>
+      <p class="vg-cap"><span class="vg-dot ok" style="display:inline-block; margin-right:6px; vertical-align:middle;"></span> recommended &nbsp;&nbsp; <span class="vg-dot warn" style="display:inline-block; margin-right:6px; vertical-align:middle;"></span> verify teacher ToS + student license against your jurisdiction first &nbsp;&nbsp; always-safe fallback: <code>--teacher local:&lt;your-model&gt;</code></p>
+    </div>
+  </div>
+</section>
+
+<section class="receipt">
+  <div class="wrap">
+    <h2>The receipt chain &mdash; same shape at every tier</h2>
+    <p class="lede">Each box hashes the box before it. The verifier walks the chain backward and refuses on any break. Wave 156 made the build step itself reproducible; <code>kolm verify --rebuild</code> recompiles from the recorded toolchain and confirms <code>binary_hash</code> matches.</p>
+    <div class="receipt-svg-wrap">
+      <svg viewBox="0 0 1080 240" role="img" aria-label="Receipt chain diagram">
+        <defs>
+          <marker id="rc-arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,9 L9,4.5 z" fill="#7ef0d2"/>
+          </marker>
+        </defs>
+        <g font-family="ui-monospace, monospace" font-size="11.5" fill="#faf2e1">
+          <rect x="20" y="40" width="130" height="80" rx="10" fill="#0e1314" stroke="rgba(126,240,210,0.4)"/>
+          <text x="85" y="68" text-anchor="middle">seeds_hash</text>
+          <text x="85" y="88" text-anchor="middle" font-size="10" fill="#737c73">sha256(seeds.jsonl)</text>
+          <text x="85" y="106" text-anchor="middle" font-size="10" fill="#737c73">+ split_seed</text>
+
+          <line x1="155" y1="80" x2="195" y2="80" stroke="#7ef0d2" stroke-width="1.4" marker-end="url(#rc-arrow)"/>
+
+          <rect x="200" y="40" width="130" height="80" rx="10" fill="#0e1314" stroke="rgba(184,156,247,0.4)"/>
+          <text x="265" y="68" text-anchor="middle">redaction_map</text>
+          <text x="265" y="88" text-anchor="middle" font-size="10" fill="#737c73">+ teacher_call_log</text>
+          <text x="265" y="106" text-anchor="middle" font-size="10" fill="#737c73">+ reinjection_log</text>
+
+          <line x1="335" y1="80" x2="375" y2="80" stroke="#7ef0d2" stroke-width="1.4" marker-end="url(#rc-arrow)"/>
+
+          <rect x="380" y="40" width="130" height="80" rx="10" fill="#0e1314" stroke="rgba(243,177,90,0.4)"/>
+          <text x="445" y="68" text-anchor="middle">train_hash</text>
+          <text x="445" y="88" text-anchor="middle" font-size="10" fill="#737c73">+ holdout_hash</text>
+          <text x="445" y="106" text-anchor="middle" font-size="10" fill="#737c73">disjoint check</text>
+
+          <line x1="515" y1="80" x2="555" y2="80" stroke="#7ef0d2" stroke-width="1.4" marker-end="url(#rc-arrow)"/>
+
+          <rect x="560" y="40" width="130" height="80" rx="10" fill="#0e1314" stroke="rgba(243,177,90,0.4)"/>
+          <text x="625" y="68" text-anchor="middle">recipe_hash</text>
+          <text x="625" y="88" text-anchor="middle" font-size="10" fill="#737c73">trained on train only</text>
+
+          <line x1="695" y1="80" x2="735" y2="80" stroke="#7ef0d2" stroke-width="1.4" marker-end="url(#rc-arrow)"/>
+
+          <rect x="740" y="40" width="130" height="80" rx="10" fill="#0e1314" stroke="rgba(243,177,90,0.4)"/>
+          <text x="805" y="68" text-anchor="middle">binary_hash</text>
+          <text x="805" y="88" text-anchor="middle" font-size="10" fill="#737c73">+ toolchain pin</text>
+          <text x="805" y="106" text-anchor="middle" font-size="10" fill="#737c73">+ source_kind</text>
+
+          <line x1="875" y1="80" x2="915" y2="80" stroke="#7ef0d2" stroke-width="1.4" marker-end="url(#rc-arrow)"/>
+
+          <rect x="920" y="40" width="130" height="80" rx="10" fill="#0e1314" stroke="rgba(126,240,210,0.4)"/>
+          <text x="985" y="68" text-anchor="middle">eval_result</text>
+          <text x="985" y="88" text-anchor="middle" font-size="10" fill="#737c73">+ K-score axes</text>
+          <text x="985" y="106" text-anchor="middle" font-size="10" fill="#737c73">+ A/T ratio</text>
+
+          <!-- bottom signed band -->
+          <rect x="20" y="170" width="1030" height="44" rx="8" fill="rgba(126,240,210,0.06)" stroke="rgba(126,240,210,0.30)"/>
+          <text x="535" y="198" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="13" fill="#7ef0d2">all hashes Ed25519-signed by tenant key &middot; sigstore transparency entry optional</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="cliref" id="cliref">
+  <div class="wrap">
+    <h2>CLI reference, by tier</h2>
+    <p class="lede">Same binary. Same auth. Same artifact format. The flags pick up tier capability when you opt in.</p>
+
+    <h3>Tier 0 &mdash; rule</h3>
+<pre>kolm seeds bootstrap &lt;task&gt;
+kolm compile &lt;task&gt;.spec.json --class rule
+kolm run dist/&lt;task&gt;.kolm "&lt;input&gt;"
+kolm verify dist/&lt;task&gt;.kolm</pre>
+
+    <h3>Tier 1 &mdash; synthesized rule</h3>
+<pre>kolm compile &lt;task&gt;.spec.json \
+  --class synthesized_rule \
+  --teacher anthropic:claude-sonnet-4-6
+kolm verify dist/&lt;task&gt;.kolm  # check #15 fires: validates lineage fields</pre>
+
+    <h3>Tier 2&ndash;4 &mdash; distilled</h3>
+<pre>kolm distill &lt;task&gt;.spec.json \
+  --teacher anthropic:claude-opus-4-7 \
+  --student-base qwen2.5-1.5b \
+  --student-base-revision &lt;hf-commit&gt; \
+  --distillation-method lora \
+  --redact phi \
+  --eval-gate 0.92 \
+  --quantize int4-gptq</pre>
+
+    <h3>Tier 5 &mdash; compose MoE</h3>
+<pre>kolm compose dist/bundle.kolm \
+  --expert &lt;name&gt;=&lt;path.kolm&gt; \
+  --expert &lt;name&gt;=&lt;path.kolm&gt; \
+  --route-by class \
+  --router-train holdouts/router.jsonl</pre>
+
+    <h3>Discovery</h3>
+<pre>kolm distill --list-catalog        # all teachers, students, methods
+kolm verify --rebuild &lt;file&gt;.kolm  # P+4: rebuild binary from pinned toolchain, compare hashes
+kolm inspect &lt;file&gt;.kolm           # full manifest pretty-print</pre>
+  </div>
+</section>
+
+<section class="frontier" id="frontier-methods">
+  <div class="wrap">
+    <h2>Frontier methods (Q2 2026 sweep)</h2>
+    <p class="lede">The six methods below are the post-training techniques the kolm pipeline either runs today or has slotted for the next builds. The full literature dump, with citations to every paper, repo, and vendor blog, lives at <a href="/research/methods-2026-q2" style="border-bottom:1px dashed var(--line-2);">/research/methods-2026-q2</a>. The status pill in the last column reflects whether the method is already wired into <code>src/</code> or still roadmap.</p>
+    <div class="frontier-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>method</th>
+          <th>what it does</th>
+          <th>sample efficiency</th>
+          <th>status in kolm</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Knowledge Distillation</b><br><span style="color:var(--ink-faint); font-size:11px;">Hinton et al., 2015</span></td>
+          <td>Train a smaller student model on teacher logits (KL on soft targets at temperature T).</td>
+          <td>Order-of-magnitude smaller student with comparable accuracy on in-distribution tasks.</td>
+          <td><a href="/research/methods-2026-q2#distillation"><span class="status-pill shipped">shipped</span></a> <span style="color:var(--ink-faint); font-size:11px;">src/tune.js</span></td>
+        </tr>
+        <tr>
+          <td><b>QLoRA</b> <span style="color:var(--ink-faint); font-size:11px;">(4-bit NF4 + LoRA)</span><br><span style="color:var(--ink-faint); font-size:11px;">Dettmers et al., NeurIPS 2023</span></td>
+          <td>Fine-tune large open-weight bases on consumer GPUs by quantizing the base to 4-bit and adapting via LoRA.</td>
+          <td>LIMA shows 1,000 high-quality pairs can beat 50,000 mediocre ones; 65B fits a single 48 GB GPU.</td>
+          <td><a href="/research/methods-2026-q2#distillation"><span class="status-pill shipped">shipped</span></a> <span style="color:var(--ink-faint); font-size:11px;">scripts/tune-step.py</span></td>
+        </tr>
+        <tr>
+          <td><b>On-Policy Distillation</b><br><span style="color:var(--ink-faint); font-size:11px;">Thinking Machines, Oct 2025</span></td>
+          <td>Student samples its own trajectories; teacher returns dense per-token reverse-KL supervision on those rollouts.</td>
+          <td>Closes the off-policy gap for chat and reasoning; O(N) bits per episode vs. RL&#39;s O(1).</td>
+          <td><a href="/research/methods-2026-q2#what-ships"><span class="status-pill roadmap">roadmap</span></a> <span style="color:var(--ink-faint); font-size:11px;">src/distill-onpolicy.js</span></td>
+        </tr>
+        <tr>
+          <td><b>Preference distillation</b> <span style="color:var(--ink-faint); font-size:11px;">(SimPO / KTO / ORPO)</span><br><span style="color:var(--ink-faint); font-size:11px;">2024 - 2025</span></td>
+          <td>Distill RLHF-style preferences without an explicit reward model; SimPO and ORPO drop the reference model entirely.</td>
+          <td>Comparable to PPO + reward-model with roughly 10x less compute; KTO works on binary thumbs.</td>
+          <td><a href="/research/methods-2026-q2#what-ships"><span class="status-pill roadmap">roadmap</span></a> <span style="color:var(--ink-faint); font-size:11px;">src/distill-preference.js</span></td>
+        </tr>
+        <tr>
+          <td><b>Speculative decoding</b> <span style="color:var(--ink-faint); font-size:11px;">(EAGLE-3 / Medusa)</span><br><span style="color:var(--ink-faint); font-size:11px;">Li et al. + Cai et al., 2024</span></td>
+          <td>Inference-time speedup: a small draft head proposes 1..k tokens; the base verifies and accepts in parallel.</td>
+          <td>2 to 6x throughput on autoregressive decode with no accuracy loss; KL between target and draft is the objective.</td>
+          <td><a href="/research/methods-2026-q2#what-ships"><span class="status-pill roadmap">roadmap</span></a> <span style="color:var(--ink-faint); font-size:11px;">src/spec-decode.js</span></td>
+        </tr>
+        <tr>
+          <td><b>Self-Instruct + Evol-Instruct</b><br><span style="color:var(--ink-faint); font-size:11px;">Wang et al. 2022; Xu et al., ICLR 2024</span></td>
+          <td>Synthetic instruction-data bootstrap: hand-seed 175 instructions, prompt a teacher to evolve them via depth and breadth operators.</td>
+          <td>Self-Instruct: 175 seeds expand to 52k pairs (Stanford Alpaca). WizardLM (Evol-Instruct) beat ChatGPT by 7.9 pts win-rate on hard prompts.</td>
+          <td><a href="/research/methods-2026-q2#data-creation"><span class="status-pill shipped">shipped</span></a> <span style="color:var(--ink-faint); font-size:11px;">src/synthesis.js</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="frontier-foot">Full citations, anchor papers, and the not-on-roadmap deferrals (SpQR, Variational Spec Decoding, Quiet-STaR rationale pretrain) live at <a href="/research/methods-2026-q2">/research/methods-2026-q2</a>. Methods tagged <span class="status-pill roadmap" style="font-size:9.5px; padding:1px 7px;">roadmap</span> are not yet shipped; the source module name is the path where they will land.</p>
+  </div>
+</section>
+
+<section class="howmuch" id="how-much-data">
+  <div class="wrap">
+    <h2>How much data do I actually need?</h2>
+    <p class="lede">Volume requirements scale with recipe class, not with use case. A class-0 EDI parser ships with zero seed examples; a class-3 letter generator needs at least a thousand. The numbers below come from the Q2 2026 frontier-methods sweep; full citations and the dataset references live at <a href="/research/methods-2026-q2" style="border-bottom:1px dashed var(--line-2);">/research/methods-2026-q2</a>.</p>
+
+    <div class="howmuch-grid">
+
+      <div class="howmuch-card" id="howmuch-rule">
+        <span class="rank">CLASS_RANK 0</span>
+        <h3>rule</h3>
+        <div class="row"><div class="k">lower bound</div><div class="v"><b>0 examples</b>. Deterministic transform; <code>seeds.jsonl</code> can be empty.</div></div>
+        <div class="row"><div class="k">sweet spot</div><div class="v"><b>10 to 30 examples</b> just for eval cases (regression detection on the holdout).</div></div>
+        <div class="row"><div class="k">upper bound</div><div class="v"><b>100 examples</b> = comprehensive eval suite; more does not change the rule, only the K-score precision.</div></div>
+        <p class="worked"><b>Worked example.</b> An EDI 837 parser or an MLR-rebate calculator (W184): 0 seed examples because the transform is deterministic. <code>pack.rules</code> covers the IG dictionary; the holdout exists only to catch regressions.</p>
+      </div>
+
+      <div class="howmuch-card" id="howmuch-synthesized">
+        <span class="rank">CLASS_RANK 1</span>
+        <h3>synthesized_rule</h3>
+        <div class="row"><div class="k">lower bound</div><div class="v"><b>30 to 100 examples</b>. Enough to cover the edge cases the teacher must satisfy during synthesis; Magpie or Evol-Instruct can grow these if the human seed is small.</div></div>
+        <div class="row"><div class="k">sweet spot</div><div class="v"><b>200 to 500 examples</b>. HEDIS measures and CMS Star contributors land here; AST validation + verifier loop catches mistakes the seeds did not.</div></div>
+        <div class="row"><div class="k">upper bound</div><div class="v"><b>2,000 examples</b>. Past this, you are mostly fuzzing coverage on coded combinations the teacher already handles.</div></div>
+        <p class="worked"><b>Worked example.</b> The HEDIS CBP measure (W182) and the CMS Star contributor extractor (W184): teacher emits a JS rule, AST-validated against the constrained DSL, K-score-gated on the holdout. No weights ever materialize.</p>
+      </div>
+
+      <div class="howmuch-card" id="howmuch-compiled">
+        <span class="rank">CLASS_RANK 2</span>
+        <h3>compiled_rule</h3>
+        <div class="row"><div class="k">lower bound</div><div class="v"><b>Same as synthesized_rule</b>. The native-compile step does not change data requirements; it lowers an existing rule to C / Rust / WASM.</div></div>
+        <div class="row"><div class="k">sweet spot</div><div class="v"><b>Same as synthesized_rule</b> plus a benchmark suite so <code>kolm verify --rebuild</code> can confirm <code>binary_hash</code> against the pinned toolchain.</div></div>
+        <div class="row"><div class="k">upper bound</div><div class="v"><b>Same as synthesized_rule</b>. Speed-up is from native code, not from more data.</div></div>
+        <p class="worked"><b>Worked example.</b> Any rule or synthesized_rule whose hot path needs native speed (per the wave-163 compiled-rule class). Differential tests against the source rule are the gate; the compiled artifact ships alongside the source so a verifier can rebuild.</p>
+      </div>
+
+      <div class="howmuch-card" id="howmuch-distilled">
+        <span class="rank">CLASS_RANK 3</span>
+        <h3>distilled_model</h3>
+        <div class="row"><div class="k">lower bound</div><div class="v"><b>1,000 high-quality examples</b>. The LIMA finding (Meta, NeurIPS 2023) is the floor for getting meaningful capability via fine-tune; sub-1k drifts into few-shot territory.</div></div>
+        <div class="row"><div class="k">sweet spot</div><div class="v"><b>10,000 to 50,000 examples</b>. UltraFeedback (OpenBMB, ~64k preference pairs) and Tulu-3 (Allen AI, ~939k SFT) bracket the production-grade range.</div></div>
+        <div class="row"><div class="k">upper bound</div><div class="v"><b>1M examples</b>. Past this, base-model selection and data quality matter more than raw volume; you are paying teacher tokens for diminishing K-score gains.</div></div>
+        <p class="worked"><b>Worked example.</b> A denial-appeal-letter or prior-auth-letter generator (W183), or the phi-redactor companion: LoRA on teacher pairs, INT4-quantized, GGUF-exported, shipped as one signed <code>.kolm</code>.</p>
+      </div>
+
+    </div>
+
+    <p class="howmuch-callout"><b>Quality beats volume past a floor.</b> LIMA (Meta, NeurIPS 2023) showed 1,000 carefully curated examples can outperform 50,000 mediocre ones. The kolm K-score gate at compile time enforces this in code: a recipe trained on 50,000 bad seeds will score worse on the holdout than one trained on 1,000 good ones, and the gate will refuse the build before the artifact is signed.</p>
+
+  </div>
+</section>
+
+<section class="close">
+  <div class="wrap">
+    <h2>You can start at tier 0 today.</h2>
+    <p>The CLI is one <code>npm install</code>. Tier 0 needs no key, no GPU, no cloud account. When your seeds outgrow it, the same CLI takes you to tier 5 without re-platforming.</p>
+    <div class="cta-row" style="justify-content:center;">
+      <a href="/quickstart" class="cta primary">Run the quickstart &rarr;</a>
+      <a href="/roadmap" class="cta">Where the product is going</a>
+      <a href="/spec/rs-1" class="cta">RS-1 spec</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer style="border-top: 1px solid var(--line); padding: 30px 0; font-family: var(--mono); font-size: 12px; color: var(--ink-faint); text-align: center;">
+  <div class="wrap">
+    <a href="/" style="color: var(--ink-mute);">kolm</a> &middot; <a href="/spec/rs-1" style="color: var(--ink-mute);">RS-1 spec</a> &middot; <a href="/roadmap" style="color: var(--ink-mute);">roadmap</a> &middot; <a href="/anatomy" style="color: var(--ink-mute);">artifact anatomy</a> &middot; <a href="/k-score" style="color: var(--ink-mute);">K-score</a> &middot; <a href="/distill" style="color: var(--ink-mute);">distillation</a> &middot; <a href="/threat-model" style="color: var(--ink-mute);">threat model</a>
+  </div>
+</footer>
+
+<script src="/sdk.js" defer></script>
+</body>
+</html>

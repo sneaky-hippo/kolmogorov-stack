@@ -105,6 +105,7 @@
     <a href="/" class="brand"><span>kolm</span></a>
     <nav class="site-nav" aria-label="Primary">
       <a href="/use-cases">Use cases</a>
+      <a href="/training">Training</a>
       <a href="/docs">Docs</a>
       <a href="/research">Research</a>
       <a href="/enterprise">Enterprise</a>
@@ -126,6 +127,27 @@
       <p class="lede">Eight stages: gather, spec, synthesize, k-sample, verify, fit, observe, sign. Frontier as teacher, artifact as student, receipt as audit row. Reads like a paper because the only credible answer to "how does it work" is one an engineer can implement.</p>
     </div>
   </section>
+
+  <section class="hiw-provenance" aria-label="what ships in v0.2 vs roadmap">
+    <div class="wrap">
+      <div class="hh-card">
+        <h4 class="hh-h">What this page describes vs. what v0.2 ships today</h4>
+        <p class="hh-body">The 8-stage pipeline below is the full design. The <b>v0.2 build ships stages 1, 2, 3, 5, 7, and 8</b> as rule-class compilation: gather, spec, synthesize a deterministic recipe pack, verify against the held-out 20%, observe and tighten coverage, and sign the artifact. Plus the wave-144 additions: <a href="/anatomy#moe">MoE composition</a>, the pure-JS <a href="/anatomy#tokenizer">byte-level BPE tokenizer</a>, <code>kolm extract</code>, and <code>kolm doc check</code>. Stages <b>4 (k-sample from a frontier teacher), 6 (LoRA fit), and the INT4/GGUF/ONNX bundling</b> referenced lower on this page are on the product gates list, not in this build. We left the eight-stage write-up intact because it is the target architecture; treat any LoRA or INT4 paragraph below as a roadmap description, not a feature claim about this release.</p>
+      </div>
+    </div>
+  </section>
+  <style>
+    .hiw-provenance { padding: 20px 0 0; }
+    .hiw-provenance .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+    .hh-card { padding: 18px 22px; border: 1px solid rgba(245, 158, 11, 0.32); background: rgba(245, 158, 11, 0.06); border-radius: 10px; }
+    .hh-h { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.02em; margin: 0 0 8px; color: #f59e0b; text-transform: lowercase; font-weight: 500; }
+    .hh-body { font-size: 14.5px; line-height: 1.6; margin: 0; color: var(--ink, #faf2e1); }
+    .hh-body b { font-weight: 600; }
+    .hh-body code { font-family: var(--mono); font-size: 12.5px; padding: 1px 5px; background: rgba(0,0,0,0.25); border-radius: 3px; }
+    [data-theme=light] .hh-card { background: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.45); }
+    [data-theme=light] .hh-body { color: #1f2429; }
+    [data-theme=light] .hh-body code { background: rgba(0,0,0,0.06); }
+  </style>
 
   <div class="pipe-grid" aria-label="The kolm compile pipeline: eight stages from input to signed artifact">
     <div class="row head">
@@ -375,6 +397,21 @@ the K-score is the mean over the held-out eval set.</pre>
         <li><a href="https://github.com/sneaky-hippo/kolmogorov-stack" style="color:var(--violet,#faf2e1)">GitHub</a> - compiler source, MIT</li>
       </ul>
     </div>
+  </section>
+
+  <!-- Wave 151 evidenced-taxonomy strip. Visual contract lives in styles.css. -->
+  <section class="tax-strip" aria-label="evidenced taxonomy">
+    <div class="tax-strip-row">
+      <span class="tax-strip-eyebrow">evidenced taxonomy</span>
+      <p class="tax-strip-h">Every .kolm declares its class. The verifier rejects misdeclared artifacts before signing.</p>
+    </div>
+    <div class="tax-chips">
+      <span class="tax-chip rule">rule</span>
+      <span class="tax-chip synth">synthesized_rule</span>
+      <span class="tax-chip compiled">compiled_rule</span>
+      <span class="tax-chip distill">distilled_model</span>
+    </div>
+    <p class="tax-strip-body">Shipping a <code>distilled_model</code> artifact with no weights is a verifier-rejected lie. <a href="/taxonomy">What each class means &rarr;</a></p>
   </section>
 </main>
 

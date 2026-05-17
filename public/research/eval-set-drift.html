@@ -156,9 +156,9 @@
 
 <section class="hero">
   <div class="wrap">
-    <span class="pill"><span class="dot"></span>Research &middot; Open problem &middot; 2026-05-14 &middot; 11 min read</span>
+    <span class="pill"><span class="dot"></span>Research &middot; SHIPPED wave 167 &middot; 2026-05-17 &middot; 13 min read</span>
     <h1>Eval set drift: when your <span class="tone">gold set</span> rots.</h1>
-    <p class="lede">A gold eval set that scored <b>K=0.91 in January</b> may score <b>0.84 in June</b> without the model changing. The world moved. The set did not. What signals that drift, why kolm refuses to auto-rotate, and what the v0.2 detector looks like.</p>
+    <p class="lede">A gold eval set that scored <b>K=0.91 in January</b> may score <b>0.84 in June</b> without the model changing. The world moved. The set did not. What signals that drift, why kolm refuses to auto-rotate, and the <b>shipped wave 167 detector</b> (RS-1 &sect;7.15) with its three drift status values, six tolerance axes, and supersession-chain semantics.</p>
     <div class="meta"><span><b>By</b>&nbsp;kolm</span><span><b>Tag</b>&nbsp;evaluation &middot; drift &middot; open problem</span></div>
   </div>
 </section>
@@ -184,11 +184,11 @@
 
     <p>The world the inputs were drawn from is not so polite. Product catalogs churn; case law updates; consumer slang rotates; the medical coding standard publishes new ICD codes; tax law changes; news cycles produce a new vocabulary every quarter. A static eval set captures a snapshot of a moving distribution. As the snapshot ages, two failure modes compound.</p>
 
-    <p><b>Failure mode one: covered cases stop being representative.</b> The artifact still scores 0.91 on the January eval pack in June because the pack has not changed. But the June production traffic looks substantially different from the January pack. The 0.91 number is honest for what it measures and misleading as an estimate of current production quality.</p>
+    <p><b>Failure mode one: covered cases stop being representative.</b> The artifact still scores 0.91 on the January eval pack in June because the pack has not changed. But the June production traffic looks substantially different from the January pack. The 0.91 number is verifiable for what it measures and misleading as an estimate of current production quality.</p>
 
     <p><b>Failure mode two: novel cases enter the traffic and the eval pack never sees them.</b> An artifact that handled all of the January catalog perfectly cannot answer a question about the June catalog because the eval pack has no June catalog cases. The artifact may still ship the receipt with its January K-score; the receipt is correct; the inference for the new entries is unaddressed.</p>
 
-    <p>Both modes are reasonable to expect. Neither is a bug in the artifact, the receipt, or the gate. They are bugs in the assumption that an eval set is a stable proxy for production. The honest research question is: <i>when has the gap between eval and production grown enough that the K-score on the embedded pack is no longer a useful signal?</i></p>
+    <p>Both modes are reasonable to expect. Neither is a bug in the artifact, the receipt, or the gate. They are bugs in the assumption that an eval set is a stable proxy for production. The verifiable research question is: <i>when has the gap between eval and production grown enough that the K-score on the embedded pack is no longer a useful signal?</i></p>
 
     <h2 id="domains">Where it hits hardest.</h2>
     <p>Drift is not uniform across application domains. Five domains we have run compiles for show the pattern most clearly.</p>
@@ -228,38 +228,55 @@
 
     <p><b>Reason two: ground truth is not free.</b> Promoting a captured input into the eval pack requires a declared expected output. Production captures do not carry one. An auto-rotation that promotes captures with model outputs as ground truth produces a pack that measures self-agreement, not correctness. The K-score against such a pack monotonically rises and means nothing.</p>
 
-    <p><b>Reason three: distributional capture risks PII bleed.</b> The captures stream is operationally sensitive (see <a href="/research/capture-loop-honesty">capture-loop honesty</a>). A pack assembled from raw captures inherits the same sensitivity but is now embedded in every signed artifact and shipped to every consumer of the registry. The blast radius of an inadvertent PII leak into a pack is enormous.</p>
+    <p><b>Reason three: distributional capture risks PII bleed.</b> The captures stream is operationally sensitive (see <a href="/research/capture-loop-provenance">capture-loop fidelity</a>). A pack assembled from raw captures inherits the same sensitivity but is now embedded in every signed artifact and shipped to every consumer of the registry. The blast radius of an inadvertent PII leak into a pack is enormous.</p>
 
-    <p>The honest stance is: <b>the pack is human-curated</b>. A drift signal triggers an alert. A human reviews the alert. The human decides whether to expand the pack, hand-label new cases, and re-run the compile against the larger pack. The receipt for the new artifact references the new pack hash; the prior receipt remains valid against the prior pack.</p>
+    <p>The verifiable stance is: <b>the pack is human-curated</b>. A drift signal triggers an alert. A human reviews the alert. The human decides whether to expand the pack, hand-label new cases, and re-run the compile against the larger pack. The receipt for the new artifact references the new pack hash; the prior receipt remains valid against the prior pack.</p>
 
     <blockquote>
       <p>Auto-rotating an eval pack is one of those features whose hidden cost is "now every receipt depends on a moving target". We prefer the cost of asking a human.</p>
     </blockquote>
 
-    <h2 id="detector">Sketch of the v0.2 detector.</h2>
-    <p>The detector on the v0.2 roadmap is a separate process, not a change to the compile loop. It runs against the captures stream on the cadence the operator chooses (daily, weekly, per-deployment). It produces one of four states.</p>
+    <h2 id="detector">The shipped wave 167 detector.</h2>
+    <p>The detector is no longer a roadmap sketch. <b>Wave 167 shipped it as <code>src/drift-supersession.js</code></b>, exposed via <code>kolm drift detect</code> + <code>kolm drift cron</code>, and surfaced as RS-1 &sect;7.15 (the M+3 + M+4 lifecycle tiers). It runs against the captures stream on the cadence the operator chooses (daily, weekly, per-deployment) and emits a signed <code>drift-report-v1</code> JSON block that binds into <code>artifact_hash_input</code> alongside the original receipt chain.</p>
+
+    <p>The detector produces three drift status values (not four states &mdash; the v0.2 sketch was simplified at ship):</p>
 
     <ul>
-      <li><b>green</b>: distribution shift, novel-entity rate, and item-ID leakage are all below threshold. The pack is current. No action.</li>
-      <li><b>amber</b>: one signal is above threshold. The pack is showing its age. Operator should expand the pack within the next compile cycle.</li>
-      <li><b>red</b>: two or more signals are above threshold. The pack is meaningfully behind production. A re-eval is warranted before the next deploy; the K-score on the embedded pack should not be relied on as a production estimate.</li>
-      <li><b>unknown</b>: insufficient captures volume to compute the signals. The detector does not fire under low traffic; it does not pretend to have evidence it does not have.</li>
+      <li><b>within</b>: every axis is within the warn tolerance. The pack is current. No action.</li>
+      <li><b>drift</b>: one or more axes exceeds the warn tolerance but stays under the fail floor. The pack is showing its age. Operator should expand the pack within the next compile cycle; the artifact still ships.</li>
+      <li><b>breach</b>: one or more axes exceeds the fail floor. <code>kolm verify</code> exits with status 2 by default (configurable); the artifact must be re-compiled with a fresh pack and a supersession block before it can be re-shipped.</li>
     </ul>
+
+    <p>Six tolerance axes ship in <code>DEFAULT_TOLERANCES</code>: <code>eval_score</code> warn 0.02 / fail 0.05; <code>k_score.composite</code> warn 0.03 / fail 0.08; <code>k_score.&lt;axis&gt;</code> warn 0.05 / fail 0.10 (per K-axis); <code>external_holdout_hash</code> exact (any change is a breach); <code>tenant_shadow_corpus_hash</code> exact (residency contract); <code>artifact_hash</code> informational (recorded but never gates). Operators can override per-axis via <code>kolm drift detect --tolerance k_score.composite:warn=0.04</code>.</p>
+
+    <p>Six supersession reasons ship in <code>SUPERSESSION_REASONS</code> and the corresponding receipt block: <code>drift_detected</code> (paired with a <code>drift_report_hash</code> evidence guard), <code>scheduled_rebuild</code>, <code>security_patch</code>, <code>recipe_revision</code>, <code>policy_change</code>, <code>tenant_request</code>. The <code>SupersessionBlock</code> binds the predecessor <code>artifact_hash</code> to the successor and the verifier rejects forged supersession (verifier checks #23 and #24).</p>
 
     <p>The detector output is a structured artifact, not a number. It records the signals computed, the thresholds used, the sample of captures inspected, and the state. It is signed against the operator's receipt secret so the audit trail can recover when the state changed and why.</p>
 
-    <pre><span class="kw">$</span> kolm evals drift --task ticket-router --window 7d
+    <pre><span class="kw">$</span> kolm drift detect --artifact ticket-router.kolm --window 7d
+<span class="arg">[drift]</span>     spec: drift-report-v1
 <span class="arg">[drift]</span>     captures inspected: 2,418
-<span class="arg">[drift]</span>     eval pack: ticket-router@v3 (hash sha256:9d3e&hellip;)
-<span class="arg">[drift]</span>     distribution-shift (MMD): 0.31  <span class="com"># threshold 0.20</span>
-<span class="arg">[drift]</span>     novel-entity rate:        4.2% <span class="com"># threshold 8.0%</span>
-<span class="arg">[drift]</span>     item-id leakage:          0.6% <span class="com"># threshold 2.0%</span>
-<span class="arg">[drift]</span>     shadow-accuracy gap:      not configured
+<span class="arg">[drift]</span>     baseline snapshot: drift-snapshot-v1 (hash sha256:9d3e&hellip;)
+<span class="arg">[drift]</span>     eval_score:                 delta 0.024  <span class="com"># warn 0.02 / fail 0.05 &rarr; drift</span>
+<span class="arg">[drift]</span>     k_score.composite:          delta 0.011  <span class="com"># warn 0.03 / fail 0.08 &rarr; within</span>
+<span class="arg">[drift]</span>     k_score.accuracy:           delta 0.062  <span class="com"># warn 0.05 / fail 0.10 &rarr; drift</span>
+<span class="arg">[drift]</span>     external_holdout_hash:      match        <span class="com"># exact         &rarr; within</span>
+<span class="arg">[drift]</span>     tenant_shadow_corpus_hash:  match        <span class="com"># exact         &rarr; within</span>
+<span class="arg">[drift]</span>     artifact_hash:              recorded     <span class="com"># informational</span>
 
-state: amber
-recommendation: expand eval pack with last 7d novel-entity samples before next compile</pre>
+verdict: drift
+recommendation: expand eval pack with last 7d novel-entity samples; re-compile within cadence window
 
-    <p>The output is intentionally boring. It is four numbers and a state. It does not auto-rotate the pack; it does not auto-compile; it does not deploy anything. It produces a state and a recommendation. The operator does the work.</p>
+<span class="kw">$</span> kolm drift cron --artifact ticket-router.kolm --schedule weekly
+<span class="arg">wrote crontab entry: 0 3 * * 1 kolm drift detect --artifact /opt/kolm/ticket-router.kolm</span>
+
+<span class="kw">$</span> kolm compile --supersession-of ticket-router.kolm --reason drift_detected \
+              --drift-report ./drift-2026-05-17.json --spec ticket-router.spec.json
+<span class="arg">supersession block written: predecessor=sha256:9d3e&hellip; reason=drift_detected</span>
+<span class="arg">verifier check #23 (supersession) + #24 (drift report) pass</span>
+<span class="arg">artifact_hash: sha256:fc20&hellip;  signed under tenant key</span></pre>
+
+    <p>The output is intentionally boring. Six axes, a verdict, a recommendation. It does not auto-rotate the pack; it does not auto-compile; it does not deploy anything. The operator does the work, and the supersession block makes the chain of decisions auditable end-to-end. See <a href="/drift" style="color:#10b981">/drift</a> for the full lifecycle UI surface, manifest blocks (<code>SupersessionBlock</code> + <code>DriftReport</code>), and the four scenarios A/B/C/D (scheduled rebuild, warn-band ship, breach + successor, forged supersession rejected).</p>
 
     <h2 id="related">Related work.</h2>
     <p>Three lines of prior work inform the design.</p>
@@ -279,7 +296,7 @@ recommendation: expand eval pack with last 7d novel-entity samples before next c
 
     <p><b>Practice three: monitor the kolm capture counters.</b> A namespace whose <b>captured</b> count keeps growing while <b>distilled</b> stays flat is producing inputs that are not making it into the next artifact. That is often a sign that the eval pack needs to grow to cover the new inputs before the next distill will clear the gate.</p>
 
-    <p>Drift is the part of the system the receipt chain cannot guarantee. The chain attests that the K-score was computed honestly against a particular pack at a particular time. It does not attest that the pack still describes the world. <b>The chain is the proof of what we did. The pack is the bet on what we measured. The detector is the open problem.</b> Today, the bet is the operator's; we are working on the detector that helps them see when the bet is going stale.</p>
+    <p>Drift is the part of the system the receipt chain cannot guarantee. The chain attests that the K-score was computed plainly against a particular pack at a particular time. It does not attest that the pack still describes the world. <b>The chain is the proof of what we did. The pack is the bet on what we measured. The detector is the open problem.</b> Today, the bet is the operator's; we are working on the detector that helps them see when the bet is going stale.</p>
 
     <div class="signpost">
       <a href="/research/registry-economics">
@@ -287,9 +304,9 @@ recommendation: expand eval pack with last 7d novel-entity samples before next c
         <span class="v">Registry economics <span class="arrow">&rarr;</span></span>
         <p>How the public catalog sustains itself, why bytes do not live on kolm.ai, and how left-pad is contained.</p>
       </a>
-      <a href="/research/capture-loop-honesty">
+      <a href="/research/capture-loop-provenance">
         <span class="lab">read next</span>
-        <span class="v">Capture-loop honesty <span class="arrow">&rarr;</span></span>
+        <span class="v">Capture-loop fidelity <span class="arrow">&rarr;</span></span>
         <p>What kolm chooses not to retain, the bridge-handoff framing, and the four counters on the dashboard.</p>
       </a>
       <a href="/research/k-score-correlation">

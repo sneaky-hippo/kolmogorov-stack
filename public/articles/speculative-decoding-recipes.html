@@ -331,7 +331,7 @@ python -m vllm.entrypoints.openai.api_server \
     <p>Misses are logged locally (never egressed) and surfaced in the next <code>kolm compile</code>. The compiler resolves the new pattern via verified inference and merges it into the pack. <b>The cache strictly grows.</b></p>
 
     <h3>Does RSD help on phones?</h3>
-    <p>Yes --disproportionately. Phones are the most compute-constrained target, and the recipe pack adds zero compute and only a few KB of memory. We measure RSD's biggest end-to-end speedups on Apple Silicon at INT4: 2.5-4x on structured tasks, 1.0-1.2x on free prose.</p>
+    <p>Yes --disproportionately. Phones are the most compute-constrained target, and the recipe pack adds zero compute and only a few KB of memory. Research-tier RSD benchmarks against an INT4-quantized base on Apple Silicon show 2.5-4x speedups on structured tasks and 1.0-1.2x on free prose; INT4 weight quantization itself is the roadmap tier behind the runtime bridge, not what ships in v0.2.</p>
 
     <h3>How does this relate to medusa, lookahead, or eagle?</h3>
     <p>RSD is in the same family as <em>retrieval-based</em> speculative decoding (PLD, REST). The differences: RSD's drafts are scoped to the artifact's task, indexed by both literal and embedding-shape, and shipped in a versioned pack rather than computed on the fly from a context window. Eagle and medusa add layers to the model itself; RSD doesn't touch the model.</p>

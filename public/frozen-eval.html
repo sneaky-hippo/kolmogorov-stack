@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Frozen evaluation set: the train/holdout disjoint check that gates every artifact | kolm</title>
+<meta name="description" content="A frozen evaluation set is the only thing standing between a recipe and silent ship drift. kolm hash-pins the holdout at compile time, splits train and holdout disjointly under SHA-256, and rejects any artifact whose K-score was computed against a contaminated holdout.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="Frozen evaluation set: train/holdout disjoint check">
+<meta property="og:description" content="The K-score's accuracy axis is measured against rows the recipe has never seen. kolm freezes the split at compile time, verifies disjointness via SHA-256, and ship-fails on contamination.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="kolm frozen-eval - the train/holdout disjoint check" />
+<meta name="twitter:description" content="Three invariants: disjoint, pinned, sufficient. A holdout that overlaps train is rejected pre-signature. There is no --force flag." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<meta property="og:url" content="https://kolm.ai/frozen-eval">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/frozen-eval">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:46px;line-height:1.06;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+  .lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  .section{padding:64px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:30px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:780px}
+  .section p.lede{font-size:16px;max-width:780px;margin:0 0 28px}
+  .ladder{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:32px 0 8px}
+  @media(max-width:960px){.ladder{grid-template-columns:1fr}}
+  .rung{padding:22px 22px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .rung .tier{font-family:var(--mono);font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint)}
+  .rung .tier.shipped{color:var(--accent)}
+  .rung h3{margin:0;font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .rung p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+  .rung .wave{margin-top:auto;font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:0.06em;padding-top:8px;border-top:1px solid var(--line)}
+  .rung .wave .yes{color:var(--accent)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:960px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:820px){.grid-2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid-4{grid-template-columns:1fr}}
+  @media(max-width:560px){.wrap{padding:0 16px}.hero{padding:48px 0 24px}h1{font-size:32px}.lede{font-size:16px}.section{padding:40px 0}.section h2{font-size:24px}.btn{padding:10px 16px;font-size:12px}pre.terminal,.pseudocode{font-size:11.5px;padding:14px 16px}table.tbl{font-size:12.5px}header.site nav{gap:12px;font-size:11px}}
+  .card{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .card .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .card h3{margin:0;font-size:19px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .card p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+  .card code{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:18px 20px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:0}
+  pre.terminal b{color:var(--accent);font-weight:400}
+  pre.terminal .warn{color:var(--warn);font-weight:400}
+  pre.terminal .bad{color:var(--bad);font-weight:400}
+  pre.terminal .mute{color:var(--ink-faint)}
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:20px 0}
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:20px 0;min-width:640px}
+  table.tbl th{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400;vertical-align:bottom}
+  table.tbl td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45;color:var(--ink-mute)}
+  table.tbl td.key{font-family:var(--mono);color:var(--ink);font-size:12.5px;white-space:nowrap}
+  table.tbl td.warn{color:var(--warn);font-family:var(--mono);font-size:12.5px}
+  table.tbl td.bad{color:var(--bad);font-family:var(--mono);font-size:12.5px}
+  table.tbl td.ok{color:var(--accent);font-family:var(--mono);font-size:12.5px}
+  ul.notes{font-size:13.5px;color:var(--ink-mute);line-height:1.6;padding-left:18px;margin:0}
+  ul.notes li{margin-bottom:8px}
+  ul.notes code{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  .receipt-chain{font-family:var(--mono);font-size:12.5px;color:var(--ink-mute);background:var(--bg-elev);border:1px solid var(--line);border-radius:10px;padding:18px 20px;line-height:1.8;word-break:break-word}
+  .receipt-chain b{color:var(--accent);font-weight:400}
+  .receipt-chain .new{color:var(--warn);font-weight:400}
+  .takeaway{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin-top:24px}
+  .takeaway b{color:var(--accent)}
+  .pseudocode{background:var(--bg-elev);border:1px solid var(--line);border-radius:10px;padding:18px 20px;font:13px/1.6 var(--mono);color:var(--ink-mute);margin:18px 0;overflow-x:auto}
+  .pseudocode b{color:var(--accent);font-weight:400}
+  .pseudocode .kw{color:var(--warn);font-weight:400}
+  .pseudocode .cmt{color:var(--ink-faint);font-weight:400}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:3px;border:1px solid var(--line);color:var(--ink-faint)}
+  .pill.ok{color:var(--accent);background:var(--accent-soft);border-color:rgba(16,185,129,0.30)}
+  .pill.warn{color:var(--warn);background:var(--warn-soft);border-color:rgba(240,184,107,0.30)}
+  .pill.bad{color:var(--bad);background:var(--bad-soft);border-color:rgba(255,107,145,0.30)}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr)}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:var(--ink-faint);margin:0 0 12px;font-weight:400}
+  .footer-grid a{display:block;color:var(--ink-mute);text-decoration:none;font-size:13.5px;margin-bottom:6px;border:none}
+  .footer-tag{display:flex;justify-content:space-between;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line);padding-top:20px;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/drift">drift</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; frozen evaluation set</p>
+    <h1>A frozen evaluation set is the only thing standing between a recipe and silent ship drift.</h1>
+    <p class="lede">Every K-score on the page, every compile-time gate, every binder row "K=0.917 (passed)" rests on one assumption: the rows the score was computed against are rows the recipe never saw at training time. kolm makes that assumption a contract. The eval set is hash-pinned at compile time, the train and holdout partitions are disjoint under SHA-256, the K-score's accuracy axis is computed against the frozen holdout, and a contamination check forces ship-fail if anything overlaps. A pre-Wave-144 build derived eval cases from the recipe itself (input_hash == recipes_json_hash by construction); the seed gate makes that tautological path a hard reject.</p>
+    <p class="stamp">W144 Doc 3 Shift 3 &middot; reviewed 2026-05-17 &middot; wave 186 dedicated surface</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/spec/rs-1#section-4">RS-1 &sect;4 &rarr;</a>
+      <a class="btn" href="/k-score-explained">K-score explained &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The three frozen-eval invariants.</h2>
+    <p class="lede">A holdout is "frozen" when all three invariants hold at the same time. Any one of them missing collapses the chain of reasoning that turns a published K-score into a buyer-defensible claim. The seed gate (binder check #7 in <code>src/binder.js</code>) re-asserts every one at verify time.</p>
+    <div class="ladder">
+      <div class="rung">
+        <span class="tier shipped">invariant 01 &middot; disjoint</span>
+        <h3>train &cap; holdout = &empty;</h3>
+        <p>Hash-set membership check via SHA-256 of the canonical input. The build pipeline buckets every row by <code>sha256(canonicalInput(row.input) + ' ' + split_seed) % 1000</code>; bucket &lt; cutoff goes to holdout, the rest to train. Same seeds.jsonl plus same split_seed produces an identical split. A verifier rebuilds the split from the two recorded inputs and confirms <code>train_hash &cap; holdout_hash = &empty;</code> before any signature is checked.</p>
+        <span class="wave"><span class="yes">YES</span> &middot; src/seeds.js splitSeeds + leakageReport</span>
+      </div>
+      <div class="rung">
+        <span class="tier shipped">invariant 02 &middot; pinned</span>
+        <h3>holdout hash recorded at compile time</h3>
+        <p>The holdout's canonical-JSON hash is written into <code>manifest.seed_provenance.holdout_hash</code> at compile time and bound through the receipt chain into <code>artifact_hash</code>. Check #7 ("Seed gate (train/holdout independence)") in <code>src/binder.js</code> rejects any post-build modification: the verifier loads seeds.jsonl, rebuilds the split with the recorded split_seed, recomputes the canonical hash, and confirms byte-identical match against the manifest claim. Any tamper breaks the artifact_hash and every downstream signature including the Rekor anchor.</p>
+        <span class="wave"><span class="yes">YES</span> &middot; manifest.seed_provenance.holdout_hash + check #7</span>
+      </div>
+      <div class="rung">
+        <span class="tier shipped">invariant 03 &middot; sufficient</span>
+        <h3>holdout size &ge; ceil(N_train / 8) and &ge; 50 examples</h3>
+        <p>An eval set of three rows is technically disjoint and technically pinned, but the K-score it produces is noise. The recommended production minimum is the larger of <code>50 examples</code> and <code>ceil(N_train / 8)</code> so the holdout grows with the corpus. Below the threshold the binder emits a warn pill labeled "sample check" and the K-score loses its production gate role until enough captured rows accumulate. <code>production_ready=true</code> with a small holdout is inconsistent and is downgraded to a hard fail at verify time.</p>
+        <span class="wave"><span class="yes">YES</span> &middot; production threshold in src/spec-compile.js + check #7</span>
+      </div>
+    </div>
+    <div class="takeaway">
+      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)">The three invariants compose. <b>Disjoint</b> alone is meaningless if you can quietly substitute a different holdout after the score is published. <b>Pinned</b> alone is meaningless if train and holdout overlap. <b>Sufficient</b> alone is meaningless if either of the other two fails. The seed gate is a single check (#7) that enforces all three together so an auditor reading the binder sees one row, one verdict, one detail string covering the entire eval-independence claim.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What "frozen" means in the receipt chain.</h2>
+    <p class="lede">Every effect a tenant relies on is captured by a manifest field and a verifier check that re-derives that field. The seed split contributes five fields to <code>manifest.seed_provenance</code>. Block hashes bind into <code>artifact_hash_input.seed_provenance_hash</code>; any tamper drifts <code>artifact_hash</code>.</p>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead>
+        <tr><th>manifest field</th><th>type</th><th>verifier check</th><th>meaning</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="key">seeds_hash</td><td>sha256-hex (string)</td><td>check #7</td><td>Canonical-JSON SHA-256 of all normalized rows from seeds.jsonl (before split). Anchors the corpus identity; verifier reloads seeds.jsonl, normalizes, recomputes, and demands byte-identical match.</td></tr>
+        <tr><td class="key">split_seed</td><td>string</td><td>check #7</td><td>The seed string passed to the bucket function. Recorded so a third party with the seeds.jsonl can reproduce the train/holdout partition exactly. Default <code>kolm-default-split-seed-v1</code>; override with <code>--split-seed</code>.</td></tr>
+        <tr><td class="key">train_hash</td><td>sha256-hex (string)</td><td>check #7</td><td>Canonical-JSON SHA-256 of the train partition. Verifier rebuilds the partition from <code>seeds_hash</code> + <code>split_seed</code> and confirms.</td></tr>
+        <tr><td class="key">holdout_hash</td><td>sha256-hex (string)</td><td>check #7</td><td>Canonical-JSON SHA-256 of the holdout partition. The frozen anchor. The K-score's accuracy axis is computed against THESE rows and only these rows. Cannot be modified post-compile without breaking artifact_hash.</td></tr>
+        <tr><td class="key">eval_spec</td><td>{ comparator, eval_source }</td><td>check #7 + check #19 (K-score)</td><td>The comparator (<code>exact</code>, <code>json-subset</code>, <code>regex</code>, <code>semantic</code>, <code>human-reviewed</code>) and the eval_source label (<code>tenant_captured</code>, <code>synthetic_starter</code>, <code>external_public</code>, <code>adversarial_pair</code>, <code>auditor_witnessed</code>). The comparator pins HOW correctness is judged; the eval_source pins WHAT corpus the holdout came from. A synthetic_starter K-score is surfaced with a warn pill until replaced with tenant-captured IO.</td></tr>
+        <tr><td class="key">holdout_size</td><td>integer</td><td>check #7</td><td>The number of rows in the frozen holdout. Surfaced as <code>holdout_count</code> in the manifest. Below the recommended floor the binder downgrades the verdict from pass to warn with the "sample check" hint.</td></tr>
+        <tr><td class="key">train_size</td><td>integer</td><td>check #7</td><td>The number of rows in the train partition. Surfaced as <code>train_count</code> in the manifest. The recommended <code>ceil(N_train / 8)</code> minimum on the holdout uses this field directly.</td></tr>
+        <tr><td class="key">leakage_report_hash</td><td>sha256-hex (string)</td><td>check #7</td><td>SHA-256 of the leakage report JSON (input overlap, output overlap, near-duplicate pairs, grouped-key overlap). Recorded so a third party can recompute the report from the same train and holdout partitions and confirm zero overlap.</td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-top:18px;font-size:13.5px;color:var(--ink-faint)">All eight fields ship in <code>manifest.seed_provenance</code> and are bound into <code>artifact_hash_input</code> so the seed gate is part of the artifact identity, not a side-channel claim. The verifier emits one binder row covering all eight fields plus the disjointness check plus the size floor; a single fail anywhere in the chain blocks ship.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The contamination check, in pseudocode.</h2>
+    <p class="lede">The disjointness invariant is a hash-set intersection. The build pipeline computes it once at compile time; the verifier recomputes it at ingest from the recorded seeds.jsonl and split_seed. Three normalization rules turn surface variation in <code>seeds.jsonl</code> into a stable canonical form before hashing.</p>
+    <div class="pseudocode">
+<span class="cmt"># src/seeds.js - the disjointness contract, as enforced by</span>
+<span class="cmt"># splitSeeds() + leakageReport() + the seed gate (check #7).</span>
+
+<span class="kw">function</span> <b>canonical_input</b>(value):
+  <span class="cmt"># Stable string form for hashing. Strings hash by their</span>
+  <span class="cmt"># string form. Objects hash by canonical JSON (sorted keys,</span>
+  <span class="cmt"># no insignificant whitespace) so {a:1,b:2} hashes the same</span>
+  <span class="cmt"># as {b:2,a:1}. Necessary because the split bucket is</span>
+  <span class="cmt"># sha256(canonicalInput + split_seed) and structured inputs</span>
+  <span class="cmt"># must be stable across machines.</span>
+  <span class="kw">if</span> value <span class="kw">is</span> string: <span class="kw">return</span> value
+  <span class="kw">if</span> value <span class="kw">is</span> primitive: <span class="kw">return</span> str(value)
+  <span class="kw">return</span> canonical_json(value)
+
+<span class="kw">function</span> <b>split_rows</b>(rows, split_seed, holdout_ratio=0.2):
+  buckets = 1000
+  cutoff  = floor(holdout_ratio * buckets)
+  train, holdout = [], []
+  <span class="kw">for</span> row <span class="kw">in</span> rows:
+    h      = <b>SHA-256</b>(canonical_input(row.input) + ' ' + split_seed)
+    bucket = int(h[:8], 16) % buckets
+    <span class="kw">if</span> bucket &lt; cutoff: holdout.append(row)
+    <span class="kw">else</span>:               train.append(row)
+  <span class="kw">return</span> { train, holdout }
+
+<span class="kw">function</span> <b>disjointness_check</b>(train, holdout):
+  <span class="cmt"># Hash-set membership. The intersection MUST be empty.</span>
+  train_input_hashes  = { <b>SHA-256</b>(canonical_input(r.input))    <span class="kw">for</span> r <span class="kw">in</span> train }
+  train_output_hashes = { <b>SHA-256</b>(canonical_input(r.expected)) <span class="kw">for</span> r <span class="kw">in</span> train }
+  <span class="kw">for</span> r <span class="kw">in</span> holdout:
+    <span class="kw">if</span> <b>SHA-256</b>(canonical_input(r.input))    <span class="kw">in</span> train_input_hashes:  <span class="kw">return</span> <span class="bad">CONTAMINATED</span>
+    <span class="kw">if</span> <b>SHA-256</b>(canonical_input(r.expected)) <span class="kw">in</span> train_output_hashes: <span class="kw">return</span> <span class="bad">CONTAMINATED</span>
+  <span class="kw">return</span> <span class="warn">CLEAN</span>
+</div>
+    <p>The normalization rules <code>canonical_input</code> applies before hashing: stringify primitives, sort keys recursively on objects, no insignificant whitespace, UTF-8. Two semantically-identical structured inputs hash the same way regardless of key order; a row with input <code>{a:1,b:2}</code> in train and a row with input <code>{b:2,a:1}</code> in holdout is detected as overlap even though the surface JSON differs.</p>
+    <p>Documented invariant, enforcement in <code>src/seeds.js</code> (<code>splitSeeds</code> + <code>leakageReport</code>) and surfaced through the binder check in <code>src/binder.js</code>. The leakage report also runs a Jaccard-bigram similarity check at threshold 0.85 to catch near-duplicate text that survives exact-hash matching (lowercase + whitespace tokenization); near-duplicate pairs downgrade the seed gate verdict and surface in the binder detail string.</p>
+    <p>Grouped-key leakage is the third layer: if a row in train carries a tag like <code>member_id:12345</code> and a row in holdout carries the same tag, the binder emits a warn even if the surface text differs. Same-entity leakage (the same patient, same claim, same customer appearing on both sides) is the most common silent contamination in healthcare and finance corpora; the grouping-key check catches it before ship.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The four ship-block scenarios.</h2>
+    <p class="lede">A failed frozen-eval invariant exits the build with a non-zero status. There is no <code>--force</code>, no <code>--skip-checks</code>, no environment variable that silences the gate. The exit-code contract is the integration point with CI and with cron-driven re-distillation.</p>
+    <div class="grid-4">
+      <div class="card">
+        <span class="vt">scenario a</span>
+        <h3>train and holdout overlap</h3>
+        <p>The leakage report finds <code>input_overlap_count &gt; 0</code> or <code>output_overlap_count &gt; 0</code>. The binder detail string names the count and the suggested fix ("deduplicate seeds.jsonl or pick a different split_seed"). Exit non-zero, no signature emitted.</p>
+        <p><span class="pill bad">check #7: fail</span> <span class="pill bad">$? != 0</span></p>
+      </div>
+      <div class="card">
+        <span class="vt">scenario b</span>
+        <h3>holdout size below threshold</h3>
+        <p>The holdout has fewer than <code>ceil(N_train / 8)</code> rows or fewer than the recommended 50 examples. If the recipe declares <code>production_ready=true</code>, the verdict is fail and ship is blocked. If production_ready is unset, the verdict is warn and the K-score is surfaced with a "sample check" label, not a production gate.</p>
+        <p><span class="pill bad">check #7: fail</span> <span class="pill bad">$? != 0</span></p>
+      </div>
+      <div class="card">
+        <span class="vt">scenario c</span>
+        <h3>holdout hash changed since last verify</h3>
+        <p>The verifier rebuilds the split from the on-disk seeds.jsonl and the recorded split_seed, recomputes the canonical hash, and compares against <code>manifest.seed_provenance.holdout_hash</code>. Any byte difference breaks the artifact_hash and fails every downstream signature check including HMAC, Ed25519, and Rekor.</p>
+        <p><span class="pill bad">check #7: fail</span> <span class="pill bad">$? != 0</span></p>
+      </div>
+      <div class="card">
+        <span class="vt">scenario d</span>
+        <h3>K-score on frozen holdout below gate</h3>
+        <p>The K-score's accuracy axis A is computed against the frozen holdout. If the composite K is below the recipe-declared <code>min_k</code> floor, the compile fails before signatures are emitted. The recipe author either improves the recipe, adds captured rows to seeds.jsonl, or lowers min_k (recorded as a manifest change a verifier can audit).</p>
+        <p><span class="pill bad">K-score gate: fail</span> <span class="pill bad">$? != 0</span></p>
+      </div>
+    </div>
+    <div class="takeaway">
+      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)">All four scenarios share the same exit-code contract: <b>non-zero status, no signature emitted, the partial artifact never reaches the receipt chain</b>. CI sees a build failure; cron-driven re-distillation sees a job failure and surfaces it through the same mail or webhook channel the <code>kolm drift detect</code> breach uses. The integration point is the exit code, not a parseable error format.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Override audit: there is no --force flag.</h2>
+    <p class="lede">The frozen-eval invariants are designed so the only path forward after a failure is to fix the underlying cause or to roll the artifact version with a supersession block. Silent overrides do not exist by construction.</p>
+    <p style="font-size:15px;color:var(--ink-mute);max-width:780px">If a recipe author needs to ship despite a failed seed gate (for example, the holdout truly is small because the workload is a long-tail edge case, or the K-score floor needs to drop because traffic moved), the path is to compile a NEW manifest version with explicit acknowledgement: lower <code>min_k</code>, set <code>production_ready=false</code> with a documented reason, or rebuild against a wider seeds.jsonl. If the new artifact is intended to retire the previous one, attach a <a href="/drift">supersession block</a> (shipped in wave 167, see <a href="/spec/rs-1#section-7-15">RS-1 &sect;7.15</a>) with reason <code>recipe_revision</code> or <code>tenant_request</code> plus <code>authorized_by</code> and <code>notes</code>. The supersession is itself a receipt-chain entry, bound into <code>artifact_hash_input.supersession_hash</code>, walkable by any third-party verifier backward to genesis. Every override leaves a trail; no override is a config silencing.</p>
+    <p style="font-size:15px;color:var(--ink-mute);max-width:780px;margin-top:14px">This is the same architectural commitment as the rest of the kolm stack: every effect a tenant relies on is captured by a manifest field and a verifier check that re-derives that field. A signature you can mute with a flag is a signature that signs nothing.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The CLI flow, end to end.</h2>
+    <p class="lede">Four commands compose the frozen-eval lifecycle. The split itself happens inside <code>kolm compile</code> when <code>--seeds</code> is passed, so the "kolm seeds split" step in the flow below is a conceptual stage name, not a standalone subcommand. The other three (<code>kolm eval</code>, <code>kolm verify</code>, <code>kolm inspect</code>) are real verbs documented in <code>cli/kolm.js</code>.</p>
+    <div class="grid-4">
+      <div class="card">
+        <span class="vt">01 &middot; split conceptual stage</span>
+        <h3>kolm seeds split</h3>
+        <p>Stage name for the deterministic 80/20 partition that runs inside <code>kolm compile --seeds &lt;file&gt;.jsonl</code>. Same seeds.jsonl plus same split_seed produces an identical split across machines. To inspect what the split would produce without compiling, run <code>kolm seeds validate</code> and read the row count.</p>
+        <pre class="terminal">$ kolm seeds validate seeds.jsonl
+  rows:     1240 (canonical=1240, legacy=0)
+  skipped:  0
+  duplicates: 0
+
+$ kolm compile spec.json --seeds seeds.jsonl \
+    --holdout-ratio 0.2 --out my-recipe.kolm
+
+  <b>seeds -&gt; split -&gt; train (992) + holdout (248)</b>
+  split_seed:   kolm-default-split-seed-v1
+  train_hash:   a1b2c3d4...
+  holdout_hash: e5f60718...
+  leakage:      0 input, 0 output, 0 near-dup, 0 grouped
+  <b>seed gate: pass</b></pre>
+      </div>
+      <div class="card">
+        <span class="vt">02 &middot; eval against frozen holdout</span>
+        <h3>kolm eval</h3>
+        <p>Runs the compiled artifact against the embedded eval cases (the frozen holdout, by default). Pass <code>--examples &lt;file&gt;.jsonl</code> to evaluate against an external corpus instead (the A/B path). Pass <code>--trace</code> to surface every failing case.</p>
+        <pre class="terminal">$ kolm eval my-recipe.kolm
+  eval: my-recipe.kolm
+    passed:   244 / 248  (98.4%)
+    p50_lat:  142us
+    failures: 4 (showing first 5; pass --trace to see all)
+    - case-1031
+        expected: "redacted-phone"
+        got:      "redacted_phone"
+    - case-1188
+        expected: "[NAME_0]"
+        got:      "John Smith"
+  <span class="mute"># A axis = 0.984 against the frozen holdout</span></pre>
+      </div>
+      <div class="card">
+        <span class="vt">03 &middot; verify the chain</span>
+        <h3>kolm verify</h3>
+        <p>Runs the full binder check suite including check #7 ("Seed gate"). Pass <code>--binder &lt;out&gt;.html</code> to emit a printable compliance report. Exits non-zero if any check fails. The seed gate's detail string names the train/holdout counts, the comparator, the eval_source, and the leading 12 hex of the split_seed.</p>
+        <pre class="terminal">$ kolm verify my-recipe.kolm
+
+  verdict: pass
+  cid:     cidv1:sha256:1bcf2323...
+  K=0.9412 (passed; min_k=0.85)
+
+  [ok  ] Seed gate (train/holdout independence):
+    train=992 / holdout=248 disjoint
+    (comparator=exact, eval_source=tenant_captured,
+     split_seed=kolm-default...)
+  [ok  ] External / adversarial holdouts: ...
+  [ok  ] Signature (HMAC + Ed25519): ...
+
+  <b>$? = 0</b></pre>
+      </div>
+      <div class="card">
+        <span class="vt">04 &middot; inspect manifest fields</span>
+        <h3>kolm inspect</h3>
+        <p>Prints a human-readable summary of <code>manifest.json</code> including <code>seed_provenance</code>. Pass <code>--json</code> for the full machine-readable doc the eval-block fields are nested under <code>seed_provenance.{seeds_hash, split_seed, train_hash, holdout_hash, train_count, holdout_count, eval_source, leakage_report_hash}</code>.</p>
+        <pre class="terminal">$ kolm inspect my-recipe.kolm --json | jq .seed_provenance
+{
+  "seeds_hash":   "a1b2c3d4...",
+  "split_seed":   "kolm-default-split-seed-v1",
+  "train_hash":   "5e6f7080...",
+  "holdout_hash": "8b9c0d1e...",
+  "train_count":  992,
+  "holdout_count": 248,
+  "eval_source":  "tenant_captured",
+  "leakage_report_hash": "cd34ef56...",
+  "min_train":    40,
+  "min_holdout":  10
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Extending the disjoint check to external holdouts.</h2>
+    <p class="lede">The seed gate is the floor. The same canonical-hash disjointness mechanism extends upward to two more receipt-chain layers: external public benchmarks (Presidio, i2b2 2014, MIMIC-III, CMS / NCQA) and adversarial cross-family holdouts.</p>
+    <p style="font-size:15px;color:var(--ink-mute);max-width:780px">Wave 164 (N+3 + N+4) extended the receipt chain with <code>manifest.external_holdout_provenance</code>. An external holdout is a separate JSONL whose hash is anchored at compile time the same way the tenant seeds holdout is; the verifier (check #20) re-anchors the file at ingest and demands byte-identical match. The same SHA-256-of-canonical-input disjointness rule extends through the recipe: a train row whose input hashes the same as any external-holdout input is rejected. The full surface is documented in <a href="/spec/rs-1#section-7-12">RS-1 &sect;7.12</a>.</p>
+    <p style="font-size:15px;color:var(--ink-mute);max-width:780px;margin-top:14px">Tenant shadow corpora (wave 165, N+5, <code>manifest.tenant_shadow_corpus_provenance</code>, check #21) layer on top of the same mechanism. The K-score's R axis (real-world independence) is computed against external_holdout; the F axis against subgroup tags in the holdout; the Z axis (drift) against a fresh holdout collected post-ship. All four axes share the same SHA-256 hash-pinning contract the tenant seeds holdout established.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The receipt chain, in order.</h2>
+    <p class="lede">The seed split is the second link in the receipt chain (after spec). Every later link is conditional on it: train fed the recipe synthesis, recipes fed the evals, evals computed the K-score, the K-score gated ship. Any tamper at the seed split breaks every signature downstream including the Rekor anchor.</p>
+    <div class="receipt-chain">
+      <b>spec</b> &rarr; <span class="new">seeds</span> &rarr; <span class="new">split</span> &rarr; <b>train</b> &rarr; <b>recipes</b> &rarr; <span class="new">evals</span> &rarr; <b>external_holdout</b> &rarr; <b>tenant_shadow</b> &rarr; <b>auditor_attestation</b> &rarr; <b>supersession</b> &rarr; <b>drift_report</b> &rarr; <b>export</b> &rarr; <b>signatures</b> &rarr; <b>rekor</b>
+    </div>
+    <ul class="notes" style="margin-top:24px">
+      <li><b>seeds</b> &middot; canonical-JSON hash of all normalized rows. Anchored in <code>manifest.seed_provenance.seeds_hash</code>. The verifier reloads seeds.jsonl from disk, normalizes (canonical or legacy schema), and demands byte-identical match.</li>
+      <li><b>split</b> &middot; deterministic 80/20 partition by <code>SHA-256(canonical_input + split_seed) % 1000</code>. Same seeds.jsonl plus same split_seed produces an identical split. Verifier rebuilds the partition and confirms <code>train_hash</code> and <code>holdout_hash</code> match.</li>
+      <li><b>evals</b> &middot; K-score's accuracy axis A is computed by running the compiled artifact over the holdout inputs and comparing against holdout outputs using the recipe-declared comparator. A is by construction a measurement against UNSEEN rows.</li>
+      <li><b>artifact_hash</b> &middot; the final hash over the canonical <code>artifact_hash_input</code> object. <code>seed_provenance_hash</code> binds in; any tamper at the seed split drifts <code>artifact_hash</code> and breaks every downstream signature including the Rekor transparency log entry.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where this fits in the wider stack.</h2>
+    <div class="grid-2">
+      <a class="card" href="/k-score-explained" style="text-decoration:none;color:inherit">
+        <span class="vt">k-score &middot; explained</span>
+        <h3>What the K-score actually measures</h3>
+        <p>The K-score's accuracy axis A is computed against the frozen holdout the seed gate enforces. Five V1 axes (A / S / L / C / V) plus six V2 axes (R / F / E / Z / T) compose the published number. The K-score is meaningful only if the holdout is frozen.</p>
+      </a>
+      <a class="card" href="/drift" style="text-decoration:none;color:inherit">
+        <span class="vt">drift &middot; lifecycle</span>
+        <h3>Drift detection + supersession chain</h3>
+        <p>The frozen holdout grounds the genesis K-score. The drift detection cron (wave 167, check #24) snapshots K-score axes against the same frozen baseline and emits one signal per axis. A breach triggers re-distillation with a supersession block.</p>
+      </a>
+      <a class="card" href="/recipe-classes" style="text-decoration:none;color:inherit">
+        <span class="vt">recipe classes &middot; taxonomy</span>
+        <h3>The four recipe classes</h3>
+        <p>rule, compiled_rule, distilled_model, and template. The seed gate fires the same way for every class; the K-score axes that compose to the composite shift per class (T axis is meaningful only for distilled_model, S is trivially 1.0 for rule and compiled_rule).</p>
+      </a>
+      <a class="card" href="/spec/rs-1#section-7-3" style="text-decoration:none;color:inherit">
+        <span class="vt">spec &middot; canonical</span>
+        <h3>RS-1 v2.1 &sect;4 + &sect;6 + &sect;7.12</h3>
+        <p>The normative spec sections. &sect;4 defines the seeds.jsonl train/holdout split. &sect;6 defines the K-score and how A is computed against the holdout. &sect;7.12 extends the disjointness check to external + adversarial holdouts.</p>
+      </a>
+    </div>
+    <div class="actions" style="margin-top:32px">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/spec/rs-1#section-4">RS-1 &sect;4 &rarr;</a>
+      <a class="btn" href="/verify-prod">Verify a .kolm &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/frozen-eval">Frozen eval set</a>
+        <a href="/drift">Lifecycle &middot; drift</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>Holdout hash binds into artifact_hash. Any tamper breaks Rekor.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

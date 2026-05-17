@@ -826,12 +826,12 @@
         {
           "@type": "Question",
           "name": "What is actually inside a .kolm file?",
-          "acceptedAnswer": { "@type": "Answer", "text": "A model pointer (model.gguf record), the curated examples, the deterministic recipes, the evaluator, a manifest, and a signed HMAC receipt. One zip-format artifact built against the open RS-1 spec." }
+          "acceptedAnswer": { "@type": "Answer", "text": "The compiled recipe code, the curated examples, the deterministic evaluator, a manifest, a signed HMAC receipt, and optionally a byte-level BPE tokenizer (kolm-tokenizer-1) plus an MoE router block when the artifact composes multiple experts. One zip-format artifact built against the open RS-1 spec." }
         },
         {
           "@type": "Question",
           "name": "What if I want to leave kolm later?",
-          "acceptedAnswer": { "@type": "Answer", "text": "The .kolm file is yours, the runtime is MIT licensed, and the spec is open. You can run the artifact forever on any hardware you control with no vendor in the loop." }
+          "acceptedAnswer": { "@type": "Answer", "text": "The .kolm file is yours, the runtime is Apache-2.0 licensed, and the spec is open. You can run the artifact forever on any hardware you control with no vendor in the loop." }
         },
         {
           "@type": "Question",
@@ -841,7 +841,7 @@
         {
           "@type": "Question",
           "name": "What does kolm cost?",
-          "acceptedAnswer": { "@type": "Answer", "text": "The CLI runtime is free and MIT. Cloud compile and the registry start at $9/month for the Starter tier; team and enterprise tiers add seats, BAA, and SLAs." }
+          "acceptedAnswer": { "@type": "Answer", "text": "The CLI runtime is free and Apache-2.0. Cloud compile and the registry start at $9/month for the Starter tier; team and enterprise tiers add seats, BAA, and SLAs." }
         }
       ]
     }
@@ -851,11 +851,14 @@
 </head>
 <body>
 
+<a href="#main" class="skip-link" style="position:absolute;left:-9999px;top:0;background:var(--ink,#faf2e1);color:var(--bg,#08090c);padding:8px 12px;font-family:var(--mono);font-size:12px;text-decoration:none;border-radius:0 0 6px 0;z-index:9999" onfocus="this.style.left='0'" onblur="this.style.left='-9999px'">Skip to content</a>
+
 <header class="site-header">
   <div class="wrap">
     <a href="/" class="brand"><span>kolm</span></a>
     <nav class="site-nav" aria-label="Primary">
       <a href="/use-cases">Use cases</a>
+      <a href="/training">Training</a>
       <a href="/docs">Docs</a>
       <a href="/research">Research</a>
       <a href="/enterprise">Enterprise</a>
@@ -869,7 +872,7 @@
   </div>
 </header>
 
-<main>
+<main id="main">
 
 <section class="hero home-hero home-hero-left">
   <div class="hero-grid-bg" aria-hidden="true"></div>
@@ -1823,6 +1826,80 @@
 </section>
 
 <style>
+  /* wave 144 . "What ships today" provenance strip. Sits between compile-anatomy
+     and after-compile so the visitor sees what's real before they read the
+     after-compile lifecycle copy. Four cards = four real wave-144 features
+     (moe compose, byte-level BPE tokenizer, extract, doc check). Every claim
+     here ties to a passing test file in tests/wave144-*.test.js. */
+  .w144-strip { max-width: 1180px; margin: 56px auto 64px; padding: 0 32px; }
+  .w144-head { text-align: center; max-width: 760px; margin: 0 auto 32px; }
+  .w144-h { font-size: clamp(26px, 2.8vw, 36px); line-height: 1.1; letter-spacing: -0.025em; margin: 0 0 12px; font-weight: 500; }
+  .w144-sub { font-size: 16px; line-height: 1.55; color: var(--ink-mute, #b5bdb1); margin: 0 auto; max-width: 64ch; }
+  .w144-sub b { color: var(--ink, #faf2e1); font-weight: 500; }
+  .w144-cards { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 980px) { .w144-cards { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .w144-cards { grid-template-columns: 1fr; } }
+  .w144-card { padding: 22px 20px; border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 10px; background: rgba(21,26,33,0.28); display: flex; flex-direction: column; gap: 8px; }
+  .w144-card h3 { font-family: var(--mono); font-size: 13px; line-height: 1.2; letter-spacing: 0.01em; margin: 0; color: var(--kolm-accent, #10b981); font-weight: 500; text-transform: lowercase; }
+  .w144-card .w144-title { font-size: 17px; line-height: 1.2; margin: 0; font-weight: 500; color: var(--ink, #faf2e1); }
+  .w144-card p { font-size: 13.5px; line-height: 1.5; margin: 0; color: var(--ink-mute, #b5bdb1); }
+  .w144-card .w144-test { font-family: var(--mono); font-size: 11px; color: var(--ink-soft, #ece1c4); opacity: 0.6; margin-top: auto; padding-top: 8px; letter-spacing: 0.01em; }
+  [data-theme=light] .w144-card { background: rgba(255,255,255,0.55); }
+  [data-theme=light] .w144-card h3 { color: #059669; }
+</style>
+
+<section class="w144-strip" aria-label="what ships in v0.2">
+  <div class="w144-head">
+    <h2 class="w144-h">What ships in v0.2 today.</h2>
+    <p class="w144-sub">Four new pillars land in this release. <b>Each one is real code with a passing test file you can run today</b>; nothing here is a roadmap claim. Compiled LoRA, INT4, ONNX, and GGUF bundling are on the gates list, not in this build.</p>
+  </div>
+  <ol class="w144-cards">
+    <li class="w144-card">
+      <h3>kolm moe compose</h3>
+      <p class="w144-title">Mixture-of-experts, kolm-style.</p>
+      <p>Combine N expert .kolm files into one composite with a deterministic router (keyword regex, intent field, or first-match). Per-expert sha256 and the router spec live in the receipt chain.</p>
+      <span class="w144-test">tests/wave144-moe-compose.test.js</span>
+    </li>
+    <li class="w144-card">
+      <h3>kolm tokenize</h3>
+      <p class="w144-title">Pure-JS byte-level BPE.</p>
+      <p>Train, encode, decode, inspect. Round-trips any UTF-8 input via the byte-level fallback. <code>kolm compile --tokenizer tokenizer.json</code> embeds it inside the artifact; the manifest records its spec, vocab size, and sha256.</p>
+      <span class="w144-test">tests/wave144-tokenizer*.test.js</span>
+    </li>
+    <li class="w144-card">
+      <h3>kolm extract</h3>
+      <p class="w144-title">Text out of anything.</p>
+      <p>Plain text, JSON, JSONL, HTML, and a built-in PDF text-layer extractor that inflates FlateDecode streams. Images opt in via <code>--ocr</code> (tesseract) or <code>--vision</code> (Anthropic). Zero native deps for the base path.</p>
+      <span class="w144-test">tests/wave144-extract.test.js</span>
+    </li>
+    <li class="w144-card">
+      <h3>kolm doc check</h3>
+      <p class="w144-title">Completeness gate for documents.</p>
+      <p>Built-in specs for claim packets, denial letters, prior-auth requests, EOBs, and appeal letters. Verdict pass / warn / fail; exit 0 on pass-or-warn, exit 2 on fail. Composable in any shell pipeline or CI gate.</p>
+      <span class="w144-test">tests/wave144-doc-check.test.js</span>
+    </li>
+  </ol>
+</section>
+
+<!-- Wave 151 evidenced-taxonomy callout strip. Every page that names "compile",
+     "distill", or ".kolm" gets a one-line reminder that classes are real and
+     load-bearing. The verifier rejects misdeclared artifacts before signing.
+     Visual contract lives in styles.css under .tax-strip. -->
+<section class="tax-strip" aria-label="evidenced taxonomy">
+  <div class="tax-strip-row">
+    <span class="tax-strip-eyebrow">evidenced taxonomy</span>
+    <p class="tax-strip-h">Every .kolm declares its class. The verifier rejects misdeclared artifacts before signing.</p>
+  </div>
+  <div class="tax-chips">
+    <span class="tax-chip rule">rule</span>
+    <span class="tax-chip synth">synthesized_rule</span>
+    <span class="tax-chip compiled">compiled_rule</span>
+    <span class="tax-chip distill">distilled_model</span>
+  </div>
+  <p class="tax-strip-body">Shipping a <code>distilled_model</code> artifact with no weights is a verifier-rejected lie, not a marketing footnote. <a href="/taxonomy">What each class means &rarr;</a></p>
+</section>
+
+<style>
   /* v7.11 . "Then what?" 3-card section. Answers the journey after compile.
      Same visual rhythm as compile-anatomy but only 3 cards, larger illustrations,
      pointed at the post-compile lifecycle (run / improve / own). */
@@ -1905,16 +1982,16 @@
 
   <aside class="vr-calc vr-calc-solo" aria-label="cost calculator">
     <div class="vc-row">
-      <label>Monthly calls</label>
-      <input type="number" id="vrc-calls" value="1200000" min="0" step="10000">
+      <label for="vrc-calls">Monthly calls</label>
+      <input type="number" id="vrc-calls" value="1200000" min="0" step="10000" aria-label="Monthly calls">
     </div>
     <div class="vc-row">
-      <label>Tokens per call (in / out)</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input type="number" id="vrc-tin" value="800" min="0" step="50"><input type="number" id="vrc-tout" value="250" min="0" step="50"></div>
+      <label for="vrc-tin">Tokens per call (in / out)</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input type="number" id="vrc-tin" value="800" min="0" step="50" aria-label="Input tokens per call"><input type="number" id="vrc-tout" value="250" min="0" step="50" aria-label="Output tokens per call"></div>
     </div>
     <div class="vc-row">
-      <label>Frontier price ($ / 1M tokens, in / out)</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input type="number" id="vrc-pin" value="3.00" min="0" step="0.01"><input type="number" id="vrc-pout" value="15.00" min="0" step="0.01"></div>
+      <label for="vrc-pin">Frontier price ($ / 1M tokens, in / out)</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input type="number" id="vrc-pin" value="3.00" min="0" step="0.01" aria-label="Frontier price per 1M input tokens"><input type="number" id="vrc-pout" value="15.00" min="0" step="0.01" aria-label="Frontier price per 1M output tokens"></div>
     </div>
 
     <div class="out">
@@ -2622,7 +2699,7 @@
         <a href="/ask">Ask kolm</a>
         <a href="/train">Train in browser</a>
         <a href="/setup-with-ai">Setup with AI</a>
-        <a href="/research/honest-data-generation">Honest data generation</a>
+        <a href="/research/provenance-data-generation">Verifiable data generation</a>
         <a href="/docs">Docs</a>
         <a href="/spec/rs-1">RS-1 spec</a>
         <a href="/openapi.json">OpenAPI</a>

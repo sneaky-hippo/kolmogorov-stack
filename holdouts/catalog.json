@@ -1,0 +1,40 @@
+{
+  "spec": "kolm-holdouts-catalog-v1",
+  "description": "External public benchmark corpora and adversarial cross-family LLM-pair corpora for Wave 144 N+3 / N+4. Every corpus shipped here is CC0 / public-domain / illustrative-only synthetic data — none of it contains real PHI / PII / claims. The provenance fields document the upstream pattern each corpus mimics so a regulated tenant can swap in a real (DUA-gated) corpus by adding a sibling JSONL and a catalog entry pointing at it.",
+  "holdouts": [
+    {
+      "name": "presidio-synthetic-v1",
+      "kind": "external",
+      "file": "holdouts/external/presidio-synthetic-v1.jsonl",
+      "license": "CC0-1.0",
+      "source_url": "https://github.com/microsoft/presidio-research (pattern reference; rows authored from scratch under CC0)",
+      "accessed_at": "2026-05-17",
+      "description": "Synthetic PHI redaction holdout patterned after Microsoft Presidio Research synthetic data: each row contains free-text with names, dates, phone numbers, SSNs, MRNs, addresses; expected output replaces each identifier with a HIPAA Safe Harbor placeholder ([PHI_NAME_n], [PHI_DOB_n], etc.). Suitable for any phi-redactor / pii-redactor recipe. Rows authored from scratch — no real PHI.",
+      "suitable_for": ["phi-redactor", "pii-redactor", "redaction", "phi"]
+    },
+    {
+      "name": "cms-claims-public-v1",
+      "kind": "external",
+      "file": "holdouts/external/cms-claims-public-v1.jsonl",
+      "license": "CC0-1.0",
+      "source_url": "https://www.cms.gov/data-research/files-order/data-disclosures-data-agreements/medicare-claims-synthetic-public-use-files (DE-SynPUF pattern reference; rows authored from scratch under CC0)",
+      "accessed_at": "2026-05-17",
+      "description": "Synthetic claims-classification holdout patterned after CMS Medicare DE-SynPUF synthetic claims: each row contains a short claim description; expected output is the canonical claim category (inpatient / outpatient / prescription / DME / other). Suitable for claims-classifier / claim-normalizer / denial-code-extract recipes. Rows authored from scratch — no real PHI / claims.",
+      "suitable_for": ["claims-classifier", "claim-normalizer", "denial-code-extract", "claims"]
+    },
+    {
+      "name": "cross-family-pair-v1",
+      "kind": "adversarial",
+      "file": "holdouts/adversarial/cross-family-pair-v1.jsonl",
+      "license": "CC0-1.0",
+      "source_url": "internal kolm adversarial harness (cross-family pair pattern)",
+      "accessed_at": "2026-05-17",
+      "description": "Adversarial cross-family LLM-pair holdout. Each row is a paraphrase of a seed input authored by an LLM family DIFFERENT from the family that generated the recipe's training corpus, so an artifact that overfits to one family's phrasing degrades visibly here. Expected output is the SAME canonical answer as the seed it paraphrases. Suitable for any recipe that should be robust to phrasing drift.",
+      "suitable_for": ["phi-redactor", "claims-classifier", "phone-validator", "redaction", "any"],
+      "adversarial_generator_pair": {
+        "source_family": "anthropic.claude",
+        "paraphrase_family": "openai.gpt"
+      }
+    }
+  ]
+}

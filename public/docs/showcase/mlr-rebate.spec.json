@@ -1,0 +1,59 @@
+{
+  "job_id": "job_mlr_rebate_calculator_v1",
+  "task": "Compute MLR per PPACA §2718 and 45 CFR §158: MLR = (incurred_claims + quality_improvement_expense) / (premium_revenue - taxes_fees). If MLR < threshold (80% individual+small_group, 85% large_group), rebate_owed = (threshold - MLR) * (premium_revenue - taxes_fees). Per-member rebate = rebate_owed_total / member_months * 12. Output: { mlr_numerator, mlr_denominator, mlr_ratio, threshold, rebate_owed_total, per_member_rebate, market, state, reporting_year }.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_mlr_rebate_v1",
+      "name": "mlr-rebate",
+      "class": "rule",
+      "source": "function generate(input,lib){var i=(input&&typeof input==='object')?input:{};var r=(lib&&lib.pack&&lib.pack.rules)||{};var T=(r.mlr_thresholds)||{individual:0.80,small_group:0.80,large_group:0.85};var mk=String(i.market||'individual');var th=(T[mk]!=null)?T[mk]:0.80;var pr=Number(i.premium_revenue||0);var ic=Number(i.incurred_claims||0);var qi=Number(i.quality_improvement_expense||0);var tx=Number(i.taxes_fees||0);var mm=Number(i.member_months||0);var num=ic+qi;var den=pr-tx;var ratio=den>0?(num/den):0;var rebate=0;if(den>0&&ratio<th){rebate=(th-ratio)*den;}var per=mm>0?(rebate/mm*12):0;return {market:mk,state:String(i.state||''),reporting_year:Number(i.reporting_year||0),mlr_numerator:num,mlr_denominator:den,mlr_ratio:Math.round(ratio*10000)/10000,threshold:th,rebate_owed_total:Math.round(rebate*100)/100,per_member_rebate:Math.round(per*100)/100};}",
+      "tags": ["health-insurance", "mlr", "ppaca", "rebate", "regulatory", "rule"],
+      "schema": {
+        "input": { "reporting_year": "number", "market": "string", "state": "string", "premium_revenue": "number", "incurred_claims": "number", "quality_improvement_expense": "number", "taxes_fees": "number", "member_months": "number" },
+        "output": { "market": "string", "state": "string", "reporting_year": "number", "mlr_numerator": "number", "mlr_denominator": "number", "mlr_ratio": "number", "threshold": "number", "rebate_owed_total": "number", "per_member_rebate": "number" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "PPACA §2718 + 45 CFR §158 MLR thresholds, numerator definition, and rebate distribution formula. Thresholds are the statutory floors codified in 45 CFR §158.211; the numerator definition follows 45 CFR §158.221.",
+    "rules": {
+      "mlr_thresholds": {
+        "individual": 0.80,
+        "small_group": 0.80,
+        "large_group": 0.85
+      },
+      "applicable_regulation": "45 CFR §158.221 (numerator) + §158.211 (threshold) + §158.240 (rebate distribution)",
+      "statute": "42 U.S.C. 300gg-18 (PPACA §2718)",
+      "rebate_distribution_basis": "pro rata across member_months, annualized (×12)"
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "individual_at_threshold_no_rebate",
+        "input": { "reporting_year": 2024, "market": "individual", "state": "TX", "premium_revenue": 50000000, "incurred_claims": 38000000, "quality_improvement_expense": 800000, "taxes_fees": 2000000, "member_months": 60000 },
+        "expected": { "market": "individual", "threshold": 0.80, "mlr_numerator": 38800000, "mlr_denominator": 48000000, "rebate_owed_total": 0 }
+      },
+      {
+        "id": "individual_below_threshold_rebate_owed",
+        "input": { "reporting_year": 2024, "market": "individual", "state": "FL", "premium_revenue": 100000000, "incurred_claims": 60000000, "quality_improvement_expense": 1000000, "taxes_fees": 5000000, "member_months": 120000 },
+        "expected": { "market": "individual", "threshold": 0.80, "mlr_numerator": 61000000, "mlr_denominator": 95000000 }
+      },
+      {
+        "id": "large_group_at_85_threshold",
+        "input": { "reporting_year": 2024, "market": "large_group", "state": "CA", "premium_revenue": 200000000, "incurred_claims": 165000000, "quality_improvement_expense": 5000000, "taxes_fees": 10000000, "member_months": 240000 },
+        "expected": { "market": "large_group", "threshold": 0.85, "mlr_numerator": 170000000, "mlr_denominator": 190000000 }
+      },
+      {
+        "id": "small_group_below_80",
+        "input": { "reporting_year": 2024, "market": "small_group", "state": "NY", "premium_revenue": 25000000, "incurred_claims": 17000000, "quality_improvement_expense": 200000, "taxes_fees": 1000000, "member_months": 30000 },
+        "expected": { "market": "small_group", "threshold": 0.80, "mlr_numerator": 17200000, "mlr_denominator": 24000000 }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

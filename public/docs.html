@@ -201,6 +201,7 @@
     <a href="/" class="brand"><span>kolm</span></a>
     <nav class="site-nav" aria-label="Primary">
       <a href="/use-cases">Use cases</a>
+      <a href="/training">Training</a>
       <a href="/docs">Docs</a>
       <a href="/research">Research</a>
       <a href="/enterprise">Enterprise</a>
@@ -283,10 +284,17 @@
     </div>
     <div class="group">
       <div class="group-h">reference</div>
-      <a href="/spec">RS-1 spec</a>
+      <a href="/spec/rs-1">RS-1 spec</a>
       <a href="/api">Endpoint index</a>
       <a href="/cookbook">Cookbook</a>
       <a href="/roadmap">Roadmap</a>
+    </div>
+    <div class="group">
+      <div class="group-h">cli verbs</div>
+      <a href="/docs/cli/nl">kolm nl</a>
+      <a href="/docs/cli/seeds">kolm seeds</a>
+      <a href="/docs/cli/keys">kolm keys</a>
+      <a href="/docs/cli/quantize">kolm quantize</a>
     </div>
   </aside>
 
@@ -414,7 +422,7 @@ jobs:
         env:
           KOLM_KEY: ${{ secrets.KOLM_KEY }}
         run: kolm publish *.kolm</code></pre>
-      <div class="note"><b>Why this gate is honest:</b> the K-score is computed by a deterministic verifier, not a model. Same inputs always produce the same score. CI is a fair judge.</div>
+      <div class="note"><b>Why this gate is verifiable:</b> the K-score is computed by a deterministic verifier, not a model. Same inputs always produce the same score. CI is a fair judge.</div>
       <div class="next-hint">next: <a href="#tut-3">Tutorial 3 . Run inside Cursor</a> &rarr;</div>
     </section>
 
@@ -548,7 +556,7 @@ api_key = data["api_key"]</code></pre>
     <pre class="code-block"><button class="copy" type="button">copy</button><code>{
   "tenant": {
     "id": "tenant_01c1bcf8b036",
-    "name": "honest-test-1778494461-ojy0",
+    "name": "provenance-test-1778494461-ojy0",
     "plan": "free",
     "quota": 10000,
     "seats": 1,
@@ -641,7 +649,7 @@ api_key = data["api_key"]</code></pre>
   "narration": "No builds yet. Try \"compile a recipe that does &lt;task&gt;\" to create your first one.",
   "data": { "items": [] }
 }</code></pre>
-    <p>Recognised intents: <code>status</code>, <code>usage</code>, <code>list</code>, <code>compile</code>, <code>run</code>, <code>tune</code>, <code>evolve</code>, <code>install</code>, <code>upgrade</code>, <code>doctor</code>, <code>help</code>.</p>
+    <p>Recognised intents: <code>status</code>, <code>usage</code>, <code>list</code>, <code>compile</code>, <code>run</code>, <code>tune</code>, <code>evolve</code>, <code>install</code>, <code>upgrade</code>, <code>doctor</code>, <code>help</code>. CLI verb: <code>kolm nl "&lt;free text&gt;"</code> &middot; see the <a href="/quickstart/nl" style="color:var(--accent)">/quickstart/nl</a> walk-through and <a href="/docs/cli/nl" style="color:var(--accent)">/docs/cli/nl</a> reference.</p>
 
     <h2 id="change-plan">Change plan</h2>
     <p>Move between tiers. Free &rarr; Pro returns a Stripe Checkout URL with <code>client_reference_id</code> already bound to your tenant.</p>
@@ -692,10 +700,10 @@ curl -s "https://kolm.ai/v1/receipts/&lt;hash&gt;/public" | jq .chain_valid
   -o kolm-compliance-$(date +%Y%m%d).json</code></pre>
 
     <h2 id="kolm-format">.kolm format</h2>
-    <p>A signed zip with five files: <code>spec.json</code> (the recipe), <code>policy.json</code> (gates), <code>recall/</code> (optional sidecar), <code>verifier.js</code> (cheap output check), <code>receipt.json</code> (the HMAC chain). Full schema at <a href="/spec" style="color:var(--accent)">/spec</a>.</p>
+    <p>A signed zip with five files: <code>spec.json</code> (the recipe), <code>policy.json</code> (gates), <code>recall/</code> (optional sidecar), <code>verifier.js</code> (cheap output check), <code>receipt.json</code> (the HMAC chain). RS-1 v2.1 wire spec at <a href="/spec/rs-1" style="color:var(--accent)">/spec/rs-1</a>; binary archive format at <a href="/format/v2" style="color:var(--accent)">/format/v2</a>. Drop a built <code>.kolm</code> at <a href="/verify-prod" style="color:var(--accent)">/verify-prod</a> to replay the receipt chain in the browser.</p>
 
     <h2 id="kscore">K-score</h2>
-    <p><b>Per-artifact, not per-model.</b> Every compiled <code>.kolm</code> gets its own K-score from its own eval set; the score gates that artifact, not the base model underneath. One scalar, gated at 0.85 to ship. Computed as <code>0.40&middot;A + 0.15&middot;(S + L + C + V)</code> where A=accuracy, S=specificity, L=latency, C=cost, V=verifiability. Full breakdown at <a href="/k-score" style="color:var(--accent)">/k-score</a>.</p>
+    <p><b>Per-artifact, not per-model.</b> Every compiled <code>.kolm</code> gets its own K-score from its own eval set; the score gates that artifact, not the base model underneath. One scalar, gated at 0.85 to ship. Computed as <code>0.40&middot;A + 0.15&middot;(S + L + C + V)</code> where A=accuracy, S=specificity, L=latency, C=cost, V=verifiability. Prose walk-through at <a href="/k-score-explained" style="color:var(--accent)">/k-score-explained</a>; formal methodology at <a href="/docs/k-score-methodology" style="color:var(--accent)">/docs/k-score-methodology</a>. The eval set itself is frozen and hash-bound: see <a href="/frozen-eval" style="color:var(--accent)">/frozen-eval</a>.</p>
 
     <h2 id="cli">CLI</h2>
     <p>Eight verbs cover the loop. Same auth as the API; <code>kolm login</code> stores the key in <code>~/.kolm/config.json</code>.</p>
@@ -725,7 +733,7 @@ hooks:
 
     <h2 id="remote">Remote access</h2>
     <p>The default deployment is local. <code>kolm serve --local</code> binds the runtime to your machine; your laptop, phone, or coding agent reach it over your own network. Your prompts and outputs never touch our infrastructure because there isn&rsquo;t any to touch.</p>
-    <p>For teams that want hosted access without trusting a vendor, run the same <code>.kolm</code> inside a <b>TEE</b> (Trusted Execution Environment). Hardware enclaves (AWS Nitro, GCP Confidential, Azure SEV) seal the model, its weights, and the request data so neither kolm nor the cloud provider can read them. Relatively secure, relatively private. Not a cryptographic guarantee, but the strongest honest framing for cloud-hosted inference.</p>
+    <p>For teams that want hosted access without trusting a vendor, run the same <code>.kolm</code> inside a <b>TEE</b> (Trusted Execution Environment). Hardware enclaves (AWS Nitro, GCP Confidential, Azure SEV) seal the model, its weights, and the request data so neither kolm nor the cloud provider can read them. Relatively secure, relatively private. Not a cryptographic guarantee, but the strongest code-grounded framing for cloud-hosted inference.</p>
     <p>What kolm does <em>not</em> do: end-to-end encryption (traffic is local, so there&rsquo;s nothing to encrypt in flight); managed-mesh networking (use your own Tailscale / VPN / private network); or a kolm-operated SaaS that sees your data.</p>
 
     <h3 id="deploy-modes">Four ways to ship</h3>
@@ -782,7 +790,7 @@ training:
       <li><code>grpo-reasoning</code>. GRPO online RL with verifiable rewards. DeepSeek R1 pattern.</li>
       <li><code>instant</code>. zero-data adapter. Synthesize examples via teacher LLM + verifier loop. Two minutes, no labels.</li>
     </ul>
-    <p>Reference articles for each module live under <a href="/research" style="color:var(--accent)">/research</a>. The frontier-stack rail there cross-links to the implementation file and the paper.</p>
+    <p>Reference articles for each module live under <a href="/research" style="color:var(--accent)">/research</a>. The frontier-stack rail there cross-links to the implementation file and the paper. For the data-source registry behind every preset, see <a href="/training/data-sources" style="color:var(--accent)">/training/data-sources</a>.</p>
 
     <h3 id="instant-adapter">Instant adapter</h3>
     <p>The fastest path from "I have a task" to "I have a signed .kolm." No labeled data, no GPU. The CLI proposes a verifier from your task description, asks a teacher model for candidate pairs, accepts only the ones the verifier passes, and ships the result.</p>

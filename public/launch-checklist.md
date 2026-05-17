@@ -16,7 +16,7 @@
 - [x] **A7.** Smoke battery 495+/0 against prod kolm.ai.
 - [x] **A8.** Sitemap.xml carries every public URL; robots.txt allows /cookbook, /compare, /articles, /use-cases.
 
-## B. Honest benchmarks (4 boxes)
+## B. Verifiable benchmarks (4 boxes)
 
 - [x] **B1.** Every percentage on every page links to a reproducer or is deleted. (Audit complete.)
 - [x] **B2.** `/articles/how-we-benchmark` ships under 1500 words with the diagnosis flowchart. (Workstream B.)
@@ -31,7 +31,7 @@
 
 - [ ] **D1.** **(founder)** Real Stripe payment links provisioned in test mode for Pro / Team / Business / Enterprise tiers.
 - [ ] **D2.** **(founder)** `STRIPE_PAYMENT_LINK_*` and `STRIPE_WEBHOOK_SECRET` set on Vercel env.
-- [x] **D3.** `POST /v1/stripe/webhook` verifies signature with `STRIPE_WEBHOOK_SECRET`, idempotency via `stripe_events` table, dispatches `checkout.session.completed` / `customer.subscription.updated` / `customer.subscription.deleted`. Code at `src/router.js:1105-1199` + `src/stripe.js`. Returns 503 (not 500) when secret unset · honest gap until D2.
+- [x] **D3.** `POST /v1/stripe/webhook` verifies signature with `STRIPE_WEBHOOK_SECRET`, idempotency via `stripe_events` table, dispatches `checkout.session.completed` / `customer.subscription.updated` / `customer.subscription.deleted`. Code at `src/router.js:1105-1199` + `src/stripe.js`. Returns 503 (not 500) when secret unset · evidenced gap until D2.
 - [x] **D4.** `/v1/account/change-plan` returns billing redirect URL for paid tiers (no plan flip server-side without webhook); immediate flip only when target is `free`. Code at `src/router.js:1042-1094`. Returns 503 with `billing_not_configured` until D1+D2 land env vars.
 - [x] **D5.** Webhook coverage: 5 live-smoke tests around `/v1/stripe/webhook` and `/v1/account/change-plan` (route-shape, free downgrade, paid never auto-flips, 503-without-secret, plan=free at provision) + 10 unit tests in `tests/stripe.test.js` (valid sig, tampered body, stale timestamp, malformed header, missing inputs, idempotent digest, plan-cents mapping, checkout param stitching). Run `node --test tests/stripe.test.js`.
 
@@ -52,7 +52,7 @@
 ## H. Trust surface (2 boxes)
 
 - [x] **H1.** `/trust` rewritten: live verifier widget loads <2s, K-score formula with worked example, no "we take security seriously" copy.
-- [x] **H2.** `/security` enumerates threat model + mitigations honestly, including what we do NOT protect against.
+- [x] **H2.** `/security` enumerates threat model + mitigations plainly, including what we do NOT protect against.
 
 ## I. CI/CD (2 boxes)
 
@@ -69,7 +69,7 @@ Stripe (live keys + webhook secret + payment links), Resend (domain + API key), 
 |---|---|---|---|---|
 | OAuth-1 | Google OAuth client ID + secret | Founder | `/v1/oauth/providers` returns `{google:false}` → buttons hidden on /signin | Console → Create OAuth client → set redirect to `https://kolm.ai/v1/oauth/google/callback` → set `GOOGLE_OAUTH_CLIENT_ID` + `GOOGLE_OAUTH_CLIENT_SECRET` on Vercel |
 | OAuth-2 | GitHub OAuth app | Founder | `/v1/oauth/providers` returns `{github:false}` → buttons hidden on /signin | github.com/settings/developers → New OAuth App → callback `https://kolm.ai/v1/oauth/github/callback` → set `GITHUB_OAUTH_CLIENT_ID` + `GITHUB_OAUTH_CLIENT_SECRET` on Vercel |
-| Trainer-bridge | Kolm trainer URL + token for `/v1/specialists/auto-distill` to mint real `.kolm` artifacts (currently returns honest "not enough captures" stub) | Founder | E3-E5 close | Set `KOLM_TRAINER_BRIDGE_URL` + `KOLM_TRAINER_BRIDGE_TOKEN` on Vercel once the trainer endpoint is up |
+| Trainer-bridge | Kolm trainer URL + token for `/v1/specialists/auto-distill` to mint real `.kolm` artifacts (currently returns verifiable "not enough captures" stub) | Founder | E3-E5 close | Set `KOLM_TRAINER_BRIDGE_URL` + `KOLM_TRAINER_BRIDGE_TOKEN` on Vercel once the trainer endpoint is up |
 
 When all three are done, the box count moves to 30/30 and the OAuth row auto-renders on /signin (the UI is wired · it auto-shows the button as soon as `/v1/oauth/providers` returns true for that provider).
 
@@ -109,7 +109,7 @@ The shape: drop-in proxy for the OpenAI / Anthropic API. Every call records the 
 
 The math: a 50-engineer team running 80k Opus calls/month at ~$12k/mo. After two months and one distill cycle, a Phi-3-mini-LoRA hits 78% of Opus quality on their tasks at 4% the latency, electricity-only marginal cost. The frontier bill compresses to the long tail.
 
-The compiler is honest:
+The compiler is verifiable:
 - K-score gate at 0.85; below that, no artifact ships.
 - Receipts are HMAC-SHA256 chains over (corpus hash, eval set, K-score, base model, LoRA delta).
 - Reproducible benchmark: `kolm bench --reproduce swebench-lite-n150 --seed 42` runs the harness locally on the official swebench 4.1.0 evaluator. Headline number lands when the first end-to-end signed run completes.
@@ -171,7 +171,7 @@ Read the worked example: https://kolm.ai/articles/rent-vs-buy-compute
 2.
 The benchmark number on the homepage of every AI startup is a feeling unless it ships with a reproducer.
 
-We picked one benchmark · SWE-bench Lite at n=150 with seed=42 against the official swebench 4.1.0 evaluator · and shipped a CLI that anyone can run on their own machine in 90 minutes for under $30. The headline number lands when the first end-to-end signed run completes; until then the only honest claim is the harness.
+We picked one benchmark · SWE-bench Lite at n=150 with seed=42 against the official swebench 4.1.0 evaluator · and shipped a CLI that anyone can run on their own machine in 90 minutes for under $30. The headline number lands when the first end-to-end signed run completes; until then the only evidenced claim is the harness.
 
 If your reproduce attempt lands more than ±2pp away from ours, the methodology page has a diagnosis flowchart for what likely went wrong.
 
@@ -184,7 +184,7 @@ https://kolm.ai/articles/how-we-benchmark
 3.
 What is in a .kolm file?
 
-A signed zip carrying a model layer (4–7B base + LoRA), a recall index (sqlite-vec), a recipe pack, an eval set, a K-score gate, and an HMAC-SHA256 receipt chain.
+A signed zip carrying, in v0.2: the recipe pack, the eval set, an HMAC-SHA256 receipt chain, a `manifest.json`, an optional `KOLMIDX` lookup container, an optional `kolm-moe-1` composition block, an optional `kolm-tokenizer-1` byte-level BPE tokenizer, and a `model.gguf` base-model pointer record. The full model layer (4-7B base + trained LoRA) and a populated `sqlite-vec` embedding index are the roadmap tier behind the runtime bridge.
 
 Why that shape: every claim about the artifact has to be checkable later. "Did we train on PII" becomes a query against the receipt. "Has the model drifted" becomes a comparison of two receipts. "Is this what we deployed" becomes a verify call.
 

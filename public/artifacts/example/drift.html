@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Per-artifact drift report (example) | kolm lifecycle</title>
+<meta name="description" content="Per-artifact drift report detail view. Six tolerance axes, three status bands, six supersession reasons, and the three next-action paths a tenant takes when drift fires. Template view at /artifacts/example/drift; production URLs land at /artifacts/<your-artifact-hash>/drift once kolm hashes your .kolm file.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="Per-artifact drift report (example)">
+<meta property="og:description" content="Template view of the per-artifact drift detail surface. Shows the six tolerance axes, the three status bands, the six supersession reasons, and the three next-action paths the operator takes when drift fires.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="kolm lifecycle - per-artifact drift detail" />
+<meta name="twitter:description" content="Template for /artifacts/<hash>/drift. Six axes, three status bands, six supersession reasons, three next actions. All backed by src/drift-supersession.js." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<meta property="og:url" content="https://kolm.ai/artifacts/example/drift">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/artifacts/example/drift">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+  .lede{font-size:17px;line-height:1.55;color:var(--ink-mute);max-width:820px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .hash-row{display:inline-block;font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:6px 12px;border-radius:6px;border:1px solid var(--line);color:var(--ink);margin:0 0 8px;word-break:break-all}
+  .hash-row .pre{color:var(--ink-faint)}
+  .template-banner{margin:24px 0 0;padding:16px 18px;border:1px dashed var(--line);border-radius:8px;background:var(--bg-elev);color:var(--ink-mute);font-size:13.5px;line-height:1.55}
+  .template-banner b{color:var(--ink)}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  .status-block{padding:36px 32px;border:1px solid var(--line);border-radius:14px;background:var(--bg-elev);margin:32px 0 8px;display:flex;flex-direction:column;gap:18px}
+  .status-block.ok{border-color:rgba(16,185,129,0.30);background:var(--accent-soft)}
+  .status-pill-big{display:inline-flex;align-items:center;gap:14px;font-family:var(--mono);font-size:34px;letter-spacing:0.06em;text-transform:uppercase;color:var(--accent);padding:0;font-weight:500}
+  .status-pill-big .dot{width:18px;height:18px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 6px var(--accent-soft)}
+  .status-pill-big.warn{color:var(--warn)} .status-pill-big.warn .dot{background:var(--warn);box-shadow:0 0 0 6px var(--warn-soft)}
+  .status-pill-big.bad{color:var(--bad)} .status-pill-big.bad .dot{background:var(--bad);box-shadow:0 0 0 6px var(--bad-soft)}
+  .status-meta{font-family:var(--mono);font-size:12.5px;color:var(--ink-mute);line-height:1.7}
+  .status-meta b{color:var(--ink)}
+  .legend{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+  @media(max-width:760px){.legend{grid-template-columns:1fr}}
+  .legend .row{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);display:flex;gap:12px;align-items:flex-start}
+  .legend .label{font-family:var(--mono);font-size:11.5px;letter-spacing:0.12em;text-transform:uppercase;font-weight:500;min-width:62px}
+  .legend .label.ok{color:var(--accent)}
+  .legend .label.warn{color:var(--warn)}
+  .legend .label.bad{color:var(--bad)}
+  .legend .desc{font-size:13px;color:var(--ink-mute);line-height:1.5}
+  .section{padding:64px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:28px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:780px}
+  .section p.lede{font-size:16px;max-width:780px;margin:0 0 28px}
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:20px 0}
+  table.tbl th{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400;vertical-align:bottom}
+  table.tbl td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45;color:var(--ink-mute)}
+  table.tbl td.key{font-family:var(--mono);color:var(--ink);font-size:12.5px;white-space:nowrap}
+  table.tbl td.num{font-family:var(--mono);color:var(--ink);font-size:12.5px;text-align:right}
+  table.tbl td.warn{color:var(--warn);font-family:var(--mono);font-size:12.5px}
+  table.tbl td.bad{color:var(--bad);font-family:var(--mono);font-size:12.5px}
+  table.tbl td.ok{color:var(--accent);font-family:var(--mono);font-size:12.5px;font-weight:500}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:980px){.grid-3{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:640px){.grid-3{grid-template-columns:1fr}}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:820px){.grid-2{grid-template-columns:1fr}}
+  .reason-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
+  @media(max-width:980px){.reason-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:640px){.reason-grid{grid-template-columns:1fr}}
+  .reason-card{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .reason-card .name{font-family:var(--mono);font-size:13px;color:var(--ink);letter-spacing:0.02em}
+  .reason-card .when{font-size:13px;line-height:1.5;color:var(--ink-mute);margin:0}
+  .reason-card .when b{color:var(--ink-faint);font-family:var(--mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;font-weight:500;display:block;margin-top:6px}
+  .card{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .card .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .card .vt.warn{color:var(--warn)}
+  .card .vt.bad{color:var(--bad)}
+  .card h3{margin:0;font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .card p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+  .card code{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  .card pre.cmd{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;font:12px/1.55 var(--mono);margin:0}
+  .card pre.cmd b{color:var(--accent);font-weight:400}
+  .card pre.cmd .mute{color:var(--ink-faint)}
+  .receipt-chain{font-family:var(--mono);font-size:12.5px;color:var(--ink-mute);background:var(--bg-elev);border:1px solid var(--line);border-radius:10px;padding:18px 20px;line-height:1.85;word-break:break-word;margin:18px 0 0}
+  .receipt-chain b{color:var(--accent);font-weight:400}
+  .receipt-chain .new{color:var(--warn);font-weight:400}
+  .takeaway{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin-top:24px}
+  .takeaway b{color:var(--accent)}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr)}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:var(--ink-faint);margin:0 0 12px;font-weight:400}
+  .footer-grid a{display:block;color:var(--ink-mute);text-decoration:none;font-size:13.5px;margin-bottom:6px;border:none}
+  .footer-tag{display:flex;justify-content:space-between;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line);padding-top:20px;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/drift">drift</a><a href="/verify-prod">verify</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/drift">lifecycle</a> &nbsp;/&nbsp; artifacts &nbsp;/&nbsp; example &nbsp;/&nbsp; drift report</p>
+    <h1>Drift report for artifact.</h1>
+    <p style="margin:0 0 18px"><span class="hash-row"><span class="pre">sha256:</span>abc1234567890abcdef1234567890abcdef1234567890abcdef1234567890def</span></p>
+    <p class="lede">This is the per-artifact drift detail surface. Every <code style="font-family:var(--mono);background:var(--bg-elev);padding:2px 8px;border-radius:4px;color:var(--ink);font-size:14px;border:1px solid var(--line)">.kolm</code> artifact has a content hash; once a tenant runs <code style="font-family:var(--mono);background:var(--bg-elev);padding:2px 8px;border-radius:4px;color:var(--ink);font-size:14px;border:1px solid var(--line)">kolm drift detect</code> the resulting report is reachable at this URL. The page renders the six tolerance axes, the three status bands, the six supersession reasons the operator can pick if a successor needs to ship, and the three next-action paths keyed off the verdict. Every value below maps to a field in <code style="font-family:var(--mono);background:var(--bg-elev);padding:2px 8px;border-radius:4px;color:var(--ink);font-size:14px;border:1px solid var(--line)">src/drift-supersession.js</code> so the page cannot drift away from what the backend emits.</p>
+    <p class="stamp">Wave 190 &middot; per-artifact drift detail &middot; verifier checks #23 + #24 &middot; reviewed 2026-05-17</p>
+    <div class="template-banner">
+      <b>This is a template view.</b> The example hash above is intentionally fake (note the ellipsis-style padding). Production URLs land at <code style="font-family:var(--mono);background:var(--bg);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">/artifacts/&lt;your-artifact-hash&gt;/drift</code> once <b>kolm</b> hashes your <code style="font-family:var(--mono);background:var(--bg);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">.kolm</code> file. The static template ships here so every hash URL resolves to the same render contract; the values get filled in by the verifier loading your manifest in the browser. No required backend.
+    </div>
+    <div class="actions">
+      <a class="btn primary" href="/verify-prod">Verify a real .kolm &rarr;</a>
+      <a class="btn" href="/drift">Generic lifecycle page &rarr;</a>
+      <a class="btn" href="/spec/rs-1#section-7-15">RS-1 &sect;7.15 &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Overall verdict.</h2>
+    <p class="lede">A drift report's verdict is the worst status across all signals: <b>any breach</b> &rarr; breach, <b>any drift</b> (no breach) &rarr; drift, otherwise <b>within</b>. The verifier (check #24) gates ship on this single value, the cron exits non-zero on <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">breach</code>, and the homepage K-score card surfaces the pill so operators see it at a glance.</p>
+    <div class="status-block ok">
+      <div class="status-pill-big"><span class="dot"></span><span>within</span></div>
+      <div class="status-meta">
+        <div><b>verdict</b> &middot; within (0 breach, 0 drift across 6 signals)</div>
+        <div><b>baseline_snapshot.captured_at</b> &middot; 2026-01-15T08:00:00Z</div>
+        <div><b>current_snapshot.captured_at</b> &middot; 2026-05-17T08:00:00Z</div>
+        <div><b>computed_at</b> &middot; 2026-05-17T08:05:00Z</div>
+        <div><b>tolerances</b> &middot; DEFAULT_TOLERANCES (unmodified)</div>
+        <div><b>drift_report.hash</b> &middot; cd34ef56ab7890&hellip;</div>
+      </div>
+      <div class="legend">
+        <div class="row"><span class="label ok">within</span><span class="desc">delta inside warn band. No action. Verifier emits pass on check #24.</span></div>
+        <div class="row"><span class="label warn">drift</span><span class="desc">warn band crossed but fail band not crossed. Verifier emits WARN pass; schedule a re-distillation before the next cadence interval.</span></div>
+        <div class="row"><span class="label bad">breach</span><span class="desc">fail band crossed on at least one axis. Verifier gates ship; cron exits 2 so CI fails loud; tenant compiles a successor with kolm compile --supersession-of.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The six tolerance axes.</h2>
+    <p class="lede">Every drift report carries one signal per axis. Numeric axes (<code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">eval_score</code>, <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">k_score.composite</code>, per-axis <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">k_score.&lt;axis&gt;</code>) classify delta against warn + fail bands. Hash axes (<code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">external_holdout_hash</code>, <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">tenant_shadow_corpus_hash</code>) require exact match; <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">artifact_hash</code> is informational only (a new artifact ALWAYS has a new hash).</p>
+    <table class="tbl">
+      <thead>
+        <tr><th>axis</th><th style="text-align:right">current</th><th style="text-align:right">baseline</th><th>tolerance</th><th>status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="key">eval_score</td>
+          <td class="num">0.943</td>
+          <td class="num">0.951</td>
+          <td>&plusmn; 0.02 warn / &plusmn; 0.05 fail (delta -0.008)</td>
+          <td class="ok">within</td>
+        </tr>
+        <tr>
+          <td class="key">k_score.composite</td>
+          <td class="num">0.881</td>
+          <td class="num">0.879</td>
+          <td>&plusmn; 0.03 warn / &plusmn; 0.08 fail (delta +0.002)</td>
+          <td class="ok">within</td>
+        </tr>
+        <tr>
+          <td class="key">k_score.&lt;axis&gt;</td>
+          <td class="num">0.872 (A)<br>0.928 (R)<br>0.901 (F)</td>
+          <td class="num">0.871 (A)<br>0.940 (R)<br>0.898 (F)</td>
+          <td>&plusmn; 0.05 warn / &plusmn; 0.10 fail (per named axis; R deltas -0.012, A +0.001, F +0.003)</td>
+          <td class="ok">within</td>
+        </tr>
+        <tr>
+          <td class="key">external_holdout_hash</td>
+          <td class="num">presidio-mimic-2025-q3-v1</td>
+          <td class="num">presidio-mimic-2025-q3-v1</td>
+          <td>exact match required (any byte change is breach)</td>
+          <td class="ok">within</td>
+        </tr>
+        <tr>
+          <td class="key">tenant_shadow_corpus_hash</td>
+          <td class="num">7a1f2e3d4c5b6a78&hellip;</td>
+          <td class="num">7a1f2e3d4c5b6a78&hellip;</td>
+          <td>exact match required (residency-bounded; tenant-owned)</td>
+          <td class="ok">within</td>
+        </tr>
+        <tr>
+          <td class="key">artifact_hash</td>
+          <td class="num">sha256:abc&hellip;def</td>
+          <td class="num">sha256:abc&hellip;def</td>
+          <td>informational only (does not gate ship)</td>
+          <td class="ok">within</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top:18px;font-size:13px;color:var(--ink-faint)">Default tolerances live in <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">DEFAULT_TOLERANCES</code> in <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">src/drift-supersession.js</code>. The recipe can override per axis at compile time; the active tolerance set is persisted into the drift report so a verifier replaying the comparison uses the same thresholds. The page is recipe-class neutral: the same six axes apply whether the artifact is class <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">rule</code>, <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">synthesized_rule</code>, <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">compiled_rule</code>, or <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">distilled_model</code>.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>If you need to retire this artifact, pick one reason.</h2>
+    <p class="lede">A successor's manifest carries <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">supersession_provenance.reason</code> declaring exactly one of the six values below. The enum is frozen in the backend (<code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">SUPERSESSION_REASONS</code> in <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">src/drift-supersession.js</code>) so a verifier can reason about the chain without parsing free text. Builder + verifier both enforce the reason-specific evidence guards listed under each card.</p>
+    <div class="reason-grid">
+      <div class="reason-card">
+        <span class="name">drift_detected</span>
+        <p class="when">M+3 detected breach; predecessor's K-score axes moved past tolerance against a tenant baseline. <b>evidence required</b> drift_signals array OR drift_report_hash (one or both); builder rejects without evidence; verifier rejects at ingest.</p>
+      </div>
+      <div class="reason-card">
+        <span class="name">scheduled_rebuild</span>
+        <p class="when">M+2 cadence triggered routine re-distillation. No drift detected; just the calendar said it was time. <b>evidence required</b> none beyond the cadence config block already on the manifest.</p>
+      </div>
+      <div class="reason-card">
+        <span class="name">security_patch</span>
+        <p class="when">Upstream model or runtime CVE; retire stale weights even if every drift signal sits inside the warn band. <b>evidence required</b> notes recommended (CVE id + advisory URL); authorized_by recommended.</p>
+      </div>
+      <div class="reason-card">
+        <span class="name">recipe_revision</span>
+        <p class="when">spec.json changed shape: new input field, new output schema, new redactor class. Not a pure retrain; the contract surface moved. <b>evidence required</b> notes recommended (link to spec diff); spec.json hash captured separately in seeds/recipe chain.</p>
+      </div>
+      <div class="reason-card">
+        <span class="name">policy_change</span>
+        <p class="when">Legal or compliance policy update: new redactor class added, license terms shifted, regulator request. <b>evidence required</b> authorized_by recommended (compliance-ops identifier); notes recommended (policy reference).</p>
+      </div>
+      <div class="reason-card">
+        <span class="name">tenant_request</span>
+        <p class="when">Explicit tenant or operator command to retire the artifact (wrong recipe shipped, customer requested rebuild). <b>evidence required</b> authorized_by recommended (operator identifier); notes recommended (ticket reference).</p>
+      </div>
+    </div>
+    <p style="margin-top:18px;font-size:13px;color:var(--ink-faint)">Reason-specific guard: <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">reason === 'drift_detected'</code> REQUIRES <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">drift_signals</code> or <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">drift_report_hash</code> per <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12.5px;border:1px solid var(--line)">buildSupersessionBlock</code> in the W167 backend. The builder throws at compile time; the verifier rejects at ingest. The retirement claim is auditable.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The receipt chain this report binds into.</h2>
+    <p class="lede">The drift report is one node of the 14-node receipt chain. Each node hash binds into the next via <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">artifact_hash_input</code>; the last two nodes (<code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">supersession</code> and <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">drift_report</code>) are the W167 lifecycle extensions. Any byte tamper drifts <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13px;border:1px solid var(--line)">artifact_hash</code> and breaks every downstream signature including the Rekor anchor.</p>
+    <div class="receipt-chain">
+      <b>spec</b> &rarr; <b>seeds</b> &rarr; <b>split</b> &rarr; <b>train</b> &rarr; <b>recipes</b> &rarr; <b>evals</b> &rarr; <b>external_holdout</b> &rarr; <b>tenant_shadow</b> &rarr; <b>auditor_attestation</b> &rarr; <span class="new">supersession</span> &rarr; <span class="new">drift_report</span> &rarr; <b>export</b> &rarr; <b>signatures</b> &rarr; <b>rekor</b>
+    </div>
+    <div class="takeaway">
+      <p style="margin:0;font-size:14px;color:var(--ink-mute)">The two new nodes (<b>supersession</b>, <b>drift_report</b>) only emit on opt-in. Every pre-Wave-167 artifact lacks both blocks; the verifier emits informational pass with an upgrade hint instead of failing. No legacy <code style="font-family:var(--mono);background:var(--bg);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:12px;border:1px solid var(--line)">.kolm</code> regresses. When this page shows real values, both checks (<b>#23 Supersession chain</b> and <b>#24 Drift report</b>) are actionable.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What to do next.</h2>
+    <p class="lede">Three paths keyed off the verdict. The example above renders the within-band path; the other two are documented here so operators know what is coming the day this surface goes red.</p>
+    <div class="grid-3">
+      <div class="card">
+        <span class="vt">verdict within</span>
+        <h3>No action required.</h3>
+        <p>The artifact is inside every tolerance band on every axis. Verifier check #24 emits pass. Nothing ships, nothing rebuilds, no successor needed. The next scheduled detection run (per the cron config block) will recompute against the same baseline.</p>
+        <pre class="cmd"><span class="mute"># nothing to run</span>
+$ <b>echo</b> verdict within
+verdict within</pre>
+      </div>
+      <div class="card">
+        <span class="vt warn">verdict drift</span>
+        <h3>Schedule a re-distillation against current traffic.</h3>
+        <p>Movement past the warn band but inside the fail band. The artifact can keep shipping; check #24 emits WARN pass. The honest action is to capture a fresh seed batch and rebuild before the next cadence interval, so the new artifact is anchored to the current distribution rather than racing the fail band.</p>
+        <pre class="cmd">$ <b>kolm distill --reuse-seeds</b> \
+    --baseline acme-jan.kolm \
+    --capture ./captures/may.jsonl \
+    --out acme-may-rebuild.kolm</pre>
+      </div>
+      <div class="card">
+        <span class="vt bad">verdict breach</span>
+        <h3>Compile a successor with supersession bound in.</h3>
+        <p>Fail band crossed on at least one axis. Verifier check #24 gates ship. Cron exits 2 so CI fails loud. The successor's manifest must carry <code>supersession_provenance</code> naming this artifact's hash, the reason <code>drift_detected</code>, and the breached signals inlined (or the drift report hash as evidence).</p>
+        <pre class="cmd">$ <b>kolm compile --supersession-of</b>=\
+    sha256:abc&hellip;def \
+    --supersession-reason drift_detected \
+    --supersession-drift-report \
+    drift-2026-05-17.json</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where this fits in the wider stack.</h2>
+    <p class="lede">Four cross-links: the generic lifecycle explainer, the in-browser verifier (where this page becomes interactive on a real artifact), the spec section that normatively defines both blocks, and the K-score reference that names the axes the comparator measures against.</p>
+    <div class="grid-2">
+      <a class="card" href="/drift" style="text-decoration:none;color:inherit">
+        <span class="vt">lifecycle &middot; generic</span>
+        <h3>/drift &middot; the four-tier lifecycle ladder</h3>
+        <p>Wave 171 surface that explains stale notification, re-distillation cadence, drift detection cron, and supersession chain in one view. Read this first if you want the whole shape before drilling into a specific artifact's report.</p>
+      </a>
+      <a class="card" href="/verify-prod" style="text-decoration:none;color:inherit">
+        <span class="vt">verify &middot; in browser</span>
+        <h3>/verify-prod &middot; drop a real .kolm in</h3>
+        <p>Wave 174 added a live drift indicator card to the upload page. Drop your <code>.kolm</code>; the 24-check verifier runs entirely client-side and lights up checks #23 and #24 with the values that would render on this page for your artifact's actual hash.</p>
+      </a>
+      <a class="card" href="/spec/rs-1#section-7-15" style="text-decoration:none;color:inherit">
+        <span class="vt">spec &middot; canonical</span>
+        <h3>RS-1 v2.1 &sect;7.15 &middot; the normative section</h3>
+        <p>Full builder/validator surface for both blocks, verifier check semantics for #23 and #24, the four pass/fail/WARN scenarios (within / drift / breach / forged), the backward-compatibility branch, the receipt-chain implication.</p>
+      </a>
+      <a class="card" href="/k-score" style="text-decoration:none;color:inherit">
+        <span class="vt">k-score &middot; reference</span>
+        <h3>/k-score &middot; the axes the comparator reads</h3>
+        <p>Every K-score axis the per-axis tolerance band classifies. <code>k_score.composite</code> is the weighted sum; the per-axis bands apply to each named letter (R, F, E, Z, T, A, S, L, C, V) present on both snapshots.</p>
+      </a>
+    </div>
+    <div class="actions" style="margin-top:32px">
+      <a class="btn primary" href="/verify-prod">Verify a real .kolm &rarr;</a>
+      <a class="btn" href="/drift">Generic lifecycle page &rarr;</a>
+      <a class="btn" href="/spec/rs-1#section-7-15">RS-1 &sect;7.15 &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/drift">Lifecycle &middot; drift</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>Per-artifact drift detail. Template at /artifacts/example/drift; production URLs use the artifact's content hash.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

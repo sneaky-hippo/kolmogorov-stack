@@ -117,6 +117,8 @@
 <b>What changes.</b> Predibase requires you to keep your dataset in their managed storage, run training on their GPUs, and serve through their endpoints. <code>.kolm</code> moves all three onto your machine. Your dataset stays where you put it; compile runs locally or via a rentable cloud GPU through <code>kolm</code> with the artifact returned to you; serving is a 30 KB zipped artifact you run anywhere.
 </div>
 
+<div style="margin:24px 0;padding:16px 18px;border:1px solid rgba(245,158,11,0.32);border-left:3px solid #f59e0b;border-radius:8px;background:rgba(245,158,11,0.06);font-size:14px;line-height:1.55;color:var(--ink-mute)"><b style="color:var(--ink)">v0.2 provenance (wave 144).</b> The v0.2 <code>kolm compile</code> path produces a <i>recipe-class</i> artifact: deterministic compiled code, an HMAC-signed manifest + receipt, an optional <code>kolm-moe-1</code> composition block across N expert recipes, an optional bundled <code>kolm-tokenizer-1</code> byte-level BPE, a <code>KOLMIDX</code> deterministic lookup container, and the K-score gate. Loading your Predibase LoRA adapter weights into the runtime as a trained student bundle (the <code>recipe + base ref</code> row in the table below) lands with the roadmap-tier runtime bridge. Today this guide gives you the data-portability half (export, normalize, compile a recipe over your examples); the weight-bridge half lights up once the roadmap tier ships.</div>
+
 <h2 style="margin-top:48px">Mental model</h2>
 <table>
   <thead>
@@ -296,8 +298,8 @@ kolm publish my-migration.kolm --private</pre>
 <h2 style="margin-top:48px">Things to know</h2>
 <ul>
   <li><b>Base model availability:</b> kolm pins the exact HF model. If Predibase used a custom or proprietary base, you need to either re-host it or pick a comparable open base in your spec.</li>
-  <li><b>Lorax merge logic:</b> Predibase Lorax serves multiple adapters against one base. kolm packages base+adapter per artifact. If you ran ten Lorax adapters, you ship ten .kolm files; each is independent.</li>
-  <li><b>Quantization:</b> kolm quantizes to int8 by default. Set <code>"quantization": "int4"</code> in the spec for smaller artifacts at slight K-cost.</li>
+  <li><b>Lorax merge logic:</b> Predibase Lorax serves multiple adapters against one base. kolm's v0.2 answer is the in-artifact <code>kolm-moe-1</code> composition block (one .kolm routes across N expert recipes); the base+adapter weight bundle is the roadmap tier. If you ran ten Lorax adapters, you can either ship ten independent .kolm files today or one .kolm with a ten-expert MoE block.</li>
+  <li><b>Quantization:</b> v0.2 ships recipe-class compiled code, not quantized weights. The <code>"quantization": "int4" | "int8"</code> spec field is the roadmap-tier knob behind the runtime bridge; today it is accepted and recorded in the manifest as the requested target tier.</li>
   <li><b>Ludwig features kolm does not have:</b> nested feature configs, encoder ensembles, audio/image features. If you used these, the migration is a re-architecting, not a port.</li>
 </ul>
 

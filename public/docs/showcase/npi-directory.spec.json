@@ -1,0 +1,61 @@
+{
+  "job_id": "job_npi_directory_lookup_v1",
+  "task": "Validate + normalize a provider NPI lookup. Input: { npi, resolver?: 'nppes_v2'|'tenant_master' }. Output: { npi, valid_checksum: boolean, entity_type: 'individual'|'organization', resolver_used, record?: { name, addresses[], taxonomy_codes[], identifiers[] } }. Checksum is Luhn-mod-10 with a constant prefix 80840 prepended (per CMS NPI specification). NPPES schema fields normalized to a single shape regardless of resolver.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_npi_directory_v1",
+      "name": "npi-directory",
+      "class": "rule",
+      "source": "function generate(input,lib){var i=input||{},r=(lib&&lib.pack&&lib.pack.rules)||{};var P=String(r.npi_prefix_for_luhn||'80840');var E=r.entity_type_codes||{'1':'individual','2':'organization'};var npi=String(i.npi||'').replace(/\\D/g,'');var resolver=String(i.resolver||'nppes_v2');var ok=false;if(/^\\d{10}$/.test(npi)){var s=P+npi,sum=0,L=s.length;for(var k=0;k<L;k++){var d=s.charCodeAt(L-1-k)-48;if(k%2===1){d=d*2;if(d>9)d=d-9;}sum=sum+d;}ok=(sum%10===0);}var et=null;if(i.entity_type_code!=null){var c=String(i.entity_type_code);if(E[c])et=E[c];}else if(ok){et=(npi.charAt(0)==='1'||npi.charAt(0)==='2'||npi.charAt(0)==='3')?'individual':'organization';}var out={npi:npi,valid_checksum:ok,entity_type:et,resolver_used:resolver};if(i.record&&typeof i.record==='object'){out.record={name:i.record.name||null,addresses:Array.isArray(i.record.addresses)?i.record.addresses:[],taxonomy_codes:Array.isArray(i.record.taxonomy_codes)?i.record.taxonomy_codes:[],identifiers:Array.isArray(i.record.identifiers)?i.record.identifiers:[]};}return out;}",
+      "tags": ["health-insurance", "npi", "provider-directory", "nppes", "rule"],
+      "schema": {
+        "input": { "npi": "string", "resolver": "string", "entity_type_code": "string", "record": "object" },
+        "output": { "npi": "string", "valid_checksum": "boolean", "entity_type": "string", "resolver_used": "string", "record": "object" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "NPI Luhn-mod-10 checksum with the CMS-pinned 80840 prefix, the NPPES v2 entity-type code map, the NPPES public API endpoint, and the NUCC taxonomy root for taxonomy-code normalization.",
+    "rules": {
+      "entity_type_codes": {
+        "1": "individual",
+        "2": "organization"
+      },
+      "npi_prefix_for_luhn": "80840",
+      "taxonomy_root_url": "https://nucc.org/provider-taxonomy",
+      "nppes_v2_endpoint": "https://npiregistry.cms.hhs.gov/api/?version=2.1",
+      "checksum_algorithm": "Luhn-mod-10",
+      "npi_length_digits": 10,
+      "resolvers": ["nppes_v2", "tenant_master"]
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "valid_npi_with_resolver",
+        "input": { "npi": "1234567893", "resolver": "nppes_v2", "entity_type_code": "1" },
+        "expected": { "npi": "1234567893", "valid_checksum": true, "entity_type": "individual", "resolver_used": "nppes_v2" }
+      },
+      {
+        "id": "invalid_npi_off_by_one_check_digit",
+        "input": { "npi": "1234567892", "resolver": "nppes_v2", "entity_type_code": "1" },
+        "expected": { "npi": "1234567892", "valid_checksum": false }
+      },
+      {
+        "id": "organization_entity_type_code_2",
+        "input": { "npi": "1234567893", "resolver": "tenant_master", "entity_type_code": "2" },
+        "expected": { "valid_checksum": true, "entity_type": "organization", "resolver_used": "tenant_master" }
+      },
+      {
+        "id": "malformed_npi_too_short",
+        "input": { "npi": "12345", "resolver": "nppes_v2" },
+        "expected": { "valid_checksum": false }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

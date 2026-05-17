@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm vs DIY LoRA: LLaMA-Factory + Unsloth + TRL with shrink-wrap</title>
+<meta name="description" content="The DIY LoRA stack (LLaMA-Factory, Unsloth, TRL, PEFT, Axolotl) is what kolm builds on. kolm wraps the DIY stack with the missing pieces: receipt chain, eval gate, redactor, signed artifact.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="kolm vs DIY LoRA stack">
+<meta property="og:description" content="kolm wraps LLaMA-Factory + Unsloth + TRL with the missing pieces. You can drop into raw DIY at any time.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://kolm.ai/how-vs-diy">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px}
+  .lede{font-size:17.5px;line-height:1.55;color:var(--ink-mute);max-width:720px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:56px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:26px;font-weight:500;letter-spacing:-0.018em;margin:0 0 14px}
+  .section h3{font-size:18px;font-weight:500;margin:24px 0 8px;color:var(--ink)}
+  .section p{color:var(--ink-mute);margin:0 0 14px;max-width:720px}
+  .section ul{color:var(--ink-mute);padding-left:18px;margin:0 0 14px}
+  .section ul li{margin-bottom:8px}
+  .section code{font-family:var(--mono);font-size:13px;background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  pre.cli{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:18px 20px;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink);overflow-x:auto;margin:14px 0}
+  pre.cli b{color:var(--accent);font-weight:500}
+  pre.cli .cm{color:var(--ink-faint)}
+  .stack-diagram{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin:18px 0;font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--ink-mute)}
+  .stack-diagram b{color:var(--accent);font-weight:500}
+  .stack-diagram .layer{margin:4px 0}
+  .stack-diagram .layer-kolm{color:var(--ink)}
+  table.matrix{width:100%;border-collapse:collapse;margin:20px 0;font-size:13.5px}
+  table.matrix th{font-family:var(--mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400}
+  table.matrix td{padding:14px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5;color:var(--ink-mute)}
+  table.matrix td.axis{font-weight:500;color:var(--ink);min-width:160px}
+  table.matrix td.kolm{color:var(--ink);background:var(--accent-soft)}
+  table.matrix td.kolm b{color:var(--accent);font-weight:500;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-family:var(--mono);font-size:12.5px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:36px 0;color:var(--ink-faint);font-size:13px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ft-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/compare">compare</a><a href="/spec/rs-1">RS-1</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/compare">compare</a> &nbsp;/&nbsp; how kolm relates to the DIY LoRA stack</p>
+    <h1>kolm is shrink-wrap around the DIY stack you already use.</h1>
+    <p class="lede">LLaMA-Factory, Unsloth, TRL, PEFT, Axolotl &mdash; the open-source DIY LoRA stack is what kolm builds on. The DIY stack does fine-tuning brilliantly. What it doesn't do: receipt chain, eval gate, signed artifact format, compiled rule-class fallback for non-ML tasks, cross-vendor teacher selection as a first-class workflow, PHI redactor for the teacher call. kolm wraps the stack you already know with the missing production pieces. You can drop into raw DIY at any time.</p>
+    <p class="stamp">Wave 169 &middot; reviewed 2026-05-17 &middot; shrink-wrap, not replacement</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What the DIY stack already does.</h2>
+    <ul>
+      <li><b>LLaMA-Factory / Axolotl</b> &mdash; declarative YAML configs for SFT, DPO, ORPO, GRPO, and a long tail of fine-tuning methods. Supports most open-weight bases.</li>
+      <li><b>Unsloth</b> &mdash; 2-5&times; faster training and lower VRAM via custom Triton kernels and 4-bit quantization. The fastest path from "I have a GPU" to "I have a LoRA."</li>
+      <li><b>TRL (HuggingFace)</b> &mdash; trainer classes for SFT, DPO, RLHF, GRPO. The reference implementation other tools build on.</li>
+      <li><b>PEFT</b> &mdash; the underlying parameter-efficient-fine-tuning library. LoRA, QLoRA, IA3, prefix tuning.</li>
+      <li><b>Cost</b> &mdash; in 2026, a LoRA job on a 7B model runs under $2 on cloud GPUs (per public comparison docs).</li>
+    </ul>
+    <p>The DIY stack is the foundation, not the competitor. kolm uses it under the hood for the Wave 157+ ML pipeline. Where it stops being enough: when you need to ship the artifact through a procurement review, a HIPAA audit, an air-gapped deploy, or a third-party verifier.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What kolm adds on top.</h2>
+    <div class="stack-diagram">
+      <div class="layer layer-kolm"><b>kolm</b> &middot; receipt chain + eval gate + Ed25519 + Sigstore + PHI redactor + cross-vendor manifest + drift cron</div>
+      <div class="layer">&nbsp;&nbsp;&nbsp;&nbsp;&darr;</div>
+      <div class="layer">LLaMA-Factory / Axolotl (YAML configs)</div>
+      <div class="layer">&nbsp;&nbsp;&nbsp;&nbsp;&darr;</div>
+      <div class="layer">Unsloth (fast training kernels) &middot; TRL (trainer classes) &middot; PEFT (LoRA primitives)</div>
+      <div class="layer">&nbsp;&nbsp;&nbsp;&nbsp;&darr;</div>
+      <div class="layer">PyTorch &middot; HuggingFace &middot; bitsandbytes &middot; transformers</div>
+    </div>
+    <table class="matrix">
+      <thead><tr><th>Capability</th><th>DIY stack alone</th><th>kolm wrap</th></tr></thead>
+      <tbody>
+        <tr><td class="axis">Fine-tune from your data</td><td>YES &mdash; you wire it yourself</td><td class="kolm"><b>same</b> &middot; kolm calls the DIY stack underneath; <code>--student-base</code> across 13 SKUs</td></tr>
+        <tr><td class="axis">Capture-from-production traffic</td><td>NO &mdash; bring your own dataset</td><td class="kolm"><b>YES</b> &middot; <code>kolm proxy</code> + seeds.jsonl format (W144 Q+2)</td></tr>
+        <tr><td class="axis">PHI/PII redactor</td><td>NO &mdash; bring your own redactor</td><td class="kolm"><b>Wave 157</b> &middot; 18 HIPAA Safe Harbor + 3 kolm extensions; verifier check #14</td></tr>
+        <tr><td class="axis">Cross-vendor teacher manifest</td><td>partial &mdash; you log it yourself</td><td class="kolm"><b>Wave 158</b> &middot; <code>--teacher</code> + <code>--student-base</code> emit manifest fields; check #15 enforces</td></tr>
+        <tr><td class="axis">Frozen-eval-gated ship</td><td>NO &mdash; you write the eval script</td><td class="kolm"><b>K-score V2</b> &middot; A/T/R/F/E/Z axes; <code>--eval-gate=0.85</code> blocks compile</td></tr>
+        <tr><td class="axis">Receipt chain</td><td>NO &mdash; you build your own provenance</td><td class="kolm"><b>14-step chain</b> &middot; spec&rarr;seeds&rarr;split&rarr;train&rarr;evals&rarr;external_holdout&rarr;tenant_shadow&rarr;auditor&rarr;supersession&rarr;drift&rarr;sigs&rarr;rekor</td></tr>
+        <tr><td class="axis">Cryptographically signed</td><td>NO &mdash; you sign yourself or skip</td><td class="kolm"><b>Wave 161+162</b> &middot; Ed25519 + Sigstore/Rekor transparency log</td></tr>
+        <tr><td class="axis">Compiled native binary</td><td>NO &mdash; runtime requires Python + PyTorch</td><td class="kolm"><b>Wave 145-163</b> &middot; rule-class recipes compile to Rust/C/WASM; model-class to GGUF/ONNX</td></tr>
+        <tr><td class="axis">Drift detection</td><td>NO</td><td class="kolm"><b>Wave 167</b> &middot; <code>kolm drift detect</code> snapshot/report/cron; supersession chain</td></tr>
+        <tr><td class="axis">Air-gap / offline deploy</td><td>partial &mdash; if you build the runtime yourself; training stack still needs network for base + dataset pulls</td><td class="kolm"><b>first-class</b> &middot; verifier works offline; deterministic-build verifier rebuilds from source</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>kolm with a drop-out to raw DIY at any time.</h2>
+    <p>The contract: kolm never hides the underlying stack. If you need to drop down to raw LLaMA-Factory or Unsloth, the .kolm manifest tells you exactly which trainer was invoked and what config. You can re-run the same train outside kolm and get bit-identical weights (deterministic build flags are part of the spec).</p>
+    <pre class="cli"><span class="cm"># Default kolm path &mdash; everything wired</span>
+$ <b>kolm distill</b> phone-normalizer \
+    --teacher=anthropic:claude-opus-4-7 \
+    --student-base=qwen2.5-0.5b \
+    --backend=unsloth \
+    --redact=phi --eval-gate=0.85
+
+<span class="cm"># Inspect the actual call kolm made to the DIY stack</span>
+$ <b>kolm inspect</b> phone-normalizer.kolm --field=training_config
+  backend: unsloth
+  base: Qwen/Qwen2.5-0.5B
+  trainer: SFTTrainer
+  lora_rank: 16, lora_alpha: 32
+  ... full config
+
+<span class="cm"># Drop out: re-run the training outside kolm using the dumped config</span>
+$ <b>kolm extract</b> phone-normalizer.kolm --target=training-config --out=./train.yaml
+$ <b>llamafactory-cli train</b> --config ./train.yaml
+  <span class="cm"># &mdash; same trainer, same flags, bit-identical weights</span></pre>
+    <p>This is by design. The .kolm spec is Apache-2.0; the receipt chain documents which DIY tools were invoked. If kolm goes away, the DIY stack still runs your config.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>When raw DIY is the right answer.</h2>
+    <p>You're a research team iterating on training methods, your buyer doesn't ask for receipts, you have a GPU, and the shortest path is the rawest one. The DIY stack is free, mature, and well-documented. Don't pay kolm tax for a workflow whose value is the training experiment itself.</p>
+    <h2 style="margin-top:32px">When kolm-wrapping the DIY stack is the right answer.</h2>
+    <p>You need the production-readiness pieces the DIY stack doesn't ship: receipt chain for procurement, PHI redactor for HIPAA, signed artifact for auditor, cross-vendor manifest for license compliance, drift cron for lifecycle. kolm gives you those pieces without forcing you to abandon LLaMA-Factory or Unsloth &mdash; it wraps them.</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/training">/training tour &rarr;</a>
+      <a class="btn" href="/compare">Back to differentiation matrix &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="ft-row">
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span><a href="/compare">/compare</a> &middot; <a href="/how-vs-lorax">vs LoRAX</a> &middot; <a href="/how-vs-predibase">vs Predibase</a> &middot; <a href="/how-vs-openpipe">vs OpenPipe</a> &middot; <a href="/how-vs-hyperscaler">vs hyperscaler</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,144 @@
+{
+  "job_id": "job_icd10_cpt_crosswalk_v1",
+  "task": "Resolve ICD-10-CM <-> CPT relationships. Input modes: { mode: 'icd_to_cpt', icd10 } or { mode: 'cpt_to_icd', cpt }. Output: { mode, query, matches: [{ code, description, strength: 'primary'|'secondary'|'optional', basis: 'cms_lcd'|'ama_cpt_guidelines'|'specialty_society' }] }.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_icd10_cpt_crosswalk_v1",
+      "name": "icd10-cpt-crosswalk",
+      "class": "rule",
+      "source": "function generate(input,lib){var i=input||{},r=(lib&&lib.pack&&lib.pack.rules)||{};var I=r.icd_to_cpt_seed||{},C=r.cpt_to_icd_seed||{};var m=String(i.mode||'');var q='',M=[];if(m==='icd_to_cpt'){q=String(i.icd10||'');var arr=I[q]||[];for(var a=0;a<arr.length;a++){var e=arr[a]||{};M.push({code:String(e.cpt||''),description:String(e.description||''),strength:String(e.strength||'optional'),basis:String(e.basis||'ama_cpt_guidelines')});}}else if(m==='cpt_to_icd'){q=String(i.cpt||'');var brr=C[q]||[];for(var b=0;b<brr.length;b++){var f=brr[b]||{};M.push({code:String(f.icd10||''),description:String(f.description||''),strength:String(f.strength||'optional'),basis:String(f.basis||'ama_cpt_guidelines')});}}return {mode:m,query:q,matches:M};}",
+      "tags": ["health-insurance", "icd-10", "cpt", "crosswalk", "lookup", "rule"],
+      "schema": {
+        "input": { "mode": "string", "icd10": "string", "cpt": "string" },
+        "output": { "mode": "string", "query": "string", "matches": "array" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "Curated ICD-10-CM <-> CPT crosswalk seed (top diagnoses + procedures) drawn from AMA CPT 2025 + ICD-10-CM FY2025 + CMS NCD/LCD. Tenants extend with plan-specific overrides via params.pack_overrides.",
+    "rules": {
+      "crosswalk_version": "AMA CPT 2025 + ICD-10-CM 2025 (FY2025)",
+      "match_strengths": ["primary", "secondary", "optional"],
+      "match_bases": ["cms_lcd", "ama_cpt_guidelines", "specialty_society"],
+      "icd_to_cpt_seed": {
+        "I10": [
+          { "cpt": "99213", "description": "Office visit, established, low complexity", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "99214", "description": "Office visit, established, moderate complexity", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "93000", "description": "Electrocardiogram, complete", "strength": "secondary", "basis": "ama_cpt_guidelines" }
+        ],
+        "E11.9": [
+          { "cpt": "99213", "description": "Office visit, established, low complexity", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "99214", "description": "Office visit, established, moderate complexity", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "83036", "description": "Hemoglobin A1c", "strength": "primary", "basis": "specialty_society" }
+        ],
+        "J45.909": [
+          { "cpt": "99213", "description": "Office visit, established, low complexity", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "99214", "description": "Office visit, established, moderate complexity", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "94010", "description": "Spirometry", "strength": "secondary", "basis": "specialty_society" },
+          { "cpt": "94060", "description": "Bronchodilation responsiveness, spirometry", "strength": "optional", "basis": "specialty_society" }
+        ],
+        "Z00.00": [
+          { "cpt": "99385", "description": "Initial preventive visit, established, age 18-39", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "99386", "description": "Initial preventive visit, established, age 40-64", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "99395", "description": "Periodic preventive visit, established, age 18-39", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "99396", "description": "Periodic preventive visit, established, age 40-64", "strength": "primary", "basis": "ama_cpt_guidelines" }
+        ],
+        "E78.5": [
+          { "cpt": "80061", "description": "Lipid panel", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "99213", "description": "Office visit, established, low complexity", "strength": "primary", "basis": "ama_cpt_guidelines" }
+        ],
+        "M54.5": [
+          { "cpt": "99213", "description": "Office visit, established, low complexity", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "97110", "description": "Therapeutic exercises, each 15 minutes", "strength": "secondary", "basis": "specialty_society" }
+        ],
+        "F32.9": [
+          { "cpt": "99213", "description": "Office visit, established, low complexity", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "99214", "description": "Office visit, established, moderate complexity", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "90834", "description": "Psychotherapy, 45 minutes", "strength": "primary", "basis": "specialty_society" }
+        ],
+        "K21.9": [
+          { "cpt": "99213", "description": "Office visit, established, low complexity", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "43235", "description": "Esophagogastroduodenoscopy, diagnostic", "strength": "optional", "basis": "cms_lcd" }
+        ],
+        "N39.0": [
+          { "cpt": "81003", "description": "Urinalysis, automated, without microscopy", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "87086", "description": "Urine culture, quantitative", "strength": "primary", "basis": "cms_lcd" }
+        ],
+        "R07.9": [
+          { "cpt": "93000", "description": "Electrocardiogram, complete", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "cpt": "71045", "description": "Chest x-ray, single view", "strength": "secondary", "basis": "ama_cpt_guidelines" }
+        ]
+      },
+      "cpt_to_icd_seed": {
+        "99213": [
+          { "icd10": "I10", "description": "Essential (primary) hypertension", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "icd10": "E11.9", "description": "Type 2 diabetes mellitus without complications", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "icd10": "J45.909", "description": "Unspecified asthma, uncomplicated", "strength": "secondary", "basis": "ama_cpt_guidelines" }
+        ],
+        "99214": [
+          { "icd10": "I10", "description": "Essential (primary) hypertension", "strength": "primary", "basis": "ama_cpt_guidelines" },
+          { "icd10": "E11.9", "description": "Type 2 diabetes mellitus without complications", "strength": "primary", "basis": "ama_cpt_guidelines" }
+        ],
+        "93000": [
+          { "icd10": "I10", "description": "Essential (primary) hypertension", "strength": "secondary", "basis": "ama_cpt_guidelines" },
+          { "icd10": "R07.9", "description": "Chest pain, unspecified", "strength": "primary", "basis": "ama_cpt_guidelines" }
+        ],
+        "83036": [
+          { "icd10": "E11.9", "description": "Type 2 diabetes mellitus without complications", "strength": "primary", "basis": "specialty_society" }
+        ],
+        "94010": [
+          { "icd10": "J45.909", "description": "Unspecified asthma, uncomplicated", "strength": "secondary", "basis": "specialty_society" }
+        ],
+        "99385": [
+          { "icd10": "Z00.00", "description": "Encounter for general adult medical exam without abnormal findings", "strength": "primary", "basis": "ama_cpt_guidelines" }
+        ],
+        "99395": [
+          { "icd10": "Z00.00", "description": "Encounter for general adult medical exam without abnormal findings", "strength": "primary", "basis": "ama_cpt_guidelines" }
+        ],
+        "80061": [
+          { "icd10": "E78.5", "description": "Hyperlipidemia, unspecified", "strength": "primary", "basis": "ama_cpt_guidelines" }
+        ],
+        "81003": [
+          { "icd10": "N39.0", "description": "Urinary tract infection, site not specified", "strength": "primary", "basis": "ama_cpt_guidelines" }
+        ],
+        "90834": [
+          { "icd10": "F32.9", "description": "Major depressive disorder, single episode, unspecified", "strength": "primary", "basis": "specialty_society" }
+        ]
+      }
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "icd_to_cpt_hypertension",
+        "input": { "mode": "icd_to_cpt", "icd10": "I10" },
+        "expected": { "mode": "icd_to_cpt", "query": "I10" }
+      },
+      {
+        "id": "icd_to_cpt_preventive_visit",
+        "input": { "mode": "icd_to_cpt", "icd10": "Z00.00" },
+        "expected": { "mode": "icd_to_cpt", "query": "Z00.00" }
+      },
+      {
+        "id": "cpt_to_icd_office_visit_moderate",
+        "input": { "mode": "cpt_to_icd", "cpt": "99214" },
+        "expected": { "mode": "cpt_to_icd", "query": "99214" }
+      },
+      {
+        "id": "cpt_to_icd_ekg",
+        "input": { "mode": "cpt_to_icd", "cpt": "93000" },
+        "expected": { "mode": "cpt_to_icd", "query": "93000" }
+      },
+      {
+        "id": "unknown_code_returns_empty",
+        "input": { "mode": "icd_to_cpt", "icd10": "Q99.99" },
+        "expected": { "mode": "icd_to_cpt", "query": "Q99.99" }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

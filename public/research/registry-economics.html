@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
 <title>Public registry economics: who pays for hosting and verification &middot; kolm research</title>
-<meta name="description" content="The kolm registry is a free public catalog of compiled artifacts. Metadata is mirrored on kolm.ai; bytes live anywhere. How that survives left-pad, who pays the bill, and what the honest limits are.">
+<meta name="description" content="The kolm registry is a free public catalog of compiled artifacts. Metadata is mirrored on kolm.ai; bytes live anywhere. How that survives left-pad, who pays the bill, and what the documented limits are.">
 <meta name="keywords" content="public registry, package economics, left-pad, content identifier, CID, CDN, supply chain">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -32,7 +32,7 @@
     {
       "@type": "TechArticle",
       "headline": "Public registry economics: who pays for hosting and verification",
-      "description": "The public catalog, the cost structure, the verification surface, and the honest limits of discoverability vs availability.",
+      "description": "The public catalog, the cost structure, the verification surface, and the documented limits of discoverability vs availability.",
       "author": { "@type": "Organization", "name": "kolm", "url": "https://kolm.ai" },
       "publisher": { "@type": "Organization", "name": "kolm", "logo": { "@type": "ImageObject", "url": "https://kolm.ai/favicon.svg" } },
       "datePublished": "2026-05-14",
@@ -158,7 +158,7 @@
   <div class="wrap">
     <span class="pill"><span class="dot"></span>Research &middot; Governance &middot; 2026-05-14 &middot; 12 min read</span>
     <h1>Public registry economics: who pays for <span class="tone">hosting</span> and <span class="tone">verification</span>.</h1>
-    <p class="lede">The <a href="/registry">/registry</a> is a free public catalog of compiled artifacts. <b>kolm.ai mirrors the metadata. The bytes live anywhere.</b> How that arrangement survives the left-pad failure mode, who pays the bill, and what the honest limits of a discoverability layer are.</p>
+    <p class="lede">The <a href="/registry">/registry</a> is a free public catalog of compiled artifacts. <b>kolm.ai mirrors the metadata. The bytes live anywhere.</b> How that arrangement survives the left-pad failure mode, who pays the bill, and what the documented limits of a discoverability layer are.</p>
     <div class="meta"><span><b>By</b>&nbsp;kolm</span><span><b>Tag</b>&nbsp;registry &middot; economics &middot; supply chain</span></div>
   </div>
 </section>
@@ -173,7 +173,7 @@
         <li><a href="#cost">Cost structure</a></li>
         <li><a href="#why">Why this split</a></li>
         <li><a href="#verify">Verification without uptime</a></li>
-        <li><a href="#limits">Honest limits</a></li>
+        <li><a href="#limits">Documented limits</a></li>
         <li><a href="#sustain">Sustainability</a></li>
         <li><a href="#prior">Prior art: npm, pip, conda-forge</a></li>
       </ol>
@@ -215,11 +215,11 @@
     <p><b>Failure category three: the long-tail orphan problem.</b> Old packages whose maintainers move on, get bored, or die accumulate in any registry. The maintenance cost compounds: bandwidth, security review, takedown notices. A centralized registry that holds the bytes for every artifact ever published is on the hook for every one of those bills forever. The kolm registry is not. The catalog row persists; the bytes are wherever the publisher put them; if the publisher's storage goes away, the catalog row becomes a dangling reference and is flagged accordingly. The registry's marginal cost per orphan is one small database row, not 3.8 GB of cold storage.</p>
 
     <blockquote>
-      <p>The cheapest registry is the one that stores the smallest thing. Bytes belong on storage. Names and pointers belong in a catalog. The hard work is in keeping them honest about each other.</p>
+      <p>The cheapest registry is the one that stores the smallest thing. Bytes belong on storage. Names and pointers belong in a catalog. The hard work is in keeping them transparent about each other.</p>
     </blockquote>
 
     <h2 id="verify">Verification without uptime.</h2>
-    <p>The honest reason this works is that verification does not require kolm.ai to be reachable at the moment of download. The receipt chain plus the CID plus the optional TEE attestation are self-contained inside the <code>.kolm</code> file. A downloader who already has the bytes can verify them offline.</p>
+    <p>The verifiable reason this works is that verification does not require kolm.ai to be reachable at the moment of download. The receipt chain plus the CID plus the optional TEE attestation are self-contained inside the <code>.kolm</code> file. A downloader who already has the bytes can verify them offline.</p>
 
     <p>Four checks are performed at verify time.</p>
 
@@ -240,8 +240,8 @@
 <span class="arg">[verify]</span>     parent receipt:        ok (v3 &rarr; v4)
 verification: passed</pre>
 
-    <h2 id="limits">Honest limits.</h2>
-    <p>The split between catalog and storage has three honest costs the design does not paper over.</p>
+    <h2 id="limits">Documented limits.</h2>
+    <p>The split between catalog and storage has three verifiable costs the design does not paper over.</p>
 
     <p><b>Limit one: kolm.ai is not a CDN.</b> If a publisher's storage URL is slow or rate-limited, the download is slow or rate-limited. We do not provide a fallback download path for arbitrary public artifacts. Publishers who want fast, reliable downloads pay for fast, reliable storage; the registry record reflects whichever URLs they registered.</p>
 
@@ -271,12 +271,12 @@ verification: passed</pre>
 
     <p>The kolm registry borrows from all three. The catalog-and-bytes split is closer to conda-forge than to npm. The receipt chain is novel to kolm; the CID-based content addressing is a small adaptation of the IPFS pattern. The funding model (paid product subsidizes a free catalog) is closer to GitHub's funding of npm than to PSF's funding of PyPI.</p>
 
-    <p>The honest summary: <b>a public registry is a discoverability layer that lets builders find and verify artifacts; it is not a guarantee of availability</b>. The receipt chain guarantees that a file you hold is the file the catalog described. It does not guarantee that the file will still be reachable next month. That second guarantee belongs to whoever is paying for the storage, and the architecture is meant to make that responsibility legible rather than fictitious.</p>
+    <p>The verifiable summary: <b>a public registry is a discoverability layer that lets builders find and verify artifacts; it is not a guarantee of availability</b>. The receipt chain guarantees that a file you hold is the file the catalog described. It does not guarantee that the file will still be reachable next month. That second guarantee belongs to whoever is paying for the storage, and the architecture is meant to make that responsibility legible rather than fictitious.</p>
 
     <div class="signpost">
-      <a href="/research/capture-loop-honesty">
+      <a href="/research/capture-loop-provenance">
         <span class="lab">read next</span>
-        <span class="v">Capture-loop honesty <span class="arrow">&rarr;</span></span>
+        <span class="v">Capture-loop fidelity <span class="arrow">&rarr;</span></span>
         <p>What kolm chooses not to keep, the bridge-handoff framing, and the four counters on the dashboard.</p>
       </a>
       <a href="/research/eval-set-drift">

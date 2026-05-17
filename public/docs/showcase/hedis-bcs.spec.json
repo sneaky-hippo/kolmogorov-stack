@@ -1,0 +1,84 @@
+{
+  "job_id": "job_hedis_bcs_v1",
+  "task": "Compute HEDIS Breast Cancer Screening (BCS) measure. Women 50-74 (denominator); numerator = at least one mammogram in the 27-month measurement period. Bilateral mastectomy is an exclusion. Output: { measure, numerator, denominator, rate, members[] }.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_hedis_bcs_v1",
+      "name": "hedis-bcs",
+      "class": "synthesized_rule",
+      "synthesized_by": "kolm-distiller",
+      "teacher_vendor": "anthropic",
+      "source": "function generate(input,lib){var b=(input&&input.bundle)||{},es=Array.isArray(b.entry)?b.entry:[],R=(lib.pack&&lib.pack.rules)||{},MC=R.mammogram_cpt||['77067'],MH=R.mammogram_hcpcs||['G0202'],EC=R.bilateral_mastectomy_cpt||[],EI=R.bilateral_mastectomy_icd10||['Z90.13'],AR=R.age_range||{min:50,max:74},MY=(input&&input.measurement_year)||2024,end=new Date(MY+1,2,31).getTime(),start=end-27*30*24*3600*1000,P={},MM={},EX={};function pid(r){return r.subject&&(r.subject.reference||'').split('/').pop()||r.id||'';}for(var i=0;i<es.length;i++){var r=(es[i]&&es[i].resource)||{},t=r.resourceType||'',k=pid(r);if(t==='Patient')P[r.id||k]={bd:r.birthDate||null,gen:r.gender||null};else if(t==='Procedure'){var cd=(r.code&&r.code.coding&&r.code.coding[0]||{}).code||'',dt=r.performedDateTime||'',tm=dt?new Date(dt).getTime():0;if(MC.indexOf(cd)>=0||MH.indexOf(cd)>=0){if(tm>=start&&tm<=end)MM[k]={date:dt,system:MC.indexOf(cd)>=0?'cpt':'hcpcs',code:cd};}if(EC.indexOf(cd)>=0)EX[k]=true;}else if(t==='Condition'){var ic=(r.code&&r.code.coding&&r.code.coding[0]||{}).code||'';if(EI.indexOf(ic)>=0)EX[k]=true;}}var n=0,d=0,M=[];for(var k2 in P){var age=MY-parseInt((P[k2].bd||'1900').slice(0,4),10),gen=(P[k2].gen||'').toLowerCase();if(gen!=='female'||age<AR.min||age>AR.max)continue;if(EX[k2])continue;d++;var q=MM[k2]||null,sc=!!q;if(sc)n++;M.push({member_id_redacted:'<hash>',age:age,qualifying_screening:q,excluded:false,screened:sc});}return{measure:'BCS',spec:'NCQA HEDIS MY 2024+',numerator:n,denominator:d,rate:d?n/d:0,members:M};}",
+      "tags": ["health-insurance", "hedis", "bcs", "breast-cancer-screening", "mammography", "preventive-care", "quality-measure", "ncqa", "synthesized-rule"],
+      "schema": {
+        "input": { "bundle": "object" },
+        "output": { "measure": "string", "numerator": "number", "denominator": "number", "rate": "number", "members": "array" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "HEDIS BCS rule library. mammogram_cpt covers screening (77067) and diagnostic (77065, 77066) mammography CPT codes. mammogram_hcpcs G0202 is HCPCS for digital screening mammography. Bilateral mastectomy exclusions use ICD-10 Z90.13 and CPT 19303-19307.",
+    "rules": {
+      "mammogram_cpt": ["77065", "77066", "77067"],
+      "mammogram_hcpcs": ["G0202"],
+      "bilateral_mastectomy_icd10": ["Z90.13"],
+      "bilateral_mastectomy_cpt": ["19303", "19304", "19305", "19306", "19307"],
+      "age_range": { "min": 50, "max": 74 },
+      "measurement_period_months": 27,
+      "continuous_enrollment_gap_days_max": 45
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "screened_age_62_cpt_77067",
+        "input": {
+          "measurement_year": 2024,
+          "bundle": {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+              { "resource": { "resourceType": "Patient", "id": "p1", "gender": "female", "birthDate": "1962-04-22" } },
+              { "resource": { "resourceType": "Procedure", "subject": { "reference": "Patient/p1" }, "status": "completed", "performedDateTime": "2024-04-08", "code": { "coding": [{ "system": "http://www.ama-assn.org/go/cpt", "code": "77067" }] } } }
+            ]
+          }
+        },
+        "expected": { "measure": "BCS", "numerator": 1, "denominator": 1, "rate": 1.0 }
+      },
+      {
+        "id": "not_screened_age_60",
+        "input": {
+          "measurement_year": 2024,
+          "bundle": {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+              { "resource": { "resourceType": "Patient", "id": "p2", "gender": "female", "birthDate": "1964-01-10" } }
+            ]
+          }
+        },
+        "expected": { "measure": "BCS", "numerator": 0, "denominator": 1, "rate": 0 }
+      },
+      {
+        "id": "screened_age_70_hcpcs_g0202",
+        "input": {
+          "measurement_year": 2024,
+          "bundle": {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+              { "resource": { "resourceType": "Patient", "id": "p3", "gender": "female", "birthDate": "1954-07-15" } },
+              { "resource": { "resourceType": "Procedure", "subject": { "reference": "Patient/p3" }, "status": "completed", "performedDateTime": "2024-03-12", "code": { "coding": [{ "system": "urn:oid:2.16.840.1.113883.6.285", "code": "G0202" }] } } }
+            ]
+          }
+        },
+        "expected": { "measure": "BCS", "numerator": 1, "denominator": 1, "rate": 1.0 }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

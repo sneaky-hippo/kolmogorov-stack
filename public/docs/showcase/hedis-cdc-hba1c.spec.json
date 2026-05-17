@@ -1,0 +1,86 @@
+{
+  "job_id": "job_hedis_cdc_hba1c_v1",
+  "task": "Compute HEDIS Glycemic Status Assessment for Patients with Diabetes (GSD) HbA1c poor-control sub-measure (HbA1c > 9.0% or missing). Members 18-75 with diabetes (denominator); numerator = most recent HbA1c in measurement period > 9.0% OR no HbA1c documented. Output: { measure, numerator, denominator, rate, members[] }. Lower is better (this is an inverted-direction measure).",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_hedis_cdc_hba1c_v1",
+      "name": "hedis-cdc-hba1c",
+      "class": "synthesized_rule",
+      "synthesized_by": "kolm-distiller",
+      "teacher_vendor": "anthropic",
+      "source": "function generate(input,lib){var b=(input&&input.bundle)||{},es=Array.isArray(b.entry)?b.entry:[],R=(lib.pack&&lib.pack.rules)||{},DM=R.diabetes_icd10||['E11.9'],HL=R.hba1c_loinc||['4548-4'],TH=R.poor_control_threshold_pct||9.0,AR=R.age_range||{min:18,max:75},MY=(input&&input.measurement_year)||2024,P={},C={},O={};function pid(r){return r.subject&&(r.subject.reference||'').split('/').pop()||r.id||'';}for(var i=0;i<es.length;i++){var r=(es[i]&&es[i].resource)||{},t=r.resourceType||'',k=pid(r);if(t==='Patient')P[r.id||k]={bd:r.birthDate||null};else if(t==='Condition'){var cd=(r.code&&r.code.coding&&r.code.coding[0]||{}).code||'';if(DM.indexOf(cd)>=0)(C[k]=C[k]||[]).push(cd);}else if(t==='Observation'){var oc=(r.code&&r.code.coding&&r.code.coding[0]||{}).code||'';if(HL.indexOf(oc)>=0){var v=r.valueQuantity&&r.valueQuantity.value;(O[k]=O[k]||[]).push({date:r.effectiveDateTime||'',value_pct:v,loinc:oc});}}}var n=0,d=0,M=[];for(var k2 in P){var age=MY-parseInt((P[k2].bd||'1900').slice(0,4),10),dx=C[k2]||[];if(dx.length===0||age<AR.min||age>AR.max)continue;d++;var L=(O[k2]||[]).slice().sort(function(a,b){return(b.date||'').localeCompare(a.date||'');})[0]||null,poor=!L||L.value_pct==null||L.value_pct>TH,why=!L||L.value_pct==null?'hba1c_missing':(L.value_pct>TH?'hba1c_gt_9_pct':'hba1c_in_control');if(poor)n++;M.push({member_id_redacted:'<hash>',age:age,diabetes_codes:dx,most_recent_hba1c:L,in_poor_control_numerator:poor,reason:why});}return{measure:'GSD_HBA1C_POOR_CONTROL',spec:'NCQA HEDIS MY 2024+',direction:'inverted',numerator:n,denominator:d,rate:d?n/d:0,members:M};}",
+      "tags": ["health-insurance", "hedis", "cdc-hba1c", "gsd", "diabetes", "hba1c", "quality-measure", "ncqa", "synthesized-rule"],
+      "schema": {
+        "input": { "bundle": "object" },
+        "output": { "measure": "string", "direction": "string", "numerator": "number", "denominator": "number", "rate": "number", "members": "array" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "HEDIS GSD HbA1c poor-control rule library. diabetes_icd10 covers the ICD-10-CM Type 1 (E10.x) and Type 2 (E11.x) diabetes families. hba1c_loinc gives the real LOINC codes for HbA1c. poor_control_threshold_pct pins the NCQA MY 2024+ cut point at 9.0%.",
+    "rules": {
+      "diabetes_icd10": ["E10.10","E10.11","E10.21","E10.22","E10.29","E10.311","E10.319","E10.321","E10.329","E10.331","E10.339","E10.341","E10.349","E10.351","E10.359","E10.36","E10.39","E10.40","E10.41","E10.42","E10.43","E10.44","E10.49","E10.51","E10.52","E10.59","E10.610","E10.618","E10.620","E10.621","E10.622","E10.628","E10.630","E10.638","E10.641","E10.649","E10.65","E10.69","E10.8","E10.9","E11.00","E11.01","E11.10","E11.11","E11.21","E11.22","E11.29","E11.3211","E11.3411","E11.36","E11.40","E11.41","E11.42","E11.43","E11.44","E11.49","E11.51","E11.52","E11.59","E11.610","E11.618","E11.620","E11.621","E11.622","E11.628","E11.630","E11.638","E11.641","E11.649","E11.65","E11.69","E11.8","E11.9"],
+      "hba1c_loinc": ["4548-4", "17856-6", "59261-8", "62388-4"],
+      "poor_control_threshold_pct": 9.0,
+      "age_range": { "min": 18, "max": 75 },
+      "continuous_enrollment_gap_days_max": 45,
+      "direction": "inverted"
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "poor_control_hba1c_9_4",
+        "input": {
+          "measurement_year": 2024,
+          "bundle": {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+              { "resource": { "resourceType": "Patient", "id": "p1", "birthDate": "1968-04-22" } },
+              { "resource": { "resourceType": "Condition", "subject": { "reference": "Patient/p1" }, "code": { "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E11.65" }] } } },
+              { "resource": { "resourceType": "Observation", "subject": { "reference": "Patient/p1" }, "effectiveDateTime": "2024-09-15", "code": { "coding": [{ "system": "http://loinc.org", "code": "4548-4" }] }, "valueQuantity": { "value": 9.4, "unit": "%" } } }
+            ]
+          }
+        },
+        "expected": { "measure": "GSD_HBA1C_POOR_CONTROL", "direction": "inverted", "numerator": 1, "denominator": 1, "rate": 1.0 }
+      },
+      {
+        "id": "in_control_hba1c_7_2",
+        "input": {
+          "measurement_year": 2024,
+          "bundle": {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+              { "resource": { "resourceType": "Patient", "id": "p2", "birthDate": "1974-01-10" } },
+              { "resource": { "resourceType": "Condition", "subject": { "reference": "Patient/p2" }, "code": { "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E11.9" }] } } },
+              { "resource": { "resourceType": "Observation", "subject": { "reference": "Patient/p2" }, "effectiveDateTime": "2024-10-01", "code": { "coding": [{ "system": "http://loinc.org", "code": "4548-4" }] }, "valueQuantity": { "value": 7.2, "unit": "%" } } }
+            ]
+          }
+        },
+        "expected": { "measure": "GSD_HBA1C_POOR_CONTROL", "direction": "inverted", "numerator": 0, "denominator": 1, "rate": 0 }
+      },
+      {
+        "id": "missing_hba1c_counts_as_poor_control",
+        "input": {
+          "measurement_year": 2024,
+          "bundle": {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+              { "resource": { "resourceType": "Patient", "id": "p3", "birthDate": "1970-03-12" } },
+              { "resource": { "resourceType": "Condition", "subject": { "reference": "Patient/p3" }, "code": { "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E11.9" }] } } }
+            ]
+          }
+        },
+        "expected": { "measure": "GSD_HBA1C_POOR_CONTROL", "direction": "inverted", "numerator": 1, "denominator": 1, "rate": 1.0 }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

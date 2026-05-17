@@ -270,7 +270,7 @@
       <li>You need a signed receipt, a K-score, or a portable artifact that runs across devices.</li>
     </ul>
     <p>The cost of distillation is the teacher API bill at compile time, plus a few hours of GPU for LoRA training. <b>$200 - $5,000 per Specialist</b> depending on dataset size and base model. After that, marginal cost is whatever you pay for the GPU sliver that serves the artifact.</p>
-    <p>The honest failure mode: distillation can&rsquo;t conjure capability the student doesn&rsquo;t have. If the task is open-domain reasoning, distilling a 3B from a frontier model gets you a 3B that knows your tasks, not a 3B that reasons like Opus. Pick distillation for the deterministic 80%; keep frontier for the open 20%.</p>
+    <p>The verifiable failure mode: distillation can&rsquo;t conjure capability the student doesn&rsquo;t have. If the task is open-domain reasoning, distilling a 3B from a frontier model gets you a 3B that knows your tasks, not a 3B that reasons like Opus. Pick distillation for the deterministic 80%; keep frontier for the open 20%.</p>
 
     <blockquote>
       <p>The smaller-model-with-LoRA can match the frontier on your tasks. It cannot match the frontier on tasks you didn&rsquo;t teach it. That&rsquo;s a feature, not a bug.</p>
@@ -280,7 +280,7 @@
     <p>None of the three techniques are pure in production. The combinations win.</p>
     <ul>
       <li><b>RAG + fine-tune.</b> Fine-tune the base to follow your output schema, RAG over your knowledge base for the answer content. Common for support copilots.</li>
-      <li><b>Distillation + Recall (RAG-flavored).</b> The kolm default. The artifact ships with a sqlite-vec index of the user&rsquo;s corpus and a LoRA-fit base. Inference grounds in the index <i>and</i> the model behaves like the teacher.</li>
+      <li><b>Recipe + Recall + MoE (the kolm v0.2 shape).</b> The artifact ships with the recipe-class compiled code, a <code>KOLMIDX</code> deterministic lookup container, a bundled byte-level BPE tokenizer, and (when defined) a <code>kolm-moe-1</code> router across N expert recipes. A full <code>sqlite-vec</code> embedding index and a LoRA-fit base are the roadmap tier behind the runtime bridge.</li>
       <li><b>Distillation + frontier escape hatch.</b> Compile the deterministic 80%; route the open-domain 20% to the frontier API. Same harness, two backends. K-score on the cover guarantees the cheap path is correct; the frontier escape hatch is for the hard tail.</li>
     </ul>
 

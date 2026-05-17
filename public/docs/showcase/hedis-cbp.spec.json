@@ -1,0 +1,91 @@
+{
+  "job_id": "job_hedis_cbp_v1",
+  "task": "Compute HEDIS Controlling High Blood Pressure (CBP) measure rate. Input: FHIR R4 Bundle of members + Observations. Output: { measure, numerator, denominator, rate, members[] }. Per NCQA MY 2024+ specification: members 18-85 with hypertension (ICD-10 I10), denominator = continuously enrolled with no break > 45 days, numerator = most recent BP in measurement period < 140/90 (or < 150/90 if 60-85 without diabetes).",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_hedis_cbp_v1",
+      "name": "hedis-cbp",
+      "class": "synthesized_rule",
+      "synthesized_by": "kolm-distiller",
+      "teacher_vendor": "anthropic",
+      "source": "function generate(input,lib){var b=(input&&input.bundle)||{},es=Array.isArray(b.entry)?b.entry:[],R=(lib.pack&&lib.pack.rules)||{},HT=R.hypertension_icd10||['I10'],DM=R.diabetes_icd10||['E11.65'],AB=R.age_bands||{},MY=(input&&input.measurement_year)||2024,P={},C={},O={};function pid(r){return r.subject&&(r.subject.reference||'').split('/').pop()||r.id||'';}for(var i=0;i<es.length;i++){var r=(es[i]&&es[i].resource)||{},t=r.resourceType||'',k=pid(r);if(t==='Patient')P[r.id||k]={bd:r.birthDate||null};else if(t==='Condition')(C[k]=C[k]||[]).push((r.code&&r.code.coding&&r.code.coding[0]||{}).code||'');else if(t==='Observation'){var s=null,d=null;(r.component||[]).forEach(function(x){var c=(x.code&&x.code.coding&&x.code.coding[0]||{}).code,v=x.valueQuantity&&x.valueQuantity.value;if(c==='8480-6')s=v;else if(c==='8462-4')d=v;});if(s!=null&&d!=null)(O[k]=O[k]||[]).push({date:r.effectiveDateTime||'',systolic:s,diastolic:d});}}var n=0,D=0,M=[];for(var k2 in P){var age=MY-parseInt((P[k2].bd||'1900').slice(0,4),10),cl=C[k2]||[],hT=cl.some(function(x){return HT.indexOf(x)>=0;}),hD=cl.some(function(x){return DM.indexOf(x)>=0;});if(!hT||age<18||age>85)continue;D++;var bn=age<=59?'18-59':(hD?'60-85_with_diabetes':'60-85_no_diabetes'),th=AB[bn]||{threshold_systolic:140,threshold_diastolic:90},L=(O[k2]||[]).slice().sort(function(a,b){return(b.date||'').localeCompare(a.date||'');})[0]||null,ok=L?(L.systolic<th.threshold_systolic&&L.diastolic<th.threshold_diastolic):false;if(ok)n++;M.push({member_id_redacted:'<hash>',age:age,age_band:bn,has_diabetes:hD,qualifying_bp_reading:L,controlled:ok});}return{measure:'CBP',spec:'NCQA HEDIS MY 2024+',numerator:n,denominator:D,rate:D?n/D:0,members:M};}",
+      "tags": ["health-insurance", "hedis", "cbp", "quality-measure", "ncqa", "synthesized-rule"],
+      "schema": {
+        "input": { "bundle": "object" },
+        "output": { "measure": "string", "numerator": "number", "denominator": "number", "rate": "number", "members": "array" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "HEDIS CBP rule library. hypertension_icd10 covers the I10-I15 essential and secondary hypertension family per ICD-10-CM. bp_loinc gives the real LOINC codes for systolic, diastolic, and the BP panel. age_bands pins the NCQA MY 2024+ thresholds.",
+    "rules": {
+      "hypertension_icd10": ["I10", "I11.0", "I11.9", "I12.0", "I12.9", "I13.0", "I13.10", "I13.11", "I13.2", "I15.0", "I15.1", "I15.2", "I15.8", "I15.9"],
+      "diabetes_icd10": ["E10.9", "E11.9", "E11.65", "E10.65"],
+      "bp_loinc": { "systolic": "8480-6", "diastolic": "8462-4", "panel": "85354-9" },
+      "age_bands": {
+        "18-59": { "threshold_systolic": 140, "threshold_diastolic": 90 },
+        "60-85_no_diabetes": { "threshold_systolic": 150, "threshold_diastolic": 90 },
+        "60-85_with_diabetes": { "threshold_systolic": 140, "threshold_diastolic": 90 }
+      },
+      "continuous_enrollment_gap_days_max": 45
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "controlled_age_50_no_diabetes",
+        "input": {
+          "measurement_year": 2024,
+          "bundle": {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+              { "resource": { "resourceType": "Patient", "id": "p1", "birthDate": "1974-04-22" } },
+              { "resource": { "resourceType": "Condition", "subject": { "reference": "Patient/p1" }, "code": { "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I10" }] } } },
+              { "resource": { "resourceType": "Observation", "subject": { "reference": "Patient/p1" }, "effectiveDateTime": "2024-10-15", "code": { "coding": [{ "system": "http://loinc.org", "code": "85354-9" }] }, "component": [ { "code": { "coding": [{ "code": "8480-6" }] }, "valueQuantity": { "value": 132, "unit": "mm[Hg]" } }, { "code": { "coding": [{ "code": "8462-4" }] }, "valueQuantity": { "value": 82, "unit": "mm[Hg]" } } ] } }
+            ]
+          }
+        },
+        "expected": { "measure": "CBP", "numerator": 1, "denominator": 1, "rate": 1.0 }
+      },
+      {
+        "id": "uncontrolled_age_70_no_diabetes",
+        "input": {
+          "measurement_year": 2024,
+          "bundle": {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+              { "resource": { "resourceType": "Patient", "id": "p2", "birthDate": "1954-01-10" } },
+              { "resource": { "resourceType": "Condition", "subject": { "reference": "Patient/p2" }, "code": { "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I10" }] } } },
+              { "resource": { "resourceType": "Observation", "subject": { "reference": "Patient/p2" }, "effectiveDateTime": "2024-11-01", "code": { "coding": [{ "system": "http://loinc.org", "code": "85354-9" }] }, "component": [ { "code": { "coding": [{ "code": "8480-6" }] }, "valueQuantity": { "value": 156, "unit": "mm[Hg]" } }, { "code": { "coding": [{ "code": "8462-4" }] }, "valueQuantity": { "value": 92, "unit": "mm[Hg]" } } ] } }
+            ]
+          }
+        },
+        "expected": { "measure": "CBP", "numerator": 0, "denominator": 1, "rate": 0 }
+      },
+      {
+        "id": "diabetes_age_65_controlled_lower_threshold",
+        "input": {
+          "measurement_year": 2024,
+          "bundle": {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+              { "resource": { "resourceType": "Patient", "id": "p3", "birthDate": "1959-07-15" } },
+              { "resource": { "resourceType": "Condition", "subject": { "reference": "Patient/p3" }, "code": { "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I10" }] } } },
+              { "resource": { "resourceType": "Condition", "subject": { "reference": "Patient/p3" }, "code": { "coding": [{ "system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E11.65" }] } } },
+              { "resource": { "resourceType": "Observation", "subject": { "reference": "Patient/p3" }, "effectiveDateTime": "2024-09-20", "code": { "coding": [{ "system": "http://loinc.org", "code": "85354-9" }] }, "component": [ { "code": { "coding": [{ "code": "8480-6" }] }, "valueQuantity": { "value": 138, "unit": "mm[Hg]" } }, { "code": { "coding": [{ "code": "8462-4" }] }, "valueQuantity": { "value": 86, "unit": "mm[Hg]" } } ] } }
+            ]
+          }
+        },
+        "expected": { "measure": "CBP", "numerator": 1, "denominator": 1, "rate": 1.0 }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

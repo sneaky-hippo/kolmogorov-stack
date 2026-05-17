@@ -1,0 +1,79 @@
+{
+  "job_id": "job_fhir_uscdi_normalizer_v1",
+  "task": "Normalize a FHIR R4 Bundle to USCDI v3 data class JSON: { format, source_format, patient, encounters[], conditions[], observations[], medications[], procedures[], immunizations[], allergies[], documents[], diagnostic_reports[], care_plans[] }. Each USCDI data class maps from one or more FHIR resource types. PHI (MRN, name, addresses, dates of birth refined) is redacted to opaque hashes at the boundary.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_fhir_uscdi_v1",
+      "name": "fhir-uscdi",
+      "class": "rule",
+      "source": "function generate(input,lib){var b=(input&&input.bundle)||{},es=Array.isArray(b.entry)?b.entry:[],N=null,SCT='http://snomed.info/sct',LNC='http://loinc.org',o={format:'uscdi-v3',source_format:'fhir-r4-bundle',patient:{mrn_redacted:N,name_redacted:N,dob:N,gender:N,race:N,ethnicity:N,preferred_language:N},encounters:[],conditions:[],observations:[],medications:[],procedures:[],immunizations:[],allergies:[],documents:[],diagnostic_reports:[],care_plans:[]};function P(r,sy){var c=r&&r.code&&r.code.coding||[];for(var i=0;i<c.length;i++)if(c[i].system===sy)return c[i].code||N;return N;}for(var i=0;i<es.length;i++){var r=(es[i]&&es[i].resource)||{},t=r.resourceType||'',s=r.status||N,p=r.period||{},it=r.intent||N;if(t==='Patient'){var nm=(r.name&&r.name[0])||{},g=(nm.given&&nm.given[0])||'';o.patient.mrn_redacted='<hash>';o.patient.name_redacted=(g[0]||'')+'.'+((nm.family||'')[0]||'')+'.';o.patient.dob=(r.birthDate||'').slice(0,4)||N;o.patient.gender=r.gender||N;}else if(t==='Encounter')o.encounters.push({id:r.id||'',type:N,class:(r['class']&&r['class'].code)||N,period_start:p.start||N,period_end:p.end||N,location:N,participants:[],reason_codes:[]});else if(t==='Condition')o.conditions.push({snomed_ct:P(r,SCT),icd10:P(r,'http://hl7.org/fhir/sid/icd-10-cm'),onset:r.onsetDateTime||N,clinical_status:N,verification_status:N});else if(t==='Observation'){var vq=r.valueQuantity||{};o.observations.push({loinc:P(r,LNC),value:vq.value||N,unit:vq.unit||N,effective:r.effectiveDateTime||N,status:s,category:N});}else if(t==='MedicationRequest'||t==='MedicationStatement')o.medications.push({rxnorm:N,ndc:N,status:s,intent:it,dosage:N,period_start:N,period_end:N});else if(t==='Procedure')o.procedures.push({snomed_ct:P(r,SCT),cpt:P(r,'http://www.ama-assn.org/go/cpt'),performed:r.performedDateTime||N,status:s});else if(t==='Immunization')o.immunizations.push({cvx:P(r,'http://hl7.org/fhir/sid/cvx'),status:s,occurrence:r.occurrenceDateTime||N});else if(t==='AllergyIntolerance')o.allergies.push({allergen_snomed:N,reaction:N,criticality:r.criticality||N,type:r.type||N});else if(t==='DocumentReference')o.documents.push({type_loinc:N,status:s,encoded_size_bytes:0});else if(t==='DiagnosticReport')o.diagnostic_reports.push({loinc:P(r,LNC),status:s,effective:r.effectiveDateTime||N,conclusion_present:!!r.conclusion});else if(t==='CarePlan')o.care_plans.push({status:s,intent:it,period_start:p.start||N,period_end:p.end||N});}return o;}",
+      "tags": ["health-insurance", "fhir", "fhir-r4", "uscdi", "uscdi-v3", "hl7", "interop"],
+      "schema": {
+        "input": { "bundle": "object" },
+        "output": { "format": "string", "source_format": "string", "patient": "object", "encounters": "array", "conditions": "array", "observations": "array", "medications": "array", "procedures": "array", "immunizations": "array", "allergies": "array", "documents": "array", "diagnostic_reports": "array", "care_plans": "array" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "FHIR R4 resource-to-USCDI v3 class map, canonical coding-system priority, and PHI redaction policy. v4 candidate fields ride through with a _uscdi_class:'v4_candidate' tag.",
+    "rules": {
+      "resource_to_uscdi_class": {
+        "Patient": "patient_demographics",
+        "Encounter": "encounter_information",
+        "Condition": "problems",
+        "Observation": "laboratory|vital_signs|smoking_status|assessment_and_plan_of_treatment",
+        "MedicationRequest": "medications",
+        "MedicationStatement": "medications",
+        "Procedure": "procedures",
+        "Immunization": "immunizations",
+        "AllergyIntolerance": "allergies_and_intolerances",
+        "DocumentReference": "clinical_notes",
+        "DiagnosticReport": "diagnostic_imaging|laboratory|pathology",
+        "CarePlan": "care_team_member_information|goals|assessment_and_plan_of_treatment"
+      },
+      "coding_system_priority": {
+        "Condition": ["http://snomed.info/sct", "http://hl7.org/fhir/sid/icd-10-cm"],
+        "Observation": ["http://loinc.org"],
+        "Procedure": ["http://snomed.info/sct", "http://www.ama-assn.org/go/cpt"],
+        "Medication": ["http://www.nlm.nih.gov/research/umls/rxnorm", "http://hl7.org/fhir/sid/ndc"],
+        "Immunization": ["http://hl7.org/fhir/sid/cvx"]
+      },
+      "phi_redaction": {
+        "identifier": "hash",
+        "name": "redact_to_initials",
+        "address": "drop",
+        "telecom": "drop",
+        "birthDate": "year_only"
+      }
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "normalize_patient_only",
+        "input": { "bundle": { "resourceType": "Bundle", "type": "collection", "entry": [ { "resource": { "resourceType": "Patient", "id": "pt-1", "name": [{ "family": "Doe", "given": ["Jane"] }], "gender": "female", "birthDate": "1979-04-22" } } ] } },
+        "expected": { "format": "uscdi-v3", "patient": { "gender": "female" } }
+      },
+      {
+        "id": "normalize_condition_snomed",
+        "input": { "bundle": { "resourceType": "Bundle", "type": "collection", "entry": [ { "resource": { "resourceType": "Condition", "code": { "coding": [{ "system": "http://snomed.info/sct", "code": "38341003" }] } } } ] } },
+        "expected": { "format": "uscdi-v3", "source_format": "fhir-r4-bundle" }
+      },
+      {
+        "id": "normalize_observation_loinc",
+        "input": { "bundle": { "resourceType": "Bundle", "type": "collection", "entry": [ { "resource": { "resourceType": "Observation", "status": "final", "code": { "coding": [{ "system": "http://loinc.org", "code": "8480-6" }] }, "valueQuantity": { "value": 142, "unit": "mm[Hg]" } } } ] } },
+        "expected": { "format": "uscdi-v3" }
+      },
+      {
+        "id": "normalize_mixed_bundle",
+        "input": { "bundle": { "resourceType": "Bundle", "type": "collection", "entry": [ { "resource": { "resourceType": "Patient", "name": [{ "family": "Roe", "given": ["John"] }], "gender": "male", "birthDate": "1962-11-03" } }, { "resource": { "resourceType": "Immunization", "status": "completed", "vaccineCode": { "coding": [{ "system": "http://hl7.org/fhir/sid/cvx", "code": "208" }] } } } ] } },
+        "expected": { "format": "uscdi-v3", "patient": { "gender": "male" } }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

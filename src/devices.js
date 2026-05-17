@@ -200,6 +200,151 @@ export const DEVICES = [
     runtime: 'transformers-js',
     notes: 'transformers.js ONNX Q4. Max practical: 500M params.',
   },
+
+  // ----- Real edge-AI dev kits -----
+  {
+    id: 'jetson-orin-nano-8gb',
+    label: 'NVIDIA Jetson Orin Nano 8GB (Super)',
+    class: 'inference',
+    arch: 'aarch64',
+    sm: '8.7',
+    vram_gb: 8,
+    fp4: false,
+    fp8: false,
+    bf16: true,
+    flash_attn: 'fa2',
+    cuda_min: '12.2',
+    runtime: 'tensorrt-llm',
+    notes: 'Unified memory (CPU+GPU share 8GB LPDDR5). 67 TOPS. Run Qwen 2.5 3B Q4 ~25 tok/s.',
+  },
+  {
+    id: 'jetson-orin-agx-64gb',
+    label: 'NVIDIA Jetson AGX Orin 64GB',
+    class: 'training',
+    arch: 'aarch64',
+    sm: '8.7',
+    vram_gb: 64,
+    fp4: false,
+    fp8: false,
+    bf16: true,
+    flash_attn: 'fa2',
+    cuda_min: '12.2',
+    runtime: 'tensorrt-llm',
+    notes: '275 TOPS. Capable of QLoRA on 7B at the edge.',
+  },
+  {
+    id: 'raspberry-pi-5',
+    label: 'Raspberry Pi 5 (8GB)',
+    class: 'inference',
+    arch: 'aarch64',
+    sm: null,
+    vram_gb: 0,
+    cpu_ram_gb_min: 8,
+    runtime: 'llama-cpp',
+    notes: 'CPU-only. Cortex-A76 quad. Max practical: SmolLM2 1.7B Q4 ~3 tok/s, Gemma 3 1B Q4 ~2 tok/s.',
+  },
+
+  // ----- Mobile devices (NPU class) -----
+  {
+    id: 'iphone-16-pro',
+    label: 'iPhone 16 Pro / 17 Pro',
+    class: 'inference',
+    arch: 'apple-silicon',
+    sm: null,
+    vram_gb: 6,
+    fp4: false,
+    fp8: false,
+    bf16: false,
+    runtime: 'mlc-llm',
+    notes: 'A18 Pro Neural Engine. Max practical: Gemma 3n E2B, Qwen 2.5 1.5B Q4.',
+  },
+  {
+    id: 'pixel-9-pro-tpu',
+    label: 'Pixel 9 Pro (Tensor G4)',
+    class: 'inference',
+    arch: 'arm64',
+    sm: null,
+    vram_gb: 4,
+    fp4: false,
+    fp8: false,
+    bf16: false,
+    runtime: 'aicore',
+    notes: 'Tensor G4 + AICore. AICore exposes Gemini Nano 1.5/2.0 via system SDK. Max sideloaded: Gemma 3n E2B.',
+  },
+  {
+    id: 'android-snapdragon-8-gen3',
+    label: 'Android (Snapdragon 8 Gen 3)',
+    class: 'inference',
+    arch: 'arm64',
+    sm: null,
+    vram_gb: 4,
+    fp4: false,
+    fp8: false,
+    bf16: false,
+    runtime: 'mediapipe',
+    notes: 'Hexagon NPU. Use MediaPipe LLM Inference API. Max practical: Gemma 3 1B Q4.',
+  },
+
+  // ----- Confidential compute (TEE) devices -----
+  // These are server-class boxes that produce hardware attestations. Used
+  // when the artifact must run inside a verified enclave. The verifier
+  // consumes the device attestation + the artifact receipt together.
+  {
+    id: 'intel-tdx-icx',
+    label: 'Intel TDX (Ice Lake / Sapphire Rapids)',
+    class: 'inference',
+    arch: 'x86_64',
+    sm: null,
+    vram_gb: 0,
+    cpu_ram_gb_min: 32,
+    runtime: 'llama-cpp',
+    tee: 'intel-tdx',
+    attestation: 'pccs',
+    notes: 'Intel TDX trust domain. Attestation via PCCS / Intel Trust Authority. CPU-only inference inside the TD.',
+  },
+  {
+    id: 'amd-sev-snp',
+    label: 'AMD SEV-SNP (EPYC Milan / Genoa)',
+    class: 'inference',
+    arch: 'x86_64',
+    sm: null,
+    vram_gb: 0,
+    cpu_ram_gb_min: 32,
+    runtime: 'llama-cpp',
+    tee: 'amd-sev-snp',
+    attestation: 'snp-report',
+    notes: 'AMD SEV-SNP confidential VM. Attestation report verifiable against AMD root key.',
+  },
+  {
+    id: 'aws-nitro-enclave',
+    label: 'AWS Nitro Enclave',
+    class: 'inference',
+    arch: 'x86_64',
+    sm: null,
+    vram_gb: 0,
+    cpu_ram_gb_min: 16,
+    runtime: 'llama-cpp',
+    tee: 'aws-nitro',
+    attestation: 'nitro-attestation',
+    notes: 'AWS Nitro Enclave isolated from parent EC2. Attestation via /dev/nsm + KMS.',
+  },
+  {
+    id: 'nvidia-h100-cc',
+    label: 'NVIDIA H100 in Confidential Compute mode',
+    class: 'training',
+    arch: 'hopper',
+    sm: '9.0',
+    vram_gb: 80,
+    fp4: false,
+    fp8: true,
+    bf16: true,
+    flash_attn: 'fa3',
+    cuda_min: '12.4',
+    torch_min: '2.4',
+    tee: 'nvidia-cc',
+    attestation: 'nras',
+    notes: 'H100 CC mode pairs with TDX or SEV-SNP host. Attestation via NRAS (NVIDIA Remote Attestation Service).',
+  },
 ];
 
 // What model the trainer should default to when training ON this device.
@@ -226,11 +371,29 @@ export const INFER_DEFAULT_BY_DEVICE = {
   'apple-m3-max': 'Qwen/Qwen2.5-7B-Instruct',
   'apple-m2-pro': 'Qwen/Qwen2.5-3B-Instruct',
   'iphone-15-pro': 'Qwen/Qwen2.5-1.5B-Instruct',
+  'iphone-16-pro': 'google/gemma-3n-E2B-it',
   'pixel-8-pro': 'google/gemma-2-2b-it',
+  'pixel-9-pro-tpu': 'google/gemma-3n-E2B-it',
+  'android-snapdragon-8-gen3': 'google/gemma-3-1b-it',
   'laptop-igpu': 'Qwen/Qwen2.5-1.5B-Instruct',
   'cpu-x86_64': 'Qwen/Qwen2.5-1.5B-Instruct',
   'wasm': 'Qwen/Qwen2.5-0.5B-Instruct',
+  'jetson-orin-nano-8gb': 'Qwen/Qwen2.5-3B-Instruct',
+  'jetson-orin-agx-64gb': 'Qwen/Qwen2.5-7B-Instruct',
+  'raspberry-pi-5': 'HuggingFaceTB/SmolLM2-1.7B-Instruct',
+  'intel-tdx-icx': 'Qwen/Qwen2.5-3B-Instruct',
+  'amd-sev-snp': 'Qwen/Qwen2.5-3B-Instruct',
+  'aws-nitro-enclave': 'Qwen/Qwen2.5-1.5B-Instruct',
+  'nvidia-h100-cc': 'Qwen/Qwen2.5-14B-Instruct',
 };
+
+// Devices that produce hardware attestations. Used by src/confidential-compute.js
+// to decide what attestation type to expect at runtime.
+export const TEE_DEVICES = DEVICES.filter(d => d.tee).map(d => ({
+  id: d.id,
+  tee: d.tee,
+  attestation: d.attestation,
+}));
 
 export function info(id) {
   return DEVICES.find(d => d.id === id) || null;
@@ -295,4 +458,4 @@ function matchGpuName(name, vramMiB, sm) {
   return null;
 }
 
-export default { DEVICES, TRAIN_DEFAULT_BY_DEVICE, INFER_DEFAULT_BY_DEVICE, list, info, detectLocal };
+export default { DEVICES, TRAIN_DEFAULT_BY_DEVICE, INFER_DEFAULT_BY_DEVICE, TEE_DEVICES, list, info, detectLocal };

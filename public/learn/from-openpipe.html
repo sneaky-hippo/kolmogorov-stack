@@ -124,6 +124,8 @@
 <b>What changes.</b> OpenPipe serves your fine-tuned LoRA from their cloud; you pay per token and your traffic is round-tripped through their API. <code>.kolm</code> is a 30 KB file on your disk that runs locally, has a K-score, is HMAC-signed, and unzips into plain JavaScript recipes. You own the artifact; you can host it; you can ship it on hardware that never touches the internet.
 </div>
 
+<div style="margin:24px 0;padding:16px 18px;border:1px solid rgba(245,158,11,0.32);border-left:3px solid #f59e0b;border-radius:8px;background:rgba(245,158,11,0.06);font-size:14px;line-height:1.55;color:var(--ink-mute)"><b style="color:var(--ink)">v0.2 provenance (wave 144).</b> The v0.2 path pulls your OpenPipe dataset, splits train / holdout, and compiles a <i>recipe-class</i> artifact: deterministic code + HMAC-signed manifest + receipt + K-score gate, plus optional <code>kolm-moe-1</code> composition + bundled <code>kolm-tokenizer-1</code>. Loading your OpenPipe-trained LoRA weights into the artifact (the <code>recipe + base ref</code> row below) and serving inference locally lands with the roadmap-tier runtime bridge. The data-portability half ships today; the weight-bridge half lights up once the roadmap tier ships.</div>
+
 <h2 style="margin-top:48px">Mental model</h2>
 <table>
   <thead>
@@ -182,7 +184,7 @@ EOF
 node convert.mjs</pre>
 <pre class="out">wrote train.jsonl with 4287 rows</pre>
 
-<p>Split 90/10 into train and held-out eval so you can measure regression honestly:</p>
+<p>Split 90/10 into train and held-out eval so you can measure regression plainly:</p>
 
 <pre class="cmd">head -n 3858 train.jsonl &gt; train-90.jsonl
 tail -n 429 train.jsonl &gt; holdout-10.jsonl</pre>
@@ -198,7 +200,7 @@ tail -n 429 train.jsonl &gt; holdout-10.jsonl</pre>
   <h2 id="step-3">Write the spec.</h2>
   <span class="step-time">10 min</span>
 </div>
-<p>OpenPipe inferred the task from your dataset. kolm wants you to state it explicitly so the K-score is honest. Start from a template that matches the shape of your OpenPipe fine-tune.</p>
+<p>OpenPipe inferred the task from your dataset. kolm wants you to state it explicitly so the K-score is verifiable. Start from a template that matches the shape of your OpenPipe fine-tune.</p>
 
 <table>
   <thead><tr><th>If your OpenPipe model is doing&hellip;</th><th>Use template</th></tr></thead>

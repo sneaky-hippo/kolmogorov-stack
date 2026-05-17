@@ -243,6 +243,205 @@ export const MODELS = [
     use_for: ['classifier', 'extractor'],
   },
 
+  // ----- Gemma 3n family (Google, on-device, Per-Layer Embeddings) -----
+  // Released Google I/O 2025. "E2B" and "E4B" describe effective parameters
+  // after selective activation; raw weight counts are larger (5B / 8B). RAM
+  // figures reflect the selective-activation footprint, not raw bytes on disk.
+  {
+    id: 'google/gemma-3n-E2B-it',
+    family: 'gemma3n',
+    params_b: 2,
+    params_b_raw: 5,
+    license: 'gemma',
+    tier: 'mobile-selective',
+    vram_gb_4bit: 2.5,
+    vram_gb_bf16: 4.0,
+    context_tokens: 32768,
+    tokenizer_vocab: 262144,
+    tool_use: 'good',
+    multilingual: true,
+    modalities: ['text', 'image', 'audio', 'video'],
+    notes: 'On-device Gemma. Per-Layer Embeddings: 2B effective, 5B raw weights.',
+    use_for: ['mobile', 'edge', 'multimodal', 'on-device-clinical-intake'],
+  },
+  {
+    id: 'google/gemma-3n-E4B-it',
+    family: 'gemma3n',
+    params_b: 4,
+    params_b_raw: 8,
+    license: 'gemma',
+    tier: 'mobile-selective',
+    vram_gb_4bit: 4.0,
+    vram_gb_bf16: 6.5,
+    context_tokens: 32768,
+    tokenizer_vocab: 262144,
+    tool_use: 'good',
+    multilingual: true,
+    modalities: ['text', 'image', 'audio', 'video'],
+    notes: 'On-device Gemma. 4B effective, 8B raw weights. Stronger than E2B.',
+    use_for: ['mobile', 'edge', 'multimodal', 'on-device-clinical-intake'],
+  },
+
+  // ----- MedGemma family (Google, medical Q&A; HIPAA workloads need BAA) -----
+  // Released May 2025 at I/O. Trained on deidentified medical literature and
+  // clinical notes. Intended use is decision-support; downstream clinical
+  // deployment requires human review + local validation per Google model card.
+  {
+    id: 'google/medgemma-4b-it',
+    family: 'medgemma',
+    params_b: 4,
+    license: 'health-ai-developer-foundations',
+    tier: 'medical-small',
+    vram_gb_4bit: 4.5,
+    vram_gb_bf16: 8.0,
+    context_tokens: 8192,
+    tokenizer_vocab: 262144,
+    tool_use: 'limited',
+    multilingual: false,
+    modalities: ['text', 'image'],
+    notes: 'Medical-tuned Gemma 3 4B. Vision+text; supports radiology Q&A. Not for direct clinical decisions; require local eval + clinician review.',
+    use_for: ['medical-qa', 'radiology-text', 'clinical-summary'],
+  },
+  {
+    id: 'google/medgemma-4b-pt',
+    family: 'medgemma',
+    params_b: 4,
+    license: 'health-ai-developer-foundations',
+    tier: 'medical-small-pt',
+    vram_gb_4bit: 4.5,
+    vram_gb_bf16: 8.0,
+    context_tokens: 8192,
+    tokenizer_vocab: 262144,
+    tool_use: 'none',
+    multilingual: false,
+    modalities: ['text', 'image'],
+    notes: 'Pretrained (not instruction-tuned). Use as base for domain SFT/LoRA.',
+    use_for: ['medical-finetune-base'],
+  },
+  {
+    id: 'google/medgemma-27b-text-it',
+    family: 'medgemma',
+    params_b: 27,
+    license: 'health-ai-developer-foundations',
+    tier: 'medical-large',
+    vram_gb_4bit: 18.0,
+    vram_gb_bf16: 54.0,
+    context_tokens: 8192,
+    tokenizer_vocab: 262144,
+    tool_use: 'limited',
+    multilingual: false,
+    modalities: ['text'],
+    notes: 'Text-only MedGemma. Best benchmark scores in family; A100-40GB+ class.',
+    use_for: ['medical-qa', 'clinical-summary', 'high-stakes-medical'],
+  },
+
+  // ----- EmbeddingGemma (Google, 308M, multilingual embeddings) -----
+  // Released September 2025. Top MTEB scores at the <500M tier. 100+ languages.
+  // Use for kolm RAG / index.sqlite-vec when staying on the Gemma stack matters
+  // (consistent tokenizer; same provider; compact).
+  {
+    id: 'google/embeddinggemma-300m',
+    family: 'embeddinggemma',
+    params_b: 0.308,
+    license: 'gemma',
+    tier: 'embedding',
+    vram_gb_4bit: 0.5,
+    vram_gb_bf16: 0.8,
+    context_tokens: 2048,
+    tokenizer_vocab: 262144,
+    tool_use: 'none',
+    multilingual: true,
+    modalities: ['text'],
+    embedding_dim: 768,
+    embedding_matryoshka: [768, 512, 256, 128],
+    notes: 'Embedding model. 100+ languages. Matryoshka representation (truncatable). Pair with EmbeddingGemma tokenizer; do not mix with Qwen embeddings in same index.',
+    use_for: ['embedding', 'rag', 'similarity-search', 'on-device-rag'],
+  },
+
+  // ----- DeepSeek R1 distilled (Chinese-origin; Q1 2025) -----
+  // The user's Round-10 "Chinese models distill American models" pattern.
+  // R1 itself is 671B MoE and not a kolm target; the distilled-to-smaller
+  // variants are real, ship as MIT, and are practical SFT bases.
+  {
+    id: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B',
+    family: 'deepseek-r1-distill',
+    params_b: 1.5,
+    license: 'mit',
+    tier: 'reasoning-tiny',
+    vram_gb_4bit: 2.0,
+    vram_gb_bf16: 3.5,
+    context_tokens: 131072,
+    tokenizer_vocab: 151936,
+    tool_use: 'limited',
+    multilingual: true,
+    notes: 'Reasoning trace distilled into Qwen 2.5 1.5B base. MIT. Strong on math/code at this size.',
+    use_for: ['reasoning', 'math', 'classifier'],
+  },
+  {
+    id: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
+    family: 'deepseek-r1-distill',
+    params_b: 7,
+    license: 'mit',
+    tier: 'reasoning-quality',
+    vram_gb_4bit: 8.0,
+    vram_gb_bf16: 16.0,
+    context_tokens: 131072,
+    tokenizer_vocab: 151936,
+    tool_use: 'limited',
+    multilingual: true,
+    notes: 'Reasoning trace distilled into Qwen 2.5 7B. Best <10B reasoning at MIT license.',
+    use_for: ['reasoning', 'math', 'agent'],
+  },
+  {
+    id: 'deepseek-ai/DeepSeek-R1-Distill-Llama-8B',
+    family: 'deepseek-r1-distill',
+    params_b: 8,
+    license: 'llama-community',
+    tier: 'reasoning-quality',
+    vram_gb_4bit: 9.0,
+    vram_gb_bf16: 18.0,
+    context_tokens: 131072,
+    tokenizer_vocab: 128256,
+    tool_use: 'limited',
+    multilingual: false,
+    notes: 'Reasoning trace distilled into Llama 3.1 8B. Llama-Community license.',
+    use_for: ['reasoning', 'english-only'],
+  },
+
+  // ----- GLM-4 (Zhipu AI; Apache 2.0 since GLM-4.5; verify exact SKU) -----
+  {
+    id: 'THUDM/glm-4-9b-chat',
+    family: 'glm-4',
+    params_b: 9,
+    license: 'glm-license',
+    tier: 'quality',
+    vram_gb_4bit: 10.0,
+    vram_gb_bf16: 19.0,
+    context_tokens: 131072,
+    tokenizer_vocab: 151552,
+    tool_use: 'good',
+    multilingual: true,
+    notes: 'Zhipu AI. Strong CJK. License terms tighter than Apache; verify before commercial ship.',
+    use_for: ['chinese-language', 'multilingual', 'long-context'],
+  },
+
+  // ----- Yi-1.5 (01.AI; Apache 2.0) -----
+  {
+    id: '01-ai/Yi-1.5-6B-Chat',
+    family: 'yi-1.5',
+    params_b: 6,
+    license: 'apache-2.0',
+    tier: 'quality',
+    vram_gb_4bit: 7.0,
+    vram_gb_bf16: 13.0,
+    context_tokens: 4096,
+    tokenizer_vocab: 64000,
+    tool_use: 'limited',
+    multilingual: true,
+    notes: 'Apache 2.0 alternate for ~7B class. Smaller context than Qwen 2.5 7B.',
+    use_for: ['quality', 'chinese-language'],
+  },
+
   // ----- Mistral / Ministral (newer small) -----
   {
     id: 'mistralai/Ministral-3B-Instruct-2410',
@@ -300,6 +499,22 @@ export const TIER_BY_USE = {
   server: 'Qwen/Qwen2.5-14B-Instruct',
   'high-stakes': 'Qwen/Qwen2.5-14B-Instruct',
   reasoning: 'microsoft/Phi-3.5-mini-instruct',
+  // Healthcare lighthouse tier picks.
+  'medical-qa': 'google/medgemma-4b-it',
+  'radiology-text': 'google/medgemma-4b-it',
+  'clinical-summary': 'google/medgemma-27b-text-it',
+  'high-stakes-medical': 'google/medgemma-27b-text-it',
+  'medical-finetune-base': 'google/medgemma-4b-pt',
+  // On-device intake (HIPAA-friendly: never leaves device).
+  'on-device-clinical-intake': 'google/gemma-3n-E2B-it',
+  multimodal: 'google/gemma-3n-E4B-it',
+  // Embeddings for RAG / index.sqlite-vec.
+  embedding: 'google/embeddinggemma-300m',
+  'similarity-search': 'google/embeddinggemma-300m',
+  'on-device-rag': 'google/embeddinggemma-300m',
+  'reasoning-quality': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
+  math: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B',
+  'chinese-language': 'Qwen/Qwen2.5-7B-Instruct',
 };
 
 export const PERMISSIVE_LICENSES = new Set(['apache-2.0', 'mit']);

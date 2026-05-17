@@ -33,8 +33,19 @@ import {
 import * as teams from './teams.js';
 import * as tunnel from './tunnel.js';
 import * as byoc from './byoc.js';
+import * as traceCapture from './trace-capture.js';
+import * as workflowIr from './workflow-ir.js';
+import * as compileIr from './compile-ir.js';
+import * as deviceCaps from './device-capabilities.js';
+import * as confidentialCompute from './confidential-compute.js';
+import * as federatedLearning from './federated-learning.js';
+import * as artifactLineage from './artifact-lineage.js';
 import { AUDIT_OPS, tryAppendAudit, listAuditEvents, verifyAuditChain } from './audit.js';
 import { verifyCredential, PROVENANCE_SPEC } from './provenance.js';
+import { verifySignatureBlock as verifyEd25519Block, keyFingerprint as ed25519Fingerprint, verify as ed25519Verify } from './ed25519.js';
+import * as pubkeyDir from './pubkey-directory.js';
+import { verifySigstoreBundle, attestWithRekor, fetchRekorEntryByLogIndex, rekorUrl as sigstoreRekorUrl, isDisabled as isSigstoreDisabled, submitToRekor } from './sigstore.js';
+import { saveCorpus as saveTenantCorpus, loadCorpus as loadTenantCorpus, listCorpora as listTenantCorpora, deleteCorpus as deleteTenantCorpus, hashCorpusFile as hashTenantCorpusFile } from './tenant-holdout.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -624,7 +635,10 @@ export function buildRouter() {
         reasons.push('chain missing');
       }
       // Verify body signature.
-      const { signature, ...bodyNoSig } = receipt;
+      // Wave 149: strip signature_ed25519. Wave 150: also strip
+      // signature_sigstore. Both are added AFTER the HMAC is computed, so
+      // the canonical payload at sign-time excluded them.
+      const { signature, signature_ed25519, signature_sigstore, ...bodyNoSig } = receipt;
       const bodyCanon = canonicalJson(bodyNoSig);
       const expectedBody = crypto.createHmac('sha256', RECEIPT_SECRET).update(bodyCanon).digest('hex');
       const sigOk = signature && signature.length === expectedBody.length && (() => {
@@ -633,7 +647,40 @@ export function buildRouter() {
         return d === 0;
       })();
       if (!sigOk) reasons.push('signature mismatch');
-      const verified = chainOk && sigOk;
+      // Wave 149: Ed25519 public-key signature verification. When the
+      // receipt carries signature_ed25519, verify it against the embedded
+      // public key. No shared secret needed — any third party can do this.
+      // Ed25519 signed canonical(body WITH HMAC, WITHOUT ed25519 or sigstore).
+      let ed25519Ok = null;
+      let ed25519Fingerprint = null;
+      if (signature_ed25519) {
+        const ed25519Payload = canonicalJson({ ...bodyNoSig, signature });
+        const r = verifyEd25519Block(signature_ed25519, ed25519Payload);
+        ed25519Ok = r.ok;
+        ed25519Fingerprint = r.key_fingerprint || null;
+        if (!ed25519Ok) reasons.push('ed25519 verification failed: ' + (r.reason || 'unknown'));
+      }
+      // Wave 150: sigstore (cosign-compatible) bundle verification.
+      // Sigstore signed canonical(body WITH HMAC + ed25519, WITHOUT sigstore).
+      let sigstoreReport = null;
+      if (signature_sigstore) {
+        const sigstorePayload = canonicalJson({ ...bodyNoSig, signature, signature_ed25519 });
+        const r = verifySigstoreBundle(signature_sigstore, sigstorePayload);
+        sigstoreReport = {
+          verified: r.ok,
+          key_fingerprint: r.key_fingerprint || null,
+          dry_run: r.dry_run ?? null,
+          rekor_log_index: r.rekor_log_index ?? null,
+          rekor_uuid: r.rekor_uuid ?? null,
+          rekor_integrated_time: r.rekor_integrated_time ?? null,
+          rekor_log_id: r.rekor_log_id ?? null,
+          inclusion_proof_present: r.inclusion_proof_present ?? false,
+          digest_hex: r.digest_hex ?? null,
+          reason: r.ok ? null : r.reason,
+        };
+        if (!r.ok) reasons.push('sigstore verification failed: ' + (r.reason || 'unknown'));
+      }
+      const verified = chainOk && sigOk && (ed25519Ok !== false) && (sigstoreReport ? sigstoreReport.verified : true);
       return res.json({
         verified,
         reasons,
@@ -643,6 +690,9 @@ export function buildRouter() {
         eval_set_hash: receipt.eval_set_hash,
         eval_score: receipt.eval_score,
         judge_id: receipt.judge_id,
+        signature_alg: receipt.signature_alg || 'hmac-sha256',
+        ed25519: signature_ed25519 ? { verified: ed25519Ok, key_fingerprint: ed25519Fingerprint } : null,
+        sigstore: sigstoreReport,
       });
     }
 
@@ -664,6 +714,187 @@ export function buildRouter() {
   // their handle by setting tenant.public_receipts = true. The hash can be
   // any of: artifact_hash, cid, receipt_id, or signature (since all four are
   // unique identifiers and a buyer might paste any of them).
+  // Wave 149 — public-key directory for Ed25519 receipt signing keys.
+  //
+  // GET  /v1/keys/public                  → list every registered key
+  // GET  /v1/keys/public/:fingerprint     → fetch a single key by fingerprint
+  // POST /v1/keys/challenge               → request a proof-of-control nonce
+  // POST /v1/keys/register                → register {challenge_id, public_key, signature}
+  // DELETE /v1/keys/public/:fingerprint   → admin-only delete (requires admin key)
+  //
+  // No auth on the GET endpoints: discovering a tenant's public key is
+  // explicitly public — that's the whole point of a key directory. POST
+  // /v1/keys/challenge and POST /v1/keys/register are also public because
+  // the challenge → sign → register flow self-proves the holder controls
+  // the private key. The DELETE requires admin because key removal would
+  // otherwise let an attacker invalidate a tenant's receipt verification
+  // by deleting their published key.
+  r.get('/v1/keys/public', (_req, res) => {
+    try {
+      return res.json({ keys: pubkeyDir.listKeys(), stats: pubkeyDir.stats() });
+    } catch (e) {
+      return res.status(500).json({ error: 'pubkey directory unavailable', detail: e.message });
+    }
+  });
+  r.get('/v1/keys/public/:fingerprint', (req, res) => {
+    const fp = String(req.params.fingerprint || '').trim();
+    if (!/^[0-9a-fA-F]{8,64}$/.test(fp)) {
+      return res.status(400).json({ error: 'fingerprint must be 8-64 hex chars', code: 'INVALID_FINGERPRINT' });
+    }
+    const entry = pubkeyDir.getKey(fp);
+    if (!entry) return res.status(404).json({ error: 'fingerprint not registered', code: 'KEY_NOT_FOUND' });
+    return res.json(entry);
+  });
+  r.post('/v1/keys/challenge', (req, res) => {
+    const body = req.body || {};
+    try {
+      const ch = pubkeyDir.issueChallenge({
+        tenant_id: typeof body.tenant_id === 'string' ? body.tenant_id : null,
+        label: typeof body.label === 'string' ? body.label.slice(0, 120) : null,
+      });
+      return res.json(ch);
+    } catch (e) {
+      return res.status(500).json({ error: 'cannot issue challenge', detail: e.message });
+    }
+  });
+  r.post('/v1/keys/register', (req, res) => {
+    const body = req.body || {};
+    try {
+      const entry = pubkeyDir.registerKey({
+        challenge_id: body.challenge_id,
+        public_key: body.public_key,
+        signature: body.signature,
+        label: typeof body.label === 'string' ? body.label.slice(0, 120) : null,
+        tenant_id: typeof body.tenant_id === 'string' ? body.tenant_id : null,
+      });
+      return res.json({ ok: true, key: entry });
+    } catch (e) {
+      return res.status(400).json({ ok: false, error: e.message, code: 'REGISTER_FAILED' });
+    }
+  });
+  r.delete('/v1/keys/public/:fingerprint', (req, res) => {
+    const adminKey = adminApiKey();
+    const supplied = String(req.headers['x-admin-key'] || '').trim();
+    if (!adminKey || !supplied || !constantTimeEq(adminKey, supplied)) {
+      return res.status(401).json({ error: 'admin key required', code: 'ADMIN_REQUIRED' });
+    }
+    const fp = String(req.params.fingerprint || '').trim();
+    const ok = pubkeyDir.deleteKey(fp);
+    return res.json({ ok, fingerprint: fp });
+  });
+
+  // Wave 150 — sigstore (cosign-compatible) attestation + verification.
+  //
+  // POST /v1/sigstore/attest    upgrade a dry-run sigstore block to a
+  //                              Rekor-pinned bundle. Requires the receipt
+  //                              already carry signature_ed25519 + the
+  //                              KOLM_SIGSTORE_REKOR_URL env var to be set
+  //                              on the server. Body shape:
+  //                                { receipt: <receipt-with-dry-run-sigstore> }
+  //                              Returns: { ok, sigstore_block, receipt }
+  //                              where sigstore_block has rekor_log_entry
+  //                              populated.
+  //
+  // GET  /v1/sigstore/health    quick probe — reports whether the server
+  //                              has a Rekor URL configured + whether the
+  //                              integration is enabled.
+  //
+  // GET  /v1/sigstore/entry/:logIndex   forward to Rekor and return the
+  //                              raw entry. Public — Rekor is public.
+  r.get('/v1/sigstore/health', (_req, res) => {
+    return res.json({
+      enabled: !isSigstoreDisabled(),
+      rekor_url: sigstoreRekorUrl(),
+      mode: sigstoreRekorUrl() ? 'rekor-pinned' : 'dry-run',
+    });
+  });
+  r.get('/v1/sigstore/entry/:logIndex', async (req, res) => {
+    const raw = String(req.params.logIndex || '').trim();
+    const idx = Number(raw);
+    if (!Number.isInteger(idx) || idx < 0) {
+      return res.status(400).json({ error: 'logIndex must be a non-negative integer', code: 'INVALID_LOG_INDEX' });
+    }
+    if (!sigstoreRekorUrl()) {
+      return res.status(503).json({ error: 'no Rekor URL configured on this server', code: 'REKOR_NOT_CONFIGURED' });
+    }
+    try {
+      const entry = await fetchRekorEntryByLogIndex(idx);
+      if (!entry) return res.status(404).json({ error: 'entry not found in Rekor', code: 'REKOR_ENTRY_NOT_FOUND' });
+      return res.json({ entry });
+    } catch (e) {
+      return res.status(502).json({ error: 'rekor fetch failed', detail: e.message });
+    }
+  });
+  r.post('/v1/sigstore/attest', async (req, res) => {
+    const body = req.body || {};
+    const receipt = body.receipt;
+    if (!receipt || typeof receipt !== 'object') {
+      return res.status(400).json({ error: 'receipt body required', code: 'RECEIPT_REQUIRED' });
+    }
+    if (!receipt.signature_ed25519 || !receipt.signature_sigstore) {
+      return res.status(400).json({
+        error: 'receipt must already carry signature_ed25519 and a dry-run signature_sigstore block; rebuild artifact with Wave 150+ first',
+        code: 'PRE_ATTEST_BLOCKS_REQUIRED',
+      });
+    }
+    if (!sigstoreRekorUrl()) {
+      return res.status(503).json({
+        error: 'no KOLM_SIGSTORE_REKOR_URL configured on this server; cannot pin to Rekor',
+        code: 'REKOR_NOT_CONFIGURED',
+      });
+    }
+    try {
+      const existing = receipt.signature_sigstore;
+      // Reconstruct the canonical payload the existing bundle attests to
+      // (receipt body without sigstore block) and re-sign + submit.
+      const { signature_sigstore, ...payloadWithoutSigstore } = receipt;
+      void signature_sigstore;
+      const payloadCanonical = canonicalJson(payloadWithoutSigstore);
+      // The bundle carries the public key but not the private key; without
+      // the private key we cannot re-sign. The expected attest flow is:
+      //   1) build artifact (dry-run sigstore block written with key on disk)
+      //   2) `kolm sigstore-attest` re-loads the key from the build host
+      //   3) server endpoint is used only by callers that POST a
+      //      pre-signed bundle they want submitted to Rekor on their behalf
+      // For (3), the input body MUST include the signature in raw form,
+      // already produced by the caller's private key. We forward to Rekor
+      // and return the merged bundle.
+      const pkB64 = existing?.bundle?.verificationMaterial?.publicKey?.rawBytes;
+      const sigB64 = existing?.bundle?.messageSignature?.signature;
+      const digestB64 = existing?.bundle?.messageSignature?.messageDigest?.digest;
+      if (!pkB64 || !sigB64 || !digestB64) {
+        return res.status(400).json({
+          error: 'incoming sigstore block missing required bundle fields',
+          code: 'BUNDLE_INCOMPLETE',
+        });
+      }
+      const publicKey = Buffer.from(pkB64, 'base64').toString('utf8');
+      // Re-derive the digest from the payload bytes server-side; reject if
+      // it diverges from the caller's claim (defends against the caller
+      // sending a digest unrelated to the receipt body).
+      const expectedDigestHex = crypto.createHash('sha256').update(payloadCanonical, 'utf8').digest('hex');
+      const claimedDigestHex = Buffer.from(digestB64, 'base64').toString('hex');
+      if (expectedDigestHex !== claimedDigestHex) {
+        return res.status(400).json({
+          error: 'bundle messageDigest does not match receipt body sha256',
+          code: 'DIGEST_MISMATCH',
+        });
+      }
+      // Bypass attestWithRekor (which would re-sign locally); we already have
+      // the caller's signature, so just POST hashedrekord to Rekor.
+      const entry = await submitToRekor({
+        publicKey,
+        signatureB64: sigB64,
+        digestHex: expectedDigestHex,
+      });
+      if (!entry) return res.status(502).json({ error: 'Rekor submission failed', code: 'REKOR_FAILED' });
+      const merged = { ...existing, rekor_log_entry: entry, dry_run: false };
+      return res.json({ ok: true, sigstore_block: merged });
+    } catch (e) {
+      return res.status(500).json({ error: 'attest failed', detail: e.message });
+    }
+  });
+
   r.get('/v1/receipts/:hash/public', (req, res) => {
     const raw = String(req.params.hash || '').trim();
     if (!raw || !/^[A-Za-z0-9._\-]{8,128}$/.test(raw)) {
@@ -720,7 +951,8 @@ export function buildRouter() {
         }
       }
       // Body signature seals the receipt minus its own .signature field.
-      const { signature, ...bodyNoSig } = receipt;
+      // Wave 149: also strip signature_ed25519 (added after HMAC sign-time).
+      const { signature, signature_ed25519, ...bodyNoSig } = receipt;
       const expectedBody = crypto.createHmac('sha256', secret).update(canonicalJson(bodyNoSig)).digest('hex');
       const sigOk = !!signature && signature.length === expectedBody.length && (() => {
         let d = 0;
@@ -2563,6 +2795,134 @@ export function buildRouter() {
     });
   });
 
+  // Wave 165 (N+5) — tenant shadow corpus endpoints. The eval credibility
+  // roadmap (Wave 144 Doc 2 §7) layered eval independence as:
+  //   N+1.5/Q+2     tenant seeds.jsonl train/holdout split (shipped W150-151)
+  //   N+3 / N+4     external + adversarial holdouts (shipped W164)
+  //   N+5 (this)    tenant shadow corpus uploaded to tenant's own server
+  //   N+6 (W160)    teacher-delta T axis (shipped)
+  //   N+7 (W166)    third-party auditor attestation (pending)
+  //
+  // The distinguishing property of N+5: the corpus NEVER LEAVES THE TENANT'S
+  // ENVIRONMENT. The .kolm artifact records only {tenant_id, corpus_id,
+  // corpus_sha256, accuracy, ...} — never the rows themselves. A HIPAA-covered
+  // payer, a banking BAA holder, or any regulated buyer with a contractual
+  // data-residency clause can prove the recipe was scored against their
+  // proprietary corpus without ever shipping the corpus.
+  //
+  // POST /v1/eval/tenant_holdout
+  //   body: { corpus_id: string, rows: Array<{input, output} | {prompt, completion}>, replace?: boolean }
+  //   returns: { tenant_id, corpus_id, corpus_sha256, normalized_hash, row_count, stored_at, bytes }
+  // GET  /v1/eval/tenant_holdout                  → list this tenant's corpora
+  // GET  /v1/eval/tenant_holdout/:corpus_id       → single corpus metadata
+  // DELETE /v1/eval/tenant_holdout/:corpus_id     → delete a corpus
+  //
+  // All four are authed (mounted below authMiddleware) and per-tenant scoped:
+  // a tenant can only read/write/delete corpora under its own tenant_id. The
+  // tenant_id is derived from req.tenant_record.id (the authenticated tenant)
+  // rather than accepted as a body field, so a forged tenant_id is impossible.
+  r.post('/v1/eval/tenant_holdout', publishLimiter, (req, res) => {
+    try {
+      const tenantId = req.tenant_record?.id;
+      if (!tenantId) return res.status(401).json({ error: 'no tenant context' });
+      const { corpus_id, rows, replace } = req.body || {};
+      if (!corpus_id) return res.status(400).json({ error: 'corpus_id (string) required' });
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return res.status(400).json({ error: 'rows (non-empty array of {input,output} or {prompt,completion}) required' });
+      }
+      if (rows.length > 50000) {
+        return res.status(413).json({ error: 'rows: max 50000 per upload; split into multiple corpora' });
+      }
+      const meta = saveTenantCorpus(tenantId, String(corpus_id), rows, { replace: replace === true });
+      try {
+        tryAppendAudit(AUDIT_OPS.EVAL_TENANT_HOLDOUT_SAVE || 'eval.tenant_holdout.save', {
+          tenant_id: tenantId,
+          corpus_id: meta.corpus_id,
+          row_count: meta.row_count,
+          bytes: meta.bytes,
+          corpus_sha256: meta.corpus_sha256,
+          normalized_hash: meta.normalized_hash,
+          replace: replace === true,
+        });
+      } catch {}
+      chargeUsage(req.tenant_record, Math.max(1, Math.ceil(meta.bytes / 10240)));
+      res.json({
+        tenant_id: meta.tenant_id,
+        corpus_id: meta.corpus_id,
+        corpus_sha256: meta.corpus_sha256,
+        normalized_hash: meta.normalized_hash,
+        row_count: meta.row_count,
+        skipped: meta.skipped,
+        stored_at: meta.stored_at,
+        bytes: meta.bytes,
+        residency_note: 'corpus retained on tenant infrastructure; bytes not included in artifact',
+        next: 'pass --tenant-shadow-corpus ' + meta.tenant_id + ':' + meta.corpus_id + ' to `kolm compile` to bind tenant_shadow_corpus_provenance into the artifact.',
+      });
+    } catch (e) {
+      const msg = String(e.message || e);
+      const status = msg.includes('already exists') ? 409 : (msg.includes('must match') ? 400 : 500);
+      res.status(status).json({ error: msg });
+    }
+  });
+
+  r.get('/v1/eval/tenant_holdout', (req, res) => {
+    try {
+      const tenantId = req.tenant_record?.id;
+      if (!tenantId) return res.status(401).json({ error: 'no tenant context' });
+      const corpora = listTenantCorpora(tenantId);
+      res.json({ tenant_id: tenantId, corpora, count: corpora.length });
+    } catch (e) {
+      res.status(500).json({ error: String(e.message || e) });
+    }
+  });
+
+  r.get('/v1/eval/tenant_holdout/:corpus_id', (req, res) => {
+    try {
+      const tenantId = req.tenant_record?.id;
+      if (!tenantId) return res.status(401).json({ error: 'no tenant context' });
+      const corpusId = String(req.params.corpus_id || '').trim();
+      if (!corpusId) return res.status(400).json({ error: 'corpus_id required' });
+      const loaded = loadTenantCorpus(tenantId, corpusId);
+      res.json({
+        tenant_id: loaded.tenant_id,
+        corpus_id: loaded.corpus_id,
+        corpus_sha256: loaded.corpus_sha256,
+        normalized_hash: loaded.normalized_hash,
+        row_count: loaded.row_count,
+        skipped: loaded.skipped,
+        bytes: loaded.stat.size,
+        modified_at: loaded.stat.mtime.toISOString(),
+        residency_note: 'corpus retained on tenant infrastructure; bytes not included in this response',
+      });
+    } catch (e) {
+      const msg = String(e.message || e);
+      const status = msg.includes('not found') ? 404 : (msg.includes('must match') ? 400 : 500);
+      res.status(status).json({ error: msg });
+    }
+  });
+
+  r.delete('/v1/eval/tenant_holdout/:corpus_id', (req, res) => {
+    try {
+      const tenantId = req.tenant_record?.id;
+      if (!tenantId) return res.status(401).json({ error: 'no tenant context' });
+      const corpusId = String(req.params.corpus_id || '').trim();
+      if (!corpusId) return res.status(400).json({ error: 'corpus_id required' });
+      const result = deleteTenantCorpus(tenantId, corpusId);
+      if (!result.deleted) return res.status(404).json({ error: result.reason || 'not found' });
+      try {
+        tryAppendAudit(AUDIT_OPS.EVAL_TENANT_HOLDOUT_DELETE || 'eval.tenant_holdout.delete', {
+          tenant_id: tenantId,
+          corpus_id: corpusId,
+        });
+      } catch {}
+      res.json({ deleted: true, tenant_id: tenantId, corpus_id: corpusId });
+    } catch (e) {
+      const msg = String(e.message || e);
+      const status = msg.includes('must match') ? 400 : 500;
+      res.status(status).json({ error: msg });
+    }
+  });
+
   // Verify a provenance credential (artifact-scoped or output-scoped).
   // Body: { credential: { spec: 'kolm-credential/0.1', ... } }
   // Returns: { valid: boolean, reason?: string, spec, type }
@@ -4167,6 +4527,234 @@ export function buildRouter() {
 
   r.get('/v1/byoc/targets', (_req, res) => {
     res.json({ targets: byoc.TARGETS });
+  });
+
+  // ---------- Wave-144 module surfaces: trace / ir / device / cc / fl / lineage ----------
+  // Mirrors the CLI verbs added in cli/kolm.js (cmdTrace, cmdIr, cmdDevice,
+  // cmdCc, cmdFl). Stateless endpoints (validate, build, stats over JSON
+  // inputs, list/lookup of static catalogs) are public. Endpoints that read
+  // server-side trace storage or that produce/aggregate state need a tenant
+  // identity, so they go through authMiddleware.
+  //
+  // Honest scope:
+  //   - /v1/cc/verify only returns CRYPTOGRAPHICALLY_VERIFIED when a real
+  //     verifier has been registered via registerAttestationVerifier(); the
+  //     default shape-check path returns SHAPE_VALID and does NOT claim crypto.
+  //   - /v1/fl/aggregate combines client-supplied contributions and returns
+  //     the merged delta + per-contribution audit trail. It does not train.
+  //   - /v1/lineage/build returns a hashed lineage block. Verification of the
+  //     claims inside (e.g., parent_artifact_hash points to a real artifact)
+  //     is the verifier's job, not this endpoint's.
+  //
+  // Rate-limited so an attacker can't use compile / aggregate as a CPU
+  // amplifier or use trace stats as a directory probe.
+
+  const wave144Limiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'rate-limited — wave-144 module API caps at 120/min/ip' },
+    keyGenerator: ipKey,
+    validate: { trustProxy: false },
+  });
+
+  function _http400(res, msg) { return res.status(400).json({ error: String(msg) }); }
+  function _http500(res, err) { return res.status(500).json({ error: String((err && err.message) || err) }); }
+  function _unwrapIrBody(body) {
+    const j = body && body.ir ? body.ir : body;
+    if (j && typeof j === 'object' && j.spec === 'wir-v1') return j;
+    if (j && typeof j === 'object' && j.ir && j.ir.spec === 'wir-v1') return j.ir;
+    return j;
+  }
+
+  // ----- trace -----
+  r.get('/v1/trace/:trace_id/stats', wave144Limiter, authMiddleware, async (req, res) => {
+    try {
+      const tid = String(req.params.trace_id || '');
+      if (!/^[0-9a-f]{32}$/.test(tid)) return _http400(res, 'trace_id must be 32 hex chars');
+      const s = await traceCapture.stats(tid);
+      res.json(s);
+    } catch (e) { _http500(res, e); }
+  });
+
+  r.get('/v1/trace/:trace_id/chain', wave144Limiter, authMiddleware, async (req, res) => {
+    try {
+      const tid = String(req.params.trace_id || '');
+      if (!/^[0-9a-f]{32}$/.test(tid)) return _http400(res, 'trace_id must be 32 hex chars');
+      const c = await traceCapture.chain(tid);
+      res.json(c);
+    } catch (e) { _http500(res, e); }
+  });
+
+  r.get('/v1/trace/:trace_id/export', wave144Limiter, authMiddleware, async (req, res) => {
+    try {
+      const tid = String(req.params.trace_id || '');
+      if (!/^[0-9a-f]{32}$/.test(tid)) return _http400(res, 'trace_id must be 32 hex chars');
+      const spans = await traceCapture.readTrace(tid);
+      res.json({ trace_id: tid, spans });
+    } catch (e) { _http500(res, e); }
+  });
+
+  r.post('/v1/trace/append', wave144Limiter, authMiddleware, async (req, res) => {
+    try {
+      const span = req.body && req.body.span;
+      if (!span || typeof span !== 'object') return _http400(res, 'span object required');
+      const enriched = await traceCapture.appendSpan(span);
+      res.status(201).json({ ok: true, span: enriched });
+    } catch (e) {
+      const msg = String(e.message || e);
+      if (/span missing field|unknown span kind|trace_id must|span_id must|parent_span_id must|payload must/.test(msg)) {
+        return _http400(res, msg);
+      }
+      _http500(res, e);
+    }
+  });
+
+  // ----- ir -----
+  r.post('/v1/ir/compile', wave144Limiter, authMiddleware, async (req, res) => {
+    try {
+      const { trace_ids, spans, opts } = req.body || {};
+      let result;
+      if (Array.isArray(trace_ids) && trace_ids.length > 0) {
+        for (const tid of trace_ids) {
+          if (!/^[0-9a-f]{32}$/.test(String(tid))) return _http400(res, `bad trace_id: ${tid}`);
+        }
+        result = trace_ids.length === 1
+          ? await compileIr.traceToIr(trace_ids[0], opts || {})
+          : await compileIr.tracesToIr(trace_ids, opts || {});
+      } else if (Array.isArray(spans) && spans.length > 0) {
+        result = compileIr.spansToIr(spans, opts || {});
+      } else {
+        return _http400(res, 'trace_ids[] or spans[] required');
+      }
+      res.json(result);
+    } catch (e) { _http500(res, e); }
+  });
+
+  r.post('/v1/ir/stats', wave144Limiter, (req, res) => {
+    try {
+      const ir = _unwrapIrBody(req.body || {});
+      const s = workflowIr.stats(ir);
+      res.json(s);
+    } catch (e) { _http400(res, e.message || e); }
+  });
+
+  r.post('/v1/ir/validate', wave144Limiter, (req, res) => {
+    try {
+      const ir = _unwrapIrBody(req.body || {});
+      workflowIr.validateIr(ir);
+      res.json({ ok: true, hash: workflowIr.hashIr(ir) });
+    } catch (e) { res.json({ ok: false, error: String(e.message || e) }); }
+  });
+
+  r.post('/v1/ir/replay', wave144Limiter, async (req, res) => {
+    try {
+      const ir = _unwrapIrBody(req.body || {});
+      const r2 = await workflowIr.replaySeeds(ir);
+      res.json(r2);
+    } catch (e) { _http400(res, e.message || e); }
+  });
+
+  // ----- device -----
+  r.get('/v1/device/profiles', wave144Limiter, (_req, res) => {
+    res.json({ spec: deviceCaps.CAPABILITY_VERSION, profiles: deviceCaps.allProfiles() });
+  });
+
+  r.get('/v1/device/profiles/:device_id', wave144Limiter, (req, res) => {
+    const p = deviceCaps.profileFor(String(req.params.device_id || ''));
+    if (!p) return res.status(404).json({ error: 'unknown device' });
+    res.json(p);
+  });
+
+  r.post('/v1/device/check', wave144Limiter, (req, res) => {
+    try {
+      const { target, device_id } = req.body || {};
+      if (!target || !device_id) return _http400(res, 'target and device_id required');
+      const result = deviceCaps.meetsRequirement(target, String(device_id));
+      res.json(result);
+    } catch (e) { _http400(res, e.message || e); }
+  });
+
+  r.post('/v1/device/probe', wave144Limiter, async (_req, res) => {
+    try { res.json(await deviceCaps.probeHost()); }
+    catch (e) { _http500(res, e); }
+  });
+
+  // ----- confidential compute -----
+  r.get('/v1/cc/kinds', wave144Limiter, (_req, res) => {
+    res.json({ spec: confidentialCompute.ATTESTATION_SPEC_VERSION, kinds: Object.values(confidentialCompute.KINDS) });
+  });
+
+  r.get('/v1/cc/shape/:kind', wave144Limiter, (req, res) => {
+    const k = String(req.params.kind || '');
+    const shape = confidentialCompute.REPORT_SHAPES[k];
+    if (!shape) return res.status(404).json({ error: 'unknown kind' });
+    res.json({ kind: k, shape });
+  });
+
+  r.post('/v1/cc/verify', wave144Limiter, async (req, res) => {
+    try {
+      const { kind, report, opts } = req.body || {};
+      if (!kind || !report) return _http400(res, 'kind and report required');
+      const r2 = await confidentialCompute.verifyAttestation(String(kind), report, opts || {});
+      res.json(r2);
+    } catch (e) { _http400(res, e.message || e); }
+  });
+
+  // ----- federated learning -----
+  r.get('/v1/fl/strategies', wave144Limiter, (_req, res) => {
+    res.json({ spec: federatedLearning.FL_SPEC_VERSION, strategies: Object.values(federatedLearning.STRATEGIES) });
+  });
+
+  r.post('/v1/fl/round/new', wave144Limiter, authMiddleware, (req, res) => {
+    try {
+      const round = federatedLearning.newRound(req.body || {});
+      res.status(201).json({ round, hash: federatedLearning.roundHash(round) });
+    } catch (e) { _http400(res, e.message || e); }
+  });
+
+  r.post('/v1/fl/contribution/verify', wave144Limiter, authMiddleware, (req, res) => {
+    try {
+      const { contribution, round, public_key } = req.body || {};
+      if (!contribution || !round || !public_key) return _http400(res, 'contribution, round, and public_key required');
+      const r2 = federatedLearning.verifyContribution({ contribution, round, public_key });
+      res.json(r2);
+    } catch (e) { _http400(res, e.message || e); }
+  });
+
+  r.post('/v1/fl/aggregate', wave144Limiter, authMiddleware, (req, res) => {
+    try {
+      const { round, contributions } = req.body || {};
+      if (!round || !Array.isArray(contributions)) return _http400(res, 'round and contributions[] required');
+      const r2 = federatedLearning.aggregate({ round, contributions });
+      res.json(r2);
+    } catch (e) { _http400(res, e.message || e); }
+  });
+
+  // ----- lineage + capability -----
+  r.post('/v1/lineage/build', wave144Limiter, (req, res) => {
+    try { res.json(artifactLineage.buildLineage(req.body || {})); }
+    catch (e) { _http400(res, e.message || e); }
+  });
+
+  r.post('/v1/lineage/validate', wave144Limiter, (req, res) => {
+    try {
+      const out = artifactLineage.validateLineage(req.body || {});
+      res.json({ ok: true, block: out });
+    } catch (e) { res.json({ ok: false, error: String(e.message || e) }); }
+  });
+
+  r.post('/v1/capability/build', wave144Limiter, (req, res) => {
+    try { res.json(artifactLineage.buildCapability(req.body || {})); }
+    catch (e) { _http400(res, e.message || e); }
+  });
+
+  r.post('/v1/capability/validate', wave144Limiter, (req, res) => {
+    try {
+      const out = artifactLineage.validateCapability(req.body || {});
+      res.json({ ok: true, block: out });
+    } catch (e) { res.json({ ok: false, error: String(e.message || e) }); }
   });
 
   return r;

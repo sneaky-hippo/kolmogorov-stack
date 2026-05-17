@@ -53,6 +53,9 @@ export const AUDIT_OPS = Object.freeze({
   TUNNEL_REVOKED: 'tunnels.revoked',
   BYOC_DEPLOY_REQUESTED: 'byoc.deploy_requested',
   BYOC_DEPLOY_COMPLETED: 'byoc.deploy_completed',
+  // Eval surface (Wave 165 N+5 tenant shadow corpus + future N+7 auditor)
+  EVAL_TENANT_HOLDOUT_SAVE: 'eval.tenant_holdout.save',
+  EVAL_TENANT_HOLDOUT_DELETE: 'eval.tenant_holdout.delete',
   // Admin / system
   ADMIN_ACTION: 'admin.action',
 });

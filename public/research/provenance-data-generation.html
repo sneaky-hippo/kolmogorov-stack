@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>Honest training-data generation: local-first, no hallucinated K-score &middot; kolm research</title>
+<title>Provenance training-data generation: local-first, no hallucinated K-score &middot; kolm research</title>
 <meta name="description" content="How kolm seeds helps you turn 5 real examples into a usable training set without lying. Templated mutation, public datasets, optional local-LLM. No third-party APIs. Every row provenance-tagged. K-score reported per source.">
 <meta name="keywords" content="training data, synthetic data, data augmentation, privacy, PHI, local-first, on-device, kolm seeds, K-score">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
@@ -14,16 +14,16 @@
 <meta name="author" content="kolm">
 <meta name="robots" content="index,follow,max-snippet:-1">
 <meta property="og:site_name" content="kolm">
-<meta property="og:title" content="Honest training-data generation">
+<meta property="og:title" content="Provenance training-data generation">
 <meta property="og:description" content="Local-first data helpers. No third-party APIs. No fake K-score. Every row provenance-tagged.">
 <meta property="og:type" content="article">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Honest training-data generation">
+<meta name="twitter:title" content="Provenance training-data generation">
 <meta name="twitter:description" content="Local-first data helpers. No third-party APIs. No fake K-score. Every row provenance-tagged.">
 <meta name="twitter:image" content="https://kolm.ai/og-card.svg">
-<meta property="og:url" content="https://kolm.ai/research/honest-data-generation">
+<meta property="og:url" content="https://kolm.ai/research/provenance-data-generation">
 <meta property="og:image" content="https://kolm.ai/og-card.svg">
-<link rel="canonical" href="https://kolm.ai/research/honest-data-generation">
+<link rel="canonical" href="https://kolm.ai/research/provenance-data-generation">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script type="application/ld+json">
 {
@@ -31,13 +31,13 @@
   "@graph": [
     {
       "@type": "TechArticle",
-      "headline": "Honest training-data generation: local-first, no hallucinated K-score",
+      "headline": "Provenance training-data generation: local-first, no hallucinated K-score",
       "description": "How kolm seeds turns 5 real examples into a usable training set without lying. Templated mutation, public seed datasets, optional local-LLM. No third-party APIs. Every row provenance-tagged.",
       "author": { "@type": "Organization", "name": "kolm", "url": "https://kolm.ai" },
       "publisher": { "@type": "Organization", "name": "kolm", "logo": { "@type": "ImageObject", "url": "https://kolm.ai/favicon.svg" } },
       "datePublished": "2026-05-15",
       "dateModified": "2026-05-15",
-      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://kolm.ai/research/honest-data-generation" },
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://kolm.ai/research/provenance-data-generation" },
       "image": "https://kolm.ai/og-card.svg",
       "keywords": "training data, synthetic data, data augmentation, privacy, local-first, kolm seeds, K-score",
       "articleSection": "Data",
@@ -48,7 +48,7 @@
       "itemListElement": [
         {"@type": "ListItem", "position": 1, "name": "kolm", "item": "https://kolm.ai/"},
         {"@type": "ListItem", "position": 2, "name": "Research", "item": "https://kolm.ai/research"},
-        {"@type": "ListItem", "position": 3, "name": "Honest data generation", "item": "https://kolm.ai/research/honest-data-generation"}
+        {"@type": "ListItem", "position": 3, "name": "Verifiable data generation", "item": "https://kolm.ai/research/provenance-data-generation"}
       ]
     }
   ]
@@ -159,8 +159,8 @@
 <section class="hero">
   <div class="wrap">
     <span class="pill"><span class="dot"></span>Research &middot; Data &middot; 2026-05-15 &middot; 9 min read</span>
-    <h1>Honest training-data generation: <span class="tone">no fake K-score, no API leakage.</span></h1>
-    <p class="lede">Most teams trying to train a private model have <b>5 to 20 real examples, not 3,200</b>. The bad answer is to call OpenAI or Anthropic to fabricate 3,000 more, which leaks the seeds and produces a K-score nobody should trust. The honest answer is rule-based mutation with full provenance, public seed datasets where they exist, and an optional local-LLM strategy that never leaves the machine. This is what <code>kolm seeds</code> does.</p>
+    <h1>Provenance training-data generation: <span class="tone">no fake K-score, no API leakage.</span></h1>
+    <p class="lede">Most teams trying to train a private model have <b>5 to 20 real examples, not 3,200</b>. The bad answer is to call OpenAI or Anthropic to fabricate 3,000 more, which leaks the seeds and produces a K-score nobody should trust. The evidenced answer is rule-based mutation with full provenance, public seed datasets where they exist, and an optional local-LLM strategy that never leaves the machine. This is what <code>kolm seeds</code> does.</p>
     <div class="meta"><span><b>By</b>&nbsp;kolm</span><span><b>Tag</b>&nbsp;data &middot; privacy &middot; provenance</span></div>
   </div>
 </section>
@@ -177,7 +177,7 @@
         <li><a href="#provenance">Provenance and the K-score split</a></li>
         <li><a href="#strategies">The five strategies</a></li>
         <li><a href="#recipe">Recipe: three commands</a></li>
-        <li><a href="#limits">Honest limits</a></li>
+        <li><a href="#limits">Documented limits</a></li>
       </ol>
     </div>
 
@@ -240,6 +240,8 @@
 
     <p>A team shipping with 5 user seeds and 195 templated rows might see <code>K_seed = 0.94</code>, <code>K_templated = 0.91</code>. A team that <i>only</i> trained on templated mutations of one or two seeds will see <code>K_seed</code> on a tiny holdout and the binder will say so. The numbers tell the truth.</p>
 
+    <p><b>Waves 164-167 extend the K-score ladder beyond tenant-local seeds.</b> <b>Wave 164 R-axis</b> (RS-1 &sect;7.12) adds two more numbers: <code>K_external</code> against a public benchmark (NIST i2b2, MIMIC-IV redaction holdouts, HELM SafeHarbor subsets) and <code>K_adversarial</code> against cross-family paraphrases generated by a different teacher than the one used at compile. <b>Wave 165</b> (&sect;7.13) adds <code>K_shadow</code> against your tenant-proprietary corpus that stays inside your VPC; the corpus hash binds into the receipt, the corpus bytes never ship. <b>Wave 167 drift detection</b> (&sect;7.15) recomputes these axes against the live capture stream and emits delta signals via <code>kolm drift detect</code>; see <a href="/research/eval-set-drift" style="color:#10b981">eval-set drift</a> for the detector schema and <a href="/drift" style="color:#10b981">/drift</a> for the lifecycle ladder. The shipped binder now reports <code>K_seed</code>, <code>K_templated</code>, <code>K_external</code>, <code>K_adversarial</code>, and <code>K_shadow</code> as five named columns, never blended.</p>
+
     <h2 id="strategies">The five strategies.</h2>
     <p>The table below is the full set. Each strategy is deterministic given a seed file and a <code>--seed-rng</code> integer.</p>
 
@@ -283,7 +285,7 @@
 
     <p>The artifact's compliance binder records both numbers, the seed count, the strategy, and the <code>--seed-rng</code> integer. Anyone reproducing the build can re-run the three commands and confirm the bytes match.</p>
 
-    <h2 id="limits">Honest limits.</h2>
+    <h2 id="limits">Documented limits.</h2>
     <p>Three places this story breaks, named on purpose.</p>
 
     <p><b>Templated mutation does not substitute for real data.</b> If you start with 3 real examples, the train loop has 3 real examples to score against. Templated rows test the model's tolerance for surface variation; they do not introduce new semantic cases. A team shipping a redactor that has never seen a real lab report should be told its <code>K_seed</code> is a small-sample estimate. The binder says so.</p>
@@ -293,16 +295,16 @@
     <p><b>Local-LLM strategy is only as private as your local LLM.</b> If the user points <code>--local-llm-url</code> at <code>http://localhost:8000</code> and that endpoint is a reverse proxy to a frontier model, the privacy guarantee is broken. We validate the URL hostname is localhost; we cannot validate the daemon behind that port. The user is responsible for what their localhost is.</p>
 
     <blockquote>
-      <p>The honest path is small. Five rules, four strategies, one optional opt-in. The point is not to generate impressive numbers; the point is that the numbers the binder reports are the numbers the auditor can trust.</p>
+      <p>The verifiable path is small. Five rules, four strategies, one optional opt-in. The point is not to generate impressive numbers; the point is that the numbers the binder reports are the numbers the auditor can trust.</p>
     </blockquote>
 
     <p>The verb is part of kolm v11. The full grammar is documented at <code>kolm seeds --help</code>. The CLI source is on the public mirror at <code>cli/kolm.js</code>. The public-domain phi-redactor seed dataset is in <code>data/public-seeds/</code>.</p>
 
     <div class="signpost">
-      <a href="/research/capture-loop-honesty">
+      <a href="/research/capture-loop-provenance">
         <span class="lab">read next</span>
-        <span class="v">Capture-loop honesty <span class="arrow">&rarr;</span></span>
-        <p>How the capture verb turns proxy traffic into honest training pairs without leaking secrets or fabricating labels.</p>
+        <span class="v">Capture-loop fidelity <span class="arrow">&rarr;</span></span>
+        <p>How the capture verb turns proxy traffic into verifiable training pairs without leaking secrets or fabricating labels.</p>
       </a>
       <a href="/research/k-score-correlation">
         <span class="lab">read next</span>

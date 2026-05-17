@@ -175,7 +175,7 @@
         <li><a href="#latency">Latency budgets</a></li>
         <li><a href="#worked">A worked example</a></li>
         <li><a href="#capture">Capture, distill, refresh</a></li>
-        <li><a href="#limits">Honest limits</a></li>
+        <li><a href="#limits">Documented limits</a></li>
       </ol>
     </div>
 
@@ -208,7 +208,7 @@
       </tbody>
     </table>
 
-    <p>The 70B row is on the table to be honest about where the line is: 70B does not fit on any device we'd call edge. It belongs in the cloud or in a buyer-owned datacenter rack. The 7-8B row is the upper end of edge feasibility, and only on the laptop and Jetson AGX rungs.</p>
+    <p>The 70B row is on the table to be transparent about where the line is: 70B does not fit on any device we'd call edge. It belongs in the cloud or in a buyer-owned datacenter rack. The 7-8B row is the upper end of edge feasibility, and only on the laptop and Jetson AGX rungs.</p>
 
     <p>For most edge use cases, the right starting point is 1B or 3B. The reason is not the leaderboard score; it's that the use cases that survive at the edge are narrow tasks (classification, extraction, structured generation), not open-ended chat. A narrow task on a 1B base with a well-fitted LoRA and a focused recall index produces K-scores in the 0.85-0.95 range for the tasks we've shipped; the marginal gain from going to 7B does not justify the 4x increase in cost and latency for the device.</p>
 
@@ -286,7 +286,7 @@
 
     <p>The disk-budget rule: an edge device should not be expected to hold more than one production artifact, one rollback artifact, and a rolling capture cache. Everything else (intermediate datasets, training logs, eval set history) lives on the IT side.</p>
 
-    <h2 id="limits">Honest limits.</h2>
+    <h2 id="limits">Documented limits.</h2>
     <p>Three places the artifact-sizing story breaks.</p>
 
     <p><b>Quantization below int4 has a K-score cliff.</b> q3_k_s sometimes works; q2 reliably does not. The cliff is task-dependent: classification on a small label set survives lower bits than open-ended generation. The compile gate enforces a floor of 0.85 K-score, which in practice means q4_k_m is the typical bottom of the ladder. Going lower means accepting a build failure and re-planning the deploy.</p>

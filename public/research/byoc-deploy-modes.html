@@ -174,7 +174,7 @@
         <li><a href="#tofu">The TOFU pinning model</a></li>
         <li><a href="#cli">The kolm cloud CLI</a></li>
         <li><a href="#pick">When to pick which</a></li>
-        <li><a href="#limits">Honest limits</a></li>
+        <li><a href="#limits">Documented limits</a></li>
       </ol>
     </div>
 
@@ -285,10 +285,10 @@
 
     <p><b>docker</b> wins when the trust story is provided by the network, not the silicon. Private on-prem, regulator-bounded environments where the operator already runs Kubernetes, internal staging environments where the threat model is "an engineer accidentally leaks data" rather than "a cloud provider is compromised". The image SHA plus a registry signature is enough.</p>
 
-    <h2 id="limits">Honest limits.</h2>
+    <h2 id="limits">Documented limits.</h2>
     <p>Three things the TEE story does not give you.</p>
 
-    <p><b>Vendor-rooted attestation depends on trusting the vendor.</b> An aws-nitro attestation chains to a Nitro Attestation Service root that AWS controls. A gcp-cvm SEV-SNP report chains to AMD's root, with Google in the middle of the path that delivered it. An azure-cvm TDX quote chains to Intel. If the threat model includes the cloud provider itself, or the silicon vendor itself, the TEE attestation does not close it. The honest framing is: the TEE makes the cloud provider's operations team materially weaker as an adversary, while doing nothing about the cloud provider's compliance team if a subpoena or a national-security letter is the threat.</p>
+    <p><b>Vendor-rooted attestation depends on trusting the vendor.</b> An aws-nitro attestation chains to a Nitro Attestation Service root that AWS controls. A gcp-cvm SEV-SNP report chains to AMD's root, with Google in the middle of the path that delivered it. An azure-cvm TDX quote chains to Intel. If the threat model includes the cloud provider itself, or the silicon vendor itself, the TEE attestation does not close it. The code-grounded framing is: the TEE makes the cloud provider's operations team materially weaker as an adversary, while doing nothing about the cloud provider's compliance team if a subpoena or a national-security letter is the threat.</p>
 
     <p><b>TOFU is pragmatic, not cryptographic certainty.</b> The first measurement the verifier sees is the baseline. If the deploy was compromised before that first measurement was pinned, the pinning happily preserves the compromise. The mitigation is an out-of-band check: the operator independently computes the expected PCR0 or measurement from the enclave image they built, and confirms the pinning matches. This is operational discipline; the verifier records the steps so the auditor can replay them.</p>
 

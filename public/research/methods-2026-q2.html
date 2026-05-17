@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Frontier methods, 2026 Q2: what the literature says, what kolm ships &middot; kolm research</title>
+<meta name="description" content="A research dump on the 2026-Q2 state of the art in distillation, sample efficiency, base-model picks, quantization, training-data creation, and NL-to-recipe. Cross-referenced against the existing kolm pipeline (src/tune.js, src/synthesis.js, src/assistant.js, src/recipe-class.js) and three roadmap-only modules that have not yet shipped.">
+<meta name="keywords" content="QLoRA, SimPO, KTO, ORPO, Quiet-STaR, EAGLE-3, Medusa, on-policy distillation, LIMA, UltraFeedback, Tulu-3, SmolLM2, Qwen2.5, Llama-3.2, Phi-4, Gemma-3, GGUF, AWQ, Unsloth, Self-Instruct, Evol-Instruct, Magpie, Persona-Hub, Constitutional AI, BFCL, XGrammar, AlphaCodium">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta name="author" content="kolm">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="Frontier methods, 2026 Q2: what the literature says, what kolm ships">
+<meta property="og:description" content="QLoRA, SimPO, KTO, ORPO, Quiet-STaR, EAGLE-3, on-policy distillation, Magpie, Persona-Hub, BFCL, XGrammar, AlphaCodium. The 2026-Q2 state of the art mapped against the existing kolm pipeline.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Frontier methods, 2026 Q2: what the literature says, what kolm ships">
+<meta name="twitter:description" content="The 2026-Q2 state of the art in distillation, sample efficiency, quantization, data synthesis, and NL-to-recipe, mapped against the shipped kolm pipeline.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<meta property="og:url" content="https://kolm.ai/research/methods-2026-q2">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/methods-2026-q2">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "Frontier methods, 2026 Q2: what the literature says, what kolm ships",
+      "description": "A research dump on the 2026-Q2 state of the art in distillation, sample efficiency, base-model picks, quantization, training-data creation, and NL-to-recipe, cross-referenced against the shipped kolm pipeline.",
+      "author": { "@type": "Organization", "name": "kolm", "url": "https://kolm.ai" },
+      "publisher": { "@type": "Organization", "name": "kolm", "logo": { "@type": "ImageObject", "url": "https://kolm.ai/favicon.svg" } },
+      "datePublished": "2026-05-17",
+      "dateModified": "2026-05-17",
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://kolm.ai/research/methods-2026-q2" },
+      "image": "https://kolm.ai/og-card.svg",
+      "keywords": "QLoRA, SimPO, KTO, ORPO, Quiet-STaR, EAGLE-3, on-policy distillation, LIMA, Tulu-3, AWQ, Magpie, Persona-Hub, BFCL, AlphaCodium",
+      "articleSection": "Methodology",
+      "wordCount": 4200
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "kolm", "item": "https://kolm.ai/"},
+        {"@type": "ListItem", "position": 2, "name": "Research", "item": "https://kolm.ai/research"},
+        {"@type": "ListItem", "position": 3, "name": "Frontier methods 2026 Q2", "item": "https://kolm.ai/research/methods-2026-q2"}
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#faf2e1;--accent-soft:rgba(236,231,220, 0.10);--good:#7ef0d2;--bad:#ff6b91;--warn:#f0b86b;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;font-synthesis:none}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:760px;margin:0 auto;padding:0 32px}
+  .wrap-wide{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap,.wrap-wide{padding:0 20px}}
+
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand span{font-weight:500;font-size:16px}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .cta{color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:500}
+  @media(max-width:720px){header.site nav{display:none}}
+
+  section.hero{padding:80px 0 36px;position:relative;overflow:hidden}
+  section.hero::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 900px 460px at 22% 12%,rgba(236,231,220, 0.10),transparent 60%)}
+  section.hero .wrap{position:relative}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-mute);border:1px solid var(--line-strong);border-radius:999px;padding:5px 12px;background:var(--bg-elev)}
+  .pill .dot{width:5px;height:5px;border-radius:50%;background:#10b981}
+  h1{margin:22px 0 18px;font-size:clamp(34px,5.4vw,54px);line-height:1.05;font-weight:500;max-width:22ch}
+  h1 .tone{color:#10b981}
+  p.lede{margin:0;font-size:clamp(17px,1.4vw,20px);line-height:1.55;color:var(--ink-mute);max-width:62ch}
+  p.lede b{color:var(--ink);font-weight:500}
+  .meta{display:flex;gap:18px;margin-top:22px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
+  .meta b{color:var(--ink-mute);font-weight:500}
+
+  article{padding:36px 0 96px}
+  article h2{margin:56px 0 14px;font-size:clamp(24px,2.6vw,30px);line-height:1.2;font-weight:500;color:var(--ink)}
+  article h3{margin:36px 0 10px;font-size:18px;font-weight:500;color:var(--ink)}
+  article p{margin:0 0 16px;font-size:16.5px;line-height:1.7;color:var(--ink-mute)}
+  article p b{color:var(--ink);font-weight:500}
+  article p code,article li code,article td code{font-family:var(--mono);font-size:0.92em;background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--ink)}
+  article blockquote{margin:28px 0;padding:16px 22px;border-left:2px solid #10b981;background:var(--bg-elev);border-radius:0 8px 8px 0;font-size:17px;line-height:1.6;color:var(--ink)}
+  article blockquote p{color:var(--ink);margin:0;font-weight:500}
+  article ul{padding-left:0;list-style:none;margin:16px 0 24px}
+  article ul li{padding:8px 0 8px 22px;position:relative;font-size:16px;line-height:1.6;color:var(--ink-mute)}
+  article ul li::before{content:"-";color:#10b981;position:absolute;left:6px;font-weight:500}
+  article ul li b{color:var(--ink);font-weight:500}
+  article pre{margin:18px 0 24px;padding:18px 22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.75;color:var(--ink)}
+  article pre .com{color:var(--ink-faint)}
+  article pre .arg{color:#10b981}
+  article pre .kw{color:#b0bbff}
+  article table{width:100%;border-collapse:collapse;margin:18px 0 24px;font-size:14px}
+  article table th,article table td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;color:var(--ink-mute)}
+  article table th{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);font-weight:500;letter-spacing:0.04em}
+  article table td b{color:var(--ink)}
+
+  .toc{margin:28px 0 36px;padding:18px 22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px}
+  .toc h5{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px;font-weight:500}
+  .toc ol{margin:0;padding-left:20px}
+  .toc li{padding:4px 0;font-size:14px;color:var(--ink-mute)}
+  .toc li a{color:var(--ink-mute)}
+  .toc li a:hover{color:#10b981}
+
+  .ships-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:20px 0 18px}
+  @media(max-width:720px){.ships-grid{grid-template-columns:1fr}}
+  .ships-card{padding:18px 20px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px}
+  .ships-card.shipped{border-left:3px solid var(--good)}
+  .ships-card.roadmap{border-left:3px solid var(--warn)}
+  .ships-card .tag{display:inline-block;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.05em;padding:2px 8px;border-radius:999px;margin-bottom:8px}
+  .ships-card.shipped .tag{color:var(--good);background:rgba(126,240,210,0.10);border:1px solid rgba(126,240,210,0.30)}
+  .ships-card.roadmap .tag{color:var(--warn);background:rgba(240,184,107,0.10);border:1px solid rgba(240,184,107,0.30)}
+  .ships-card h4{margin:0 0 8px;font-size:15px;font-weight:500;color:var(--ink);font-family:var(--mono)}
+  .ships-card p{margin:0;font-size:14px;color:var(--ink-mute);line-height:1.55}
+  .ships-card p code{font-family:var(--mono);font-size:0.92em;color:var(--ink)}
+
+  .verify-tag{display:inline-block;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--warn);background:rgba(240,184,107,0.10);border:1px solid rgba(240,184,107,0.30);padding:1px 7px;border-radius:4px;margin-left:6px;vertical-align:middle}
+
+  .signpost{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:48px 0 0}
+  @media(max-width:720px){.signpost{grid-template-columns:1fr}}
+  .signpost a{display:flex;flex-direction:column;gap:8px;padding:22px;background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;transition:border-color 120ms,background 120ms}
+  .signpost a:hover{border-color:var(--line-strong);background:var(--bg-card)}
+  .signpost a .lab{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint)}
+  .signpost a .v{color:var(--ink);font-weight:500;font-size:16px}
+  .signpost a .v .arrow{color:#10b981;margin-left:6px}
+  .signpost a p{margin:4px 0 0;font-size:13.5px;color:var(--ink-mute);line-height:1.5}
+
+  footer.site{padding:56px 0 40px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+  footer.site .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+</style>
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap-wide row">
+    <div class="left">
+      <a href="/" class="brand"><span>kolm</span></a>
+      <nav>
+        <a href="/use-cases">Use cases</a>
+        <a href="/docs">Docs</a>
+        <a href="/research">Research</a>
+        <a href="/enterprise">Enterprise</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span>Research &middot; SHIPPED wave 196 &middot; 2026-05-17 &middot; 22 min read</span>
+    <h1>Frontier methods, 2026&nbsp;Q2: what the <span class="tone">literature</span> says, what kolm ships.</h1>
+    <p class="lede">A research dump on the <b>2026-Q2 state of the art</b> in distillation, sample efficiency, base-model picks, quantization, training-data creation, and NL-to-recipe. Source bar: arXiv-published papers, official HF model cards, vendor blogs (Anthropic / OpenAI / Meta / Google / Microsoft), and &gt;5k-star OSS repos. Each section closes with the existing or planned kolm landing surface; the closing section names <b>what ships today</b> in <code>src/tune.js</code> + <code>src/synthesis.js</code> + <code>src/assistant.js</code> + <code>src/recipe-class.js</code> versus three roadmap-only modules.</p>
+    <div class="meta"><span><b>By</b>&nbsp;kolm</span><span><b>Tag</b>&nbsp;distillation &middot; LoRA &middot; quantization &middot; synthesis</span></div>
+  </div>
+</section>
+
+<article>
+  <div class="wrap">
+
+    <div class="toc">
+      <h5>Contents</h5>
+      <ol>
+        <li><a href="#distillation">Distillation methods &mdash; state of the art</a></li>
+        <li><a href="#sample-efficiency">Sample efficiency &mdash; how much data is enough</a></li>
+        <li><a href="#base-models">Base-model picks for distillation targets, 2026</a></li>
+        <li><a href="#quantization">Quantization formats &mdash; trade-offs</a></li>
+        <li><a href="#data-creation">Training-data creation &mdash; reputable open methods</a></li>
+        <li><a href="#nl-to-recipe">Natural language &rarr; recipe &mdash; state of the art</a></li>
+        <li><a href="#rule-of-thumb">Rule-of-thumb: data needed per recipe class</a></li>
+        <li><a href="#what-ships">What ships in kolm today vs. roadmap</a></li>
+      </ol>
+    </div>
+
+    <p>This is a synthesis of the 2026-Q2 frontier in post-training methods, framed against what the existing kolm pipeline already does. The intent is to make Kolm&rsquo;s grounding legible: every claim below is anchored to a published paper, a vendor blog, or a &gt;5k-star OSS repo, and the closing section separates what the shipped <code>src/tune.js</code>, <code>src/synthesis.js</code>, <code>src/assistant.js</code>, and <code>src/recipe-class.js</code> modules currently do from three modules (<code>distill-onpolicy.js</code>, <code>distill-preference.js</code>, <code>spec-decode.js</code>) that are roadmap-only and <b>not yet shipped</b>. Items the underlying research dump marked as needing a second-source confirmation carry a <span class="verify-tag">verify before ship</span> tag below.</p>
+
+    <h2 id="distillation">1. Distillation methods &mdash; state of the art.</h2>
+
+    <h3>1.1 Pure knowledge distillation (logit / hidden-state matching).</h3>
+    <p>The classical Hinton-style soft-target distillation (minimise KL between teacher and student logits at temperature T) remains the workhorse, but 2025 work has shifted toward <b>sparse</b>, <b>adaptive</b>, and <b>feature-level</b> variants.</p>
+    <ul>
+      <li><b>Sparse Logit Sampling</b> (Bhardwaj et al., 2025, <a href="https://arxiv.org/abs/2503.16870" rel="noopener">arXiv:2503.16870</a>). Importance-sampling-based sparsification gives unbiased estimates of the teacher distribution and drops logit-cache storage by ~10&times; without measurable quality loss. Teacher logits can be precomputed once and reused across student runs.</li>
+      <li><b>AdaKD &mdash; Token-Adaptive Knowledge Distillation</b> (<a href="https://arxiv.org/html/2510.11615" rel="noopener">arXiv:2510.11615</a>). Loss-driven adaptive token focusing concentrates distillation pressure on the small tail of hard tokens that carry the signal.</li>
+      <li><b>Flex-KD</b> (<a href="https://arxiv.org/html/2507.10155v2" rel="noopener">arXiv:2507.10155</a>). Distils between teacher and student with differing hidden sizes; final-layer-only distillation suffices, dodging CKA&rsquo;s all-layer requirement.</li>
+      <li><b>Probe-KD</b>. Train an MLP probe on teacher hidden states across all layers, then use the probe&rsquo;s soft predictions to supervise the student via KL. Cheaper than full feature distillation.</li>
+      <li><b>DistilBERT / TinyBERT</b> logit + hidden-state legacy combination remains the standard baseline in 2025 surveys (<a href="https://arxiv.org/pdf/2503.12067" rel="noopener">arXiv:2503.12067</a>, <a href="https://arxiv.org/pdf/2504.14772" rel="noopener">arXiv:2504.14772</a>).</li>
+    </ul>
+
+    <h3>1.2 LoRA fine-tuning on teacher outputs &mdash; the kolm default path.</h3>
+    <p>Teacher (frontier API or large open-weight) generates <code>(prompt, response)</code> pairs from the train split; a small base is LoRA-fine-tuned on those pairs; the adapter is quantised and exported. The seminal paper is <b>QLoRA</b> (Dettmers et al., NeurIPS 2023, <a href="https://arxiv.org/abs/2305.14314" rel="noopener">arXiv:2305.14314</a>) &mdash; 4-bit NF4 base + 16-bit LoRA adapters lets a 65B model fine-tune on a single 48&nbsp;GB GPU without loss vs. full 16-bit fine-tuning.</p>
+    <p>The current best-practice stack pairs QLoRA with the <b>Unsloth</b> runtime (<a href="https://github.com/unslothai/unsloth" rel="noopener">github.com/unslothai/unsloth</a>, &gt;25k stars), which delivers ~2&times; faster training and ~70&nbsp;% less VRAM than vanilla PEFT through hand-written Triton kernels. Thinking Machines Lab&rsquo;s &ldquo;<a href="https://thinkingmachines.ai/blog/lora/" rel="noopener">LoRA Without Regret</a>&rdquo; blog (Oct&nbsp;2025) showed empirically that LoRA matches full fine-tuning on reasoning/math benchmarks when (i)&nbsp;rank is sufficient for the task complexity and (ii)&nbsp;the dataset is in-distribution for the base.</p>
+
+    <h3>1.3 Preference distillation: DPO / SimPO / KTO / SLiC / ORPO.</h3>
+    <p>A 2025 post-training stack typically chains SFT &rarr; preference step rather than picking one preference method.</p>
+    <ul>
+      <li><b>DPO</b> (Rafailov et al., 2023, <a href="https://arxiv.org/abs/2305.18290" rel="noopener">arXiv:2305.18290</a>) &mdash; single logistic loss over (chosen, rejected) replaces PPO + reward model. Universal baseline; OpenAI, Microsoft Azure, and Together all expose DPO endpoints.</li>
+      <li><b>SimPO</b> (Meng et al., NeurIPS 2024, <a href="https://arxiv.org/abs/2405.14734" rel="noopener">arXiv:2405.14734</a>). Removes the reference log-ratio term, length-normalises the implicit reward, and outperforms DPO by up to 6.4&nbsp;pts on AlpacaEval&nbsp;2 and 7.5&nbsp;pts on Arena-Hard. <a href="https://github.com/princeton-nlp/SimPO" rel="noopener">princeton-nlp/SimPO</a> &gt;1.5k stars.</li>
+      <li><b>KTO &mdash; Kahneman-Tversky Optimization</b> (Ethayarajh et al., 2024, <a href="https://arxiv.org/abs/2402.01306" rel="noopener">arXiv:2402.01306</a>). Works on <b>binary</b> good/bad labels instead of paired preferences, so it consumes thumb-up/thumb-down logs directly.</li>
+      <li><b>SLiC</b> (Zhao et al., 2023). Margin-based ranking loss; superseded in 2025 benchmarks.</li>
+      <li><b>ORPO &mdash; Odds-Ratio Preference Optimization</b> (Hong et al., 2024, <a href="https://arxiv.org/abs/2403.07691" rel="noopener">arXiv:2403.07691</a>). Fuses SFT and preference in one pass; no reference model.</li>
+      <li><b>TVKD &mdash; Teacher Value-based KD</b> (Kwon et al., 2025, <a href="https://arxiv.org/pdf/2509.16965" rel="noopener">arXiv:2509.16965</a>). Injects soft reward labels from a teacher&rsquo;s value function as an auxiliary term on top of DPO.</li>
+    </ul>
+    <p>Modern consensus: <b>SimPO for stability under noisy labels, ORPO when you can fuse SFT, KTO when you only have binary signal, DPO as the universal default polish step.</b></p>
+
+    <h3>1.4 Reasoning distillation (Quiet-STaR, CoT, agent distillation).</h3>
+    <ul>
+      <li><b>Quiet-STaR</b> (Zelikman et al., 2024, <a href="https://arxiv.org/abs/2403.09629" rel="noopener">arXiv:2403.09629</a>, <a href="https://github.com/ezelikman/quiet-star" rel="noopener">ezelikman/quiet-star</a>). LMs learn to generate token-by-token rationales that improve next-token prediction. After Quiet-STaR continued-pretraining, GSM8K rose 5.9 &rarr; 10.9 and CommonsenseQA 36.3 &rarr; 47.2 zero-shot.</li>
+      <li><b>Fast Quiet-STaR</b> (EMNLP&nbsp;2025 Findings). Same inference cost as base, but stronger downstream &mdash; thinking without thought tokens.</li>
+      <li><b>Agent Distillation</b> (NeurIPS&nbsp;2025 poster, <i>Distilling LLM Agent into Small Models with Retrieval and Code Tools</i>). 0.5B / 1.5B / 3B sLMs match next-tier 1.5B / 3B / 7B CoT-distilled baselines when distilled with the full agentic loop (retrieval + tools), not just rationales.</li>
+      <li><b>Chain-of-Thought Curriculum Distillation</b> (ISAIE&nbsp;2025). Step-by-step CoT supervision ordered by difficulty.</li>
+    </ul>
+
+    <h3>1.5 Speculative decoding distillation (inference-time speedup).</h3>
+    <ul>
+      <li><b>Medusa</b> (Cai et al., 2024). Multiple LM heads predict tokens 1..k in parallel; base unchanged. Each head is essentially a single-layer distilled predictor.</li>
+      <li><b>EAGLE / EAGLE-2 / EAGLE-3</b> (Li et al., <a href="https://arxiv.org/pdf/2401.15077" rel="noopener">arXiv:2401.15077</a> and follow-ups). One-layer transformer draft model that concatenates input embedding with feature vectors and reuses the target LM head; EAGLE-3 fuses hidden states from multiple intermediate layers. <b>2&ndash;6&times; inference speedup</b> with no accuracy loss; KL between target and draft is the standard objective. EAGLE-3 currently leads MT-Bench / HumanEval / GSM8K for spec-decoding on production-class models.</li>
+      <li><b>Variational Speculative Decoding</b> (2025) <span class="verify-tag">verify before ship</span>. Reframes draft training from token-likelihood to sequence-acceptance; reports beating EAGLE-3. Single recent preprint; not promoted as a kolm claim.</li>
+    </ul>
+
+    <h3>1.6 On-policy distillation (the late-2025 direction).</h3>
+    <p>Thinking Machines Lab&rsquo;s <a href="https://thinkingmachines.ai/blog/on-policy-distillation/" rel="noopener"><i>On-Policy Distillation</i></a> (Oct&nbsp;2025) is the most-cited new direction in late-2025 distillation work. Student samples its own trajectories on-policy, and the teacher provides <b>dense per-token reverse-KL supervision</b> on those trajectories. Information-theoretically distillation teaches O(N) bits per episode versus RL&rsquo;s O(1), so on-policy distillation gets RL&rsquo;s exposure-bias mitigation at a fraction of the data cost. Reverse KL is mode-seeking &mdash; it locks onto the teacher&rsquo;s specific behaviour rather than smearing across distributions. A <b>Black-Box On-Policy Distillation</b> adaptation from Microsoft is at <a href="https://arxiv.org/pdf/2511.10643" rel="noopener">arXiv:2511.10643</a>.</p>
+
+    <h3>1.7 Mixed objectives &mdash; the dominant 2025 recipe.</h3>
+    <p>Empirically dominant pipeline in 2025: <b>SFT on teacher-generated demonstrations &rarr; DPO/SimPO on a preference set sampled from the same teacher</b>. This is the recipe behind <b>Tulu&nbsp;3</b>, <b>SmolLM2-Instruct</b>, and <b>Llama-3.2-Instruct</b>. Doing DPO without an SFT warm-up usually under-performs; OpenAI&rsquo;s DPO cookbook explicitly recommends SFT-first.</p>
+
+    <h2 id="sample-efficiency">2. Sample efficiency &mdash; how much data is enough?</h2>
+
+    <h3>2.1 LoRA on a small specialised task.</h3>
+    <ul>
+      <li><b>500&ndash;2,000 well-crafted pairs</b> is the modal recommendation across 2025 practitioner guides (Databricks, Truefoundry, Unsloth docs). Quality and formatting consistency dominate raw count.</li>
+      <li><b>LIMA</b> (Zhou et al., 2023, <a href="https://arxiv.org/abs/2305.11206" rel="noopener">arXiv:2305.11206</a>). Demonstrated that <b>1,000 curated SFT examples</b> on Llama-1-65B produced responses preferred to or equivalent to GPT-4 in 43&nbsp;% of human-evaluated pairs, and 58&nbsp;% vs.&nbsp;Bard. Authoritative anchor for the &ldquo;1k is often enough&rdquo; claim.</li>
+      <li>For sharply scoped tasks (regex-like normalisers, classifier heads, single-format extractors), 100&ndash;500 pairs often suffice; sub-100 examples enter few-shot territory and should be served via in-context prompting rather than fine-tuning.</li>
+    </ul>
+
+    <h3>2.2 Full SFT for a general chat assistant.</h3>
+    <ul>
+      <li><b>OpenHermes 2.5</b> (Teknium, 2024): ~1M GPT-4-generated multi-turn examples. Anchor for a &ldquo;well-rounded assistant from scratch&rdquo; size.</li>
+      <li><b>UltraChat</b> (Ding et al., THUNLP, <a href="https://github.com/thunlp/UltraChat" rel="noopener">thunlp/UltraChat</a>): ~1.5M multi-round dialogues.</li>
+      <li><b>Tulu 3 SFT mix</b> (Allen AI, 2025, <a href="https://huggingface.co/collections/allenai/tulu-3-datasets" rel="noopener">allenai/tulu-3-datasets</a>): ~939k examples drawing from WildChat, Persona-IF, etc.</li>
+      <li>Practical floor for a generalist assistant base is <b>~100k&ndash;1M instructions</b>; below ~50k, expect noticeable persona/format brittleness.</li>
+    </ul>
+
+    <h3>2.3 Preference data for DPO / SimPO.</h3>
+    <ul>
+      <li><b>UltraFeedback</b> (Cui et al., 2023, <a href="https://github.com/OpenBMB/UltraFeedback" rel="noopener">OpenBMB/UltraFeedback</a>): <b>~64k prompts</b> with 4-aspect preference annotations across UltraChat / ShareGPT / Evol-Instruct / TruthfulQA / FalseQA / FLAN. De-facto open baseline.</li>
+      <li><b>Tulu 3 preference mix</b>: on-policy completions generated <i>by the model being trained</i>; significantly outperforms UltraFeedback-alone, especially at 70B scale (per Tulu&nbsp;3 paper, Allen AI 2025).</li>
+      <li>OpenAI&rsquo;s official DPO cookbook walks through a <b>500-pair</b> demonstration &mdash; enough for narrow behavioural shaping (response-format preferences, single-axis tone changes). For general alignment expect <b>10k&ndash;60k pairs</b>.</li>
+    </ul>
+
+    <h3>2.4 Reasoning / CoT distillation.</h3>
+    <ul>
+      <li>Agent Distillation (NeurIPS&nbsp;2025): a 0.5B sLM closes a 1B&ndash;7B gap with <b>~10k&ndash;50k rationale-augmented trajectories</b> from a stronger teacher.</li>
+      <li>Quiet-STaR&rsquo;s continued pretraining used OpenWebMath + web text at the scale of millions of tokens &mdash; the rationale-pretraining regime, not the few-thousand-pair fine-tune regime.</li>
+    </ul>
+
+    <h2 id="base-models">3. Base-model picks for distillation targets, 2026.</h2>
+    <p>The following table reflects the open-weight bases we recommend as default student picks for the four kolm distillation tiers. The recommended quantisation column maps to &sect;4 below.</p>
+
+    <table>
+      <thead><tr><th>Model</th><th>Params</th><th>Context</th><th>License</th><th>Recommended quant</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><b>SmolLM2-135M</b></td><td>135M</td><td>8k</td><td>Apache-2.0</td><td>Q5_K_M / Q8_0</td><td>HF SmolLM team. 2T training tokens. Edge / mobile floor.</td></tr>
+        <tr><td><b>SmolLM2-360M</b></td><td>360M</td><td>8k</td><td>Apache-2.0</td><td>Q5_K_M</td><td>4T tokens. Best sub-500M assistant per HF benchmarks.</td></tr>
+        <tr><td><b>SmolLM2-1.7B</b></td><td>1.7B</td><td>8k</td><td>Apache-2.0</td><td>Q4_K_M</td><td>11T tokens; SFT + DPO via UltraFeedback. English-only.</td></tr>
+        <tr><td><b>Qwen2.5-0.5B / 1.5B / 3B / 7B</b></td><td>as labelled</td><td>up to 128k (1M for <code>-1M</code>)</td><td>Apache-2.0 (most sizes)</td><td>Q4_K_M / AWQ-INT4</td><td>Strong multilingual (29+ languages) + structured output + coding.</td></tr>
+        <tr><td><b>Llama-3.2-1B-Instruct</b></td><td>1.23B</td><td>128k</td><td>Llama-3.2 Community License</td><td>Q4_K_M</td><td>Distilled from 3.1-8B / 70B via logit matching + pruning. Multilingual (8 langs).</td></tr>
+        <tr><td><b>Llama-3.2-3B-Instruct</b></td><td>3.21B</td><td>128k</td><td>Llama-3.2 Community License</td><td>Q4_K_M</td><td>Same recipe as 1B. Strong edge target.</td></tr>
+        <tr><td><b>Llama-3.3-70B-Instruct</b></td><td>70B</td><td>128k</td><td>Llama-3.3 Community License</td><td>AWQ-INT4 or Q4_K_M</td><td>Teacher candidate, not a student target for most kolm workloads.</td></tr>
+        <tr><td><b>Phi-4</b></td><td>14B</td><td>16k base / 32k reasoning / 64k effective on reasoning-plus</td><td>MIT</td><td>Q4_K_M / AWQ-INT4</td><td>Microsoft Research; permissive licence. Strong reasoning per size.</td></tr>
+        <tr><td><b>Gemma 3 1B / 4B / 12B / 27B</b></td><td>as labelled</td><td>32k (1B) / 128k (4B+)</td><td>Gemma licence (permissive commercial)</td><td>Q4_K_M</td><td>Multimodal (text + image for 4B+); 140+ languages; released March&nbsp;2025.</td></tr>
+      </tbody>
+    </table>
+
+    <p><b>License caveats.</b> Llama&nbsp;3.x community licences include a 700M-MAU clause and an attribution requirement; Apache-2.0 (SmolLM2 / Qwen / Mistral families) has neither. Gemma licence permits commercial use with a prohibited-use policy. <span class="verify-tag">verify before ship</span> licence terms whenever kolm re-packages weights into a <code>.kolm</code> for tenant redistribution; the Llama clause has tripped multiple downstream redistributors.</p>
+
+    <p><b>Default kolm student picks</b> (mapping to existing <code>src/recipe-class.js</code> examples):</p>
+    <ul>
+      <li><b>Tier 0 (sub-500M)</b>: SmolLM2-360M when English-only; Qwen2.5-0.5B when multilingual or structured-output needed.</li>
+      <li><b>Tier 1 (~1&ndash;2B)</b>: Llama-3.2-1B-Instruct or Qwen2.5-1.5B-Instruct.</li>
+      <li><b>Tier 2 (~3B)</b>: Llama-3.2-3B-Instruct or Qwen2.5-3B-Instruct.</li>
+      <li><b>Tier 3 (~7B)</b>: Qwen2.5-7B-Instruct (Apache) preferred over Mistral 7B for permissive licence + stronger 2025 benchmarks.</li>
+      <li><b>Reasoning-heavy specialised task</b>: Phi-4 14B (MIT) or Qwen2.5-7B with on-policy distillation from a frontier teacher.</li>
+    </ul>
+
+    <h2 id="quantization">4. Quantization formats &mdash; trade-offs.</h2>
+
+    <table>
+      <thead><tr><th>Format</th><th>Bit-width</th><th>Typical size (7B base)</th><th>Quality retention</th><th>Speed</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><b>GGUF Q4_K_M</b></td><td>4.5-bit avg</td><td>~4.08 GB</td><td>~92&nbsp;%</td><td>CPU + GPU</td><td>Default kolm shipping format; sweet spot.</td></tr>
+        <tr><td><b>GGUF Q5_K_M</b></td><td>5.5-bit avg</td><td>~4.78 GB</td><td>~95&nbsp;%</td><td>CPU + GPU</td><td>&ldquo;Middle ground&rdquo;; recommended when perplexity drift must stay low.</td></tr>
+        <tr><td><b>GGUF Q8_0</b></td><td>8-bit</td><td>~7.2 GB</td><td>~99&nbsp;%</td><td>CPU + GPU</td><td>Near-lossless; ship when storage is cheap and quality must be conservative.</td></tr>
+        <tr><td><b>GPTQ INT4</b></td><td>4-bit</td><td>~4.0 GB</td><td>~90&nbsp;%</td><td>GPU</td><td>Hessian-based weight selection. Marlin-GPTQ kernels: 712 tok/s on Qwen2.5-32B (vLLM bench, 2.6&times; over vanilla GPTQ).</td></tr>
+        <tr><td><b>AWQ INT4</b></td><td>4-bit</td><td>~4.0 GB</td><td><b>~95&nbsp;%</b></td><td>GPU</td><td>Activation-aware. At 70B scale, AWQ consistently beats GPTQ for accuracy; Marlin-AWQ 741 tok/s vs.&nbsp;68 vanilla = 10.9&times; speedup.</td></tr>
+        <tr><td><b>bitsandbytes 4-bit NF4 (QLoRA)</b></td><td>4-bit</td><td>~4.5 GB</td><td>full fine-tune parity</td><td>GPU only</td><td>QLoRA paper (Dettmers et al., <a href="https://arxiv.org/abs/2305.14314" rel="noopener">arXiv:2305.14314</a>). Standard for <i>training</i>, not shipping.</td></tr>
+        <tr><td><b>SmoothQuant W8A8</b></td><td>8-bit weights + 8-bit acts</td><td>~7 GB</td><td>high</td><td>GPU</td><td>Migrates outliers from activations to weights; MIT HAN Lab. Suitable for server-side inference.</td></tr>
+        <tr><td><b>SpQR</b></td><td>mixed</td><td>&mdash;</td><td>high</td><td>GPU</td><td>Sparse-quantised; handles outlier weights at higher precision. Niche; <span class="verify-tag">verify before ship</span> integration story with llama.cpp.</td></tr>
+        <tr><td><b>llama.cpp imatrix</b></td><td>works with all GGUF Q*</td><td>same as base format</td><td>+10&ndash;30&nbsp;% perplexity reduction vs.&nbsp;naive</td><td>&mdash;</td><td>Importance-matrix calibration before quantisation. <b>Strongly recommended for any GGUF below Q5_K_M.</b></td></tr>
+      </tbody>
+    </table>
+
+    <p>Key practitioner finding from 2025: <b>IFEval is the most quantization-sensitive eval</b> &mdash; models can lose &gt;10&nbsp;% instruction-following accuracy at INT4, suggesting decoder alignment becomes unstable in very low-bit formats. For instruction-tuned kolm students, ship Q5_K_M or AWQ-INT4 with imatrix, not naked Q4_0.</p>
+
+    <h2 id="data-creation">5. Training-data creation &mdash; reputable open methods.</h2>
+
+    <h3>5.1 Self-Instruct &rarr; Stanford Alpaca &rarr; Evol-Instruct.</h3>
+    <ul>
+      <li><b>Self-Instruct</b> (Wang et al., 2022/2023, <a href="https://arxiv.org/abs/2212.10560" rel="noopener">arXiv:2212.10560</a>, <a href="https://github.com/yizhongw/self-instruct" rel="noopener">yizhongw/self-instruct</a>, &gt;4k stars). Bootstrap from <b>~175 hand-written seed instructions</b> &rarr; N-shot prompt (N&nbsp;&asymp;&nbsp;8) the LLM to synthesise new instructions, filter for diversity (Rouge-L &lt; 0.7) and quality, iterate. Stanford <b>Alpaca</b> scaled this recipe to 52k instructions via text-davinci-003.</li>
+      <li><b>WizardLM / Evol-Instruct</b> (Xu et al., ICLR 2024, <a href="https://arxiv.org/abs/2304.12244" rel="noopener">arXiv:2304.12244</a>, <a href="https://github.com/nlpxucan/WizardLM" rel="noopener">nlpxucan/WizardLM</a>, &gt;8k stars). Iteratively <i>evolves</i> instructions via five In-depth ops (add constraints / deepen / concretize / increase reasoning steps / complicate input) plus In-breadth. WizardLM beat ChatGPT by +7.9&nbsp;pts win-rate on hard prompts.</li>
+      <li><b>WizardCoder</b> and <b>WizardMath</b> (ICLR&nbsp;2024) apply the same evolution to coding and math domains.</li>
+    </ul>
+
+    <h3>5.2 Magpie &mdash; seed-free synthesis (ICLR 2025).</h3>
+    <p><b>Magpie</b> (Xu et al., <a href="https://arxiv.org/html/2406.08464v1" rel="noopener">arXiv:2406.08464</a>, ICLR&nbsp;2025, <a href="https://github.com/magpie-align/magpie" rel="noopener">magpie-align/magpie</a>). Exploits the chat template of an aligned LLM: feed the pre-fill template alone, and the aligned LLM hallucinates <i>both</i> a user query and a response. No seed instructions, no Evol-Instruct chain. Llama-3-8B-Base fine-tuned on Magpie data outperforms Evol-Instruct- and UltraChat-derived datasets and approaches Llama-3-8B-Instruct quality with a <b>much smaller dataset</b>. t-SNE shows Magpie covers Alpaca + Evol-Instruct + UltraChat combined.</p>
+
+    <h3>5.3 Synthetic data via teacher API.</h3>
+    <p>OpenAI / Anthropic / Google offer the obvious teacher endpoints. Pricing matters: Claude Opus 4.7 input $5 / output $25 per MTok; Sonnet 4.6 $3/$15; Haiku 4.5 $1/$5; <b>batch processing is 50&nbsp;% cheaper across all models</b>; <b>prompt caching cuts cached input by 90&nbsp;%</b>.</p>
+    <p>Practical &ldquo;right number of seeds&rdquo;:</p>
+    <ul>
+      <li><b>Self-Instruct anchor: 175 seeds &rarr; 52k synthesised</b> (Alpaca).</li>
+      <li>For a narrow kolm task, <b>20&ndash;100 seeds + Evol-Instruct or Magpie &rarr; 1k&ndash;10k pairs</b> is the modal recipe.</li>
+      <li>For a generalist assistant, expect a teacher bill scaling with output tokens: 1M-token output run at Sonnet rates &asymp; $15. Always use batch + caching.</li>
+    </ul>
+    <p>Amazon Bedrock now exposes <b>Claude 3 Haiku model distillation</b> with Sonnet 3.5 as teacher; achieves Sonnet-like accuracy on specific tasks at Haiku price/speed.</p>
+
+    <h3>5.4 Constitutional AI and refusal training.</h3>
+    <p><b>Constitutional AI</b> (Bai et al., Anthropic, 2022, <a href="https://arxiv.org/abs/2212.08073" rel="noopener">arXiv:2212.08073</a>). Use a written constitution to (a)&nbsp;generate critique prompts that produce revised model outputs, then (b)&nbsp;generate AI-feedback preference labels for RLHF / RLAIF.</p>
+    <p><b>Constitutional Classifiers</b> and <b>Constitutional Classifiers++</b> (Anthropic, Feb&nbsp;2025 and follow-up). Train input/output classifiers on synthetic constitution-violation data. Deployment on Claude Sonnet 4.5 hit <b>0.05&nbsp;% refusal rate on harmless queries</b> &mdash; 87&nbsp;% drop from the original. Reference: <a href="https://www.anthropic.com/research/constitutional-classifiers" rel="noopener">anthropic.com/research/constitutional-classifiers</a>.</p>
+    <p>For kolm: a tenant-supplied constitution &rarr; synthetic refusal corpus &rarr; small classifier head is a credible add-on for the redactor companion modules.</p>
+
+    <h3>5.5 Persona-driven generation.</h3>
+    <p><b>Scaling Synthetic Data Creation with 1,000,000,000 Personas</b> (Chan et al., Tencent AI Lab, 2024, <a href="https://arxiv.org/abs/2406.20094" rel="noopener">arXiv:2406.20094</a>, <a href="https://github.com/tencent-ailab/persona-hub" rel="noopener">tencent-ailab/persona-hub</a>). <b>Persona Hub</b> &mdash; 1B personas curated via Text-to-Persona (&ldquo;who would read/write/like this?&rdquo;) + Persona-to-Persona (interpersonal-relationship expansion). Inject one persona per generation prompt to dramatically diversify outputs. Applications: math/logic problems, instructions, knowledge-rich text, NPC dialogue, tool/function calls.</p>
+    <p>This is the cheapest way to <b>diversify</b> a small seed set without manual curation; combine with Magpie or Evol-Instruct to get topic coverage and difficulty range simultaneously.</p>
+
+    <h3>5.6 Anchor open datasets (cite-able pedigree).</h3>
+    <ul>
+      <li><b>OpenHermes-2.5</b> &mdash; Teknium / Nous (~1M GPT-4 multi-turn).</li>
+      <li><b>UltraChat</b> &mdash; THUNLP (1.5M multi-round).</li>
+      <li><b>UltraFeedback</b> &mdash; OpenBMB (64k 4-aspect preference).</li>
+      <li><b>Tulu 3 mix</b> &mdash; Allen AI (SFT + preference + safety + IF; ~939k SFT, on-policy DPO).</li>
+      <li><b>Magpie-Pro / Magpie-Air</b> &mdash; Magpie-Align (seed-free; multiple sizes from 100k to 1M).</li>
+    </ul>
+
+    <h2 id="nl-to-recipe">6. Natural language &rarr; recipe &mdash; state of the art.</h2>
+
+    <h3>6.1 Function calling / tool use for structured output.</h3>
+    <p>Anthropic, OpenAI, Google, Mistral, Cohere, and most open Instruct models now support tool / function calling natively. Authoritative benchmark: <b>Berkeley Function Calling Leaderboard (BFCL) V4</b> (ICML&nbsp;2025, <a href="https://gorilla.cs.berkeley.edu/leaderboard.html" rel="noopener">gorilla.cs.berkeley.edu/leaderboard.html</a>). Real-world question-function-answer pairs across Python / Java / JavaScript / REST; AST-based scoring. As of mid-2026: Claude Opus 4.1 at 70.36&nbsp;% (2nd), Claude Sonnet&nbsp;4 at 70.29&nbsp;% (3rd), GPT-5 at 59.22&nbsp;% (7th).</p>
+    <p>For kolm <code>nl "make me a recipe&hellip;"</code> the cleanest path is: define a JSON schema for <code>RecipeSpec</code> (positives, negatives, output_spec, recipe_class, hints) &rarr; invoke teacher with tool-use forcing that schema &rarr; validate locally &rarr; hand to <code>src/synthesis.js</code>.</p>
+
+    <h3>6.2 Constrained decoding.</h3>
+    <ul>
+      <li><b>XGrammar</b> (<a href="https://github.com/mlc-ai/xgrammar" rel="noopener">mlc-ai/xgrammar</a>). Default structured-generation backend for vLLM, SGLang, and TensorRT-LLM since March&nbsp;2026. Under 40&nbsp;&micro;s/token, near-zero JSON overhead. <span class="verify-tag">verify before ship</span> vendor docs updated frequently.</li>
+      <li><b>llguidance</b> (Microsoft, <a href="https://github.com/guidance-ai/llguidance" rel="noopener">guidance-ai/llguidance</a>). Rust Earley parser at ~50&nbsp;&micro;s/token; OpenAI publicly credited llguidance for the foundational work underpinning their May-2025 Structured Outputs.</li>
+      <li><b>Outlines</b>. Compiles JSON schemas to FSM index for O(1) valid-token lookup. JSONSchemaBench flagged complex-schema compile times of 40&nbsp;s&ndash;10&nbsp;min; <b>best for simple, hand-curated schemas</b>, weaker for arbitrary user input.</li>
+      <li><b>lm-format-enforcer</b> (Gat, <a href="https://github.com/noamgat/lm-format-enforcer" rel="noopener">noamgat/lm-format-enforcer</a>). Permits LLM to control whitespace, optional fields, field ordering &mdash; more permissive than rigid grammar enforcers.</li>
+      <li><b>JSON mode / response_format</b> &mdash; OpenAI (Aug&nbsp;2024), Anthropic (Nov&nbsp;2025), Google, Mistral. The cheapest path when you only need valid JSON, not a specific schema.</li>
+    </ul>
+    <p>For kolm: use <b>vendor-native function-calling for teachers we can target</b> (Anthropic / OpenAI), with <b>XGrammar or llguidance as the local fallback</b> when the user requested an open-weight teacher.</p>
+
+    <h3>6.3 DSL synthesis (NL &rarr; executable program).</h3>
+    <p>The &ldquo;Code as Policies&rdquo; / &ldquo;ProgPrompt&rdquo; line of work (2022&ndash;2023) demonstrated that LLMs can translate NL into executable DSL when given (i)&nbsp;DSL syntax in-context, (ii)&nbsp;~5&ndash;15 input/output exemplars, (iii)&nbsp;system instructions. The 2024&ndash;2025 follow-ups &mdash; <b>DSL Assistant</b> (<a href="https://arxiv.org/pdf/2408.09766" rel="noopener">arXiv:2408.09766</a>), <b>Natural Language Commanding via Program Synthesis</b> (Gandhi, Microsoft, <a href="https://arxiv.org/pdf/2306.03460" rel="noopener">arXiv:2306.03460</a>), <b>Towards Formal Verification of LLM-Generated Code from Natural Language Prompts</b> (<a href="https://arxiv.org/html/2507.13290v1" rel="noopener">arXiv:2507.13290</a>) &mdash; treat the DSL as a typed schema and the LLM as the parser. Recurring success recipe: keep the DSL tight, expose ~10 in-context examples, run a syntactic validator (the AST check kolm already has in <code>src/synthesis.js</code>), and bounce on first parse failure.</p>
+
+    <h3>6.4 Verifier loops (self-debug, AlphaCodium).</h3>
+    <p><b>AlphaCodium</b> (Ridnik et al., Codium AI, Jan&nbsp;2024, <a href="https://arxiv.org/abs/2401.08500" rel="noopener">arXiv:2401.08500</a>, <a href="https://github.com/Codium-ai/AlphaCodium" rel="noopener">Codium-ai/AlphaCodium</a>). Two-phase flow:</p>
+    <ul>
+      <li><b>Pre-processing</b> &mdash; model summarises goal/inputs/outputs/rules as bullets, generates and ranks candidate solutions.</li>
+      <li><b>Iteration</b> &mdash; generate candidate, execute against public + AI-generated tests, refine based on failure mode.</li>
+    </ul>
+    <p>GPT-4 pass@5 rose from 19&nbsp;% (single-prompt) &rarr; 44&nbsp;% (AlphaCodium). Crucially, only <b>~100 LLM calls per problem</b> vs.&nbsp;AlphaCode&rsquo;s ~1M. The lesson kolm steals: <b>synthesising tests is easier than synthesising correct code; use the verifier-rejection signal as the gradient</b>. Maps cleanly onto the existing verifier loop in <code>src/synthesis.js</code>.</p>
+
+    <h2 id="rule-of-thumb">7. Rule-of-thumb &mdash; data needed per recipe class.</h2>
+    <p>The recipe-class taxonomy is the one declared in <code>src/recipe-class.js</code>. The data-volume column reflects the modal practitioner recommendation from &sect;2.</p>
+
+    <table>
+      <thead><tr><th>Recipe class</th><th>Authoring path</th><th>Typical training-pair count</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><b>rule</b></td><td>Hand-authored JS</td><td><b>0</b></td><td>Deterministic; verifier sees fixed source. Holdout for K-score still needed.</td></tr>
+        <tr><td><b>synthesized_rule</b></td><td>Teacher emits DSL / JS, AST-validated</td><td><b>5&ndash;50 in-context exemplars</b> (no fine-tune)</td><td>Few-shot prompting against a strong teacher; verifier loop catches failures. Magpie / Evol-Instruct can grow exemplars if seed is small.</td></tr>
+        <tr><td><b>compiled_rule</b></td><td>Lower an existing rule / synth-rule to C / Rust / WASM</td><td><b>Same as source</b> (rule is the spec)</td><td>Native compile is mechanical; no new training data. Differential tests against source are the gate.</td></tr>
+        <tr><td><b>distilled_model</b> &mdash; sharp / narrow</td><td>LoRA on teacher pairs</td><td><b>500&ndash;2,000</b> (LIMA anchor + Databricks / Unsloth practitioner consensus)</td><td>E.g.&nbsp;denial-code classifier with neural fallback, ICD-10 free-text &rarr; code.</td></tr>
+        <tr><td><b>distilled_model</b> &mdash; moderate domain assistant</td><td>LoRA + DPO / SimPO</td><td><b>5k&ndash;30k SFT + 1k&ndash;10k preference</b></td><td>E.g.&nbsp;clinical-notes summariser, customer-support persona. Use Magpie + Persona-Hub for seeds.</td></tr>
+        <tr><td><b>distilled_model</b> &mdash; generalist chat</td><td>Full SFT + preference stack</td><td><b>100k&ndash;1M SFT + 10k&ndash;60k preference</b></td><td>Reference: Tulu&nbsp;3 939k SFT + UltraFeedback 64k. kolm unlikely to serve this tier directly; recommend tenant uses a published base.</td></tr>
+        <tr><td><b>distilled_model</b> &mdash; reasoning-augmented</td><td>On-policy distillation or CoT distillation</td><td><b>10k&ndash;50k trajectories</b></td><td>Agent Distillation NeurIPS&nbsp;2025 anchor. Reverse-KL on student rollouts.</td></tr>
+      </tbody>
+    </table>
+
+    <p><b>Headline message.</b> For the modal kolm workload (single-task adapter on a 1&ndash;3B base), <b>1k carefully constructed pairs is the right starting size</b>, not 100k. The literature is unambiguous since LIMA (2023).</p>
+
+    <h2 id="what-ships">8. What ships in kolm today vs. roadmap.</h2>
+    <p>The methods above are not all live in the kolm pipeline. The split below is read directly off the repository as of 2026-05-17. Files in the <span style="color:var(--good)">shipped</span> column already implement the pattern named; files in the <span style="color:var(--warn)">roadmap</span> column do not yet exist in <code>src/</code> and are <b>not yet shipped</b>.</p>
+
+    <div class="ships-grid">
+      <div class="ships-card shipped">
+        <span class="tag">shipped &middot; src/tune.js</span>
+        <h4>src/tune.js</h4>
+        <p>Skeleton-LoRA &rarr; evolving-local-model pipeline. The trainer spawned by <code>scripts/tune-step.py</code> standardises on QLoRA via Unsloth (4-bit NF4 base + 16-bit LoRA adapters). Quantisation export defaults to GGUF Q5_K_M with llama.cpp imatrix calibration; AWQ-INT4 (vLLM / Marlin) offered as a server-target variant. PEFT-format adapter contract documented in <code>kolm tune init</code>.</p>
+      </div>
+      <div class="ships-card shipped">
+        <span class="tag">shipped &middot; src/synthesis.js</span>
+        <h4>src/synthesis.js</h4>
+        <p>Recipe-source generation, including teacher-emitted JS. AlphaCodium-style verifier-rejection loop with AST validation is live. Teacher-output generation slot for JSON-schema function-calling (Anthropic / OpenAI) and XGrammar / llguidance fallback for open-weight teachers. Magpie-style seed-free generation and Persona-Hub injection are prompt-engineering extensions that land here.</p>
+      </div>
+      <div class="ships-card shipped">
+        <span class="tag">shipped &middot; src/assistant.js</span>
+        <h4>src/assistant.js</h4>
+        <p>NL &rarr; intent &rarr; tenant action. The rule-based intent classifier (regex-based <code>detectIntent()</code>) is the default. The <code>nl_to_recipe</code> intent emits a <code>RecipeSpec</code> JSON via teacher function-calling, reached only when the rule-based classifier returns <code>help</code>, preserving the no-telemetry guarantee for existing intents.</p>
+      </div>
+      <div class="ships-card shipped">
+        <span class="tag">shipped &middot; src/recipe-class.js</span>
+        <h4>src/recipe-class.js</h4>
+        <p>The four-class taxonomy (<code>rule</code>, <code>synthesized_rule</code>, <code>compiled_rule</code>, <code>distilled_model</code>) and inferral rules. The data-volume rule-of-thumb table in &sect;7 is surfaced via <code>CLASS_DESCRIPTIONS</code> so <code>kolm recipe-classes</code> and the <a href="/recipe-classes" style="color:#10b981">/recipe-classes</a> web page can render it.</p>
+      </div>
+      <div class="ships-card roadmap">
+        <span class="tag">roadmap &middot; not yet shipped</span>
+        <h4>src/distill-onpolicy.js</h4>
+        <p><b>Not yet shipped.</b> Thinking Machines on-policy distillation: student samples its own trajectories, teacher returns log-probs, reverse-KL gradient computed locally. Requires a teacher endpoint that exposes log-probs (open-weight teachers via the local runtime; Anthropic / OpenAI do not currently). Sequences with <code>src/tune.js</code> so the trainer can switch between off-policy SFT and on-policy distill.</p>
+      </div>
+      <div class="ships-card roadmap">
+        <span class="tag">roadmap &middot; not yet shipped</span>
+        <h4>src/distill-preference.js</h4>
+        <p><b>Not yet shipped.</b> Implements DPO + SimPO as orchestration on top of the existing tune loop; reuses the K-score gate. KTO as the binary-feedback variant for thumbs-up / thumbs-down captures from <code>~/.kolm/tune/&lt;artifact&gt;/captures.jsonl</code>.</p>
+      </div>
+      <div class="ships-card roadmap">
+        <span class="tag">roadmap &middot; not yet shipped</span>
+        <h4>src/spec-decode.js</h4>
+        <p><b>Not yet shipped.</b> Optional EAGLE-style speculative-decoding pair shipped alongside the artifact: draft head trained on the same teacher outputs, 2&ndash;6&times; latency win at inference. Pure inference optimisation; orthogonal to the training pipeline.</p>
+      </div>
+    </div>
+
+    <h3>Deferred &mdash; not on the roadmap.</h3>
+    <ul>
+      <li><b>SpQR integration</b> &mdash; niche; llama.cpp story unclear in 2025.</li>
+      <li><b>Variational Speculative Decoding</b> &mdash; single recent preprint <span class="verify-tag">verify before ship</span>.</li>
+      <li><b>Quiet-STaR rationale-pretraining</b> &mdash; compute-prohibitive for tenant-scale runs; viable only for fleet-wide base updates.</li>
+    </ul>
+
+    <blockquote>
+      <p>The honest commitment: kolm today ships the LoRA-on-teacher-outputs path with QLoRA + Unsloth, GGUF Q5_K_M + imatrix exports, AST-validated synthesis with a verifier-rejection loop, the four-class recipe taxonomy, and an NL-to-recipe assistant. On-policy distillation, preference distillation, and speculative-decoding pairs are <b>roadmap-only</b>. The literature above is the destination; <code>src/tune.js</code> + <code>src/synthesis.js</code> + <code>src/assistant.js</code> + <code>src/recipe-class.js</code> is the bridge that exists today.</p>
+    </blockquote>
+
+    <div class="signpost">
+      <a href="/training">
+        <span class="lab">surface</span>
+        <span class="v">Training pipeline <span class="arrow">&rarr;</span></span>
+        <p>The shipped tune loop: capture, distill, K-score gate, signed receipt. QLoRA + Unsloth, GGUF Q5_K_M + imatrix.</p>
+      </a>
+      <a href="/research/eval-set-drift">
+        <span class="lab">read next</span>
+        <span class="v">Eval set drift <span class="arrow">&rarr;</span></span>
+        <p>Why a gold set rots even when the model does not. Detection signals and the wave-167 drift detector.</p>
+      </a>
+      <a href="/research/provenance-data-generation">
+        <span class="lab">read next</span>
+        <span class="v">Provenance of generated data <span class="arrow">&rarr;</span></span>
+        <p>Where the training pairs came from, who is allowed to ask, and what the receipt chain says about it.</p>
+      </a>
+      <a href="/spec/rs-1">
+        <span class="lab">spec</span>
+        <span class="v">RS-1 v2.1 <span class="arrow">&rarr;</span></span>
+        <p>The receipt-chain spec the modules above bind into: manifest blocks, verifier checks, supersession semantics.</p>
+      </a>
+      <a href="/drift">
+        <span class="lab">surface</span>
+        <span class="v">Drift &amp; supersession <span class="arrow">&rarr;</span></span>
+        <p>The M+1&ndash;M+4 lifecycle ladder. Stale notification, re-distillation cadence, breach + successor flow.</p>
+      </a>
+    </div>
+
+  </div>
+</article>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+        <a href="/integrations/gitlab-ci">GitLab CI</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/badge">Embed badge</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

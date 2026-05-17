@@ -1,0 +1,94 @@
+{
+  "job_id": "job_edi_270_271_pair_v1",
+  "task": "Parse an X12 EDI 270 (eligibility inquiry) or 271 (eligibility response) transaction (5010A1). Emit normalized JSON: { format, direction, payer, provider, subscriber, dependents?, inquiry?, response? }. Direction auto-detected from ST01 (270 inquiry / 271 response). 270 carries EQ service-type-codes; 271 carries EB eligibility-benefit-information per service type.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_edi_270_271_v1",
+      "name": "edi-270-271",
+      "source": "function generate(i,lib){var t=(i&&i.edi_text)||'',AC=((lib.pack||{}).rules||{}).aaa_reject_codes||{},S=t.split('~'),F=null,D=null,p={},pr={},sb={},Q=null,RS=null,E=[];for(var k=0;k<S.length;k++){var f=S[k].trim().split('*'),x=f[0];if(x=='ST'){F=f[1];D=f[1]=='270'?'inquiry':'response';if(D=='inquiry')Q={service_type_codes:[],date_of_service:null};else RS={eligibility:'pending',benefits:[],errors:E};}else if(x=='NM1'){var q=f[1];if(q=='PR'){p.name=f[3];p.payer_id=f[9];}else if(q=='1P'||q=='85'){pr.name=f[3];pr.npi=f[9];}else if(q=='IL'){sb.name='<redacted>';sb.redacted_member_id='<hash>';}}else if(x=='REF'&&f[1]=='6P')sb.group_number=f[2];else if(x=='DMG')sb.dob='<redacted>';else if(x=='DTP'&&f[1]=='291'&&Q)Q.date_of_service=f[3];else if(x=='EQ'&&Q)Q.service_type_codes.push(f[1]);else if(x=='EB'&&RS){var v='123'.indexOf(f[1])>=0?'active':'678'.indexOf(f[1])>=0?'inactive':null;if(v)RS.eligibility=v;RS.benefits.push({service_type_code:f[3]||null,coverage_level:f[2]||null,monetary_amount:+f[7]||null});}else if(x=='AAA')E.push({code:f[3]||null,description:AC[f[3]]||null});}var o={format:F,direction:D,payer:p,provider:pr,subscriber:sb};if(Q)o.inquiry=Q;if(RS)o.response=RS;return o;}",
+      "tags": ["health-insurance", "edi", "270", "271", "eligibility", "x12", "5010"],
+      "schema": {
+        "input": { "edi_text": "string" },
+        "output": {
+          "format": "string",
+          "direction": "string",
+          "payer": "object",
+          "provider": "object",
+          "subscriber": "object",
+          "dependents": "array",
+          "inquiry": "object|null",
+          "response": "object|null"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "X12 5010A1 270/271 eligibility code dictionaries. Tenants extend rules at run time via params without recompiling the recipe.",
+    "rules": {
+      "service_type_codes": {
+        "1": "Medical Care",
+        "2": "Surgical",
+        "30": "Health Benefit Plan Coverage",
+        "33": "Chiropractic",
+        "35": "Dental Care",
+        "47": "Hospital",
+        "48": "Hospital Inpatient",
+        "50": "Hospital Outpatient",
+        "86": "Emergency Services",
+        "88": "Pharmacy",
+        "98": "Professional (Physician) Visit - Office",
+        "AL": "Vision (Optometry)",
+        "MH": "Mental Health",
+        "UC": "Urgent Care"
+      },
+      "eligibility_codes": {
+        "1": "Active Coverage",
+        "2": "Active - Full Risk Capitation",
+        "3": "Active - Services Capitated",
+        "6": "Inactive",
+        "7": "Inactive - Pending Eligibility Update",
+        "8": "Inactive - Pending Investigation",
+        "I": "Non-Covered",
+        "V": "Cannot Process"
+      },
+      "aaa_reject_codes": {
+        "15": "Required application data missing",
+        "33": "Input Errors",
+        "41": "Authorization/Access Restrictions",
+        "42": "Unable to Respond at Current Time",
+        "72": "Invalid/Missing Subscriber/Insured ID",
+        "73": "Invalid/Missing Subscriber/Insured Name",
+        "75": "Subscriber/Insured Not Found"
+      }
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "inquiry_office_visit_lookup",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*PROVIDER001   *ZZ*PAYER00001    *260517*1430*^*00501*000000042*0*P*:~GS*HS*PROVIDER001*PAYER00001*20260517*1430*42*X*005010X279A1~ST*270*0001*005010X279A1~BHT*0022*13*ELIG-REQ-42*20260517*1430~HL*1**20*1~NM1*PR*2*PAYER NATIONAL HEALTH*****PI*PAYER00001~HL*2*1*21*1~NM1*1P*2*FAMILY CLINIC*****XX*1234567893~HL*3*2*22*0~TRN*1*ELIG-REQ-42*9PROVIDER1~NM1*IL*1*DOE*JANE****MI*W123456789~REF*6P*GRP-PPO-GOLD-2026~DMG*D8*19850412*F~DTP*291*D8*20260517~EQ*30~EQ*98~SE*15*0001~GE*1*42~IEA*1*000000042~" },
+        "expected": { "direction": "inquiry" }
+      },
+      {
+        "id": "response_active_with_copay",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*PAYER00001    *ZZ*PROVIDER001   *260517*1431*^*00501*000000043*0*P*:~GS*HB*PAYER00001*PROVIDER001*20260517*1431*43*X*005010X279A1~ST*271*0001*005010X279A1~BHT*0022*11*ELIG-REQ-42*20260517*1431~HL*1**20*1~NM1*PR*2*PAYER NATIONAL HEALTH*****PI*PAYER00001~HL*2*1*21*1~NM1*1P*2*FAMILY CLINIC*****XX*1234567893~HL*3*2*22*0~TRN*2*ELIG-REQ-42*9PROVIDER1~NM1*IL*1*DOE*JANE****MI*W123456789~REF*6P*GRP-PPO-GOLD-2026~DMG*D8*19850412*F~EB*1**30**PPO-GOLD-2026~EB*B*IND*98***27*25.00~SE*16*0001~GE*1*43~IEA*1*000000043~" },
+        "expected": { "direction": "response" }
+      },
+      {
+        "id": "response_subscriber_not_found_aaa",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*PAYER00001    *ZZ*PROVIDER001   *260517*1432*^*00501*000000044*0*P*:~GS*HB*PAYER00001*PROVIDER001*20260517*1432*44*X*005010X279A1~ST*271*0001*005010X279A1~BHT*0022*11*ELIG-REQ-99*20260517*1432~HL*1**20*1~NM1*PR*2*PAYER NATIONAL HEALTH*****PI*PAYER00001~HL*2*1*21*1~NM1*1P*2*FAMILY CLINIC*****XX*1234567893~HL*3*2*22*0~TRN*2*ELIG-REQ-99*9PROVIDER1~NM1*IL*1*ROE*UNKNOWN****MI*W999999999~AAA*N**75*C~SE*11*0001~GE*1*44~IEA*1*000000044~" },
+        "expected": { "direction": "response" }
+      },
+      {
+        "id": "inquiry_pharmacy_and_hospital",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*PROVIDER002   *ZZ*PAYER00002    *260517*1500*^*00501*000000045*0*P*:~GS*HS*PROVIDER002*PAYER00002*20260517*1500*45*X*005010X279A1~ST*270*0001*005010X279A1~BHT*0022*13*ELIG-REQ-45*20260517*1500~HL*1**20*1~NM1*PR*2*PAYER REGIONAL HEALTH*****PI*PAYER00002~HL*2*1*21*1~NM1*1P*2*UNIVERSITY HOSPITAL*****XX*9876543210~HL*3*2*22*0~TRN*1*ELIG-REQ-45*9PROVIDER2~NM1*IL*1*SMITH*JOHN****MI*W555000111~REF*6P*GRP-HMO-BRONZE-2026~DMG*D8*19720801*M~DTP*291*D8*20260518~EQ*47~EQ*88~SE*15*0001~GE*1*45~IEA*1*000000045~" },
+        "expected": { "direction": "inquiry" }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

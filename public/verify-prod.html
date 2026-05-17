@@ -11,8 +11,8 @@
 <script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
 <link rel="canonical" href="https://kolm.ai/verify-prod">
 <style>
-  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
-  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669}
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
   body{background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,Inter,system-ui,sans-serif;margin:0}
   .wrap{max-width:760px;margin:0 auto;padding:0 24px}
   header.site{padding:18px 0;border-bottom:1px solid var(--line)}
@@ -69,6 +69,7 @@
   </div>
 </header>
 
+<main id="main">
 <section class="hero"><div class="wrap">
   <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; verify</p>
   <h1>Verify any .kolm artifact, free.</h1>
@@ -87,6 +88,48 @@
 </div></section>
 
 <section class="body"><div class="wrap">
+  <h2>Live drift indicator</h2>
+  <p>Verifying an artifact tells you it is what it claims to be on the day it was signed. It does <em>not</em> tell you whether the world has moved out from under it. Once a .kolm is in production, an operator needs a second loop — <code>kolm drift detect</code> — that re-scores the live artifact against a frozen baseline and reports whether any K-score axis has crossed its tolerance band. The card below documents what that loop emits so the same auditor who dropped the file above can reason about the artifact's <i>current</i> health, not just its provenance.</p>
+  <p style="font-size:13.5px;color:var(--ink-faint);font-family:var(--mono);margin:0 0 18px">Pure documentation surface. The browser verifier does not call any drift API; the kolm CLI runs the detection locally against your baseline. See <a href="/drift" style="color:inherit;border-bottom:1px solid var(--line)">/drift</a> for the full lifecycle ladder.</p>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 22px">
+    <span style="display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;letter-spacing:0.12em;text-transform:uppercase;padding:6px 12px;border-radius:4px;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(16,185,129,0.30)">within &middot; noop</span>
+    <span style="display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;letter-spacing:0.12em;text-transform:uppercase;padding:6px 12px;border-radius:4px;color:var(--warn);background:var(--warn-soft);border:1px solid rgba(240,184,107,0.30)">drift &middot; warn band</span>
+    <span style="display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;letter-spacing:0.12em;text-transform:uppercase;padding:6px 12px;border-radius:4px;color:var(--bad);background:var(--bad-soft);border:1px solid rgba(255,107,145,0.30)">breach &middot; actionable</span>
+  </div>
+
+  <h3 style="font-family:var(--mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-mute);margin:24px 0 10px">Run it locally</h3>
+  <pre>$ kolm drift detect --artifact bundle.kolm --baseline baseline.snapshot.json --window 7d
+[kolm drift] loaded baseline   <span style="color:var(--ink-faint)">drift-snapshot-v1</span>  age=7d
+[kolm drift] loaded current    <span style="color:var(--ink-faint)">drift-snapshot-v1</span>  artifact=bundle.kolm
+[kolm drift] eval_score                  delta=-0.004  <span style="color:var(--accent)">within</span>   (warn 0.02 / fail 0.05)
+[kolm drift] k_score.composite           delta=+0.011  <span style="color:var(--accent)">within</span>   (warn 0.03 / fail 0.08)
+[kolm drift] k_score.R                   delta=-0.062  <span style="color:var(--warn)">drift</span>    (warn 0.05 / fail 0.10)
+[kolm drift] k_score.F                   delta=+0.018  <span style="color:var(--accent)">within</span>   (warn 0.05 / fail 0.10)
+[kolm drift] external_holdout_hash       <span style="color:var(--accent)">within</span>   (exact match)
+[kolm drift] tenant_shadow_corpus_hash   <span style="color:var(--accent)">within</span>   (exact match)
+[kolm drift] artifact_hash               <span style="color:var(--ink-faint)">informational</span>  (new build, expected)
+[kolm drift] verdict: <span style="color:var(--warn)">drift</span>   breach_count=0  drift_count=1
+[kolm drift] wrote drift-report-v1 -> drift-report.json
+$ echo $?
+0</pre>
+  <p style="font-size:13.5px;color:var(--ink-faint);font-family:var(--mono)">Exit code is <b>0</b> on within/drift and <b>2</b> on breach so CI can gate on it (<code>kolm drift detect ... || rollback.sh</code>). Same JSON output as <code>drift-report-v1</code> in the receipt chain.</p>
+
+  <h3 style="font-family:var(--mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-mute);margin:32px 0 10px">The six axes &amp; their floors</h3>
+  <p style="font-size:13.5px;color:var(--ink-mute)">Every axis below is a constant in <code>src/drift-supersession.js</code> (W167) <code>DEFAULT_TOLERANCES</code>. Override per-axis with <code>--tolerances tol.json</code>; the verifier re-derives whichever values the report carries.</p>
+  <div class="grid">
+    <div class="c"><h3>eval_score</h3><p>Normalized scalar in [0, 1]. Tightest band: <b>warn 0.02 / fail 0.05</b>. Tightest because eval is a single number — even small swings move it meaningfully.</p></div>
+    <div class="c"><h3>k_score.composite</h3><p>Weighted sum of axes. <b>warn 0.03 / fail 0.08</b>. Slightly looser than eval because float noise across architectures adds 1e-4 per axis.</p></div>
+    <div class="c"><h3>k_score.&lt;axis&gt;</h3><p>Per-axis K-score (R, F, E, Z, T, A, S, L, C, V — whichever the manifest carries). <b>warn 0.05 / fail 0.10</b>. Loosest of the numeric bands.</p></div>
+    <div class="c"><h3>external_holdout_hash</h3><p>Exact-match comparison. Any byte change in the external holdout corpus immediately reports <b>breach</b> — the score was measured on a corpus that no longer exists.</p></div>
+    <div class="c"><h3>tenant_shadow_corpus_hash</h3><p>Exact-match comparison. Same semantics as external_holdout_hash but for the tenant's private shadow corpus. Hash mismatch &rarr; <b>breach</b>.</p></div>
+    <div class="c"><h3>artifact_hash</h3><p><b>Informational only.</b> A new artifact always has a new hash by design — the field is reported in the signal so it appears in the report, but it never gates the verdict.</p></div>
+  </div>
+
+  <p style="font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:28px 0 0;padding-top:18px;border-top:1px solid var(--line)">Backend: <a href="/spec/rs-1#section-7-15" style="color:inherit;border-bottom:1px dashed var(--line)">/spec/rs-1 &sect;7.15</a> (M+3 + M+4) &middot; UI: <a href="/drift" style="color:inherit;border-bottom:1px dashed var(--line)">/drift</a> &middot; research: <a href="/research/eval-set-drift" style="color:inherit;border-bottom:1px dashed var(--line)">/research/eval-set-drift</a> &middot; shipped wave 167 (backend), wave 174 (this card).</p>
+</div></section>
+
+<section class="body"><div class="wrap">
   <h2>What gets checked</h2>
   <div class="grid">
     <div class="c"><h3>01 . manifest</h3><p>Parse manifest.json. Confirm RS-1 schema version. Read declared model + adapter + verifier.</p></div>
@@ -95,6 +138,7 @@
     <div class="c"><h3>04 . K-score</h3><p>Recompute K = 0.40&middot;A + 0.15&middot;S + 0.15&middot;L + 0.15&middot;C + 0.15&middot;V from <i>this artifact's</i> eval block. Check the gate.</p></div>
     <div class="c"><h3>05 . provenance</h3><p>Confirm builder, base model digest, training timestamp, compile container image hash.</p></div>
     <div class="c"><h3>06 . signature</h3><p>Verify the issuer signature against the kolm issuer pubkey baked into this page.</p></div>
+    <div class="c"><h3>25 . corpus URL licensing gate</h3><p>For each declared corpus source, confirm source_url parses and license sits in SAFE_LICENSES or AMBER_LICENSES (src/licensing-allowlist.js, wave 194). DENY (proprietary, scraped, tos-violated, unknown) fails; amber passes with a manual-review note.</p></div>
   </div>
 </div></section>
 
@@ -122,6 +166,7 @@ kolm inspect path/to/artifact.kolm
 # OK signature OK, K=0.982, receipt chain intact</pre>
   <p>Or use our <a href="/integrations/github-actions" style="color:inherit;border-bottom:1px solid var(--line)">GitHub Action</a> to block a PR merge on K-score regression.</p>
 </div></section>
+</main>
 
 <footer class="site">
   <div class="wrap" style="max-width: 1180px;">

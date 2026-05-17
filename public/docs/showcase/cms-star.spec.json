@@ -1,0 +1,73 @@
+{
+  "job_id": "job_cms_star_contributor_v1",
+  "task": "Extract per-member Star Ratings measure contributors for Medicare Advantage Part C / Part D contracts. Input: { member, claims[], utilization[], survey_responses[] }. Output: { member_id_redacted, contract_id, measures: [{ measure_id, name, part: 'C'|'D', category, weight, direction, contribution }] }. Weighting per CMS 2025+ Technical Notes (outcome 3x, intermediate-outcome 3x, patient-experience 4x, process 1x, improvement 5x).",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_cms_star_v1",
+      "name": "cms-star",
+      "class": "synthesized-rule",
+      "source": "function generate(input,lib){var i=input||{},m=i.member||{},r=(lib&&lib.pack&&lib.pack.rules)||{};var W=r.measure_categories||{outcome:3,intermediate_outcome:3,patient_experience:4,access:4,process:1,improvement:5};var C=r.part_c_top_measures||[],D=r.part_d_top_measures||[],ALL={};for(var a=0;a<C.length;a++)ALL[C[a].id]={id:C[a].id,name:C[a].name,part:'C',category:C[a].category};for(var b=0;b<D.length;b++)ALL[D[b].id]={id:D[b].id,name:D[b].name,part:'D',category:D[b].category};var U=Array.isArray(i.utilization)?i.utilization:[],hits=[];function emit(k,d,c){var x=ALL[k];if(!x)return;hits.push({measure_id:x.id,name:x.name,part:x.part,category:x.category,weight:W[x.category]||1,direction:d,contribution:c});}for(var u=0;u<U.length;u++){var h=U[u]||{},k=h.measure_hint;if(k==='bp_controlled'){var s=Number(h.systolic||0),y=Number(h.diastolic||0);emit('C09',(s>0&&s<140&&y>0&&y<90)?'positive':'negative','bp_controlled');}else if(k==='pdc_diabetes')emit('D08',Number(h.pdc||0)>=0.80?'positive':'negative','pdc_diabetes');else if(k==='pdc_hypertension')emit('D09',Number(h.pdc||0)>=0.80?'positive':'negative','pdc_hypertension');else if(k==='pdc_statin')emit('D10',Number(h.pdc||0)>=0.80?'positive':'negative','pdc_statin');else if(k==='bcs')emit('C01',h.screened?'positive':'negative','bcs_screen');}return {member_id_redacted:'<hash>',contract_id:String(m.contract_id||''),measures:hits};}",
+      "tags": ["health-insurance", "medicare-advantage", "star-ratings", "part-c", "part-d", "cms", "synthesized-rule"],
+      "schema": {
+        "input": { "member": "object", "claims": "array", "utilization": "array", "survey_responses": "array" },
+        "output": { "member_id_redacted": "string", "contract_id": "string", "measures": "array" }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "CMS Star Ratings 2025+ Technical Notes weighting table + representative Part C / Part D measure subset. Tenants extend the measure tables annually with the current Technical Notes; the weighting categories are stable across recent years.",
+    "rules": {
+      "measure_categories": {
+        "outcome": 3,
+        "intermediate_outcome": 3,
+        "patient_experience": 4,
+        "access": 4,
+        "process": 1,
+        "improvement": 5
+      },
+      "part_c_top_measures": [
+        { "id": "C01", "name": "Breast Cancer Screening", "category": "process" },
+        { "id": "C09", "name": "Controlling Blood Pressure", "category": "intermediate_outcome" },
+        { "id": "C13", "name": "Plan All-Cause Readmissions", "category": "outcome" },
+        { "id": "C19", "name": "Getting Needed Care", "category": "patient_experience" }
+      ],
+      "part_d_top_measures": [
+        { "id": "D08", "name": "Medication Adherence for Diabetes", "category": "intermediate_outcome" },
+        { "id": "D09", "name": "Medication Adherence for Hypertension (RAS antagonists)", "category": "intermediate_outcome" },
+        { "id": "D10", "name": "Medication Adherence for Cholesterol (Statins)", "category": "intermediate_outcome" },
+        { "id": "D12", "name": "Statin Use in Persons with Diabetes", "category": "process" }
+      ],
+      "weighting_source": "CMS Star Ratings 2025+ Technical Notes",
+      "measure_id_stability": "Measure IDs C01/C09/C13/C19/D08/D09/D10/D12 are representative; re-pin annually against current Technical Notes."
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "bp_controlled_positive",
+        "input": { "member": { "contract_id": "H1234", "part": ["C"], "age": 68 }, "claims": [], "utilization": [{ "measure_hint": "bp_controlled", "systolic": 132, "diastolic": 78 }], "survey_responses": [] },
+        "expected": { "contract_id": "H1234" }
+      },
+      {
+        "id": "bp_uncontrolled_negative",
+        "input": { "member": { "contract_id": "H1234", "part": ["C"], "age": 70 }, "claims": [], "utilization": [{ "measure_hint": "bp_controlled", "systolic": 162, "diastolic": 95 }], "survey_responses": [] },
+        "expected": { "contract_id": "H1234" }
+      },
+      {
+        "id": "pdc_diabetes_positive",
+        "input": { "member": { "contract_id": "H5678", "part": ["D"], "age": 72 }, "claims": [], "utilization": [{ "measure_hint": "pdc_diabetes", "pdc": 0.86 }], "survey_responses": [] },
+        "expected": { "contract_id": "H5678" }
+      },
+      {
+        "id": "bcs_negative_unscreened",
+        "input": { "member": { "contract_id": "H1234", "part": ["C"], "age": 64 }, "claims": [], "utilization": [{ "measure_hint": "bcs", "screened": false }], "survey_responses": [] },
+        "expected": { "contract_id": "H1234" }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

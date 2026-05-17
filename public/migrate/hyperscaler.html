@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Distill OpenAI / Anthropic into a local .kolm | Migrate to kolm</title>
+<meta name="description" content="Use the hyperscaler API as the teacher; ship a small open-weight student you can run on a phone, an edge box, or an air-gapped VPC. Always-safe fallback to a local teacher when license terms are tight.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="From hyperscaler: distill into a local .kolm">
+<meta property="og:description" content="Use the hyperscaler API as teacher. Ship a small open-weight student you keep as a file.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://kolm.ai/migrate/hyperscaler">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:72px 0 32px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:38px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px}
+  .lede{font-size:17px;line-height:1.55;color:var(--ink-mute);max-width:760px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:52px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:760px}
+  .section p{color:var(--ink-mute);margin:0 0 14px;max-width:760px;font-size:15px;line-height:1.6}
+  .section code{font-family:var(--mono);font-size:12.5px;background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  .grid-4{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:24px}
+  @media(max-width:760px){.grid-4{grid-template-columns:1fr}}
+  .step{padding:18px 20px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .step .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .step h3{margin:0;font-size:16px;font-weight:500;color:var(--ink);letter-spacing:-0.01em}
+  .step p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute);max-width:none}
+  pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;font:12px/1.55 var(--mono);margin:0}
+  pre.terminal b{color:var(--accent);font-weight:400}
+  pre.terminal .mute{color:var(--ink-faint)}
+  pre.terminal .warn{color:var(--warn);font-weight:400}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
+  @media(max-width:760px){.grid-2{grid-template-columns:1fr}}
+  .col{padding:22px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev)}
+  .col h3{margin:0 0 14px;font-size:16px;font-weight:500;color:var(--ink);letter-spacing:-0.01em}
+  .col h3 .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(16,185,129,0.30);padding:2px 8px;border-radius:3px;margin-left:8px;vertical-align:middle}
+  .col h3 .tag.add{color:var(--warn);background:var(--warn-soft);border-color:rgba(240,184,107,0.30)}
+  .col ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.6;color:var(--ink-mute)}
+  .col ul li{margin-bottom:8px}
+  .col code{font-family:var(--mono);font-size:12px;background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  .stack-diagram{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin:20px 0;font-family:var(--mono);font-size:13px;line-height:2;color:var(--ink-mute)}
+  .stack-diagram b{color:var(--accent);font-weight:400}
+  .stack-diagram .arr{color:var(--ink-faint);margin:0 8px}
+  .honest{padding:20px 22px;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:8px;background:var(--bg-elev);margin-top:24px}
+  .honest b{color:var(--warn)}
+  .honest p{margin:0 0 10px;font-size:14px;line-height:1.6;color:var(--ink-mute);max-width:none}
+  .honest p:last-child{margin-bottom:0}
+  .callout{padding:18px 20px;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:8px;background:var(--warn-soft);margin-top:20px;font-size:14px;line-height:1.6;color:var(--ink-mute)}
+  .callout b{color:var(--warn)}
+  .callout code{font-family:var(--mono);font-size:12.5px;background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  .links{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
+  @media(max-width:760px){.links{grid-template-columns:1fr}}
+  .lcard{padding:16px 18px;border:1px solid var(--line);border-radius:8px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:6px;transition:border-color 160ms}
+  .lcard:hover{border-color:var(--accent)}
+  .lcard .vt{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent)}
+  .lcard h4{margin:0;font-size:14.5px;font-weight:500;color:var(--ink)}
+  .lcard p{margin:0;font-size:12.5px;color:var(--ink-mute);line-height:1.5;max-width:none}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ft-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/migrate">migrate</a> &nbsp;/&nbsp; from hyperscaler</p>
+    <h1>Distill from OpenAI or Anthropic into a local .kolm.</h1>
+    <p class="lede">Hyperscaler fine-tuning (OpenAI custom models, Anthropic custom Claude, Google Vertex AI tuning, AWS Bedrock customization) keeps the tuned weights inside the vendor's infrastructure. The model exists only behind their API. That works until your deployment target moves outside the vendor's reach &mdash; air-gap, edge, offshore subsidiary, on-prem mirror. The kolm pattern flips it: use the hyperscaler API as the <b>teacher</b>, capture the prompt/completion pairs into <code>seeds.jsonl</code>, then LoRA-fine-tune a small open-weight base. The student approximates the teacher on your task; you ship a file you actually own.</p>
+    <p class="stamp">Wave 188 &middot; from hyperscaler &middot; cross-vendor distillation migration</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Teacher / student split.</h2>
+    <div class="stack-diagram">
+      OpenAI or Anthropic API <b>(teacher)</b><span class="arr">&rarr;</span><b>kolm capture</b><span class="arr">&rarr;</span>seeds.jsonl<span class="arr">&rarr;</span><b>kolm distill</b><span class="arr">&rarr;</span>open-weight student .kolm
+    </div>
+    <p>The hyperscaler stays in the loop as the highest-capability call you make per training pair, but its output flows into a file you control. The student LoRA &mdash; Qwen 0.5B, Llama 3.2 1B, Phi-3.5 mini, SmolLM2 &mdash; runs anywhere PyTorch or llama.cpp runs. Your auditor gets a signed receipt chain that names the teacher vendor, the student base, the redactor configuration, and the eval gate.</p>
+    <div class="callout">
+      <b>Licensing carve-out:</b> OpenAI / Anthropic / Google terms restrict using API outputs to develop "competing" general-purpose models. A narrow-task kolm artifact (phone normalizer, denial-code classifier, sentiment tagger) is not a competing general model; the legal status of the narrow-task carve-out is unsettled in 2026. <b>The always-safe option is <code>--teacher=local:&lt;open-weight-model&gt;</code></b> run on your own GPU. See <a href="/spec/rs-1#section-7-7" style="color:var(--warn)">RS-1 &sect;7.7</a> for the licensing posture and the Wave 158 cross-vendor manifest that records which vendor saw what.
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The four-step migration.</h2>
+    <div class="grid-4">
+      <div class="step">
+        <span class="vt">01 &middot; capture the teacher traffic</span>
+        <h3>kolm capture proxies your existing API calls.</h3>
+        <p>Point your client at the kolm capture proxy; the same API key passes through. Every prompt + completion lands in a local seeds.jsonl namespace. No SDK change needed.</p>
+<pre class="terminal">$ <b>kolm capture</b> \
+    --provider anthropic \
+    --as denial-classifier \
+    --namespace claims
+
+  LISTEN 127.0.0.1:7117
+  capturing &rarr; ~/.kolm/captures/claims/seeds.jsonl
+  forwarding &rarr; https://api.anthropic.com/v1
+  threshold:  1000 pairs &middot; required to distill</pre>
+      </div>
+      <div class="step">
+        <span class="vt">02 &middot; reach the threshold</span>
+        <h3>Run normal traffic until the namespace fills.</h3>
+        <p>The proxy is transparent. Your application keeps calling the hyperscaler as before; kolm logs the (input, output) pair every time. Once the namespace clears the threshold, <code>kolm distill</code> unlocks.</p>
+<pre class="terminal">$ <b>kolm capture status</b> --namespace claims
+  pairs captured:  2417
+  threshold:       1000  <b>(unlocked)</b>
+  size on disk:    14.3 MB
+  latest:          2026-05-17T18:42:11Z
+  redactor:        PHI (Wave 157)</pre>
+      </div>
+      <div class="step">
+        <span class="vt">03 &middot; distill into a student</span>
+        <h3>kolm distill builds the open-weight LoRA.</h3>
+        <p>Same teacher you already paid for, named explicitly in the manifest. Choose any of the 13 student bases in the Wave 158 catalog. Always-safe fallback: <code>--teacher=local:</code> for a fully on-prem build.</p>
+<pre class="terminal">$ <b>kolm distill</b> \
+    --namespace claims \
+    --teacher=anthropic:claude-opus-4-7 \
+    --student-base=qwen2.5-0.5b \
+    --redact=phi --eval-gate=0.88
+
+  PASS  K-score 0.911 &middot; PHI redactor clean
+  PASS  cross-vendor manifest &middot; teacher = anthropic
+  WROTE denial-classifier.kolm</pre>
+      </div>
+      <div class="step">
+        <span class="vt">04 &middot; verify, then ship anywhere</span>
+        <h3>The .kolm runs on a phone, an edge box, an air-gapped VPC.</h3>
+        <p>Verifier rebuilds the receipt chain offline. No vendor API required at runtime. The deployment target that was previously impossible (residency-bound, air-gap, on-prem) is now first-class.</p>
+<pre class="terminal">$ <b>kolm verify</b> denial-classifier.kolm
+  PASS  24/24 checks &middot; signature OK
+  PASS  cross-vendor: teacher=anthropic,
+        student=qwen2.5-0.5b
+  PASS  receipt chain intact
+
+<span class="mute"># run anywhere &mdash; no vendor API at runtime</span>
+$ kolm run denial-classifier.kolm \
+    --input "claim denied for code CO-45..."</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What survives, what kolm adds.</h2>
+    <div class="grid-2">
+      <div class="col">
+        <h3>Survives the migration <span class="tag">unchanged</span></h3>
+        <ul>
+          <li><b>Existing hyperscaler contract</b>. Your OpenAI / Anthropic / Google / Bedrock account stays. kolm just calls it as the teacher.</li>
+          <li><b>Prompt engineering work</b>. The system prompts and few-shot exemplars you tuned against the teacher are the inputs to capture.</li>
+          <li><b>Eval set</b>. Your existing eval cases forward into the K-score gate as the frozen holdout.</li>
+          <li><b>Vendor BAA</b> (HIPAA workloads). The teacher call still flows through the vendor's BAA-covered API; kolm's PHI redactor runs before the call goes out.</li>
+          <li><b>API budget</b>. Same per-token billing &mdash; capture phase pays for traffic you were already paying for.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>kolm adds on top <span class="tag add">new</span></h3>
+        <ul>
+          <li><b>Portable file</b>. The structural impossibility hyperscaler tuning can't close: weights you ship on a USB stick if you want.</li>
+          <li><b>Air-gap deploy</b>. Runtime has zero vendor dependency. Verifier rebuilds offline.</li>
+          <li><b>Cross-vendor manifest</b> (Wave 158). teacher_vendor, teacher_model, student_base, distillation_method &mdash; recorded so check #15 enforces it.</li>
+          <li><b>Always-safe local teacher</b>. <code>--teacher=local:llama-3.3-70b-instruct</code> swaps in when the licensing carve-out makes you nervous.</li>
+          <li><b>Residency</b>. The student weights live on your filesystem. Deploy literally anywhere.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where staying with hyperscaler fine-tuning is the right answer.</h2>
+    <div class="honest">
+      <p><b>Stay with hyperscaler tuning</b> when your only deploy target is a hosted API and the vendor's BAA + console audit logs satisfy your auditor. Managed GPU, managed dataset upload, managed eval UX, zero ML infra to operate &mdash; that's the shortest path from "I want a tuned model" to "I have a tuned endpoint." The portability kolm adds earns nothing if the model never has to leave the vendor's cloud. The kolm envelope is engineering cost in service of a need you don't have.</p>
+      <p><b>Stay with hyperscaler tuning</b> when procurement wants the Series-mega-cap vendor with enterprise contracts, dedicated TAMs, and vendor SLA. Your buyer signed off on OpenAI / Anthropic / Google as the named line item; replacing the build path with a kolm-wrapped open-weight student is a procurement re-litigation you don't want to start. The teacher-student pattern is then useful as a fallback or mirror, not a primary path.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where to go next.</h2>
+    <div class="links">
+      <a class="lcard" href="/migrate">
+        <span class="vt">migrate index</span>
+        <h4>Back to the migration hub.</h4>
+        <p>Four other source systems with the same one-page guide shape.</p>
+      </a>
+      <a class="lcard" href="/how-vs-hyperscaler">
+        <span class="vt">how-vs deep dive</span>
+        <h4>kolm vs hyperscaler teardown.</h4>
+        <p>Closed-weight structural impossibilities and the cross-vendor distillation pattern in detail.</p>
+      </a>
+      <a class="lcard" href="/compare">
+        <span class="vt">compare</span>
+        <h4>Differentiation matrix.</h4>
+        <p>15-axis grid of kolm vs every competitor, every YES stamped with wave.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="site">
+  <div class="wrap">
+    <div class="ft-row">
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span><a href="/migrate">/migrate</a> &middot; <a href="/migrate/lorax">from LoRAX</a> &middot; <a href="/migrate/predibase">from Predibase</a> &middot; <a href="/migrate/openpipe">from OpenPipe</a> &middot; <a href="/migrate/diy">from DIY</a></span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

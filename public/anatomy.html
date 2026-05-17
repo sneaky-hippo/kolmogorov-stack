@@ -298,6 +298,45 @@
 
 <section>
   <div class="wrap">
+    <div class="eyebrow"><span class="num">01b</span> ·v0.2 additions (wave 144)</div>
+    <h2>Two new optional layers.</h2>
+    <p class="lede">v0.2 (wave 144) ships two new optional members the seven-layer schema didn'previously name.
+      They appear when you opt in &ndash; <code>kolm compile --tokenizer tokenizer.json</code> for the first,
+      <code>kolm moe compose</code> for the second &ndash; and are covered by the same HMAC ring as every other layer.</p>
+
+    <div class="layout">
+      <ul class="parts">
+        <li id="tokenizer">
+          <span class="icon">08</span>
+          <div class="body">
+            <h3>tokenizer.json <span style="color:var(--ink-faint);font-weight:500;font-size:11px;font-family:var(--mono);text-transform:uppercase;margin-left:6px">v0.2 ·byte-level BPE</span></h3>
+            <p>Pure-JS byte-level BPE tokenizer following the <code>kolm-tokenizer-1</code> spec.
+              Trains via <code>kolm tokenize train --corpus seeds.jsonl --field input</code>, embeds via
+              <code>kolm compile --tokenizer tokenizer.json</code>. The byte-level fallback guarantees
+              UTF-8 round-trip for any input. Manifest records <code>tokenizer.spec</code>,
+              <code>tokenizer.vocab_size</code>, and <code>tokenizer.sha256</code>.</p>
+          </div>
+          <span class="size">~50&ndash;800 KB</span>
+        </li>
+        <li id="moe">
+          <span class="icon">09</span>
+          <div class="body">
+            <h3>moe block (training_stats.moe) <span style="color:var(--ink-faint);font-weight:500;font-size:11px;font-family:var(--mono);text-transform:uppercase;margin-left:6px">v0.2 ·composite</span></h3>
+            <p>When you run <code>kolm moe compose --expert a.kolm --expert b.kolm --router router.json --out composite.kolm</code>,
+              the resulting composite carries a <code>training_stats.moe</code> block: per-expert id +
+              sha256 + recipe_id, plus the full router spec (<code>keyword</code>, <code>intent_field</code>,
+              or <code>first_match</code>). The receipt chain covers this block, so the composition is
+              tamper-evident along with everything else.</p>
+          </div>
+          <span class="size">~2&ndash;8 KB</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
     <div class="eyebrow"><span class="num">02</span> ·Three invariants</div>
     <h2>Three rules <span class="tone">every .kolm respects.</span></h2>
 
@@ -359,6 +398,21 @@
       <a href="/docs/rs-1.md" class="btn-link">Read RS-1 spec <span aria-hidden="true">&rarr;</span></a>
     </div>
   </div>
+</section>
+
+<!-- Wave 151 evidenced-taxonomy strip. Visual contract lives in styles.css. -->
+<section class="tax-strip" aria-label="evidenced taxonomy">
+  <div class="tax-strip-row">
+    <span class="tax-strip-eyebrow">evidenced taxonomy</span>
+    <p class="tax-strip-h">Every .kolm declares its class. The verifier rejects misdeclared artifacts before signing.</p>
+  </div>
+  <div class="tax-chips">
+    <span class="tax-chip rule">rule</span>
+    <span class="tax-chip synth">synthesized_rule</span>
+    <span class="tax-chip compiled">compiled_rule</span>
+    <span class="tax-chip distill">distilled_model</span>
+  </div>
+  <p class="tax-strip-body">Anatomy shows what's inside the file. <a href="/taxonomy">The four classes &rarr;</a></p>
 </section>
 
 <footer class="site">

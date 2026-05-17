@@ -40,6 +40,13 @@
 html, body { margin: 0; padding: 0; }
 html { background: var(--bg); }
 @media (max-width: 720px) { html, body { overflow-x: hidden; max-width: 100vw; } }
+/* Wave 208 mobile audit: every raster/SVG image is fluid by default; pages
+   that need a fixed size set width/height inline and override locally. */
+img, svg, video { max-width: 100%; height: auto; }
+/* Wave 208: long hashes/tokens/URLs wrap inside monospace blocks at narrow
+   widths so a 360px viewport never sideways-scrolls on receipt content. */
+code, kbd, samp { overflow-wrap: anywhere; }
+@media (max-width: 480px) { pre { white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; } }
 body {
   min-height: 100vh;
   position: relative;
@@ -2600,3 +2607,24 @@ textarea {
     flex-direction: column;
   }
 }
+
+/* Wave 151 — evidenced-taxonomy callout strip. Shared across every page that names
+   "compile", "distill", or ".kolm". Single source of truth so future copy
+   updates land in one place. The HTML markup is duplicated per page but the
+   classes here own the visual contract. */
+.tax-strip { max-width: 1180px; margin: 36px auto; padding: 22px 28px; border: 1px solid rgba(126,240,210,0.18); background: rgba(126,240,210,0.04); border-radius: 12px; display: flex; flex-direction: column; gap: 14px; }
+.tax-strip-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.tax-strip-eyebrow { font-family: var(--mono); font-size: 11.5px; color: #7ef0d2; letter-spacing: 0.04em; text-transform: lowercase; padding: 3px 8px; border-radius: 4px; background: rgba(126,240,210,0.08); }
+.tax-strip-h { font-size: 16.5px; font-weight: 500; margin: 0; color: var(--ink, #faf2e1); }
+.tax-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.tax-chip { font-family: var(--mono); font-size: 12px; padding: 4px 9px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.10); }
+.tax-chip.rule     { color: #93c5fd; border-color: rgba(99,179,237,0.30); background: rgba(99,179,237,0.06); }
+.tax-chip.synth    { color: #c4b5fd; border-color: rgba(168,85,247,0.30); background: rgba(168,85,247,0.06); }
+.tax-chip.compiled { color: #86efac; border-color: rgba(34,197,94,0.30); background: rgba(34,197,94,0.06); }
+.tax-chip.distill  { color: #fcd34d; border-color: rgba(245,158,11,0.30); background: rgba(245,158,11,0.06); }
+.tax-strip-body { font-size: 14px; color: var(--ink-mute, #b5bdb1); line-height: 1.55; margin: 0; }
+.tax-strip-body a { color: #7ef0d2; }
+[data-theme=light] .tax-strip { background: rgba(10,136,98,0.06); border-color: rgba(10,136,98,0.22); }
+[data-theme=light] .tax-strip-eyebrow { color: #059669; background: rgba(10,136,98,0.10); }
+[data-theme=light] .tax-strip-body { color: #4b5158; }
+[data-theme=light] .tax-strip-body a { color: #059669; }

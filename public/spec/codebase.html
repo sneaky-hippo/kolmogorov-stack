@@ -93,7 +93,7 @@
 <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/spec">spec</a> &nbsp;/&nbsp; codebase</p>
 
 <h1>kolm codebase: the production architecture in one sitting.</h1>
-<p class="subtitle">An honest map of the shipped runtime. Modules, trust boundaries, persistence, compile pipeline, and CLI surface, with line counts and source links.</p>
+<p class="subtitle">An verifiable map of the shipped runtime. Modules, trust boundaries, persistence, compile pipeline, and CLI surface, with line counts and source links.</p>
 <p class="authors">kolm engineering . hello@kolm.ai</p>
 <p class="stamp">v1.0 . 2026-05-15 . citeable as <code>kolm.ai/spec/codebase</code> . source <a href="https://github.com/sneaky-hippo/kolmogorov-stack" style="color:inherit">github.com/sneaky-hippo/kolmogorov-stack</a></p>
 
@@ -177,7 +177,7 @@
 
 <p>The store layer writes are atomic in the POSIX-rename sense: every mutation produces a <code>.bak</code> sibling, then <code>fs.renameSync</code> swaps the new file into place. A process crash mid-write leaves the previous good state on disk. An in-memory LRU (<code>src/cache.js</code>, 2048 entries) shadows reads for hot paths.</p>
 
-<p>This shape works because the durable surface is small: 8 JSON files, each well under the size at which streaming scans become slow. The pragmatic ceiling is on the order of <b>10k artifacts per tenant before we migrate to object storage</b>; the plan is documented separately in the internal storage spec. The point of this section is to be honest about the shape today: <i>JSON on disk, atomic rename, no replication, single container</i>. Buyers who need replicated storage today should pin the <a href="/enterprise" style="color:var(--accent)">enterprise plan</a>, which runs the same code over Postgres + S3.</p>
+<p>This shape works because the durable surface is small: 8 JSON files, each well under the size at which streaming scans become slow. The pragmatic ceiling is on the order of <b>10k artifacts per tenant before we migrate to object storage</b>; the plan is documented separately in the internal storage spec. The point of this section is to be transparent about the shape today: <i>JSON on disk, atomic rename, no replication, single container</i>. Buyers who need replicated storage today should pin the <a href="/enterprise" style="color:var(--accent)">enterprise plan</a>, which runs the same code over Postgres + S3.</p>
 
 <h2>5. The compile pipeline</h2>
 <p>A compile is a 4-stage in-process orchestrator (<code>src/compile.js</code>):</p>
@@ -242,7 +242,7 @@
 <p>The <code>X-Audit-Chain</code> response header on every <code>/v1/run/*</code> response gives a 12-byte prefix of the receipt HMAC so a buyer can grep their proxy logs for forged traffic later. The receipt secret is per-tenant; an issuer or any party with the shared secret can re-verify the chain offline.</p>
 
 <h2>10. What this codebase is not</h2>
-<p>To be useful, this page has to be honest about what we do not do today:</p>
+<p>To be useful, this page has to be transparent about what we do not do today:</p>
 
 <ul>
 <li><b>No durable storage in the open-source runtime.</b> The default deployment writes JSON to a container disk. The enterprise plan runs the same code over Postgres + S3; the source for that adapter lives in a separate private repo.</li>

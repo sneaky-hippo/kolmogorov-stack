@@ -158,7 +158,7 @@
   <div class="wrap">
     <span class="pill"><span class="dot"></span>Research &middot; Architecture &middot; 2026-05-14 &middot; 11 min read</span>
     <h1>Why we don't ship a checkpoint: <span class="tone">the case for adapters.</span></h1>
-    <p class="lede">A merged checkpoint is 10 to 70 GB. An adapter is 30 to 200 MB. <b>The size argument is the easy one; the provenance argument is the load-bearing one.</b> Why every <code>.kolm</code> file carries a LoRA, not a merged copy of the base.</p>
+    <p class="lede">A merged checkpoint is 10 to 70 GB. An adapter is 30 to 200 MB. <b>The size argument is the easy one; the provenance argument is the load-bearing one.</b> Why the <code>.kolm</code> format's weight slot is reserved for a LoRA, not a merged copy of the base. (v0.2 ships the recipe-class artifact; the trained-LoRA bundle is the roadmap tier behind the runtime bridge.)</p>
     <div class="meta"><span><b>By</b>&nbsp;kolm</span><span><b>Tag</b>&nbsp;LoRA &middot; provenance &middot; architecture</span></div>
   </div>
 </section>
@@ -174,12 +174,12 @@
         <li><a href="#provenance">Provenance integrity</a></li>
         <li><a href="#math">The adapter math</a></li>
         <li><a href="#merge">When you do want a merged copy</a></li>
-        <li><a href="#tradeoffs">The honest tradeoffs</a></li>
+        <li><a href="#tradeoffs">The verifiable tradeoffs</a></li>
       </ol>
     </div>
 
     <h2 id="size">Adapter size economics.</h2>
-    <p>Every shipped <code>.kolm</code> contains a base-model pointer, a LoRA adapter, a recall index, an eval pack, and a receipt chain. The adapter is the only part with weights. It is 30 to 200 MB depending on rank and target module set. The base model it adapts is 4 to 70 GB. <b>The artifact ships the smaller half; the runtime resolves the larger half from a local cache.</b></p>
+    <p>The intended <code>.kolm</code> shape (rs-1 contract, roadmap-tier runtime): a base-model pointer, a LoRA adapter, a recall index, an eval pack, and a receipt chain. The adapter is the only part with weights. It is 30 to 200 MB depending on rank and target module set. The base model it adapts is 4 to 70 GB. <b>The artifact ships the smaller half; the runtime resolves the larger half from a local cache.</b> v0.2 today ships the recipe pack + manifest + receipt + optional KOLMIDX lookup + optional MoE block + optional bundled tokenizer; the LoRA adapter slot holds an optional <code>KOLMPACK</code> behavior pack until the weight bridge ships.</p>
 
     <p>The arithmetic is short. A LoRA on a 7B base with rank r=8 and 4 attention targets (<code>q_proj</code>, <code>k_proj</code>, <code>v_proj</code>, <code>o_proj</code>) introduces roughly 16 million trainable parameters. At fp16 that is 32 MB. At rank 16 it doubles. Above rank 32 the adapter starts to lose its size advantage, but the gains in expressivity flatten too, so we cap most production compiles at r=16.</p>
 
@@ -275,7 +275,7 @@ merged.save_pretrained(<span class="arg">"./merged-checkpoint"</span>)</pre>
 
     <p>The output is a standard transformers checkpoint, loadable by any inference stack that does not know about LoRA. The provenance is lost (the receipt chain no longer applies to the merged bytes), but the deployment compatibility is gained. This is the escape hatch, not the default.</p>
 
-    <h2 id="tradeoffs">The honest tradeoffs.</h2>
+    <h2 id="tradeoffs">The verifiable tradeoffs.</h2>
     <p>The adapter format is the right default for most kolm artifacts. It is not universally right.</p>
 
     <p><b>Cold-start cost.</b> The runtime has to load the base model and the adapter separately, then compose them at first inference. For a 7B base this is ~6 seconds on a recent laptop GPU. A pre-merged checkpoint loads in one pass and is ready faster. For interactive use this is invisible; for batch-of-one workloads it can matter.</p>

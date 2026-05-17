@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>edi-278 template &middot; kolm for US health insurers</title>
+<meta name="description" content="Pre-built kolm template that ingests EDI 278 services-review transactions (5010A1) for prior authorization, referral, admission certification. Pure rule-class recipe. K-score gate 0.93. Runs inside the BAA bridge in your VPC.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/insurance/templates/edi-278">
+<meta property="og:title" content="edi-278 &middot; kolm health-insurance template">
+<meta property="og:description" content="Ingest EDI 278 services-review (5010A1), distinguish request from response, emit normalized prior-auth JSON. Rule-class, deterministic, BAA-ready.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/insurance/templates/edi-278">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .tpl-hero{padding:42px 0 18px;border-bottom:1px solid var(--line)}
+  .tpl-hero .crumb{font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
+  .tpl-hero .crumb a{color:var(--ink-mute)}
+  .tpl-hero h1{font-size:34px;margin:0 0 8px;line-height:1.1}
+  .tpl-hero .lede{font-size:16px;color:var(--ink-mute);max-width:720px;margin:0}
+  .tpl-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:22px 0 8px;font-family:var(--mono);font-size:11px;color:var(--ink-mute)}
+  @media(max-width:900px){.tpl-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .tpl-meta > div{padding:10px 12px;border:1px solid var(--line);border-radius:6px}
+  .tpl-meta .k{text-transform:uppercase;letter-spacing:0.06em;font-size:10px;color:var(--ink-faint)}
+  .tpl-meta .v{display:block;color:var(--ink);margin-top:4px;font-size:13px}
+  .tpl-section{padding:28px 0;border-bottom:1px solid var(--line)}
+  .tpl-section h2{font-size:22px;margin:0 0 6px}
+  .tpl-section p.lede{font-size:14.5px;color:var(--ink-mute);margin:0 0 14px;max-width:760px}
+  .tpl-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:900px){.tpl-grid2{grid-template-columns:1fr}}
+  pre.code{margin:0;padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:#0e1115;font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--ink);overflow-x:auto}
+  pre.code .k{color:#7ec486}
+  pre.code .s{color:#d6a65a}
+  pre.code .c{color:var(--ink-faint)}
+  .tpl-receipt-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0 6px;font-family:var(--mono);font-size:11px}
+  @media(max-width:900px){.tpl-receipt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .tpl-receipt-grid > div{padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg-card)}
+  .tpl-receipt-grid .ring{color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.06em;font-size:10px;margin-bottom:4px}
+  .tpl-receipt-grid .name{color:var(--ink);font-size:12px}
+  .tpl-receipt-grid .b{color:#7ef0d2;font-size:10.5px;margin-top:4px}
+  .tpl-cta{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 4px}
+  .tpl-related{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px;font-family:var(--mono);font-size:12px}
+  @media(max-width:900px){.tpl-related{grid-template-columns:1fr 1fr}}
+  @media(max-width:600px){.tpl-related{grid-template-columns:1fr}}
+  .tpl-related a{padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg-card);color:var(--ink);display:block}
+  .tpl-related a:hover{border-color:var(--line-strong)}
+  .tpl-related .num{color:var(--ink-faint);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px}
+  .tpl-note{padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:var(--bg-card);font-size:13.5px;color:var(--ink-mute);margin:14px 0 0;max-width:760px}
+  .tpl-note b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<header class="site-header"><div class="wrap site-bar">
+  <a class="brand" href="/"><span class="brand-dot"></span>kolm</a>
+  <nav class="site-nav">
+    <a href="/training">Training</a>
+    <a href="/health-insurance">health-insurance</a>
+    <a href="/pricing">pricing</a>
+    <a href="/docs">docs</a>
+    <a href="/quickstart">quickstart</a>
+  </nav>
+  <div class="site-actions"><a class="cta" href="/signup">get started</a></div>
+</div></header>
+
+<main class="wrap">
+
+  <section class="tpl-hero">
+    <div class="crumb"><a href="/health-insurance">health-insurance</a> &middot; <a href="/health-insurance#insurance-templates">templates</a> &middot; edi-278</div>
+    <h1>EDI 278 services review transformer</h1>
+    <p class="lede">A kolm template that ingests EDI 278 services-review transactions (5010A1) - health-services review requests + responses (prior authorizations, referrals, admissions, certifications, extensions). Distinguishes 278 request (information-source UMO) from 278 response. Pure rule-class; deterministic; pairs cleanly with the existing prior-auth-review template (which adds the policy-mapped recommendation on top).</p>
+    <div class="tpl-meta">
+      <div><div class="k">template id</div><span class="v">edi-278</span></div>
+      <div><div class="k">k-score gate</div><span class="v">&ge; 0.93</span></div>
+      <div><div class="k">recipe class</div><span class="v">rule (class 0)</span></div>
+      <div><div class="k">loop coverage</div><span class="v">5010A1 278</span></div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Input &amp; output spec</h2>
+    <p class="lede">Input is raw EDI 278 X12 text. Output is a normalized JSON object whose <code>direction</code> field is auto-detected: a 278 request carries UM + service-detail loops, a 278 response carries the HCR (health-care-services-review) decision segment. Downstream prior-auth tooling can rely on the fixed shape without re-parsing X12.</p>
+    <div class="tpl-grid2">
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">input &middot; raw 278 request (X12 5010A1)</p>
+<pre class="code"><span class="c">ISA*00*          *00*          *ZZ*UMORG          *ZZ*REQUESTER      *260517*1430*^*00501*000000001*0*P*:~</span>
+<span class="c">GS*HI*UMORG*REQUESTER*20260517*1430*1*X*005010X217~</span>
+<span class="c">ST*278*0001*005010X217~</span>
+<span class="c">BHT*0007*13*REQ0001*20260517*1430~</span>
+<span class="c">HL*1**20*1~</span>
+<span class="c">NM1*X3*2*ACME HEALTH PLAN UMO*****46*UMO001~</span>
+<span class="c">HL*2*1*21*1~</span>
+<span class="c">NM1*1P*2*MERCY CLINIC*****XX*1234567893~</span>
+<span class="c">HL*3*2*22*1~</span>
+<span class="c">NM1*IL*1*DOE*JANE****MI*W123456789~</span>
+<span class="c">HL*4*3*23*1~</span>
+<span class="c">NM1*QC*1*DOE*JOHN~</span>
+<span class="c">DMG*D8*19850412*M~</span>
+<span class="c">HL*5*4*SS*0~</span>
+<span class="c">UM*HS*I*1*11:B:1**R~</span>
+<span class="c">REF*BB*PRIOR-AUTH-REF-2026A~</span>
+<span class="c">DTP*291*RD8*20260601-20260615~</span>
+<span class="c">HI*BK:G43909~</span>
+<span class="c">PWK*OB*EL***AC*PWK0001~</span>
+<span class="c">HSD*VS*5*DA*7*34*RD8*20260601-20260615~</span>
+<span class="c">SE*18*0001~</span>
+<span class="c">GE*1*1~</span>
+<span class="c">IEA*1*000000001~</span></pre>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">output &middot; normalized JSON</p>
+<pre class="code">{
+  <span class="k">"format"</span>:    <span class="s">"278"</span>,
+  <span class="k">"direction"</span>: <span class="s">"request"</span>,        <span class="c">// or "response"</span>
+  <span class="k">"purpose"</span>:   <span class="s">"initial"</span>,        <span class="c">// reconsideration | appeal | cancellation | resubmission</span>
+  <span class="k">"umo"</span>: {
+    <span class="k">"name"</span>:     <span class="s">"ACME HEALTH PLAN UMO"</span>,
+    <span class="k">"payer_id"</span>: <span class="s">"UMO001"</span>
+  },
+  <span class="k">"requester"</span>: {
+    <span class="k">"name"</span>: <span class="s">"MERCY CLINIC"</span>,
+    <span class="k">"npi"</span>:  <span class="s">"1234567893"</span>,
+    <span class="k">"type"</span>: <span class="s">"facility"</span>           <span class="c">// or "physician"</span>
+  },
+  <span class="k">"subscriber"</span>: {
+    <span class="k">"redacted_member_id"</span>: <span class="s">"&lt;hash&gt;"</span>
+  },
+  <span class="k">"patient"</span>: {
+    <span class="k">"relationship"</span>: <span class="s">"01"</span>,
+    <span class="k">"dob"</span>:          <span class="s">"1985-04-12"</span>,
+    <span class="k">"gender"</span>:       <span class="s">"M"</span>
+  },
+  <span class="k">"service"</span>: {
+    <span class="k">"type_code"</span>:        <span class="s">"HS"</span>,
+    <span class="k">"level_of_care"</span>:    <span class="s">"R"</span>,         <span class="c">// Routine (UM02)</span>
+    <span class="k">"procedure_codes"</span>:  [],
+    <span class="k">"diagnoses"</span>:        [<span class="s">"G43909"</span>],
+    <span class="k">"requested_units"</span>:  <span class="s">7</span>,
+    <span class="k">"requested_start"</span>:  <span class="s">"2026-06-01"</span>,
+    <span class="k">"requested_end"</span>:    <span class="s">"2026-06-15"</span>,
+    <span class="k">"place_of_service"</span>: <span class="s">"11"</span>
+  },
+  <span class="k">"attached_paperwork"</span>: {
+    <span class="k">"type"</span>:            <span class="s">"OB"</span>,
+    <span class="k">"transmission"</span>:    <span class="s">"EL"</span>,
+    <span class="k">"control_number"</span>:  <span class="s">"PWK0001"</span>
+  }
+}</pre>
+      </div>
+    </div>
+    <div class="tpl-note">
+      <b>Companion template.</b> The 278 transformer normalizes the wire format; <a href="/insurance/templates/prior-auth-review">prior-auth-review</a> adds the policy-mapped recommendation on top. Pipe edi-278 output into prior-auth-review for a structured cert / partial / deny answer with criteria references; serialize prior-auth-review output back into a 278 response via the HCR-emitting half of this same recipe.
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Request vs response</h2>
+    <p class="lede">A 278 transaction is either an information-source request from a requester (provider, clinic) to a UMO (utilization-management organization), or a response from the UMO carrying the certification decision. The recipe auto-detects which one it is received by the presence of the HCR segment.</p>
+    <div class="tpl-grid2">
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">request &middot; no HCR segment</p>
+<pre class="code"><span class="c"># 278 request shape</span>
+direction        = <span class="s">"request"</span>
+umo              = information-source NM1*X3
+requester        = NM1*1P
+service.UM       = requested service category
+service.HSD      = requested units + dates
+attached_paperwork = optional PWK
+response         = absent</pre>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">response &middot; HCR present</p>
+<pre class="code"><span class="c"># 278 response shape</span>
+direction         = <span class="s">"response"</span>
+response.decision = HCR01 mapped to certified / denied / pended / partial / modified
+response.certification_number = REF*BB
+response.action_code          = HCR01 raw (A1..A6)
+response.certified_units      = HSD certified
+response.valid_from / valid_to = DTP*348 / DTP*349
+response.decision_reason       = HCR03</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>4-ring receipt schema</h2>
+    <p class="lede">Every transform ships a receipt your auditor can re-verify offline. Because this is a rule-class recipe the execution ring carries a deterministic hash of the parsed segments rather than a model judge id; the seal is identical to the model-class templates so downstream verifier code does not branch on recipe class.</p>
+    <div class="tpl-receipt-grid">
+      <div><div class="ring">ring 01 &middot; pre-image</div><div class="name">isa_control_num + bht_reference + member_hash</div><div class="b">tenant-rotated HMAC</div></div>
+      <div><div class="ring">ring 02 &middot; derived</div><div class="name">um01_dict_hash + hcr01_dict_hash + loop_topology_hash</div><div class="b">bound to recipe_version</div></div>
+      <div><div class="ring">ring 03 &middot; execution</div><div class="name">parsed_segments_hash + direction_flag + decision_code</div><div class="b">deterministic, no judge</div></div>
+      <div><div class="ring">ring 04 &middot; seal</div><div class="name">SHA-256(ring1..3) &middot; verify endpoint</div><div class="b">offline-verifiable</div></div>
+    </div>
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);margin:14px 0 0"><b style="color:var(--ink)">Verify command:</b> <code><span class="cli-verb">kolm</span> verify --hash &lt;receipt_hash&gt;</code>. Runs locally against the seal, no network required.</p>
+  </section>
+
+  <section class="tpl-section">
+    <h2>BAA fast-track</h2>
+    <p class="lede">Health plans on a BAA see kolm production-ready in two business days. The customer-hosted bridge runs in the tenant network boundary; PHI in the 278 envelope (subscriber and patient identifiers, DOB, gender) is hashed inside the bridge and never crosses our infrastructure; the audit log is yours to keep.</p>
+    <div class="tpl-grid2">
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">how it works</p>
+<pre class="code"><span class="c"># 1. Sign the BAA (legal-team turnaround)</span>
+[ DocuSign &middot; 48 hours typical &middot; mutual NDA in same envelope ]
+
+<span class="c"># 2. Provision the bridge in your VPC</span>
+$ kolm bridge install \
+    --provider aws \
+    --region us-east-1 \
+    --baa &lt;baa-id&gt;
+
+<span class="c"># 3. Compile this template (rule-class, no seed examples required)</span>
+$ kolm compile --spec edi-278.spec.json \
+    --gate 0.93 \
+    --out edi-278.kolm
+
+<span class="c"># 4. Stream production 278 traffic through it</span>
+$ kolm run edi-278.kolm \
+    --input services-review.278 \
+    --emit normalized.jsonl</pre>
+      </div>
+      <div>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 6px">what we sign</p>
+<pre class="code"><span class="c">- HIPAA Business Associate Agreement</span>
+<span class="c">- HIPAA Security Rule §164.308 (admin safeguards)</span>
+<span class="c">- HIPAA Security Rule §164.310 (physical safeguards)</span>
+<span class="c">- HIPAA Security Rule §164.312 (technical safeguards)</span>
+<span class="c">- Breach Notification §164.404</span>
+<span class="c">- Subcontractor flow-down (none, kolm holds no PHI)</span>
+<span class="c">- Audit-log retention (6 years, your S3 bucket)</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Get the template</h2>
+    <p class="lede">Two ways to take this live. Self-serve with the sample artifact, or kick off a BAA conversation if you need PHI day one.</p>
+    <div class="tpl-cta">
+      <a class="btn primary" href="/signup?template=edi-278">Start with this template</a>
+      <a class="btn ghost" href="mailto:sales@kolm.ai?subject=BAA%20fast-track%20%E2%80%94%20edi-278">Talk to a human about BAA</a>
+      <a class="btn ghost" href="/docs/showcase/edi-278.spec.json" download>Download spec JSON</a>
+    </div>
+    <p style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);margin:18px 0 0">The spec is a portable JSON file. Drop it into <code>kolm compile --spec</code> to build a private <code>.kolm</code> tagged <code>LicenseRef-kolm-default-1.0</code> by default; pass <code>--license</code> to tag it differently. Rule-class recipes do not require seed examples; the holdout set is the X12 5010 conformance corpus.</p>
+  </section>
+
+  <section class="tpl-section">
+    <h2>Five more templates for health plans</h2>
+    <div class="tpl-related">
+      <a href="/insurance/templates/edi-837"><div class="num">06 &middot; template</div>edi-837</a>
+      <a href="/insurance/templates/edi-835"><div class="num">07 &middot; template</div>edi-835</a>
+      <a href="/insurance/templates/edi-834"><div class="num">08 &middot; template</div>edi-834</a>
+      <a href="/insurance/templates/edi-270-271"><div class="num">09 &middot; template</div>edi-270-271</a>
+      <a href="/insurance/templates/fhir-uscdi"><div class="num">11 &middot; template</div>fhir-uscdi</a>
+      <a href="/health-insurance"><div class="num">index</div>all health-insurance</a>
+    </div>
+  </section>
+
+</main>
+
+<footer style="border-top:1px solid var(--line);margin-top:40px;padding:24px 0;text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink-faint)">
+  <span>kolm.ai &middot; Made with .kolm &middot; <a href="/license" style="color:var(--ink-faint)">Apache-2.0</a> &middot; <a href="/baa" style="color:var(--ink-faint)">BAA</a></span>
+</footer>
+
+</body>
+</html>

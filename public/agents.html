@@ -205,7 +205,7 @@
   }
 }</pre>
         <div class="foot"><b>install</b> <code>kolm install claude-code --apply</code> writes this automatically</div>
-        <div class="why">Why this is honest: an MCP tool is opaque to the model. The artifact CID is what the agent audit log records, so a regulator can replay the exact bytes that produced any tool result, no model snapshot required.</div>
+        <div class="why">Why this is verifiable: an MCP tool is opaque to the model. The artifact CID is what the agent audit log records, so a regulator can replay the exact bytes that produced any tool result, no model snapshot required.</div>
       </div>
     </div>
   </section>
@@ -235,7 +235,7 @@ result = Runner.run_sync(agent, "Patient John Doe, MRN 8847-21, complains of..."
 print(result.final_output)
 print(result.usage)  # token_count + kolm_receipts[]</pre>
         <div class="foot"><b>min py</b> 3.10 &middot; <b>extras</b> [agents] &middot; receipts auto-pinned to <code>result.usage.kolm_receipts</code></div>
-        <div class="why">Why this is honest: the cloud planner reasons about <em>which</em> tool to call. The local artifact decides <em>what</em> the tool returns, in microseconds, with a signature you can verify offline.</div>
+        <div class="why">Why this is verifiable: the cloud planner reasons about <em>which</em> tool to call. The local artifact decides <em>what</em> the tool returns, in microseconds, with a signature you can verify offline.</div>
       </div>
     </div>
   </section>
@@ -269,7 +269,7 @@ g.add_edge("redact", "plan")
 g.add_edge("plan", END)
 app = g.compile()</pre>
         <div class="foot"><b>state shape</b> <code>{"raw_note": str, "clean_note": str, "receipts": list}</code></div>
-        <div class="why">Why this is honest: the receipt accumulates in the state. When the graph finishes, the agent has a complete chain of signed evidence covering every deterministic transformation it performed.</div>
+        <div class="why">Why this is verifiable: the receipt accumulates in the state. When the graph finishes, the agent has a complete chain of signed evidence covering every deterministic transformation it performed.</div>
       </div>
     </div>
   </section>
@@ -304,7 +304,7 @@ resp = client.chat.completions.create(
 )
 plan = json.loads(resp.choices[0].message.content)</pre>
         <div class="foot"><b>backend</b> vLLM grammar / Outlines / lm-format-enforcer &middot; <b>zero-shot rate</b> 100% (grammar is enforced, not validated post-hoc)</div>
-        <div class="why">Why this is honest: traditional retry-on-parse loops waste tokens and add latency. Grammar-constrained sampling refuses to emit invalid tokens at all. The first response is valid by construction.</div>
+        <div class="why">Why this is verifiable: traditional retry-on-parse loops waste tokens and add latency. Grammar-constrained sampling refuses to emit invalid tokens at all. The first response is valid by construction.</div>
       </div>
     </div>
   </section>
@@ -335,7 +335,7 @@ print(result.best.score)            # e.g. 0.873
 print(result.receipts.generator.cid) # planner CID
 print(result.receipts.scorer.cid)    # verifier CID</pre>
         <div class="foot"><b>params</b> n=8 default &middot; tie-break by score then by latency &middot; <b>cost</b> still $0 per call locally</div>
-        <div class="why">Why this is honest: a single planner pick is one sample from a noisy distribution. Scoring eight candidates with a learned verifier reliably beats sampling once, and the verifier's bias is bounded by the eval set it was trained on, which ships inside its own artifact.</div>
+        <div class="why">Why this is verifiable: a single planner pick is one sample from a noisy distribution. Scoring eight candidates with a learned verifier reliably beats sampling once, and the verifier's bias is bounded by the eval set it was trained on, which ships inside its own artifact.</div>
       </div>
     </div>
   </section>

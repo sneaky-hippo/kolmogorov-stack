@@ -155,7 +155,7 @@
     <div class="group">
       <h2>The job each one does</h2>
       <p>Both products start from the same insight: <b>every dollar you spend on a frontier API is a labelled training pair</b>. Capture those pairs, train a smaller model, route the cheap traffic locally. OpenPipe shipped this in 2023 and the loop works.</p>
-      <p>The difference is what comes out of the pipe. OpenPipe gives you a hosted endpoint - swap your <code>OPENAI_BASE_URL</code> and you're done; the model lives in their cloud. kolm gives you a 1-3 GB file. The file holds the model, a LoRA, a verifier that checks each output, a sqlite-vec recall index, recipe packs for fast paths, and an HMAC-signed manifest. You can run it on your own machine, your customer's machine, an air-gapped server, or a phone.</p>
+      <p>The difference is what comes out of the pipe. OpenPipe gives you a hosted endpoint - swap your <code>OPENAI_BASE_URL</code> and you're done; the model lives in their cloud. kolm gives you a file. In v0.2 the file holds the compiled recipe code, the curated examples, the deterministic evaluator, recipe packs for fast paths, an HMAC-signed manifest, and (when you opt in) an embedded byte-level BPE tokenizer plus a MoE composition block. You can run it on your own machine, your customer's machine, an air-gapped server, or a phone. Trained LoRA weights and a populated sqlite-vec index are on the roadmap tier &mdash; we don't claim they ship today.</p>
       <p>If you're optimizing for "make this OpenAI call cheaper next quarter," OpenPipe is excellent. If you're optimizing for "this model becomes our product, runs in our customer's environment, and survives our cloud being down," that's what compile-to-file is for.</p>
     </div>
 
@@ -167,7 +167,7 @@
 
     <div class="group">
       <h2>Where OpenPipe wins</h2>
-      <p>Honest concession. <b>OpenPipe (now CoreWeave) is a more polished hosted offering than kolm cloud is today.</b> They've been at this longer, the dashboard is mature, the auto-eval suite for fine-tunes is real, the Mistral / Llama / GPT-4o-mini fine-tune coverage is broad, and the pay-per-token economics are straightforward. If your team only cares about cost per inference and you're happy hosting inside CoreWeave's cloud, OpenPipe is a good answer.</p>
+      <p>Verifiable concession. <b>OpenPipe (now CoreWeave) is a more polished hosted offering than kolm cloud is today.</b> They've been at this longer, the dashboard is mature, the auto-eval suite for fine-tunes is real, the Mistral / Llama / GPT-4o-mini fine-tune coverage is broad, and the pay-per-token economics are straightforward. If your team only cares about cost per inference and you're happy hosting inside CoreWeave's cloud, OpenPipe is a good answer.</p>
       <p>Where the model has to leave their cloud (offline, on-device, regulated, customer-owned), the hosted-only architecture stops working. That's where the <code>.kolm</code> file format earns its keep.</p>
     </div>
 
@@ -216,12 +216,27 @@
           <tr>
             <td class="row-h">Bundled recall (RAG)</td>
             <td data-l="OpenPipe"><span class="no">no</span> - bring your own</td>
-            <td data-l="kolm"><span class="ok">yes</span> - sqlite-vec index ships in the file</td>
+            <td data-l="kolm"><span class="partial">v0.2 ships a JSON lookup container (KOLMIDX); full sqlite-vec index is a roadmap tier</span></td>
           </tr>
           <tr>
             <td class="row-h">Recipe / draft cache</td>
             <td data-l="OpenPipe"><span class="no">no</span></td>
             <td data-l="kolm"><span class="ok">yes</span> - deterministic drafts for sub-100ms hot paths</td>
+          </tr>
+          <tr>
+            <td class="row-h">MoE composition</td>
+            <td data-l="OpenPipe"><span class="no">no</span></td>
+            <td data-l="kolm"><span class="ok">v0.2 ships <code>kolm moe compose</code> &mdash; combine N expert .kolm files into one composite with a deterministic router (keyword regex, intent field, or first-match)</span></td>
+          </tr>
+          <tr>
+            <td class="row-h">Tokenizer in the file</td>
+            <td data-l="OpenPipe">inherits the base model's tokenizer</td>
+            <td data-l="kolm"><span class="ok">v0.2 ships an optional pure-JS byte-level BPE tokenizer (<code>kolm-tokenizer-1</code>) embedded inside the artifact</span></td>
+          </tr>
+          <tr>
+            <td class="row-h">Document ingest</td>
+            <td data-l="OpenPipe">user pre-extracts text</td>
+            <td data-l="kolm"><span class="ok">v0.2 ships <code>kolm extract</code> (PDF text-layer, HTML, JSON/JSONL, opt-in OCR/vision) and <code>kolm doc check</code> for completeness gating</span></td>
           </tr>
           <tr>
             <td class="row-h">Pricing model</td>
@@ -231,7 +246,7 @@
           <tr>
             <td class="row-h">Lock-in</td>
             <td data-l="OpenPipe">Endpoint stops if account stops</td>
-            <td data-l="kolm">File survives. Spec is RS-1 MIT. Verifier is open.</td>
+            <td data-l="kolm">File survives. Spec is RS-1 Apache-2.0. Verifier is open.</td>
           </tr>
         </tbody>
       </table>

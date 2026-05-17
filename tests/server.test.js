@@ -38,10 +38,21 @@ test('server trusts the two-hop Vercel + Railway edge chain in production', asyn
 
 test('artifact receipts label the HMAC signature algorithm truthfully', async (t) => {
   const savedSecret = process.env.RECIPE_RECEIPT_SECRET;
+  const savedEd25519 = process.env.KOLM_ED25519_DISABLE;
+  const savedSigstore = process.env.KOLM_SIGSTORE_DISABLE;
   process.env.RECIPE_RECEIPT_SECRET = 'test_receipt_secret';
+  // Wave 149/150 — this contract test pins signature_alg to 'hmac-sha256',
+  // which is the legacy mode. Disable Ed25519 and sigstore so the test
+  // exercises HMAC-only signing without removing those defaults globally.
+  process.env.KOLM_ED25519_DISABLE = '1';
+  process.env.KOLM_SIGSTORE_DISABLE = '1';
   t.after(() => {
     if (savedSecret === undefined) delete process.env.RECIPE_RECEIPT_SECRET;
     else process.env.RECIPE_RECEIPT_SECRET = savedSecret;
+    if (savedEd25519 === undefined) delete process.env.KOLM_ED25519_DISABLE;
+    else process.env.KOLM_ED25519_DISABLE = savedEd25519;
+    if (savedSigstore === undefined) delete process.env.KOLM_SIGSTORE_DISABLE;
+    else process.env.KOLM_SIGSTORE_DISABLE = savedSigstore;
   });
 
   const { buildPayload } = await import(`../src/artifact.js?receipt-alg=${Date.now()}`);
@@ -60,12 +71,23 @@ test('artifact receipts label the HMAC signature algorithm truthfully', async (t
 
 test('artifact benchmark emits reproducible local report', async (t) => {
   const savedSecret = process.env.RECIPE_RECEIPT_SECRET;
+  const savedEd25519 = process.env.KOLM_ED25519_DISABLE;
+  const savedSigstore = process.env.KOLM_SIGSTORE_DISABLE;
   process.env.RECIPE_RECEIPT_SECRET = 'ks_receipt_' + 'c'.repeat(48);
+  // Wave 149/150 — this benchmark test pins receipt_signature_alg to
+  // 'hmac-sha256' (legacy). Disable Ed25519 and sigstore so the test
+  // exercises HMAC-only signing without removing those defaults globally.
+  process.env.KOLM_ED25519_DISABLE = '1';
+  process.env.KOLM_SIGSTORE_DISABLE = '1';
   const outDir = path.join(os.tmpdir(), `kolm-benchmark-${process.pid}-${Date.now()}`);
   fs.mkdirSync(outDir, { recursive: true });
   t.after(() => {
     if (savedSecret === undefined) delete process.env.RECIPE_RECEIPT_SECRET;
     else process.env.RECIPE_RECEIPT_SECRET = savedSecret;
+    if (savedEd25519 === undefined) delete process.env.KOLM_ED25519_DISABLE;
+    else process.env.KOLM_ED25519_DISABLE = savedEd25519;
+    if (savedSigstore === undefined) delete process.env.KOLM_SIGSTORE_DISABLE;
+    else process.env.KOLM_SIGSTORE_DISABLE = savedSigstore;
     fs.rmSync(outDir, { recursive: true, force: true });
   });
 

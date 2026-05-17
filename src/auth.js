@@ -349,7 +349,17 @@ const PUBLIC_API = (p) =>
   p === '/v1/byoc/targets' ||
   /^\/v1\/teams\/invites\/[A-Za-z0-9_\-]+$/.test(p) ||                  // preview is public; /accept is its own path
   /^\/v1\/oauth\/(google|github)\/(start|callback)$/.test(p) ||
-  /^\/v1\/tunnel\/agent\/[A-Za-z0-9_\-]+(?:\/response)?$/.test(p);
+  /^\/v1\/tunnel\/agent\/[A-Za-z0-9_\-]+(?:\/response)?$/.test(p) ||
+  // wave-144 stateless validators / catalogs (no tenant state read, pure compute).
+  // Trace/IR-compile/FL-round/aggregate stay auth-gated above because they touch tenant data.
+  p.startsWith('/v1/device/') ||                                        // profiles catalog + probe/check are stateless
+  p.startsWith('/v1/cc/') ||                                            // confidential-compute kinds/shape/verify
+  p === '/v1/fl/strategies' ||                                          // FL strategy catalog (round/contribution/aggregate stay authed)
+  p.startsWith('/v1/capability/') ||                                    // capability build/validate are stateless
+  p.startsWith('/v1/lineage/') ||                                       // lineage build/validate are stateless
+  p === '/v1/ir/stats' ||                                               // IR stats over body-supplied IR
+  p === '/v1/ir/validate' ||                                            // IR shape validation over body
+  p === '/v1/ir/replay';                                                // IR cache-seed replay over body
 
 export function adminApiKey() {
   return process.env.ADMIN_KEY || null;

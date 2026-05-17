@@ -137,7 +137,7 @@
       <div class="card">
         <div class="lbl">Ships out (optional)</div>
         <h3>The .kolm itself.</h3>
-        <p>The artifact carries LoRA weights + recipes + evals + manifest. No PHI inside. Customer chooses to push to hub or keep private.</p>
+        <p>In v0.2 the artifact carries the recipe pack + evals + manifest + receipt + optional MoE block + optional bundled tokenizer; the LoRA-weight bundle is the roadmap tier behind the runtime bridge. No PHI inside. Customer chooses to push to hub or keep private.</p>
       </div>
     </div>
   </div>
@@ -196,7 +196,47 @@
 
 <section>
   <div class="wrap-tight">
-    <div class="eyebrow"><span class="num">05</span><span>Paperwork the privacy officer wants</span></div>
+    <div class="eyebrow"><span class="num">05</span><span>Receipt-chain extensions (Waves 164-167)</span></div>
+    <h2>What landed after the BAA shipped.</h2>
+    <p class="lede">The receipt chain in &sect;01 is the baseline. Four extensions in the last six waves answer the questions a regulated privacy officer asks past day-90: did the model generalize, did proprietary PHI stay residency-bound, did an independent party sign off, and what happens when the bridge-bound artifact drifts past tolerance.</p>
+    <div class="grid-3">
+      <div class="card">
+        <div class="lbl">Wave 164 &middot; external + adversarial holdouts</div>
+        <h3>R-axis on the K-score.</h3>
+        <p>Public benchmark scoring + adversarial cross-family paraphrase scoring lives in the receipt chain. Distinguishes "scored well on tenant seeds" from "scored well on a held-out distribution." See <a href="/spec/rs-1#section-7-12" style="color:var(--good)">RS-1 &sect;7.12</a>.</p>
+      </div>
+      <div class="card">
+        <div class="lbl">Wave 165 &middot; tenant shadow corpus</div>
+        <h3>PHI never leaves the VPC.</h3>
+        <p>The proprietary patient-record fingerprint {tenant_id, corpus_id, corpus_sha256, accuracy} rides in the manifest. The corpus itself stays on tenant-managed storage. See <a href="/spec/rs-1#section-7-13" style="color:var(--good)">RS-1 &sect;7.13</a>.</p>
+      </div>
+      <div class="card">
+        <div class="lbl">Wave 166 &middot; third-party auditor attestation</div>
+        <h3>Independent sign-off, cryptographic.</h3>
+        <p>Ed25519-signed attestation blocks from parties whose key fingerprints are deliberately disjoint from the builder's. A self-signed "attestation" cannot masquerade as independent oversight. See <a href="/spec/rs-1#section-7-14" style="color:var(--good)">RS-1 &sect;7.14</a>.</p>
+      </div>
+      <div class="card">
+        <div class="lbl">Wave 167 &middot; drift detection + supersession chain</div>
+        <h3>The model does not stay correct forever.</h3>
+        <p>M+3 detects when a frozen artifact has drifted past tolerance against the current production distribution. M+4 binds the successor to its predecessor cryptographically. <a href="/drift" style="color:var(--good)">dedicated surface</a> &middot; <a href="/spec/rs-1#section-7-15" style="color:var(--good)">RS-1 &sect;7.15</a>.</p>
+      </div>
+      <div class="card">
+        <div class="lbl">Verifier checks #20-#24</div>
+        <h3>Backward-compatible.</h3>
+        <p>Legacy artifacts (pre-W164) verify identically; the new checks only fire when the new manifest blocks are present. No tenant is forced to re-ship.</p>
+      </div>
+      <div class="card">
+        <div class="lbl">Where this fits</div>
+        <h3>Procurement &amp; ops.</h3>
+        <p>The four extensions are the answer to "how do you tell when this model needs retraining" and "who signed off on this." Surfaced for HIPAA tenants in the compliance package export at <a href="/v1/account/compliance-package" style="color:var(--good)">/v1/account/compliance-package</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap-tight">
+    <div class="eyebrow"><span class="num">06</span><span>Paperwork the privacy officer wants</span></div>
     <div class="grid-3">
       <div class="card"><div class="lbl">BAA + PHI Schedule</div><h3><a href="/baa" style="color:var(--ink)">/baa</a></h3><p>10-row Schedule 1: Purpose, Permitted Uses, Safeguards, Breach Notification 10 business days, Subprocessors flow-down, Return/Destruction 30 days, Audit Rights, HIPAA Security Rule Mapping, Survival.</p></div>
       <div class="card"><div class="lbl">HIPAA Security Rule</div><h3><a href="/security#hipaa-mapping" style="color:var(--ink)">/security#hipaa-mapping</a></h3><p>22-row table: each CFR citation (&sect;164.308&ndash;&sect;164.316) mapped to the kolm control that satisfies it. Required vs Addressable flagged.</p></div>

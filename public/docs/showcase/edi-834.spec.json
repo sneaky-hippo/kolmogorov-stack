@@ -1,0 +1,77 @@
+{
+  "job_id": "job_edi_834_transformer_v1",
+  "task": "Parse an X12 EDI 834 enrollment/maintenance transaction (5010A1). Emit normalized member-roster JSON: { format, purpose, sponsor, insurer, members[], summary }. Distinguishes add/change/term/audit per the BGN02 purpose code and INS01 member action.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_edi_834_v1",
+      "name": "edi-834",
+      "source": "function generate(input,lib){var t=input&&input.edi_text||'',r=(lib.pack&&lib.pack.rules)||{},rels=r.relationship_codes||{},aM={'021':'add','024':'cancel','025':'reinstate','030':'audit','004':'term'},pL={'00':'original','15':'resubmission','22':'reissue','23':'update','07':'verification','08':'audit_or_compare','24':'termination','25':'reinstatement'},D=function(d){return d&&d.length===8?d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8):null;},s=t.split(/~\\s*/).filter(Boolean),o={format:'834',purpose:null,transaction_set_purpose_code:null,sponsor:{name:null,tax_id:null},insurer:{name:null,tax_id:null},members:[],summary:{adds:0,changes:0,terms:0,total:0}},m=null,i,f,g,L,d,a;for(i=0;i<s.length;i++){f=s[i].split('*');g=f[0];if(g==='BGN'){o.transaction_set_purpose_code=f[1]||null;o.purpose=pL[f[1]]||'original';}else if(g==='N1'){var p={name:f[2]||null,tax_id:f[3]==='FI'?f[4]||null:null};if(f[1]==='P5')o.sponsor=p;else if(f[1]==='IN')o.insurer=p;}else if(g==='INS'){if(m)o.members.push(m);m={action:aM[f[3]||'']||'change',subscriber_id:null,group_number:null,name:{first:null,last:null,middle:null},dob:null,gender:null,relationship:rels[f[2]||'']?rels[f[2]].toLowerCase():'other',address:null,coverage:[]};}else if(g==='REF'&&m){if(f[1]==='0F')m.subscriber_id=f[2];else if(f[1]==='1L')m.group_number=f[2];}else if(g==='NM1'&&m&&f[1]==='IL'){m.name.last=f[3];m.name.first=f[4];m.name.middle=f[5];}else if(g==='N3'&&m){m.address=m.address||{};m.address.line=f[1];}else if(g==='N4'&&m){m.address=m.address||{};m.address.city=f[1];m.address.state=f[2];m.address.zip=f[3];}else if(g==='DMG'&&m){if(f[1]==='D8')m.dob=D(f[2]||'');m.gender=f[3]||null;}else if(g==='HD'&&m){m.coverage.push({plan_code:f[4]||null,coverage_level:f[5]||null,effective_date:null,term_date:null});}else if(g==='DTP'&&m&&m.coverage.length){L=m.coverage[m.coverage.length-1];d=D(f[3]||'');if(f[1]==='348')L.effective_date=d;else if(f[1]==='349')L.term_date=d;}}if(m)o.members.push(m);for(i=0;i<o.members.length;i++){a=o.members[i].action;if(a==='add')o.summary.adds++;else if(a==='term'||a==='cancel')o.summary.terms++;else o.summary.changes++;}o.summary.total=o.members.length;return o;}",
+      "tags": ["health-insurance", "edi", "834", "enrollment", "benefit-maintenance", "x12", "5010"],
+      "schema": {
+        "input": { "edi_text": "string" },
+        "output": {
+          "format": "string",
+          "purpose": "string",
+          "transaction_set_purpose_code": "string",
+          "sponsor": "object",
+          "insurer": "object",
+          "members": "array",
+          "summary": "object"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "X12 5010A1 834 reference rules. bgn02_purpose_codes are the real BGN02 transaction-set purpose values from the 834 implementation guide. ins01_member_indicators are the INS01 yes/no insured indicators. relationship_codes are the real INS02 individual relationship qualifiers.",
+    "rules": {
+      "bgn02_purpose_codes": {
+        "00": "Original",
+        "15": "Re-Submission",
+        "22": "Information Copy",
+        "23": "Renewal",
+        "07": "Verify",
+        "08": "Status"
+      },
+      "ins01_member_indicators": {
+        "Y": "Yes (insured)",
+        "N": "No (dependent of insured)"
+      },
+      "relationship_codes": {
+        "01": "Spouse",
+        "18": "Self",
+        "19": "Child",
+        "G8": "Other Relationship",
+        "53": "Life Partner"
+      }
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "single_add_subscriber",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*SPONSOR01      *ZZ*INSURER02      *260517*0900*^*00501*000000010*0*P*:~GS*BE*SPONSOR01*INSURER02*20260517*0900*10*X*005010X220A1~ST*834*0001*005010X220A1~BGN*00*0001*20260517*0900****2~REF*38*PLAN-PPO-GOLD-2026~N1*P5*ACME EMPLOYER INC*FI*123456789~N1*IN*ACME HEALTH PLAN*FI*987654321~INS*Y*18*021*20*A***FT~REF*0F*W123456789~REF*1L*GRP-PPO-GOLD~NM1*IL*1*DOE*JANE*M***34*123456789~N3*123 MAIN ST~N4*BOSTON*MA*02101~DMG*D8*19850714*F~HD*021**HLT*PPO-GOLD*FAM~DTP*348*D8*20260601~SE*15*0001~GE*1*10~IEA*1*000000010~" },
+        "expected": { "members": [ { "action": "add" } ] }
+      },
+      {
+        "id": "single_term_spouse",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*SPONSOR01      *ZZ*INSURER02      *260517*0900*^*00501*000000011*0*P*:~GS*BE*SPONSOR01*INSURER02*20260517*0900*11*X*005010X220A1~ST*834*0001*005010X220A1~BGN*00*0002*20260517*0900****2~REF*38*PLAN-PPO-GOLD-2026~N1*P5*ACME EMPLOYER INC*FI*123456789~N1*IN*ACME HEALTH PLAN*FI*987654321~INS*N*01*004*20*A***FT~REF*0F*W123456789~REF*1L*GRP-PPO-GOLD~NM1*IL*1*DOE*ALEX*P***34*987654321~DMG*D8*19840322*M~HD*004**HLT*PPO-GOLD*EMP~DTP*349*D8*20260531~SE*12*0001~GE*1*11~IEA*1*000000011~" },
+        "expected": { "members": [ { "action": "term" } ] }
+      },
+      {
+        "id": "multi_member_family_add",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*SPONSOR01      *ZZ*INSURER02      *260517*0900*^*00501*000000012*0*P*:~GS*BE*SPONSOR01*INSURER02*20260517*0900*12*X*005010X220A1~ST*834*0001*005010X220A1~BGN*00*0003*20260517*0900****2~REF*38*PLAN-PPO-GOLD-2026~N1*P5*ACME EMPLOYER INC*FI*123456789~N1*IN*ACME HEALTH PLAN*FI*987654321~INS*Y*18*021*20*A***FT~REF*0F*W111111111~REF*1L*GRP-PPO-GOLD~NM1*IL*1*ROE*PAT*Q***34*111111111~DMG*D8*19800101*F~HD*021**HLT*PPO-GOLD*FAM~DTP*348*D8*20260601~INS*N*01*021*20*A***FT~REF*0F*W111111111~REF*1L*GRP-PPO-GOLD~NM1*IL*1*ROE*SAM*R***34*111111112~DMG*D8*19810202*M~HD*021**HLT*PPO-GOLD*FAM~DTP*348*D8*20260601~INS*N*19*021*20*A***FT~REF*0F*W111111111~REF*1L*GRP-PPO-GOLD~NM1*IL*1*ROE*KID*S***34*111111113~DMG*D8*20150515*F~HD*021**HLT*PPO-GOLD*FAM~DTP*348*D8*20260601~SE*23*0001~GE*1*12~IEA*1*000000012~" },
+        "expected": { "summary": { "total": 3 } }
+      },
+      {
+        "id": "audit_change_purpose",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*SPONSOR01      *ZZ*INSURER02      *260517*0900*^*00501*000000013*0*P*:~GS*BE*SPONSOR01*INSURER02*20260517*0900*13*X*005010X220A1~ST*834*0001*005010X220A1~BGN*07*0004*20260517*0900****4~REF*38*PLAN-PPO-GOLD-2026~N1*P5*ACME EMPLOYER INC*FI*123456789~N1*IN*ACME HEALTH PLAN*FI*987654321~INS*Y*18*030*20*A***FT~REF*0F*W222222222~REF*1L*GRP-PPO-GOLD~NM1*IL*1*DOE*PAT*Q***34*222222222~DMG*D8*19790505*M~HD*030**HLT*PPO-GOLD*EMP~DTP*348*D8*20260601~SE*12*0001~GE*1*13~IEA*1*000000013~" },
+        "expected": { "purpose": "verification", "members": [ { "action": "audit" } ] }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

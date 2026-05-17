@@ -1,0 +1,74 @@
+{
+  "job_id": "job_edi_835_transformer_v1",
+  "task": "Parse and balance-validate an X12 EDI 835 ERA (Electronic Remittance Advice). Emit normalized JSON: { format, payer, payee, payment, claims, provider_adjustments, balance_check }. Balance-check the sum of CLP payments + PLB adjustments against the BPR declared total.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_edi_835_v1",
+      "name": "edi-835",
+      "source": "function generate(i,l){var S=((i&&i.edi_text)||'').split(/~\\s*/),V=function(s){return s||null},F=function(s){return parseFloat(s)||0},p={method:null,total_amount:0,trace_number:null,payment_date:null},pr={name:null,npi:null},pe={name:null,npi:null,tax_id:null},cl=[],pa=[],c=null,x,w,sc=0,sp=0;for(x=0;x<S.length;x++){var f=S[x].split('*'),T=f[0],q=f[1],r=f[2],s=f[3],u=f[4];if(T==='BPR')p.method=V(u),p.total_amount=F(r);else if(T==='TRN')p.trace_number=V(r);else if(T==='DTM'&&q==='405')p.payment_date=V(r);else if(T==='N1'&&(w=q==='PR'?pr:q==='PE'?pe:0)){w.name=V(r);if(s==='XX')w.npi=V(u);else if(s==='FI'&&w===pe)w.tax_id=V(u);}else if(T==='CLP')cl.push(c={claim_control_number:V(q),status_code:V(r),total_charge:F(s),total_paid:F(u),patient_responsibility:F(f[5]),adjustments:[]}),sc+=F(u);else if(T==='CAS'&&c)c.adjustments.push({group_code:V(q),reason_code:V(r),amount:F(s)});else if(T==='PLB')pa.push({provider_id:V(q),reason_code:V(s),amount:F(u)}),sp-=F(u);}var ct=Math.round((sc+sp)*100)/100,d=p.total_amount;return{format:'835',payer:pr,payee:pe,payment:p,claims:cl,provider_adjustments:pa,balance_check:{computed_total:ct,declared_total:d,balanced:Math.abs(ct-d)<0.01}};}",
+      "tags": ["health-insurance", "edi", "835", "remittance", "era", "payment", "x12", "5010"],
+      "schema": {
+        "input": { "edi_text": "string" },
+        "output": {
+          "format": "string",
+          "payer": "object",
+          "payee": "object",
+          "payment": "object",
+          "claims": "array",
+          "provider_adjustments": "array",
+          "balance_check": "object"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "X12 5010A1 ERA reference rules. claim_status_codes are real CLP02 values from the 835 implementation guide; group_codes are the CARC group qualifiers from CAS01.",
+    "rules": {
+      "claim_status_codes": {
+        "1": "Processed as Primary",
+        "2": "Processed as Secondary",
+        "3": "Processed as Tertiary",
+        "4": "Denied",
+        "19": "Processed as Primary Forwarded to Additional Payer(s)",
+        "20": "Processed as Secondary Forwarded",
+        "22": "Reversal of Previous Payment",
+        "23": "Not Our Claim, Forwarded"
+      },
+      "group_codes": {
+        "CO": "Contractual Obligation",
+        "OA": "Other Adjustment",
+        "PI": "Payer Initiated Reductions",
+        "PR": "Patient Responsibility"
+      }
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "balanced_single_claim_ach",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*PAYERID        *ZZ*PAYEEID        *260517*1200*^*00501*000000001*0*P*:~GS*HP*PAYERID*PAYEEID*20260517*1200*1*X*005010X221A1~ST*835*0001~BPR*I*1500.00*C*ACH*CCP*01*021000021*DA*123456789*1512345678**01*031000053*DA*987654321*20260517~TRN*1*TRACE000123*1512345678~DTM*405*20260517~N1*PR*ACME HEALTH PLAN~N1*PE*MERCY CLINIC*XX*1234567893~LX*1~CLP*CLM2026A*1*2000.00*1500.00*500.00*HM*PCN123*11~CAS*PR*1*500.00~SE*9*0001~GE*1*1~IEA*1*000000001~" },
+        "expected": { "balance_check": { "balanced": true } }
+      },
+      {
+        "id": "balanced_two_claims_with_plb",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*PAYERID        *ZZ*PAYEEID        *260517*1200*^*00501*000000002*0*P*:~GS*HP*PAYERID*PAYEEID*20260517*1200*2*X*005010X221A1~ST*835*0002~BPR*I*2900.00*C*ACH*CCP*01*021000021*DA*123456789*1512345678**01*031000053*DA*987654321*20260517~TRN*1*TRACE000456*1512345678~DTM*405*20260517~N1*PR*ACME HEALTH PLAN~N1*PE*MERCY CLINIC*XX*1234567893~LX*1~CLP*CLM2026B*1*2000.00*1500.00*500.00*HM*PCN124*11~CAS*PR*1*500.00~CLP*CLM2026C*1*2000.00*1500.00*500.00*HM*PCN125*11~CAS*CO*45*500.00~PLB*1234567893*20261231*WO*100.00~SE*11*0002~GE*1*2~IEA*1*000000002~" },
+        "expected": { "balance_check": { "balanced": true } }
+      },
+      {
+        "id": "unbalanced_clp_mismatch",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*PAYERID        *ZZ*PAYEEID        *260517*1200*^*00501*000000003*0*P*:~GS*HP*PAYERID*PAYEEID*20260517*1200*3*X*005010X221A1~ST*835*0003~BPR*I*2000.00*C*ACH*CCP*01*021000021*DA*123456789*1512345678**01*031000053*DA*987654321*20260517~TRN*1*TRACE000789*1512345678~DTM*405*20260517~N1*PR*ACME HEALTH PLAN~N1*PE*MERCY CLINIC*XX*1234567893~LX*1~CLP*CLM2026D*1*2000.00*1500.00*500.00*HM*PCN126*11~CAS*PR*1*500.00~SE*9*0003~GE*1*3~IEA*1*000000003~" },
+        "expected": { "balance_check": { "balanced": false } }
+      },
+      {
+        "id": "denied_claim_status_4",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*PAYERID        *ZZ*PAYEEID        *260517*1200*^*00501*000000004*0*P*:~GS*HP*PAYERID*PAYEEID*20260517*1200*4*X*005010X221A1~ST*835*0004~BPR*I*0.00*C*NON*CCP*01*021000021*DA*123456789*1512345678**01*031000053*DA*987654321*20260517~TRN*1*TRACE000999*1512345678~DTM*405*20260517~N1*PR*ACME HEALTH PLAN~N1*PE*MERCY CLINIC*XX*1234567893~LX*1~CLP*CLM2026E*4*1840.00*0.00*0.00*HM*PCN127*11~CAS*CO*45*1840.00~SE*9*0004~GE*1*4~IEA*1*000000004~" },
+        "expected": { "balance_check": { "balanced": true } }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

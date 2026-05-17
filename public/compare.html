@@ -4,386 +4,388 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>kolm vs OpenPipe, Predibase, Core ML, LiteRT, ONNX · kolm</title>
-<meta name="description" content="kolm head-to-head with distillation platforms (Predibase, OpenPipe, Fireworks, Together) and on-device runtimes (Core ML, LiteRT, ONNX, ExecuTorch). What kolm replaces.">
+<title>kolm vs LoRAX, Predibase, OpenPipe, DIY, hyperscaler fine-tune | differentiation matrix</title>
+<meta name="description" content="Ten axes that separate a kolm-compiled signed artifact from every adjacent build-or-serve stack. Every YES cites the shipping wave that delivered it.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
 <script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
 
 <meta property="og:site_name" content="kolm">
-<meta property="og:title" content="kolm vs distillation platforms and device runtimes">
-<meta property="og:description" content="kolm is the signed compiler that emits a portable .kolm artifact. Distillation platforms emit hosted endpoints; runtimes emit nothing, they execute. kolm sits between.">
+<meta property="og:title" content="kolm vs LoRAX, Predibase, OpenPipe, DIY, hyperscaler fine-tune">
+<meta property="og:description" content="The defensible combination nobody else leads with: signed + compiled + frozen-eval-gated + receipt chain + redactor + cross-vendor + portable format.">
 <meta property="og:type" content="article">
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="kolm vs distillation platforms and device runtimes" />
-<meta name="twitter:description" content="kolm is the signed compiler that emits a portable .kolm artifact. Distillation platforms emit hosted endpoints; runtimes emit nothing, they execute. kolm sits between." />
+<meta name="twitter:title" content="kolm vs LoRAX, Predibase, OpenPipe, DIY, hyperscaler" />
+<meta name="twitter:description" content="The defensible combination nobody else leads with: signed + compiled + frozen-eval-gated + receipt chain + redactor + cross-vendor + portable format." />
 <meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
 <meta property="og:url" content="https://kolm.ai/compare">
 <meta property="og:image" content="https://kolm.ai/og-card.svg">
 <link rel="canonical" href="https://kolm.ai/compare">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/styles.css">
-<link rel="stylesheet" href="/brand-refresh.css">
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Product",
-      "name": "kolm",
-      "description": "kolm head-to-head with distillation platforms (Predibase, OpenPipe, Fireworks, Together) and on-device runtimes (Core ML, LiteRT, ONNX, ExecuTorch).",
-      "brand": {
-        "@type": "Brand",
-        "name": "Kolmogorov"
-      },
-      "url": "https://kolm.ai/compare",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD",
-        "url": "https://kolm.ai/pricing"
-      }
-    },
-    {
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "kolm",
-          "item": "https://kolm.ai/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Kolm vs OpenPipe, Predibase, Core ML, LiteRT, ONNX",
-          "item": "https://kolm.ai/compare"
-        }
-      ]
-    }
-  ]
-}
-</script>
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--bad:#ff6b91;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:46px;line-height:1.06;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+  .lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .matrix-wrap{margin:48px 0;overflow-x:auto}
+  table.matrix{width:100%;border-collapse:collapse;font-size:13.5px;min-width:920px}
+  table.matrix th{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:14px 10px;border-bottom:1px solid var(--line);font-weight:400;vertical-align:bottom}
+  table.matrix th.kolm-col{color:var(--accent)}
+  table.matrix td{padding:14px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45}
+  table.matrix td.axis{font-weight:500;color:var(--ink);min-width:200px}
+  table.matrix td.kolm{color:var(--ink);background:var(--accent-soft)}
+  table.matrix td.kolm b{color:var(--accent);font-weight:500;font-family:var(--mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase}
+  table.matrix td.other{color:var(--ink-mute)}
+  td.yes{color:var(--accent)}
+  td.no{color:var(--ink-faint)}
+  td.partial{color:var(--warn)}
+  td.note{font-size:12px;color:var(--ink-faint);font-family:var(--mono)}
+  .section{padding:64px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:30px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:780px}
+  .section p.lede{font-size:16px;max-width:780px;margin:0 0 28px}
+  .pair-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+  @media(max-width:820px){.pair-grid{grid-template-columns:1fr}}
+  .card{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:10px;transition:border-color 160ms,transform 160ms}
+  .card:hover{border-color:rgba(16,185,129,0.32);transform:translateY(-1px)}
+  .card .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .card h3{margin:0;font-size:19px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .card p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+  .card .go{margin-top:6px;font-family:var(--mono);font-size:11.5px;color:var(--accent)}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  .takeaway{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin-top:32px}
+  .takeaway b{color:var(--accent)}
+  ul.notes{font-size:13.5px;color:var(--ink-mute);line-height:1.6;padding-left:18px;margin:0}
+  ul.notes li{margin-bottom:8px}
+  ul.notes code{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr)}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:var(--ink-faint);margin:0 0 12px;font-weight:400}
+  .footer-grid a{display:block;color:var(--ink-mute);text-decoration:none;font-size:13.5px;margin-bottom:6px;border:none}
+  .footer-tag{display:flex;justify-content:space-between;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line);padding-top:20px;flex-wrap:wrap;gap:12px}
+  /* Wave 208 mobile: tighten hero+section padding at 360-480px so the
+     differentiation matrix renders without forcing the page to scroll. */
+  @media(max-width:560px){
+    .wrap{padding:0 16px}
+    .hero{padding:48px 0 24px}
+    h1{font-size:30px;line-height:1.12;letter-spacing:-0.018em}
+    .lede{font-size:15.5px}
+    .section{padding:36px 0}
+    .section h2{font-size:23px}
+    .actions{gap:8px}
+    .btn{padding:10px 14px;font-size:12px}
+    table.matrix{font-size:12.5px}
+    table.matrix th,table.matrix td{padding:10px 8px}
+    header.site nav{gap:10px;font-size:11px}
+    header.site nav a:not(:nth-child(-n+3)){display:none}
+  }
+</style>
 </head>
 <body>
-
-<header class="site-header">
-  <div class="wrap">
-    <a href="/" class="brand">kolm</a>
-    <nav class="site-nav" aria-label="Primary">
-      <a href="/use-cases">Use cases</a>
-      <a href="/docs">Docs</a>
-      <a href="/research">Research</a>
-      <a href="/enterprise">Enterprise</a>
-      <a href="/pricing">Pricing</a>
-    </nav>
-    <div class="site-actions">
-      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
-      <a href="/signin">sign in</a>
-      <a href="/signup" class="cta">Get API key &rarr;</a>
-    </div>
-  </div>
-</header>
-
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
 <main>
-<section class="hero frontier-bg">
+
+<section class="hero">
   <div class="wrap">
-    <div class="hero-copy">
-      <div class="hero-eyebrow"><span class="he-dot"></span>Compare &middot; positioning &middot; compiler layer</div>
-      <h1>kolm is the <span class="tone">compiler layer</span> above device runtimes.</h1>
-      <p class="lede">Core ML, LiteRT, ONNX Runtime, and ExecuTorch are excellent runtimes. kolm sits one layer above them: it compiles regulated workflows into signed artifacts with receipts, K-score gates, and a compliance trail those runtimes do not own.</p>
-      <div class="actions">
-        <a href="/benchmarks" class="btn primary electric">read benchmarks</a>
-        <a href="/security" class="btn ghost">review security</a>
-      </div>
-    </div>
-    <div class="hero-proof" aria-label="runtime stack diagram">
-      <div class="proof-shell">
-        <div class="proof-toolbar">
-          <div class="proof-title"><span>where kolm fits</span></div>
-          <div class="proof-status"><span></span> runtime-neutral</div>
-        </div>
-        <div class="proof-workspace">
-          <div class="proof-card artifact-plate">
-            <div class="artifact-title"><span>compiler layer</span><strong>.kolm</strong></div>
-            <div class="artifact-object">
-              <div class="artifact-icon">.k</div>
-              <div class="artifact-copy">
-                <strong>signed workflow artifact</strong>
-                <small>manifest + evals + receipts + runtime target hints</small>
-              </div>
-            </div>
-            <div class="proof-tags">
-              <span>Core ML target</span>
-              <span>LiteRT target</span>
-              <span>ORT / ExecuTorch target</span>
-            </div>
-          </div>
-          <div class="proof-card flow-card">
-            <div class="flow-step"><span class="node active"></span><div><strong>compile</strong><small>task, examples, data boundary</small></div></div>
-            <div class="flow-line"></div>
-            <div class="flow-step"><span class="node"></span><div><strong>sign</strong><small>manifest, evals, receipt chain</small></div></div>
-            <div class="flow-line"></div>
-            <div class="flow-step"><span class="node"></span><div><strong>dispatch</strong><small>best device runtime per target</small></div></div>
-          </div>
-          <div class="proof-card">
-            <div class="label">why this layer</div>
-            <p>Privacy and compliance are not runtime features by themselves. They need artifact provenance, eval evidence, and operational receipts.</p>
-          </div>
-        </div>
-      </div>
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; compare</p>
+    <h1>The defensible combination nobody else leads with.</h1>
+    <p class="lede">Cost and offline are table stakes &mdash; LoRAX, Predibase, OpenPipe, and the DIY stack all ship distillation today. What no competitor leads with is the bundle: signed + compiled + frozen-eval-gated + receipt chain + PHI redactor + cross-vendor + portable .kolm format. Every <b style="color:var(--accent)">YES</b> below cites the shipping wave that delivered it. For procurement and security review, see <a href="/enterprise" style="color:inherit;border-bottom:1px dashed currentColor">/enterprise</a>.</p>
+    <p class="stamp">Ten axes &middot; reviewed 2026-05-17 &middot; wave 169 reconciliation pass</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/spec/rs-1">Read RS-1 v2.1 &rarr;</a>
     </div>
   </div>
 </section>
 
 <section class="section">
   <div class="wrap">
-    <div class="eyebrow"><span class="num">01</span>runtimes</div>
-    <h2>Do not fight the runtimes. Compile for them.</h2>
-    <p class="sec-lede">The serious competitors are free, mature, and backed by Apple, Google, Microsoft, Meta, and the PyTorch ecosystem. The credible kolm strategy is to sit above them as the workflow compiler, quality gate, and trust layer.</p>
-
-    <div class="card" style="overflow-x:auto;">
-      <table class="table">
+    <div class="matrix-wrap">
+      <table class="matrix">
         <thead>
           <tr>
-            <th>System</th>
-            <th>Primary layer</th>
-            <th>Strongest use case</th>
-            <th>kolm position</th>
+            <th>Capability</th>
+            <th>LoRAX</th>
+            <th>Predibase</th>
+            <th>OpenPipe</th>
+            <th>DIY LoRA</th>
+            <th>Hyperscaler</th>
+            <th class="kolm-col">kolm</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><strong>Apple Core ML</strong></td>
-            <td>Apple on-device model runtime</td>
-            <td>iOS/macOS apps that need deep Apple silicon integration.</td>
-            <td>kolm can target Core ML for Apple deployments while adding signed workflow evidence above the model file.</td>
+            <td class="axis">Multi-LoRA serving</td>
+            <td class="yes">YES</td>
+            <td class="yes">YES</td>
+            <td class="yes">YES</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>out of scope</b><div class="note">kolm ships a single signed file; pair with LoRAX downstream when you need multi-adapter serving</div></td>
           </tr>
           <tr>
-            <td><strong>Google LiteRT</strong></td>
-            <td>Cross-platform on-device runtime</td>
-            <td>Android, iOS, desktop, web, IoT, and micro deployment with accelerator support.</td>
-            <td>kolm can emit LiteRT-targeted artifacts for teams that need a regulated compile process and receipts.</td>
+            <td class="axis">Build fine-tune from your data</td>
+            <td class="no">NO</td>
+            <td class="yes">YES</td>
+            <td class="yes">YES</td>
+            <td class="yes">YES</td>
+            <td class="yes">YES</td>
+            <td class="kolm"><b>YES &middot; wave 157+</b><div class="note">teacher-bridge + LoRA pipeline + GGUF/ONNX export (W157, W158, W163)</div></td>
           </tr>
           <tr>
-            <td><strong>ONNX Runtime</strong></td>
-            <td>Cross-framework model accelerator</td>
-            <td>Teams standardizing on ONNX across frameworks and hardware execution providers.</td>
-            <td>kolm can package ONNX Runtime as an execution target instead of inventing another generic accelerator.</td>
+            <td class="axis">Capture-from-production traffic</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="yes">YES</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; wave 144+</b><div class="note">seeds.jsonl + traffic proxy ship since Wave 144 Q+2 gate</div></td>
           </tr>
           <tr>
-            <td><strong>ExecuTorch</strong></td>
-            <td>PyTorch edge deployment stack</td>
-            <td>PyTorch teams exporting models to mobile, embedded, and edge hardware.</td>
-            <td>kolm can make PyTorch deployment auditable by bundling evals, manifests, and receipts around exported targets.</td>
+            <td class="axis">Compiled native binary</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; wave 145-163</b><div class="note">Rust (P+1) + C (P+2) + WASM (P+3) + GGUF/ONNX (P+6, W163) with deterministic-build verifier</div></td>
           </tr>
           <tr>
-            <td><strong>kolm</strong></td>
-            <td>Compiler, artifact, registry, verifier, and receipt layer</td>
-            <td>Regulated product teams that must prove what was compiled, what passed, what ran, and where data went.</td>
-            <td>kolm should orchestrate runtimes, not replace them.</td>
+            <td class="axis">Runs offline / air-gapped</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="partial">PARTIAL</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; ship-day-1</b><div class="note">single-file artifact, no runtime network; verifier works air-gapped (W163 deterministic build)</div></td>
+          </tr>
+          <tr>
+            <td class="axis">Cryptographically signed (third-party verifiable)</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; wave 161+162</b><div class="note">Ed25519 (W161 Q+8) + Sigstore/Rekor transparency log (W162 Q+9)</div></td>
+          </tr>
+          <tr>
+            <td class="axis">Frozen-eval-gated ship</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; wave 144+</b><div class="note">K-score V2 with R/F/E/Z axes; verifier rejects artifacts where train ∩ holdout ≠ ∅ (Q+2)</div></td>
+          </tr>
+          <tr>
+            <td class="axis">Receipt chain (hash-linked, signed)</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; wave 144-167</b><div class="note">spec→seeds→split→train→recipes→evals→external_holdout→tenant_shadow→auditor→supersession→drift→export→sigs→rekor</div></td>
+          </tr>
+          <tr>
+            <td class="axis">PHI/PII redactor for teacher call</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; wave 157</b><div class="note">18 HIPAA Safe Harbor + 3 kolm extensions (NPI/DEA/Medicaid); verifier check #14 confirms no raw PHI leaked (Q+3a)</div></td>
+          </tr>
+          <tr>
+            <td class="axis">Cross-vendor teacher catalog</td>
+            <td class="partial">PARTIAL</td>
+            <td class="partial">PARTIAL</td>
+            <td class="partial">PARTIAL</td>
+            <td class="yes">YES</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; wave 158</b><div class="note">5 vendors × ~6 SKUs (Anthropic/OpenAI/Google/xAI/local) + 13 student bases; check #15 enforces provenance (Q+3b)</div></td>
+          </tr>
+          <tr>
+            <td class="axis">External + adversarial holdouts</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; wave 164</b><div class="note">N+3 external benchmarks + N+4 adversarial cross-family pairs bound into K-score R axis</div></td>
+          </tr>
+          <tr>
+            <td class="axis">Tenant shadow corpus (residency-respecting)</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; wave 165</b><div class="note">HIPAA data-never-leaves-tenant; manifest carries hash+accuracy; verifier check #21 three-way (reanchored / unavailable / drift)</div></td>
+          </tr>
+          <tr>
+            <td class="axis">Third-party auditor attestation</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; wave 166</b><div class="note">External auditor signs eval_result with own Ed25519 key; check #22 fingerprint + cross-check + auditor != builder (N+7)</div></td>
+          </tr>
+          <tr>
+            <td class="axis">Drift detection + supersession chain</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; wave 167</b><div class="note">M+3 drift snapshot/report/cron + M+4 predecessor_artifact_hash chain bound into artifact_hash; checks #23+#24 &middot; <a href="/drift" style="color:var(--accent)">dedicated surface</a> shipped wave 171</div></td>
+          </tr>
+          <tr>
+            <td class="axis">.kolm portable format (open spec)</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="no">NO</td>
+            <td class="kolm"><b>YES &middot; RS-1 v2.1</b><div class="note">Apache-2.0 open spec; container-image-equivalent for narrow models; <a href="/spec/rs-1" style="color:var(--accent)">RS-1 v2.1</a></div></td>
           </tr>
         </tbody>
       </table>
     </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="wrap">
-    <div class="eyebrow"><span class="num">02</span>distillation platforms</div>
-    <h2>kolm vs Predibase, OpenPipe, Fireworks, Together.</h2>
-    <p class="sec-lede">The closest substitutes are the platforms that promise "fine-tuning made easy" or "your own model on our infrastructure." They emit a hosted endpoint. kolm emits a signed file you own. The two are usable together, but only one compounds when you stop paying.</p>
-
-    <div class="card" style="overflow-x:auto;">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Vendor</th>
-            <th>What you get</th>
-            <th>Where it runs</th>
-            <th>Lock-in</th>
-            <th>kolm position</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>Predibase</strong></td>
-            <td>LoRA / adapter training on managed serverless infra; API endpoint per fine-tune.</td>
-            <td>Predibase cloud only.</td>
-            <td>Adapters portable; runtime inference is theirs.</td>
-            <td>kolm packages the same LoRA into a runnable <code>.kolm</code> with eval, K-score, and receipts. You can keep Predibase as a training back-end and ship a portable artifact.</td>
-          </tr>
-          <tr>
-            <td><strong>OpenPipe</strong></td>
-            <td>Production capture &rarr; auto-fine-tune &rarr; hosted inference; cost-reduction angle.</td>
-            <td>OpenPipe cloud (or BYO inference).</td>
-            <td>The pipeline lives on OpenPipe. Pulling out is a project.</td>
-            <td>kolm is the artifact pipeline. Capture &rarr; verifier &rarr; LoRA &rarr; signed file. The artifact moves with you; the registry replaces the platform graph.</td>
-          </tr>
-          <tr>
-            <td><strong>Fireworks AI</strong></td>
-            <td>Fast inference for open weights, with fine-tuning in beta. The throughput-per-dollar play.</td>
-            <td>Fireworks cloud.</td>
-            <td>Endpoint stays on their infra. No artifact you can mail.</td>
-            <td>kolm is offline-first. The same compiled artifact runs on Fireworks (hot path) <em>and</em> on a phone (cold/private path). Fireworks becomes one optional run target, not the only one.</td>
-          </tr>
-          <tr>
-            <td><strong>Together AI</strong></td>
-            <td>Open-model serving + fine-tune; OSS-friendly, broad model menu.</td>
-            <td>Together cloud, with private deploy contracts.</td>
-            <td>Weights are theoretically portable; the running config and eval pipeline are not.</td>
-            <td>kolm packages weights + adapter + recipe pack + verifier + eval suite + receipts in one zip. The eval and the gate travel with the model; that's what makes the result auditable, not only hostable.</td>
-          </tr>
-          <tr>
-            <td><strong>kolm</strong></td>
-            <td>A signed <code>.kolm</code> file: model + LoRA + recipe pack + recall index + eval suite + manifest + receipts.</td>
-            <td>Anywhere: laptop, phone, server, edge box, or any of the above platforms.</td>
-            <td>None. The artifact is yours; the registry is open (RS-1, MIT).</td>
-            <td>kolm is the compiler. The output is the product, not the endpoint.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="grid-3" style="margin-top:32px">
-      <div class="card">
-        <h3>What only kolm gives you</h3>
-        <p>A single signed file. Byte-identical reproducibility. K-score gate before emit. HMAC-signed artifact receipt + per-invocation <code>_kolm</code> run metadata (recipe id, latency, K-score). Offline runtime as a first-class target.</p>
-      </div>
-      <div class="card">
-        <h3>What the platforms still do better</h3>
-        <p>Hosted GPU throughput at production scale, batched serving, vendor-managed uptime. If your only deploy target is a hosted API, a platform is a fine choice, but you do not own the artifact.</p>
-      </div>
-      <div class="card">
-        <h3>Useful combinations</h3>
-        <p>Use Together or Fireworks as a hot inference target for the same <code>.kolm</code> you ship to phones. Use Predibase as a training back-end behind a kolm bridge. Same artifact, more places it runs.</p>
-      </div>
+    <div class="takeaway">
+      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)">Every box where every competitor says <b style="color:var(--ink-faint)">NO</b> and kolm says <b>YES</b> is one of the moat axes. <b>Compiled native + signed + frozen-eval-gated + receipt chain + PHI redactor + cross-vendor + portable format</b> is the defensible combination no competitor leads with.</p>
     </div>
   </div>
 </section>
 
 <section class="section">
   <div class="wrap">
-    <div class="eyebrow"><span class="num">03</span>what must be true</div>
-    <h2>The bar for winning is evidence.</h2>
-    <p class="sec-lede">A developer will not switch because a landing page says "private AI." They switch when kolm gives them a workflow they cannot get from free runtime tooling alone.</p>
-
-    <div class="pillars">
-      <div class="pillar">
-        <div class="verb">01</div>
-        <h3>Artifact provenance.</h3>
-        <p>Every `.kolm` needs a manifest, data-boundary declaration, eval set, K-score, hash chain, and reproducible build metadata.</p>
-      </div>
-      <div class="pillar">
-        <div class="verb">02</div>
-        <h3>Runtime neutrality.</h3>
-        <p>Core ML, LiteRT, ONNX Runtime, and ExecuTorch should be deploy targets. The compiler owns policy and evidence.</p>
-      </div>
-      <div class="pillar">
-        <div class="verb">03</div>
-        <h3>Regulated workflow fit.</h3>
-        <p>HIPAA, fintech, and enterprise mobile teams need auditable local inference, not another model conversion CLI.</p>
-      </div>
-      <div class="pillar">
-        <div class="verb">04</div>
-        <h3>Benchmarks.</h3>
-        <p>Latency, size, accuracy, battery, and privacy evidence must be published per hardware target, not implied.</p>
-      </div>
+    <h2>Per-competitor teardowns.</h2>
+    <p class="lede">If you're already shipping on one of these stacks, the teardown is the shortest path to deciding whether kolm complements or replaces what you have. Each page is a single screen, no marketing.</p>
+    <div class="pair-grid">
+      <a class="card" href="/how-vs-lorax"><span class="vt">01 &middot; LoRA serving infra</span><h3>kolm vs LoRAX</h3><p>LoRAX is Apache-2.0 multi-LoRA serving infrastructure. kolm builds the adapter; LoRAX serves it. Complement, not competitor &mdash; the teardown shows the stack with both.</p><span class="go">open teardown &rarr;</span></a>
+      <a class="card" href="/how-vs-predibase"><span class="vt">02 &middot; hosted fine-tune + Rubrik</span><h3>kolm vs Predibase</h3><p>Predibase (acquired by Rubrik June 2025) ships hosted LoRAX + agentic governance. kolm ships a portable signed file you mail to a phone. Different problems.</p><span class="go">open teardown &rarr;</span></a>
+      <a class="card" href="/how-vs-openpipe"><span class="vt">03 &middot; capture-traffic SDK</span><h3>kolm vs OpenPipe</h3><p>OpenPipe captures your OpenAI traffic to a hosted endpoint. kolm captures the same traffic to seeds.jsonl and compiles a signed artifact you keep. Same input, different output.</p><span class="go">open teardown &rarr;</span></a>
+      <a class="card" href="/how-vs-diy"><span class="vt">04 &middot; LLaMA-Factory / Unsloth / TRL</span><h3>kolm vs DIY LoRA stack</h3><p>The DIY stack is the foundation kolm builds on. kolm wraps it with the missing pieces: receipt chain, eval gate, redactor, K-score, signed compiled artifact. You can drop into raw DIY at any time.</p><span class="go">open teardown &rarr;</span></a>
+      <a class="card" href="/how-vs-hyperscaler"><span class="vt">05 &middot; OpenAI / Anthropic / Vertex / Bedrock</span><h3>kolm vs hyperscaler fine-tune</h3><p>Hyperscaler fine-tuning produces a model that lives in the vendor's API. kolm produces a model you OWN as a file. Air-gap, residency, and exit cost are structural impossibilities for closed-weight tuning.</p><span class="go">open teardown &rarr;</span></a>
+      <a class="card" href="/compare/legacy"><span class="vt">06 &middot; legacy axis matrices</span><h3>Older head-to-head matrices</h3><p>Per-vendor axis-by-axis matrices (kolm-vs-openpipe / together / predibase / openai-fine-tune / rag / ollama). Pre-Wave-144 framing; still useful for procurement evaluators.</p><span class="go">open index &rarr;</span></a>
     </div>
   </div>
 </section>
 
 <section class="section">
   <div class="wrap">
-    <div class="eyebrow"><span class="num">04</span>when not to use kolm</div>
-    <h2>Use the runtime directly when trust evidence is not the bottleneck.</h2>
-    <p class="sec-lede">If you already have a model, a single platform, no regulated data, and no need for receipts, use the native runtime directly. kolm is for teams whose blocker is shipping a private AI workflow through engineering, security, legal, and procurement.</p>
-
-    <div class="grid-3">
-      <div class="card">
-        <h3>Use Core ML directly</h3>
-        <p>When the target is Apple-only and your team already owns model conversion, testing, packaging, and release review.</p>
-      </div>
-      <div class="card">
-        <h3>Use LiteRT directly</h3>
-        <p>When you need flexible cross-platform inference but do not need signed compile receipts or compliance artifacts.</p>
-      </div>
-      <div class="card">
-        <h3>Use ExecuTorch directly</h3>
-        <p>When your ML team lives in PyTorch and wants the shortest export path to edge devices.</p>
-      </div>
-    </div>
+    <h2>What every YES above means in code.</h2>
+    <p class="lede">A claim only counts if it maps to a verifier check or a manifest field. Skim the audit trail:</p>
+    <ul class="notes">
+      <li><code>kolm verify artifact.kolm</code> runs 24 checks &mdash; each prints PASS / WARN / FAIL with the field or hash it inspected. Run it on any artifact, even one you didn't build.</li>
+      <li><b>Wave 157 (Q+3a)</b> &middot; PHI redactor receipt integrity. Check #14 confirms no raw PHI leaked. Manifest: <code>redaction_map_hash</code>, <code>teacher_call_log_hash</code>, <code>reinjection_log_hash</code>. <a href="/spec/rs-1#section-7-6">RS-1 &sect;7.6</a>.</li>
+      <li><b>Wave 158 (Q+3b)</b> &middot; cross-vendor distillation provenance. Check #15 enforces <code>teacher_vendor</code> + <code>teacher_model</code> + <code>student_base</code> + <code>distillation_method</code>. <a href="/spec/rs-1#section-7-7">RS-1 &sect;7.7</a>.</li>
+      <li><b>Wave 160 (Q+3c)</b> &middot; K-score teacher-delta axis T. A/T fidelity ratio in V2 envelope. Check #16. <a href="/spec/rs-1#section-7-8">RS-1 &sect;7.8</a>.</li>
+      <li><b>Wave 161 (Q+8)</b> &middot; Ed25519 signature replacement. Public-key directory at <code>/v1/keys/public</code>; verifier validates against published fingerprint, not a shared secret. <a href="/spec/rs-1#section-7-9">RS-1 &sect;7.9</a>.</li>
+      <li><b>Wave 162 (Q+9)</b> &middot; Sigstore / Rekor transparency log. Cosign-compatible; transparency entries on every build. <a href="/spec/rs-1#section-7-10">RS-1 &sect;7.10</a>.</li>
+      <li><b>Wave 163 (P+6)</b> &middot; GGUF/ONNX compile path + deterministic-build verifier. <a href="/spec/rs-1#section-7-11">RS-1 &sect;7.11</a>.</li>
+      <li><b>Wave 164 (N+3/N+4)</b> &middot; external public + adversarial cross-family holdouts. Check #20. <a href="/spec/rs-1#section-7-12">RS-1 &sect;7.12</a>.</li>
+      <li><b>Wave 165 (N+5)</b> &middot; tenant shadow corpus with residency-respecting three-way verifier check #21 (reanchored / unavailable / drift). <a href="/spec/rs-1#section-7-13">RS-1 &sect;7.13</a>.</li>
+      <li><b>Wave 166 (N+7)</b> &middot; third-party auditor Ed25519 attestation. Check #22 enforces auditor &ne; builder. <a href="/spec/rs-1#section-7-14">RS-1 &sect;7.14</a>.</li>
+      <li><b>Wave 167 (M+3+M+4)</b> &middot; drift detection cron + supersession chain. Checks #23 + #24. <a href="/spec/rs-1#section-7-15">RS-1 &sect;7.15</a>.</li>
+      <li><b>Wave 168 (Q+11)</b> &middot; RS-1 spec reconciliation to v2.1 &mdash; every &sect;7.X subsection grounded in a shipping wave.</li>
+    </ul>
   </div>
 </section>
 
 <section class="section">
   <div class="wrap">
-    <div class="eyebrow"><span class="num">05</span>primary sources</div>
-    <h2>Official references.</h2>
-    <p class="sec-lede">Every claim above is from the vendor's own positioning. Where a feature is in beta or behind contract, we say so; we do not editorialize.</p>
-
-    <div class="grid-4">
-      <div class="card"><h3>Predibase</h3><p><a href="https://predibase.com">predibase.com</a></p></div>
-      <div class="card"><h3>OpenPipe</h3><p><a href="https://openpipe.ai">openpipe.ai</a></p></div>
-      <div class="card"><h3>Fireworks AI</h3><p><a href="https://fireworks.ai">fireworks.ai</a></p></div>
-      <div class="card"><h3>Together AI</h3><p><a href="https://together.ai">together.ai</a></p></div>
-      <div class="card"><h3>Apple Core ML</h3><p><a href="https://developer.apple.com/documentation/CoreML">developer.apple.com/documentation/CoreML</a></p></div>
-      <div class="card"><h3>Google LiteRT</h3><p><a href="https://ai.google.dev/edge/litert/">ai.google.dev/edge/litert</a></p></div>
-      <div class="card"><h3>ONNX Runtime</h3><p><a href="https://onnxruntime.ai/docs">onnxruntime.ai/docs</a></p></div>
-      <div class="card"><h3>ExecuTorch</h3><p><a href="https://docs.pytorch.org/executorch/stable/intro-overview.html">docs.pytorch.org/executorch</a></p></div>
-    </div>
-  </div>
-</section>
-
-<section class="section">
-  <div class="wrap">
-    <div class="bottom-cta">
-      <h2>Ship private AI as an artifact, not a promise.</h2>
-      <p class="lead">Start with the compiler. Prove the artifact. Then dispatch to the best runtime for each device.</p>
-      <div class="actions">
-        <a href="/signup" class="btn primary">Get API key &rarr;</a>
-        <a href="/docs" class="btn ghost">Read quickstart &rarr;</a>
+    <h2>When the competitors are the right answer.</h2>
+    <p class="lede">A defensible moat doesn't mean every workload should switch. Three honest cases where you should stay where you are:</p>
+    <div class="pair-grid">
+      <div class="card" style="cursor:default">
+        <span class="vt">stay with hyperscaler</span>
+        <h3>You don't need the artifact</h3>
+        <p>If your only deploy target is a hosted API, your data isn't regulated, and your buyers don't ask for compile-time receipts, the hyperscaler tuning UX is the shortest path. kolm's compliance moat is dead weight for unregulated production workloads.</p>
+      </div>
+      <div class="card" style="cursor:default">
+        <span class="vt">stay with LoRAX</span>
+        <h3>You serve thousands of adapters per GPU</h3>
+        <p>LoRAX's heterogeneous continuous batching and SGMV kernel are real engineering. kolm doesn't compete on multi-tenant serving throughput. Pair the two: kolm builds the signed adapter, LoRAX serves it at scale.</p>
+      </div>
+      <div class="card" style="cursor:default">
+        <span class="vt">stay with Predibase</span>
+        <h3>Procurement needs a Series-C vendor</h3>
+        <p>Predibase + Rubrik (acquired June 2025) is a known enterprise security brand with a dedicated VPC SKU and a sales team. If your buyer's procurement asks "headquartered where, what's MRR," that's a strong fit. kolm sits in the build-side category; the two are adjacent, not identical.</p>
+      </div>
+      <div class="card" style="cursor:default">
+        <span class="vt">stay with OpenPipe</span>
+        <h3>You want hosted inference, not a file</h3>
+        <p>OpenPipe's capture-then-fine-tune SDK is a clean path to a hosted endpoint. kolm captures the same way but ships a file. If you don't need the file, the endpoint is one fewer thing to operate.</p>
       </div>
     </div>
   </div>
 </section>
+
+<section class="section" style="border-bottom:none">
+  <div class="wrap">
+    <h2>Ship private AI as an artifact, not a promise.</h2>
+    <p class="lede">Start with the compiler. Prove the artifact. Then choose whether to serve it on LoRAX, on a phone, or in an air-gapped VPC. The .kolm file is the same in all three.</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/training">Read /training tour &rarr;</a>
+      <a class="btn" href="/spec/rs-1">RS-1 v2.1 spec &rarr;</a>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <footer class="site">
-  <div class="wrap" style="max-width: 1180px;">
+  <div class="wrap">
     <div class="footer-grid">
       <div>
         <h4>Build</h4>
         <a href="/quickstart">Quickstart</a>
+        <a href="/training">Training</a>
         <a href="/docs">Docs</a>
-        <a href="/spec/rs-1">RS-1 spec</a>
-        <a href="/openapi.json">OpenAPI</a>
+        <a href="/spec/rs-1">RS-1 v2.1</a>
         <a href="/cli">CLI</a>
       </div>
       <div>
-        <h4>Deploy</h4>
-        <a href="/compute">Backends</a>
-        <a href="/airgap">Air-gap</a>
-        <a href="/integrations/cloudflare">Cloudflare</a>
-        <a href="/integrations/github-actions">GitHub Actions</a>
-        <a href="/integrations/gitlab-ci">GitLab CI</a>
+        <h4>Compare</h4>
+        <a href="/compare">Differentiation matrix</a>
+        <a href="/how-vs-lorax">vs LoRAX</a>
+        <a href="/how-vs-predibase">vs Predibase</a>
+        <a href="/how-vs-openpipe">vs OpenPipe</a>
+        <a href="/how-vs-diy">vs DIY LoRA</a>
+        <a href="/how-vs-hyperscaler">vs hyperscaler</a>
       </div>
       <div>
         <h4>Proof</h4>
         <a href="/verify-prod">Verify a .kolm</a>
         <a href="/badge">Embed badge</a>
         <a href="/benchmarks">Benchmarks</a>
-        <a href="/compare">Compare</a>
         <a href="/registry">Registry</a>
-        <a href="/case-studies">Case studies</a>
+        <a href="/roadmap">Roadmap</a>
       </div>
       <div>
         <h4>Industries</h4>
         <a href="/healthcare">Healthcare</a>
         <a href="/finance">Finance</a>
         <a href="/legal">Legal</a>
-        <a href="/compliance">Compliance</a>
         <a href="/insure">Insurance</a>
       </div>
       <div>
@@ -391,17 +393,15 @@
         <a href="/pricing">Pricing</a>
         <a href="/changelog">Changelog</a>
         <a href="/security">Security</a>
-        <a href="/community">Community</a>
         <a href="/contact">Contact</a>
       </div>
     </div>
     <div class="footer-tag">
-      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
-      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span>Receipts signed Ed25519 + Sigstore. Verify any artifact at /verify-prod.</span>
     </div>
   </div>
 </footer>
 
-<script src="/nav.js" defer></script>
 </body>
 </html>

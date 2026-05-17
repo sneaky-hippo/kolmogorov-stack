@@ -1,0 +1,144 @@
+{
+  "job_id": "job_prior_auth_letter_v1",
+  "task": "Generate a structured prior-authorization request letter satisfying the four-criterion medical-necessity framework. Input: { planned_service, member, payer }. Output: { letter_subject, letter_body, criteria_satisfied: { diagnosis, guideline, prior_therapy, urgency }, supporting_evidence_citations[], submission_route, confidence }. Each criterion is independently scored; missing-evidence criteria are flagged in criteria_satisfied as false rather than fabricated.",
+  "base_model": "Qwen/Qwen2.5-7B-Instruct",
+  "license": "LicenseRef-kolm-default-1.0",
+  "epochs": 3,
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.05,
+  "lr": 2e-4,
+  "max_seq_len": 4096,
+  "seeds_path": "./seeds.jsonl",
+  "k_score_gate": 0.92,
+  "k_score_components": {
+    "accuracy": 0.35,
+    "size": 0.10,
+    "latency": 0.15,
+    "cost": 0.10,
+    "coverage": 0.10,
+    "groundedness": 0.20
+  },
+  "recipes": [
+    {
+      "id": "rcp_prior_auth_letter_v1",
+      "name": "prior-auth-letter",
+      "class": "distilled_model",
+      "teacher_vendor": "tenant-configurable",
+      "weights_file": "model.gguf",
+      "tags": ["health-insurance", "prior-auth", "letter-generation", "model-class", "grounded-output", "medical-necessity"],
+      "schema": {
+        "input": {
+          "planned_service": "object",
+          "member": "object",
+          "payer": "object"
+        },
+        "output": {
+          "letter_subject": "string",
+          "letter_body": "string",
+          "criteria_satisfied": "object",
+          "supporting_evidence_citations": "array",
+          "submission_route": "string",
+          "confidence": "number"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "Reference rules for prior-authorization letter generation. medical_necessity_criteria is the closed four-criterion vector the model populates; submission_routes is the closed set of wire-formats the model may select; evidence_sources_priority enforces the order in which the model pulls supporting citations. Tenants extend these tables per payer at compile time.",
+    "rules": {
+      "medical_necessity_criteria": [
+        "appropriate_diagnosis",
+        "evidence_based_guideline",
+        "prior_failed_conservative_therapy",
+        "clinical_urgency"
+      ],
+      "submission_routes": {
+        "278": "EDI 278 X12 transaction",
+        "portal": "Payer prior-auth portal upload",
+        "fax": "Payer fax intake line"
+      },
+      "evidence_sources_priority": [
+        "national_specialty_society_guideline",
+        "uspstf_recommendation",
+        "cms_ncd_lcd",
+        "payer_published_policy",
+        "peer_reviewed_journal"
+      ]
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "tka_full_criteria_satisfied_route_278",
+        "input": {
+          "planned_service": { "cpt": ["27447"], "icd10": ["M17.11"], "planned_dos": "2026-06-15" },
+          "member": {
+            "age": 68,
+            "dx_history": ["M17.11", "E11.9"],
+            "treatment_history": ["trial_nsaid_12wk", "trial_physical_therapy_8wk", "trial_intraarticular_steroid"],
+            "plan_code": "PPO-Gold-2026",
+            "member_id_redacted": "<hash>"
+          },
+          "payer": {
+            "policy_index": { "plan_doc_ref": "PPO-Gold-2026 §5.4 (joint arthroplasty)", "mcg_ref": "MCG 25th ed. SG-OR-TKA" },
+            "prior_auth_form_url": "https://payer.example.com/forms/pa-tka.pdf"
+          }
+        },
+        "expected": {
+          "letter_body_non_empty": true,
+          "criteria_satisfied": { "diagnosis": true, "guideline": true, "prior_therapy": true },
+          "supporting_evidence_citations_non_empty": true,
+          "submission_route": "278"
+        }
+      },
+      {
+        "id": "mri_brain_no_prior_therapy_flagged_false",
+        "input": {
+          "planned_service": { "cpt": ["70553"], "icd10": ["G43.909"], "planned_dos": "2026-06-20" },
+          "member": {
+            "age": 35,
+            "dx_history": ["G43.909"],
+            "treatment_history": [],
+            "plan_code": "HMO-Silver-2026",
+            "member_id_redacted": "<hash>"
+          },
+          "payer": {
+            "policy_index": { "plan_doc_ref": "HMO-Silver-2026 §4.7 (advanced imaging)", "mcg_ref": "MCG 25th ed. ACG-A-0193" },
+            "prior_auth_form_url": "https://payer.example.com/forms/pa-imaging.pdf"
+          }
+        },
+        "expected": {
+          "letter_body_non_empty": true,
+          "criteria_satisfied": { "diagnosis": true, "prior_therapy": false },
+          "submission_route": "portal"
+        }
+      },
+      {
+        "id": "ed_admission_urgent_route_fax",
+        "input": {
+          "planned_service": { "cpt": ["99223"], "icd10": ["I21.4"], "planned_dos": "2026-05-22" },
+          "member": {
+            "age": 72,
+            "dx_history": ["I21.4", "I10", "E11.9"],
+            "treatment_history": ["asa_long_term"],
+            "plan_code": "Medicare-Adv-2026",
+            "member_id_redacted": "<hash>"
+          },
+          "payer": {
+            "policy_index": { "plan_doc_ref": "Medicare-Adv-2026 §3.1 (inpatient admission)", "mcg_ref": "MCG 25th ed. ISC-Inpatient" },
+            "prior_auth_form_url": "https://payer.example.com/forms/pa-inpatient.pdf"
+          }
+        },
+        "expected": {
+          "letter_body_non_empty": true,
+          "criteria_satisfied": { "diagnosis": true, "urgency": true },
+          "submission_route": "fax"
+        }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

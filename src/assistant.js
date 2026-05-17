@@ -354,3 +354,200 @@ export async function handleAssistant(req, _res, deps) {
       return { ok: true, intent: 'help', narration: 'I am not sure what you meant. Try "help".' };
   }
 }
+
+// ---------- scaffoldRecipeFromNl (Wave 197) ----------
+//
+// Free-text request -> structured recipe scaffold ready to drop into
+// public/docs/showcase/<slug>.spec.json + models/<slug>/seeds.jsonl.
+//
+// This is the backend the `kolm nl` CLI verb routes to. Air-gap mode
+// (airGap:true) is deterministic and never calls a network: classification
+// is a keyword match over the input text, and seed examples are emitted
+// from a small template library. Networked mode is NOT YET WIRED: the
+// scaffolder always returns the air-gap output and stamps
+// `network_status: 'not_yet_wired'` on the result so callers know.
+//
+// Returns:
+//   {
+//     suggested_slug,
+//     suggested_task_description,
+//     recipe_class,                // one of RECIPE_CLASSES
+//     suggested_k_score_gate,      // 0.5 .. 0.99
+//     suggested_seed_examples,     // length-10 [{prompt, completion}]
+//     next_steps: [string],
+//     class_inference_basis,       // 'class_hint' | 'keyword:<word>' | 'default'
+//     network_status,              // 'air_gap' | 'not_yet_wired'
+//   }
+
+const NL_RECIPE_CLASSES = ['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'];
+
+// Keyword -> recipe-class inference table. Ordered: first match wins.
+// Honest mapping: parsing structured formats (EDI / FHIR / CSV / regex /
+// lookup tables) -> rule. Computing standard measures with a spec but
+// emitted by an LLM -> synthesized_rule. Compiled/native -> compiled_rule.
+// Free-form generation (drafting prose, summarizing) -> distilled_model.
+const NL_CLASS_KEYWORDS = [
+  // distilled_model first: generative requests need real model bytes
+  { class: 'distilled_model', words: ['draft', 'write a', 'compose', 'generate prose', 'generate text', 'summari', 'paraphrase', 'rewrite', 'explain', 'translate', 'appeal letter', 'reply to', 'respond to', 'narrative'] },
+  // compiled_rule: explicit native / wasm / C / Rust / binary
+  { class: 'compiled_rule', words: ['native', 'wasm', 'c99', 'rust', 'compiled binary', 'binary recipe', 'lowered to'] },
+  // synthesized_rule: known measures / specs where teacher emits rule code
+  { class: 'synthesized_rule', words: ['hedis', 'cpt code', 'icd-10 lookup', 'ndc lookup', 'compute measure', 'compute hedis', 'compute the', 'apply spec', 'measure'] },
+  // rule: deterministic parsers, redactors, validators, classifiers, transformers
+  { class: 'rule', words: ['parse', 'parser', 'redact', 'redactor', 'normalize', 'validator', 'validate', 'extract', 'classify', 'classifier', 'edi', '837', '835', '834', '270', '271', '278', 'x12', 'fhir', 'route by', 'lookup'] },
+];
+
+function nlSlugify(s, max = 48) {
+  const out = String(s || '')
+    .toLowerCase()
+    .replace(/['"]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, max)
+    .replace(/-+$/g, '');
+  return out || 'untitled-recipe';
+}
+
+function nlInferClass(text, classHint) {
+  if (classHint && NL_RECIPE_CLASSES.includes(classHint)) {
+    return { class: classHint, basis: 'class_hint' };
+  }
+  const t = String(text || '').toLowerCase();
+  for (const row of NL_CLASS_KEYWORDS) {
+    for (const w of row.words) {
+      if (t.includes(w)) return { class: row.class, basis: `keyword:${w}` };
+    }
+  }
+  // Default: rule. Honest floor: if nothing matched, recipe is the
+  // simplest thing that could work and the user is expected to upgrade
+  // the class explicitly once they need teacher / weights.
+  return { class: 'rule', basis: 'default' };
+}
+
+// Gate thresholds tied to class severity. Stricter floor for higher
+// classes because they carry more cost (teacher / weights / native).
+function nlSuggestKScoreGate(klass) {
+  if (klass === 'distilled_model') return 0.85;
+  if (klass === 'compiled_rule')   return 0.92;
+  if (klass === 'synthesized_rule')return 0.90;
+  return 0.88; // rule
+}
+
+// Deterministic seed-example library. Returns exactly 10 {prompt, completion}
+// pairs. Pulls a templated batch based on the inferred class so the seeds
+// look at least adjacent to what the user asked for. Pure function of
+// (text, class): same inputs always produce same outputs.
+function nlBuildSeedExamples(text, klass) {
+  const t = String(text || '').slice(0, 200);
+  // Library of starter pairs per class. The point is to give the user a
+  // schema to overwrite, not to produce a working dataset.
+  const libs = {
+    rule: [
+      { prompt: 'input row 1', completion: '{ "ok": true, "parsed": {} }' },
+      { prompt: 'input row 2', completion: '{ "ok": true, "parsed": {} }' },
+      { prompt: 'empty input', completion: '{ "ok": false, "error": "empty_input" }' },
+      { prompt: 'malformed input', completion: '{ "ok": false, "error": "parse_failed" }' },
+      { prompt: 'header row', completion: '{ "ok": true, "kind": "header" }' },
+      { prompt: 'trailer row', completion: '{ "ok": true, "kind": "trailer" }' },
+      { prompt: 'duplicate row', completion: '{ "ok": true, "duplicate": true }' },
+      { prompt: 'oversized input', completion: '{ "ok": false, "error": "too_large" }' },
+      { prompt: 'control characters', completion: '{ "ok": true, "warnings": ["control_chars_stripped"] }' },
+      { prompt: 'unicode input', completion: '{ "ok": true, "encoding": "utf8" }' },
+    ],
+    synthesized_rule: [
+      { prompt: 'spec input case 1', completion: '{ "result": 0, "passed": true }' },
+      { prompt: 'spec input case 2', completion: '{ "result": 1, "passed": true }' },
+      { prompt: 'spec input case 3', completion: '{ "result": 0, "passed": false }' },
+      { prompt: 'edge: missing field', completion: '{ "result": null, "error": "missing_required_field" }' },
+      { prompt: 'edge: out of range', completion: '{ "result": null, "error": "out_of_range" }' },
+      { prompt: 'edge: deprecated code', completion: '{ "result": null, "warning": "deprecated_code" }' },
+      { prompt: 'positive control', completion: '{ "result": 1, "passed": true }' },
+      { prompt: 'negative control', completion: '{ "result": 0, "passed": false }' },
+      { prompt: 'boundary lower', completion: '{ "result": 0, "passed": true }' },
+      { prompt: 'boundary upper', completion: '{ "result": 1, "passed": true }' },
+    ],
+    compiled_rule: [
+      { prompt: 'native input 1', completion: '{ "ok": true, "binary": "ok" }' },
+      { prompt: 'native input 2', completion: '{ "ok": true, "binary": "ok" }' },
+      { prompt: 'edge case 1', completion: '{ "ok": false, "error": "edge_1" }' },
+      { prompt: 'edge case 2', completion: '{ "ok": false, "error": "edge_2" }' },
+      { prompt: 'perf case 1', completion: '{ "ok": true, "latency_us": 10 }' },
+      { prompt: 'perf case 2', completion: '{ "ok": true, "latency_us": 12 }' },
+      { prompt: 'determinism check', completion: '{ "ok": true, "deterministic": true }' },
+      { prompt: 'platform check', completion: '{ "ok": true, "platform": "any" }' },
+      { prompt: 'wasm check', completion: '{ "ok": true, "runtime": "wasm" }' },
+      { prompt: 'native check', completion: '{ "ok": true, "runtime": "native" }' },
+    ],
+    distilled_model: [
+      { prompt: 'sample request 1', completion: 'sample response 1' },
+      { prompt: 'sample request 2', completion: 'sample response 2' },
+      { prompt: 'sample request 3', completion: 'sample response 3' },
+      { prompt: 'sample request 4', completion: 'sample response 4' },
+      { prompt: 'sample request 5', completion: 'sample response 5' },
+      { prompt: 'sample request 6', completion: 'sample response 6' },
+      { prompt: 'sample request 7', completion: 'sample response 7' },
+      { prompt: 'sample request 8', completion: 'sample response 8' },
+      { prompt: 'sample request 9', completion: 'sample response 9' },
+      { prompt: 'sample request 10', completion: 'sample response 10' },
+    ],
+  };
+  const base = libs[klass] || libs.rule;
+  // Annotate the first prompt with a verbatim slice of the user's request
+  // so the scaffold is not 100% generic. Determinism preserved: same input
+  // text -> same prompt[0].
+  const out = base.map((p, i) => ({ prompt: p.prompt, completion: p.completion }));
+  if (t) {
+    out[0] = { prompt: `request: ${t}`, completion: out[0].completion };
+  }
+  return out;
+}
+
+function nlBuildNextSteps(klass, slug) {
+  const steps = [
+    `write models/${slug}/seeds.jsonl by editing suggested_seed_examples`,
+    `write public/docs/showcase/${slug}.spec.json from suggested_task_description + recipe_class`,
+    `kolm compile --spec public/docs/showcase/${slug}.spec.json`,
+    `kolm verify ${slug}.kolm`,
+  ];
+  if (klass === 'distilled_model') {
+    steps.splice(2, 0, 'kolm capture --provider <p> --as <ns>  (or set teacher_vendor in spec)');
+  } else if (klass === 'synthesized_rule') {
+    steps.splice(2, 0, 'set teacher_vendor in spec.json (synthesized_rule requires teacher attribution)');
+  } else if (klass === 'compiled_rule') {
+    steps.splice(2, 0, 'add compiled_targets: ["wasm32-wasi"] or ["x86_64-linux"] to spec.json');
+  }
+  steps.push('refine + verify before compile: scaffolds are starting points, not finished recipes');
+  return steps;
+}
+
+export function scaffoldRecipeFromNl(opts) {
+  const o = opts || {};
+  const text = String(o.text || '').trim();
+  const classHint = o.classHint || null;
+  const airGap = !!o.airGap;
+  if (!text) {
+    return {
+      ok: false,
+      error: 'empty_input',
+      narration: 'scaffoldRecipeFromNl: text is required',
+    };
+  }
+  const inferred = nlInferClass(text, classHint);
+  const klass = inferred.class;
+  const slug = nlSlugify(text);
+  const gate = nlSuggestKScoreGate(klass);
+  const seeds = nlBuildSeedExamples(text, klass);
+  const steps = nlBuildNextSteps(klass, slug);
+  return {
+    ok: true,
+    suggested_slug: slug,
+    suggested_task_description: text,
+    recipe_class: klass,
+    suggested_k_score_gate: gate,
+    suggested_seed_examples: seeds,
+    next_steps: steps,
+    class_inference_basis: inferred.basis,
+    network_status: airGap ? 'air_gap' : 'not_yet_wired',
+    note: 'scaffolds are starting points. refine + verify before compile.',
+  };
+}

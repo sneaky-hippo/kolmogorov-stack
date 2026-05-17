@@ -231,7 +231,7 @@
     <h2 id="what">What an AI compiler actually does.</h2>
     <p>The word "compiler" names the product. <code>gcc</code> turns source into a binary with a clear runtime contract. <code>kolm</code> turns an AI task description, examples, evals, and policy into a signed <code>.kolm</code> artifact that the CLI inspects, verifies, evaluates, runs in recipe mode, and serves over MCP.</p>
     <p>The artifact contract is a signed zip with a manifest, recipe pack, eval metadata, verifier evidence, receipt body, and the model, adapter, and recall-index layers compiled for the target tier. Signatures are HMAC-SHA256 over every layer. The Enterprise tier extends the chain with Sigstore / Rekor for cross-organization audit.</p>
-    <p>Inside the compiler are k-sample teacher calls, LoRA distillation, sqlite-vec corpus packaging, and named-device runtimes. Each stage is gated by the K-score floor, and the artifact is rejected at compile, not at deploy, when any sub-gate fails.</p>
+    <p>Inside the compiler in v0.2: recipe-class DSL codegen, MoE composition (<code>kolm-moe-1</code>), bundled pure-JS tokenizer (<code>kolm-tokenizer-1</code>), document extract (<code>kolm extract</code>), declarative completeness checks (<code>kolm doc check</code>), and the K-score gate. k-sample teacher calls, LoRA distillation, and a full <code>sqlite-vec</code> corpus index are the roadmap tier behind the runtime bridge. Each shipping stage is gated by the K-score floor, and the artifact is rejected at compile, not at deploy, when any sub-gate fails.</p>
 
     <h2 id="stages">Four stages of <code>kolm compile</code>.</h2>
     <p>Four engines compose the compiler. Each does one thing, and the artifact only ships when all four agree.</p>

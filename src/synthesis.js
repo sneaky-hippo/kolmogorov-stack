@@ -296,3 +296,250 @@ function synthCount(_positives) {
 }`;
 }
 export { QUALITY_GATE };
+
+// ---------- seedsNewFromBrief (Wave 199) ----------
+//
+// Natural-language brief -> deterministic candidate training rows.
+// Companion to scaffoldRecipeFromNl (W197): that wave scaffolds a recipe
+// spec, this wave fans out candidate seed examples. Both share the
+// air-gap-first contract: deterministic output, no network calls, no
+// telemetry. The networked teacher path is NOT YET WIRED.
+//
+// Honest scope contract:
+//   - candidates are CANDIDATES, not labels. They must go through
+//     `kolm seeds split` + `kolm eval` + the K-score gate before any
+//     promotion. The flow is "scaffold -> validate -> gate", not
+//     "scaffold -> ship".
+//   - air-gap mode pulls from a per-class library of domain-keyed
+//     starter rows (CARC denial codes 50/197/204/16, EDI 837 fragments,
+//     HEDIS measure stubs, etc.). These are deterministic and reproducible.
+//   - networked teacher mode is NOT YET WIRED: returns a single sentinel
+//     row explaining the user must pass --air-gap for now.
+//
+// Output shape:
+//   {
+//     class,              // one of 4 recipe classes
+//     candidates: [{ input, output, tags }],
+//     gate_suggestion,    // suggested K-score gate per class
+//     next_steps: [string],
+//     network_status,     // 'air_gap' | 'not_yet_wired'
+//     class_inference_basis,
+//     note,
+//   }
+
+const SEEDS_RECIPE_CLASSES = ['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'];
+
+// Keyword -> recipe-class inference. Mirrors scaffoldRecipeFromNl (W197):
+// same order, same intent, so a brief routed through either path lands
+// in the same class. Keeping the tables parallel (not merged) so each
+// wave's tests pin behavior independently and one wave's refactor cannot
+// silently move the other.
+const SEEDS_CLASS_KEYWORDS = [
+  // distilled_model first: generative requests need real model bytes
+  { class: 'distilled_model', words: ['draft', 'write a', 'compose', 'generate prose', 'generate text', 'summari', 'paraphrase', 'rewrite', 'explain', 'translate', 'appeal letter', 'reply to', 'respond to', 'narrative', 'denial appeal'] },
+  // compiled_rule: explicit native / wasm / C / Rust / binary
+  { class: 'compiled_rule', words: ['native', 'wasm', 'c99', 'rust', 'compiled binary', 'binary recipe', 'lowered to'] },
+  // synthesized_rule: known measures / specs where teacher emits rule code
+  { class: 'synthesized_rule', words: ['hedis', 'cpt code', 'icd-10 lookup', 'ndc lookup', 'compute measure', 'compute hedis', 'compute the', 'apply spec', 'measure', 'hedis measure'] },
+  // rule: deterministic parsers, redactors, validators, classifiers, transformers, EDI/X12 segments
+  { class: 'rule', words: ['parse', 'parser', 'redact', 'redactor', 'normalize', 'validator', 'validate', 'extract', 'classify', 'classifier', 'edi', '837', '835', '834', '270', '271', '278', 'x12', 'fhir', 'route by', 'lookup', 'denial code'] },
+];
+
+function seedsInferClass(text, classHint) {
+  if (classHint && SEEDS_RECIPE_CLASSES.includes(classHint)) {
+    return { class: classHint, basis: 'class_hint' };
+  }
+  const t = String(text || '').toLowerCase();
+  for (const row of SEEDS_CLASS_KEYWORDS) {
+    for (const w of row.words) {
+      if (t.includes(w)) return { class: row.class, basis: `keyword:${w}` };
+    }
+  }
+  return { class: 'rule', basis: 'default' };
+}
+
+// Per-class K-score gate. Stricter floor for higher classes (more cost
+// -> more proof). Matches scaffoldRecipeFromNl numbers verbatim.
+function seedsGateForClass(klass) {
+  if (klass === 'distilled_model') return 0.85;
+  if (klass === 'compiled_rule')   return 0.92;
+  if (klass === 'synthesized_rule')return 0.90;
+  return 0.88;
+}
+
+// Per-class candidate library. The point is to give the user a domain-
+// flavored starting set they can edit, not to ship "ground truth". Every
+// row carries `tags` including `synthesized: true` so the train loop can
+// never count these as real labels.
+//
+// Domain choices:
+//   - rule: 8 CARC denial codes (50/197/204/16/45/96/27/29) +
+//     EDI 837 segment shape + ICD-10 / CPT lookup rows
+//   - synthesized_rule: HEDIS measure rows (CBP, CDC, BCS) + boundary cases
+//   - compiled_rule: native-binary perf + determinism + WASM rows
+//   - distilled_model: denial-appeal prose stubs + redaction prose stubs
+function seedsLibraryFor(klass) {
+  if (klass === 'distilled_model') {
+    return [
+      { input: 'denial CARC 50 (not medically necessary), CPT 70553 brain MRI', output: 'Appeal letter draft: cite NCD policy + clinical indication for CPT 70553 (brain MRI with contrast).' },
+      { input: 'denial CARC 197 (precert absent), CPT 27447 knee arthroplasty', output: 'Appeal letter draft: attach precert reference + cite plan precert policy carve-out.' },
+      { input: 'denial CARC 204 (not covered under plan), Rx J1745 infliximab', output: 'Appeal letter draft: cite formulary tier + step-therapy completion evidence.' },
+      { input: 'denial CARC 16 (claim lacks information), CPT 99213 office visit', output: 'Appeal letter draft: enclose missing chart note + signed attestation.' },
+      { input: 'request: summarize a clinical note for the member portal', output: 'Plain-language summary stub: diagnosis + plan + next visit. Avoid PHI in the summary.' },
+      { input: 'request: paraphrase a denial reason for a member-facing letter', output: 'Member-facing paraphrase stub: plain language, sixth-grade reading level.' },
+      { input: 'request: write a prior-auth justification letter for a high-cost imaging study', output: 'Prior-auth justification stub: cite ACR appropriateness criteria + clinical history.' },
+      { input: 'request: compose a peer-to-peer talking-points memo', output: 'Peer-to-peer memo stub: indication, prior trials, clinical guideline citations.' },
+      { input: 'request: translate an EOB into member-friendly language', output: 'EOB translation stub: explain copay, deductible application, network status.' },
+      { input: 'request: draft a coverage-determination request', output: 'Coverage-determination request stub: cite plan language + clinical evidence.' },
+    ];
+  }
+  if (klass === 'synthesized_rule') {
+    return [
+      { input: 'HEDIS CBP (Controlling High Blood Pressure): member age 64, BP 138/85', output: '{"measure":"CBP","numerator":true,"reason":"BP < 140/90"}' },
+      { input: 'HEDIS CBP: member age 72, BP 145/92', output: '{"measure":"CBP","numerator":false,"reason":"BP >= 140/90"}' },
+      { input: 'HEDIS CDC (Comprehensive Diabetes Care): A1C 6.8% in measurement year', output: '{"measure":"CDC-A1C","numerator":true,"reason":"A1C < 8%"}' },
+      { input: 'HEDIS CDC: A1C 9.4% in measurement year', output: '{"measure":"CDC-A1C","numerator":false,"reason":"A1C >= 8%"}' },
+      { input: 'HEDIS BCS (Breast Cancer Screening): female 52, mammogram on 2025-09-15', output: '{"measure":"BCS","numerator":true,"reason":"mammogram in lookback window"}' },
+      { input: 'HEDIS BCS: female 48, no mammogram in lookback', output: '{"measure":"BCS","numerator":false,"reason":"no mammogram"}' },
+      { input: 'boundary: HEDIS CBP at exactly 140/90', output: '{"measure":"CBP","numerator":false,"reason":"boundary excluded"}' },
+      { input: 'boundary: HEDIS CDC at exactly 8.0%', output: '{"measure":"CDC-A1C","numerator":false,"reason":"boundary excluded"}' },
+      { input: 'denominator exclusion: HEDIS CBP, ESRD diagnosis', output: '{"measure":"CBP","excluded":true,"reason":"ESRD denominator exclusion"}' },
+      { input: 'denominator exclusion: HEDIS BCS, bilateral mastectomy', output: '{"measure":"BCS","excluded":true,"reason":"bilateral mastectomy exclusion"}' },
+    ];
+  }
+  if (klass === 'compiled_rule') {
+    return [
+      { input: 'native input: denial code "50"', output: '{"ok":true,"class":"medical_necessity","runtime":"native"}' },
+      { input: 'native input: denial code "197"', output: '{"ok":true,"class":"precert_absent","runtime":"native"}' },
+      { input: 'wasm input: denial code "204"', output: '{"ok":true,"class":"not_covered","runtime":"wasm"}' },
+      { input: 'wasm input: denial code "16"', output: '{"ok":true,"class":"missing_info","runtime":"wasm"}' },
+      { input: 'perf check: 10k rows', output: '{"ok":true,"latency_us_p50":12}' },
+      { input: 'perf check: 100k rows', output: '{"ok":true,"latency_us_p50":13}' },
+      { input: 'determinism check: same input, two runs', output: '{"ok":true,"deterministic":true}' },
+      { input: 'platform check: x86_64-linux', output: '{"ok":true,"platform":"x86_64-linux"}' },
+      { input: 'platform check: aarch64-darwin', output: '{"ok":true,"platform":"aarch64-darwin"}' },
+      { input: 'edge: unknown denial code "ZZZ"', output: '{"ok":false,"error":"unknown_code"}' },
+    ];
+  }
+  // rule (default): CARC denial codes + EDI 837 fragments + ICD/CPT lookup
+  return [
+    { input: 'denial code "50"', output: '{"carc":"50","category":"medical_necessity","appealable":true}' },
+    { input: 'denial code "197"', output: '{"carc":"197","category":"precert_absent","appealable":true}' },
+    { input: 'denial code "204"', output: '{"carc":"204","category":"not_covered","appealable":true}' },
+    { input: 'denial code "16"', output: '{"carc":"16","category":"missing_info","appealable":true}' },
+    { input: 'denial code "45"', output: '{"carc":"45","category":"charge_exceeds_fee_schedule","appealable":false}' },
+    { input: 'denial code "96"', output: '{"carc":"96","category":"non_covered_charge","appealable":true}' },
+    { input: 'EDI 837P CLM segment: CLM*123456*250.00***11:B:1*Y*A*Y*Y', output: '{"segment":"CLM","claim_id":"123456","total_charge":250.00,"place_of_service":"11"}' },
+    { input: 'EDI 837 NM1 segment: NM1*IL*1*DOE*JOHN****MI*W123456789', output: '{"segment":"NM1","entity":"insured","last":"DOE","first":"JOHN","member_id":"W123456789"}' },
+    { input: 'CPT lookup: 99213', output: '{"cpt":"99213","short":"Office/outpatient visit, est, low-mod"}' },
+    { input: 'ICD-10 lookup: I10', output: '{"icd10":"I10","short":"Essential (primary) hypertension"}' },
+  ];
+}
+
+function seedsNextSteps(klass, count) {
+  return [
+    `review the ${count} candidate row${count === 1 ? '' : 's'} above and replace placeholders with YOUR real examples`,
+    `kolm seeds split  (partition into train/holdout/external)`,
+    `kolm eval         (score against your K-score gate)`,
+    `kolm verify       (confirm receipts before any promotion)`,
+    klass === 'distilled_model'
+      ? 'distilled_model: seeds become teacher prompts; capture real teacher responses with `kolm capture`'
+      : klass === 'synthesized_rule'
+        ? 'synthesized_rule: seeds become spec inputs; teacher emits the rule code itself'
+        : klass === 'compiled_rule'
+          ? 'compiled_rule: seeds become native-binary fixtures; toolchain compiles to wasm32-wasi or platform target'
+          : 'rule: seeds become test fixtures; you author the rule code in JavaScript',
+    'honest scope: these rows are CANDIDATES, not labels. K-score against candidates is not ground truth.',
+  ];
+}
+
+// `count` defaulting: 10 candidates is what scaffoldRecipeFromNl (W197)
+// also returns; keep parity so callers chaining `kolm nl` -> `kolm seeds new`
+// see consistent shape sizes.
+export function seedsNewFromBrief(opts) {
+  const o = opts || {};
+  const brief = String(o.brief || '').trim();
+  const classHint = o.classHint || null;
+  const count = Number.isFinite(o.count) && o.count > 0 ? Math.floor(o.count) : 10;
+  const airGap = !!o.airGap;
+  const teacherVendor = String(o.teacherVendor || 'anthropic');
+
+  if (!brief) {
+    return {
+      ok: false,
+      error: 'empty_input',
+      narration: 'seedsNewFromBrief: brief is required',
+    };
+  }
+
+  const inferred = seedsInferClass(brief, classHint);
+  const klass = inferred.class;
+  const gate = seedsGateForClass(klass);
+
+  // Networked path: NOT YET WIRED. Same contract as scaffoldRecipeFromNl
+  // (W197): caller must opt into air-gap explicitly today. Emit a single
+  // sentinel row that explains the situation so callers cannot mistake
+  // it for real teacher output.
+  if (!airGap) {
+    const sentinel = {
+      input: `request: ${brief.slice(0, 200)}`,
+      output: 'NOT YET WIRED: pass --air-gap (or airGap:true) for deterministic candidates today. Teacher API path lands in a later wave.',
+      tags: ['synthesized', 'not_yet_wired'],
+      synthesized: true,
+      source: 'sentinel-not-yet-wired',
+    };
+    return {
+      ok: true,
+      class: klass,
+      candidates: [sentinel],
+      gate_suggestion: gate,
+      next_steps: [
+        'rerun with --air-gap to get deterministic candidate rows now',
+        'the networked teacher path is reserved for a later wave',
+      ],
+      network_status: 'not_yet_wired',
+      class_inference_basis: inferred.basis,
+      teacher_vendor: teacherVendor,
+      note: 'candidates are CANDIDATES, not labels. K-score against candidates is not ground truth.',
+    };
+  }
+
+  // Air-gap path: deterministic. Pull from the per-class library,
+  // tile to `count` if the library is shorter, annotate the first
+  // row with a verbatim slice of the brief so the output is not 100%
+  // generic. Same brief + same class + same count -> same bytes.
+  const lib = seedsLibraryFor(klass);
+  const candidates = [];
+  for (let i = 0; i < count; i++) {
+    const base = lib[i % lib.length];
+    const row = {
+      input: base.input,
+      output: base.output,
+      tags: ['synthesized', `class:${klass}`, `idx:${i}`],
+      synthesized: true,
+      source: 'deterministic-air-gap',
+    };
+    candidates.push(row);
+  }
+  if (candidates.length > 0) {
+    candidates[0] = {
+      input: `request: ${brief.slice(0, 200)}  ||  ${candidates[0].input}`,
+      output: candidates[0].output,
+      tags: candidates[0].tags.concat(['brief-anchor']),
+      synthesized: true,
+      source: 'deterministic-air-gap',
+    };
+  }
+
+  return {
+    ok: true,
+    class: klass,
+    candidates,
+    gate_suggestion: gate,
+    next_steps: seedsNextSteps(klass, candidates.length),
+    network_status: 'air_gap',
+    class_inference_basis: inferred.basis,
+    teacher_vendor: teacherVendor,
+    note: 'candidates are CANDIDATES, not labels. Run `kolm seeds split` + `kolm eval` before promoting any row to ground truth.',
+  };
+}

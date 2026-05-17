@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm vs OpenPipe: capture-then-compile to a signed file you keep</title>
+<meta name="description" content="OpenPipe captures your OpenAI traffic and fine-tunes behind a hosted endpoint. kolm captures the same traffic into seeds.jsonl and compiles a signed artifact you keep.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="kolm vs OpenPipe">
+<meta property="og:description" content="Both capture frontier API traffic. OpenPipe ships a hosted endpoint. kolm ships a signed file. Same input, different output.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://kolm.ai/how-vs-openpipe">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px}
+  .lede{font-size:17.5px;line-height:1.55;color:var(--ink-mute);max-width:720px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:56px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:26px;font-weight:500;letter-spacing:-0.018em;margin:0 0 14px}
+  .section h3{font-size:18px;font-weight:500;margin:24px 0 8px;color:var(--ink)}
+  .section p{color:var(--ink-mute);margin:0 0 14px;max-width:720px}
+  .section ul{color:var(--ink-mute);padding-left:18px;margin:0 0 14px}
+  .section ul li{margin-bottom:8px}
+  .section code{font-family:var(--mono);font-size:13px;background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  pre.cli{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:18px 20px;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink);overflow-x:auto;margin:14px 0}
+  pre.cli b{color:var(--accent);font-weight:500}
+  pre.cli .cm{color:var(--ink-faint)}
+  table.matrix{width:100%;border-collapse:collapse;margin:20px 0;font-size:13.5px}
+  table.matrix th{font-family:var(--mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400}
+  table.matrix td{padding:14px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5;color:var(--ink-mute)}
+  table.matrix td.axis{font-weight:500;color:var(--ink);min-width:160px}
+  table.matrix td.kolm{color:var(--ink);background:var(--accent-soft)}
+  table.matrix td.kolm b{color:var(--accent);font-weight:500;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-family:var(--mono);font-size:12.5px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:36px 0;color:var(--ink-faint);font-size:13px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ft-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/compare">compare</a><a href="/spec/rs-1">RS-1</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/compare">compare</a> &nbsp;/&nbsp; how kolm relates to OpenPipe</p>
+    <h1>Both capture the same traffic. Only one ships you the file.</h1>
+    <p class="lede">OpenPipe wraps your OpenAI/Anthropic SDK calls and logs every prompt/completion pair. Then it fine-tunes from the logged traffic and serves the result as a hosted endpoint. kolm captures the same traffic into <code style="font-family:var(--mono);color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line)">seeds.jsonl</code> and compiles a signed artifact you keep. Same input shape. Different output shape.</p>
+    <p class="stamp">Wave 169 &middot; reviewed 2026-05-17 &middot; SDK wrap vs. file emit</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What OpenPipe ships in 2026.</h2>
+    <ul>
+      <li><b>SDK wrap</b> &mdash; drop-in replacement for OpenAI/Anthropic SDK that logs every prompt/completion pair to OpenPipe's backend.</li>
+      <li><b>Hosted fine-tune</b> &mdash; built on TRL + HuggingFace; base models include Llama 3.1. Claim: "fine-tuned Llama 3.1 outperforms GPT-4o" on captured-traffic tasks.</li>
+      <li><b>Hosted serve</b> &mdash; deploy the tuned model on OpenPipe's infrastructure, or BYO inference.</li>
+      <li><b>2025-2026 pivot</b> &mdash; repositioning toward "RL for Agents" &mdash; reinforcement-learning agent fine-tuning beyond pure prompt &rarr; completion distillation.</li>
+      <li><b>Pricing</b> &mdash; 30-day free trial; usage-based pricing afterward.</li>
+    </ul>
+    <p>What OpenPipe doesn't ship: a portable signed file (the output is a hosted endpoint or downloadable LoRA weights without a receipt chain), an independent eval gate (their eval is what the captured-traffic dataset says), a PHI redactor before the teacher call, a cross-vendor teacher catalog with provenance manifest, or air-gapped/offline deployment.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The capture loop, side by side.</h2>
+    <table class="matrix">
+      <thead><tr><th>Step</th><th>OpenPipe</th><th>kolm</th></tr></thead>
+      <tbody>
+        <tr><td class="axis">Wrap the API call</td><td>OpenPipe SDK replaces openai/anthropic client</td><td class="kolm"><b>kolm-proxy</b> &middot; OpenAI-compatible HTTP proxy; same drop-in surface, logs to local seeds.jsonl</td></tr>
+        <tr><td class="axis">Capture format</td><td>OpenPipe-internal schema, hosted DB</td><td class="kolm"><b>seeds.jsonl</b> &middot; <code>{"input","output","tags"}</code> JSONL on local disk; canonical format the rest of kolm reads</td></tr>
+        <tr><td class="axis">Train/holdout split</td><td>implicit &mdash; their backend decides</td><td class="kolm"><b>deterministic 80/20</b> &middot; <code>sha256(row.input + split_seed) % 5 &lt; 1</code> for holdout; verifier check confirms train ∩ holdout = ∅ (Wave 144 Q+2 demo gate)</td></tr>
+        <tr><td class="axis">PHI/PII before teacher</td><td>raw prompts to teacher unless tenant pre-redacts</td><td class="kolm"><b>Wave 157 redactor</b> &middot; 18 HIPAA Safe Harbor + 3 kolm extensions; <code>--redact=phi</code> default; verifier check #14 confirms no raw PHI leaked</td></tr>
+        <tr><td class="axis">Fine-tune backend</td><td>TRL + HuggingFace; OpenPipe-managed GPU</td><td class="kolm"><b>local or hosted LoRA</b> &middot; <code>--student-base</code> across 13 SKUs; deterministic build flags + pinned base revision</td></tr>
+        <tr><td class="axis">Eval gate</td><td>captured-traffic accuracy metric &mdash; circular by construction</td><td class="kolm"><b>K-score V2 with R/F/E/Z axes</b> &middot; external benchmarks (W164) + tenant shadow corpus (W165) + adversarial cross-family holdouts (W164) <em>plus</em> auditor attestation (W166)</td></tr>
+        <tr><td class="axis">What you receive</td><td>hosted endpoint URL + downloadable LoRA weights</td><td class="kolm"><b>signed .kolm file</b> &middot; LoRA + manifest + receipt chain + Ed25519 sig (W161) + Sigstore entry (W162) + drift snapshot (W167)</td></tr>
+        <tr><td class="axis">Run location</td><td>OpenPipe cloud, or self-host with their runtime</td><td class="kolm"><b>laptop, phone, edge, air-gapped VPC</b> &mdash; no runtime network dependency</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Migrate the OpenPipe capture loop to kolm in one session.</h2>
+    <pre class="cli"><span class="cm"># 1. Replace OpenPipe SDK base URL with kolm-proxy</span>
+<span class="cm">#    (kolm-proxy is OpenAI-compatible; same client code keeps working)</span>
+$ <b>kolm proxy</b> --capture-to=./seeds.jsonl --upstream=https://api.openai.com/v1
+  LISTEN 127.0.0.1:7117 &middot; capturing &rarr; ./seeds.jsonl
+
+<span class="cm"># 2. Export your existing OpenPipe dataset to seeds.jsonl format</span>
+$ <b>kolm import openpipe</b> --project=my-project --out=./seeds.jsonl
+  WROTE 12,847 rows &middot; canonical format {"input","output","tags"}
+
+<span class="cm"># 3. Distill, with the same teacher you were already using</span>
+$ <b>kolm distill</b> my-task \
+    --teacher=openai:gpt-5 \
+    --student-base=llama-3.2-1b \
+    --redact=phi --eval-gate=0.85
+
+  PASS  K-score 0.892 &middot; train/holdout disjoint &middot; PHI redactor clean
+  WROTE my-task.kolm &middot; 184 MB &middot; Ed25519 + Sigstore signatures
+
+<span class="cm"># 4. Verify, then ship anywhere</span>
+$ <b>kolm verify</b> my-task.kolm
+  PASS  24/24 checks
+$ <b>kolm run</b> my-task.kolm --input "..." &middot; <span class="cm"># local inference, no network</span></pre>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>When OpenPipe is the right answer.</h2>
+    <p>You want hosted inference, not a file. Your team doesn't need a signed artifact or a cryptographic receipt chain. The "drop-in SDK wrap + auto-fine-tune + hosted endpoint" flow is the shortest path from production traffic to a cheaper-than-GPT-4 endpoint, and OpenPipe is the cleanest implementation of that pattern. The 2025 RL-for-Agents pivot is interesting and orthogonal to anything kolm is doing.</p>
+    <h2 style="margin-top:32px">When kolm is the right answer.</h2>
+    <p>You need the artifact to be a file: for air-gap deployment, for compliance receipts, for residency control, for cross-vendor distillation provenance, or because your buyer's auditor asked. kolm captures the same traffic shape OpenPipe captures, but the output is a portable signed binary instead of a hosted endpoint. The migration is one CLI session.</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/training">/training tour &rarr;</a>
+      <a class="btn" href="/compare">Back to differentiation matrix &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="ft-row">
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span><a href="/compare">/compare</a> &middot; <a href="/how-vs-lorax">vs LoRAX</a> &middot; <a href="/how-vs-predibase">vs Predibase</a> &middot; <a href="/how-vs-diy">vs DIY</a> &middot; <a href="/how-vs-hyperscaler">vs hyperscaler</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

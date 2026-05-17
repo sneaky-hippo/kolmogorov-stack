@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Capture-then-compile instead of capture-then-hosted-endpoint | Migrate to kolm</title>
+<meta name="description" content="OpenPipe wraps your SDK calls and serves the tune from their cloud. kolm captures the same traffic shape and emits a signed file you keep. Same input loop, different output shape. The migration is one CLI session.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="From OpenPipe: capture-then-compile instead of capture-then-endpoint">
+<meta property="og:description" content="Same capture loop, different output. kolm hands you a file; OpenPipe hands you an endpoint.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://kolm.ai/migrate/openpipe">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:72px 0 32px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:38px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px}
+  .lede{font-size:17px;line-height:1.55;color:var(--ink-mute);max-width:760px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:52px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:760px}
+  .section p{color:var(--ink-mute);margin:0 0 14px;max-width:760px;font-size:15px;line-height:1.6}
+  .section code{font-family:var(--mono);font-size:12.5px;background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  .grid-4{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:24px}
+  @media(max-width:760px){.grid-4{grid-template-columns:1fr}}
+  .step{padding:18px 20px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .step .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .step h3{margin:0;font-size:16px;font-weight:500;color:var(--ink);letter-spacing:-0.01em}
+  .step p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute);max-width:none}
+  pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;font:12px/1.55 var(--mono);margin:0}
+  pre.terminal b{color:var(--accent);font-weight:400}
+  pre.terminal .mute{color:var(--ink-faint)}
+  pre.terminal .warn{color:var(--warn);font-weight:400}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
+  @media(max-width:760px){.grid-2{grid-template-columns:1fr}}
+  .col{padding:22px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev)}
+  .col h3{margin:0 0 14px;font-size:16px;font-weight:500;color:var(--ink);letter-spacing:-0.01em}
+  .col h3 .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(16,185,129,0.30);padding:2px 8px;border-radius:3px;margin-left:8px;vertical-align:middle}
+  .col h3 .tag.add{color:var(--warn);background:var(--warn-soft);border-color:rgba(240,184,107,0.30)}
+  .col ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.6;color:var(--ink-mute)}
+  .col ul li{margin-bottom:8px}
+  .col code{font-family:var(--mono);font-size:12px;background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  .stack-diagram{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin:20px 0;font-family:var(--mono);font-size:13px;line-height:2;color:var(--ink-mute)}
+  .stack-diagram b{color:var(--accent);font-weight:400}
+  .stack-diagram .arr{color:var(--ink-faint);margin:0 8px}
+  .honest{padding:20px 22px;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:8px;background:var(--bg-elev);margin-top:24px}
+  .honest b{color:var(--warn)}
+  .honest p{margin:0 0 10px;font-size:14px;line-height:1.6;color:var(--ink-mute);max-width:none}
+  .honest p:last-child{margin-bottom:0}
+  .links{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
+  @media(max-width:760px){.links{grid-template-columns:1fr}}
+  .lcard{padding:16px 18px;border:1px solid var(--line);border-radius:8px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:6px;transition:border-color 160ms}
+  .lcard:hover{border-color:var(--accent)}
+  .lcard .vt{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent)}
+  .lcard h4{margin:0;font-size:14.5px;font-weight:500;color:var(--ink)}
+  .lcard p{margin:0;font-size:12.5px;color:var(--ink-mute);line-height:1.5;max-width:none}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ft-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/migrate">migrate</a> &nbsp;/&nbsp; from OpenPipe</p>
+    <h1>Replace OpenPipe's capture-then-hosted-endpoint with kolm capture-then-compile.</h1>
+    <p class="lede">OpenPipe wraps your OpenAI / Anthropic SDK calls and logs every prompt/completion pair to its backend, fine-tunes from the logged traffic, then serves the result as a hosted endpoint. The capture loop is the right shape. The output shape is what changes: kolm captures the same traffic into local <code>seeds.jsonl</code> and compiles a signed artifact you keep. Same teacher, same student base, same eval, same auto-fine-tune trigger. The deliverable is a file with a receipt instead of a URL with a usage meter.</p>
+    <p class="stamp">Wave 188 &middot; from OpenPipe &middot; capture-loop migration</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The two capture loops, side by side.</h2>
+    <div class="stack-diagram">
+      <b>OpenPipe today:</b> SDK wrap<span class="arr">&rarr;</span>OpenPipe backend<span class="arr">&rarr;</span>auto fine-tune<span class="arr">&rarr;</span>hosted endpoint URL
+    </div>
+    <div class="stack-diagram">
+      <b>kolm tomorrow:</b> kolm capture<span class="arr">&rarr;</span>local seeds.jsonl<span class="arr">&rarr;</span>kolm distill<span class="arr">&rarr;</span>signed .kolm file
+    </div>
+    <p>The input traffic looks identical. What changes is where the captured pairs land (your disk vs OpenPipe's DB), where the fine-tune runs (your GPU or one-line cloud worker vs OpenPipe-managed), and what you receive (a portable file vs a hosted endpoint). Your existing OpenPipe-side data exports cleanly; the migration is one CLI session.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The four-step migration.</h2>
+    <div class="grid-4">
+      <div class="step">
+        <span class="vt">01 &middot; flip the capture</span>
+        <h3>Replace the OpenPipe SDK wrap with kolm capture.</h3>
+        <p>OpenPipe's SDK wrap is a drop-in for the OpenAI / Anthropic client. <code>kolm capture</code> is the same shape: same base URL pattern, same auth header forwarding, but the pairs land in a local seeds.jsonl namespace instead of OpenPipe's hosted DB.</p>
+<pre class="terminal"><span class="mute"># one-line proxy that captures every pair into a namespace</span>
+$ <b>kolm capture</b> \
+    --provider openai \
+    --as ticket-classifier \
+    --namespace tickets
+
+  LISTEN 127.0.0.1:7117
+  capturing &rarr; ~/.kolm/captures/tickets/seeds.jsonl
+  threshold:  1000 pairs &middot; required before distill unlocks</pre>
+      </div>
+      <div class="step">
+        <span class="vt">02 &middot; import historical data</span>
+        <h3>Bring your OpenPipe project into seeds.jsonl.</h3>
+        <p>OpenPipe lets you export a project's dataset as JSONL. kolm reads the canonical <code>{"input","output","tags"}</code>; a rename step gets you there.</p>
+<pre class="terminal"><span class="mute"># export your OpenPipe project</span>
+$ openpipe dataset export \
+    --project my-tickets &gt; openpipe.jsonl
+
+<span class="mute"># reshape into the canonical kolm format</span>
+$ <b>kolm import</b> openpipe \
+    --in openpipe.jsonl --out seeds.jsonl
+  <span class="warn">verify before ship</span> &middot; today: jq -c \
+    '{input: .messages[-2].content, \
+      output: .messages[-1].content}'
+  WROTE 12847 rows</pre>
+      </div>
+      <div class="step">
+        <span class="vt">03 &middot; distill on your terms</span>
+        <h3>kolm distill swaps in for the OpenPipe auto-tune.</h3>
+        <p>Same teacher you were already paying for &mdash; OpenAI or Anthropic API call. Same student base &mdash; Llama 3.x family OpenPipe leans on. Local GPU or one-line cloud worker; deterministic flags pinned into the manifest.</p>
+<pre class="terminal">$ <b>kolm distill</b> \
+    --namespace tickets \
+    --teacher=openai:gpt-5 \
+    --student-base=llama-3.2-1b \
+    --redact=phi --eval-gate=0.85
+
+  PASS  K-score 0.892 &middot; train/holdout disjoint
+  PASS  PHI redactor &middot; no leakage
+  WROTE ticket-classifier.kolm &middot; 184 MB</pre>
+      </div>
+      <div class="step">
+        <span class="vt">04 &middot; verify and ship</span>
+        <h3>The deliverable is a file, not a URL.</h3>
+        <p>Run <code>kolm verify</code> once to confirm 24/24 checks. Then run the artifact wherever you want &mdash; local inference, your own LoRAX cluster, BYO serving. No OpenPipe meter ticking.</p>
+<pre class="terminal">$ <b>kolm verify</b> ticket-classifier.kolm
+  PASS  24/24 checks
+  PASS  Ed25519 + Sigstore validated
+
+<span class="mute"># run locally, no network required</span>
+$ kolm run ticket-classifier.kolm \
+    --input "Refund request for order #12345..."
+  &rArr; {"intent":"refund","priority":"high"}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What survives, what kolm adds.</h2>
+    <div class="grid-2">
+      <div class="col">
+        <h3>Survives the migration <span class="tag">unchanged</span></h3>
+        <ul>
+          <li><b>Capture-loop pattern.</b> Same drop-in client wrap idea OpenPipe pioneered, same per-call logging.</li>
+          <li><b>Teacher choice</b>. Whichever OpenAI or Anthropic SKU you were already calling stays the <code>--teacher</code>.</li>
+          <li><b>Student base family</b>. The Llama 3.x bases OpenPipe defaults to are first-class kolm <code>--student-base</code> options.</li>
+          <li><b>Train / eval split logic</b>. OpenPipe's holdout becomes kolm's frozen holdout. The numerics carry over.</li>
+          <li><b>Auto-trigger threshold</b>. OpenPipe's "fine-tune when N pairs captured" is mirrored by kolm's distill threshold (default 1000).</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>kolm adds on top <span class="tag add">new</span></h3>
+        <ul>
+          <li><b>Local artifact</b>. The deliverable is a file on disk, not a hosted endpoint.</li>
+          <li><b>Air-gap deploy</b>. Verifier runs offline; runtime has no network dependency.</li>
+          <li><b>PHI redactor</b> (Wave 157). 18 HIPAA Safe Harbor + 3 kolm extensions before the teacher call.</li>
+          <li><b>K-score gate</b> with external + adversarial holdouts (W164). Eval signal isn't just captured-traffic accuracy.</li>
+          <li><b>Signed receipt chain</b>. Ed25519 (W161) + Sigstore / Rekor (W162). Auditor walks the chain offline.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where staying with OpenPipe is the right answer.</h2>
+    <div class="honest">
+      <p><b>Stay with OpenPipe</b> when the deliverable you actually want is a hosted endpoint URL, not a file. OpenPipe's auto-fine-tune-on-N-pairs trigger plus their hosted serving is the shortest path from production traffic to a cheaper-than-GPT endpoint. If no one on your team needs to mail the artifact to a phone, an edge box, or an air-gapped VPC, the file format earns nothing.</p>
+      <p><b>Stay with OpenPipe</b> if the RL-for-Agents pivot they shipped in 2025 is what you came for &mdash; reinforcement-learning agent fine-tuning is orthogonal to kolm's capture-then-distill flow. The 2025-2026 OpenPipe roadmap is genuinely interesting in that lane and kolm is silent there.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where to go next.</h2>
+    <div class="links">
+      <a class="lcard" href="/migrate">
+        <span class="vt">migrate index</span>
+        <h4>Back to the migration hub.</h4>
+        <p>Four other source systems with the same one-page guide shape.</p>
+      </a>
+      <a class="lcard" href="/how-vs-openpipe">
+        <span class="vt">how-vs deep dive</span>
+        <h4>kolm vs OpenPipe teardown.</h4>
+        <p>Full capture-loop side-by-side and SDK-wrap vs file-emit detail.</p>
+      </a>
+      <a class="lcard" href="/compare">
+        <span class="vt">compare</span>
+        <h4>Differentiation matrix.</h4>
+        <p>15-axis grid of kolm vs every competitor, every YES stamped with wave.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="site">
+  <div class="wrap">
+    <div class="ft-row">
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span><a href="/migrate">/migrate</a> &middot; <a href="/migrate/lorax">from LoRAX</a> &middot; <a href="/migrate/predibase">from Predibase</a> &middot; <a href="/migrate/diy">from DIY</a> &middot; <a href="/migrate/hyperscaler">from hyperscaler</a></span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>The .kolm portable artifact format, v1 to v2 transition | kolm format</title>
+<meta name="description" content="The .kolm file is the portable artifact every other surface in kolm refers to. Format v1 was a JSON-only manifest; v2 is a binary bundle that holds compiled binaries alongside the manifest. This page documents the bundle layout, manifest.json schema, backwards compatibility, and the migration path.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="The .kolm portable artifact format, v1 to v2 transition">
+<meta property="og:description" content="JSON-only manifest to binary bundle. Compiled WASM, GGUF, Rust, and C binaries live alongside the manifest, signed receipts, and the receipt chain.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="kolm .kolm format v1 to v2 transition" />
+<meta name="twitter:description" content="The .kolm file is the portable artifact every other surface in kolm refers to. v2 is a binary bundle that holds compiled binaries alongside the manifest." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<meta property="og:url" content="https://kolm.ai/format/v2">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/format/v2">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:46px;line-height:1.06;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+  .lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  .section{padding:64px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:30px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:780px}
+  .section p.lede{font-size:16px;max-width:820px;margin:0 0 28px}
+  .section p{font-size:15px;line-height:1.6;color:var(--ink-mute);max-width:820px;margin:0 0 16px}
+  .section p code, .section li code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:960px){.grid-3,.grid-4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:820px){.grid-2{grid-template-columns:1fr}}
+  @media(max-width:560px){.grid-3,.grid-4{grid-template-columns:1fr}}
+  .card{padding:22px 24px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .card .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .card h3{margin:0;font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .card p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+  .card code{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:18px 20px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:0}
+  pre.terminal b{color:var(--accent);font-weight:400}
+  pre.terminal .warn{color:var(--warn);font-weight:400}
+  pre.terminal .bad{color:var(--bad);font-weight:400}
+  pre.terminal .mute{color:var(--ink-faint)}
+  pre.tree{background:var(--bg-elev);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:22px 24px;overflow-x:auto;font:13px/1.65 var(--mono);margin:0}
+  pre.tree .dim{color:var(--ink-faint)}
+  pre.tree .ok{color:var(--accent)}
+  pre.tree .warn{color:var(--warn)}
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:20px 0}
+  table.tbl th{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400;vertical-align:bottom}
+  table.tbl td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45;color:var(--ink-mute)}
+  table.tbl td.key{font-family:var(--mono);color:var(--ink);font-size:12.5px;white-space:nowrap}
+  table.tbl td.ok{color:var(--accent);font-family:var(--mono);font-size:12.5px}
+  table.tbl td.warn{color:var(--warn);font-family:var(--mono);font-size:12.5px}
+  table.tbl td.bad{color:var(--bad);font-family:var(--mono);font-size:12.5px}
+  ul.notes{font-size:14px;color:var(--ink-mute);line-height:1.65;padding-left:18px;margin:8px 0}
+  ul.notes li{margin-bottom:10px}
+  ul.notes code{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  .takeaway{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin-top:24px}
+  .takeaway b{color:var(--accent)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:3px;border:1px solid var(--line);color:var(--ink-faint)}
+  .pill.ok{color:var(--accent);background:var(--accent-soft);border-color:rgba(16,185,129,0.30)}
+  .pill.warn{color:var(--warn);background:var(--warn-soft);border-color:rgba(240,184,107,0.30)}
+  .pill.bad{color:var(--bad);background:var(--bad-soft);border-color:rgba(255,107,145,0.30)}
+  .verify-tag{display:inline-block;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--warn);background:rgba(240,184,107,0.10);border:1px solid rgba(240,184,107,0.30);padding:1px 7px;border-radius:4px;margin-left:6px;vertical-align:middle}
+  .schema-card{padding:22px 22px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:12px}
+  .schema-card h3{margin:0;font-size:17px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .schema-card .keys{display:flex;flex-direction:column;gap:6px;margin-top:4px;font-family:var(--mono);font-size:12.5px}
+  .schema-card .keys .row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding:5px 0 5px}
+  .schema-card .keys .row:last-child{border-bottom:0}
+  .schema-card .keys .name{color:var(--ink)}
+  .schema-card .keys .meta{color:var(--ink-faint);font-size:11px;text-align:right;letter-spacing:0.06em;text-transform:uppercase}
+  .schema-card .keys .meta.req{color:var(--accent)}
+  .schema-card .keys .meta.opt{color:var(--ink-faint)}
+  .schema-card p{margin:6px 0 0;font-size:13.5px;color:var(--ink-mute);line-height:1.55}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr)}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:var(--ink-faint);margin:0 0 12px;font-weight:400}
+  .footer-grid a{display:block;color:var(--ink-mute);text-decoration:none;font-size:13.5px;margin-bottom:6px;border:none}
+  .footer-tag{display:flex;justify-content:space-between;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line);padding-top:20px;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/drift">drift</a><a href="/roadmap">roadmap</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/format/v2">format</a> &nbsp;/&nbsp; .kolm v1 to v2 transition</p>
+    <h1>The <code style="font-family:var(--mono);background:var(--bg-elev);padding:2px 10px;border-radius:5px;color:var(--ink);font-size:42px;border:1px solid var(--line)">.kolm</code> file is the portable artifact every other surface in kolm refers to.</h1>
+    <p class="lede">Every other surface on this site &mdash; the verifier, the drift detector, the K-score calculator, the compare matrix, the receipt chain &mdash; operates on a single underlying object: the <code>.kolm</code> file. Format v1 was a JSON-only manifest that worked for pure-rule recipes but could not carry compiled binaries. Format v2 is a deterministic binary bundle (ZIP with epoch-0 mtimes and pinned compression) that holds the canonical <code>manifest.json</code>, the receipt chain, the signature cascade, and the compiled WASM, GGUF, Rust, and C payloads alongside one another. This page documents the bundle layout, the manifest top-level keys, backwards compatibility against v1 readers, and the opt-in migration path.</p>
+    <p class="stamp">Format v2 bundle layout &middot; reviewed 2026-05-17 &middot; wave 187 dedicated surface</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/spec/rs-1#section-3">RS-1 v2.1 &sect;3 artifact layout &rarr;</a>
+      <a class="btn" href="/verify-prod">Verify a .kolm &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The v1 to v2 transition.</h2>
+    <p class="lede">v1 was the pre-RS-1 layout: a single <code>artifact.json</code> blob with the manifest fields, the receipt chain, and the signatures inlined at the top level. It worked for pure JavaScript rule recipes because nothing else needed to ride in the artifact. v2 promoted the file to a deterministic ZIP container so the artifact can carry compiled binaries (WASM, GGUF, Rust, C) and a sub-directory of canonical slot entries (<code>manifest.json</code>, <code>receipt.json</code>, <code>signatures</code>) the verifier can stream individually instead of parsing one giant JSON blob.</p>
+    <table class="tbl">
+      <thead>
+        <tr><th>concern</th><th>format v1</th><th>format v2</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="key">container</td>
+          <td>single <code>artifact.json</code> blob; the entire artifact is one JSON object on disk.</td>
+          <td>deterministic ZIP bundle; canonical slot entries are individual files inside the archive (RS-1 v2.1 &sect;3).</td>
+        </tr>
+        <tr>
+          <td class="key">compiled binaries</td>
+          <td class="bad">no &middot; binaries cannot embed cleanly in JSON without base64 inflation.</td>
+          <td class="ok">yes &middot; native bytes ride alongside the manifest. Targets: WASM, GGUF, Rust, C.</td>
+        </tr>
+        <tr>
+          <td class="key">receipt chain location</td>
+          <td>inlined under top-level <code>receipt</code> key in the same JSON blob.</td>
+          <td>separate entry at <code>meta/receipt.json</code>; the verifier streams it without parsing the manifest.</td>
+        </tr>
+        <tr>
+          <td class="key">signature location</td>
+          <td>inlined under top-level <code>signature</code>, <code>signature_ed25519</code>, <code>signature_sigstore</code> keys.</td>
+          <td>aggregated into <code>meta/signatures.json</code>; the manifest itself still mirrors the canonical signature fields so RS-1 &sect;3.1 stays stable.</td>
+        </tr>
+        <tr>
+          <td class="key">forwards compatibility</td>
+          <td class="warn">v1 readers fail loudly on v2 (hex magic-byte check); they cannot silently misread.</td>
+          <td class="ok">v2 readers fail-open on v1 input with a <code>format_version_old</code> warn-level log entry; legacy artifacts continue to verify.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="takeaway">
+      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)">The v1 to v2 transition is additive at the bundle layer and stable at the manifest layer. Every <b>canonical manifest field</b> RS-1 &sect;3.1 documents (<code>schema</code>, <code>version</code>, <code>name</code>, <code>artifact_class</code>, <code>base_model</code>, <code>tier</code>, <code>k_score</code>, <code>compiled_at</code>, <code>signature</code>, <code>artifact_hash_input</code>) has the same shape and meaning in both formats. What changed is the on-disk container around the manifest, not the contents the verifier validates.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The v2 bundle structure.</h2>
+    <p class="lede">The v2 bundle is a deterministic ZIP with epoch-0 mtimes and store/deflate compression so byte-identical inputs produce byte-identical artifacts. The verifier never extracts to the filesystem; it streams entries by name. Mandatory slot entries live under <code>meta/</code>; recipe payload lives under <code>recipes/&lt;recipe_id&gt;/</code>; the input corpus and the eval pack live under <code>seeds/</code> and <code>evals/</code> respectively. Any class-dependent payload (model weights, native binaries, retrieval index) is namespaced beneath its owning recipe so a multi-recipe bundle stays unambiguous.</p>
+    <pre class="tree">.kolm/
+  <span class="ok">meta/manifest.json</span>          <span class="dim"># canonical-JSON manifest, root of trust (RS-1 v2.1 &sect;3.1)</span>
+  <span class="ok">meta/receipt.json</span>           <span class="dim"># build-time receipt chain: spec &rarr; seeds &rarr; recipes &rarr; evals &rarr; export</span>
+  <span class="ok">meta/signatures.json</span>        <span class="dim"># HMAC + Ed25519 + optional sigstore bundle (RS-1 &sect;5.1)</span>
+
+  <span class="ok">recipes/</span>&lt;recipe_id&gt;/
+    source.js                  <span class="dim"># the compiled recipe source (with metadata)</span>
+    <span class="warn">compiled/</span>                  <span class="dim"># present only when the recipe class admits native compilation</span>
+      target.wasm              <span class="dim"># WebAssembly artifact (browser + server runtime)</span>
+      target.gguf              <span class="dim"># quantized weights for distilled_model recipes</span>
+      target.rs.bin            <span class="dim"># native Rust binary for compiled_rule recipes (RS-1 &sect;7.5)</span>
+      target.c.bin             <span class="dim"># native C binary for compiled_rule recipes (RS-1 &sect;7.5)</span>
+
+  <span class="ok">seeds/</span>seeds.jsonl          <span class="dim"># tenant-captured IO corpus (RS-1 &sect;4)</span>
+  <span class="ok">seeds/</span>holdout.jsonl        <span class="dim"># deterministic 80/20 split, never seen by the recipe at train time</span>
+
+  <span class="ok">evals/</span>eval_spec.json       <span class="dim"># declarative eval pack (comparators, judge id, gate threshold)</span>
+  <span class="ok">evals/</span>eval_results.json    <span class="dim"># scored results that produced the manifest k_score field</span>
+</pre>
+    <ul class="notes">
+      <li>Class-dependent payloads (<code>model.gguf</code>, <code>lora.bin</code>, native <code>.bin</code> outputs, optional <code>index.sqlite-vec</code> for retrieval recipes) follow the RS-1 v2.1 &sect;3 mandatory-vs-optional split. The bundle layout above re-namespaces them under <code>recipes/&lt;recipe_id&gt;/compiled/</code> so multi-recipe bundles stay unambiguous; single-recipe bundles can flatten by convention but the verifier accepts both paths.</li>
+      <li>Pretokenize provenance (<code>pretokenize/</code>) and MoE composition provenance (<code>moe/</code>) extend the same pattern when the manifest opts in (RS-1 &sect;7.3 + &sect;7.4). They are sibling top-level entries inside the bundle, never nested under <code>meta/</code>.</li>
+      <li>The CID is <code>cidv1:sha256:</code> followed by hex(SHA-256(canonical-JSON(<code>manifest.artifact_hash_input</code>))) per RS-1 &sect;3. The CID is computed over the canonical manifest input regardless of which bundle layout produced the bytes.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The manifest.json top-level schema.</h2>
+    <p class="lede">The manifest is the root of trust. Every other entry in the bundle hashes into the manifest's <code>artifact_hash_input</code>; the receipt chain ends with the manifest hash; every signature in <code>meta/signatures.json</code> covers a canonical-JSON serialization of the manifest body. The top-level keys below match the RS-1 v2.1 &sect;3.1 contract; the canonical-JSON rule is sorted keys recursively, no insignificant whitespace, UTF-8, integers as integers, so byte-identical input produces byte-identical output across the JavaScript, Python, and Rust reference implementations.</p>
+    <div class="grid-3">
+      <div class="schema-card">
+        <span class="vt" style="font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)">identity</span>
+        <h3>Who is this artifact</h3>
+        <div class="keys">
+          <div class="row"><span class="name">job_id</span><span class="meta req">required &middot; uuid</span></div>
+          <div class="row"><span class="name">task</span><span class="meta req">required &middot; string</span></div>
+          <div class="row"><span class="name">schema</span><span class="meta req">required &middot; string</span></div>
+          <div class="row"><span class="name">artifact_class</span><span class="meta req">required &middot; enum</span></div>
+          <div class="row"><span class="name">tier</span><span class="meta req">required &middot; enum</span></div>
+          <div class="row"><span class="name">compiled_at</span><span class="meta req">required &middot; rfc3339</span></div>
+        </div>
+        <p><code>job_id</code> uniquely names the build invocation; <code>task</code> names the recipe target in plain text. <code>schema</code> is always <code>"rs-1"</code>; the spec revision is encoded in the manifest <code>version</code> field (currently <code>"2.0"</code> per RS-1 &sect;3.1). <code>artifact_class</code> rolls up to <code>rule</code>, <code>compiled_rule</code>, <code>distilled_model</code>, or <code>retrieval</code>; the build-time validator (<code>src/recipe-class.js</code>) rejects misdeclared bundles before signing.</p>
+      </div>
+
+      <div class="schema-card">
+        <span class="vt" style="font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)">payload</span>
+        <h3>What is bound in</h3>
+        <div class="keys">
+          <div class="row"><span class="name">base_model</span><span class="meta req">required &middot; object</span></div>
+          <div class="row"><span class="name">recipes</span><span class="meta req">required &middot; object</span></div>
+          <div class="row"><span class="name">pack</span><span class="meta opt">optional &middot; object</span></div>
+          <div class="row"><span class="name">evals</span><span class="meta req">required &middot; object</span></div>
+          <div class="row"><span class="name">k_score</span><span class="meta req">required &middot; number</span></div>
+          <div class="row"><span class="name">training</span><span class="meta opt">optional &middot; object</span></div>
+        </div>
+        <p>The payload block is where the artifact declares its substance. <code>base_model</code> may be <code>"none"</code> for pure-rule recipes. <code>recipes.graph_hash</code> binds every recipe source to the receipt chain. <code>pack</code> carries the eval pack reference (declarative spec id + hash); <code>evals</code> carries the scored results that produced the manifest <code>k_score</code> field. <code>k_score</code> is the V1 composite gated by the recipe-declared <code>min_k</code> at compile time.</p>
+      </div>
+
+      <div class="schema-card">
+        <span class="vt" style="font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)">trust</span>
+        <h3>Who attests to it</h3>
+        <div class="keys">
+          <div class="row"><span class="name">format_version</span><span class="meta req">required &middot; string</span></div>
+          <div class="row"><span class="name">kolm_version</span><span class="meta req">required &middot; string</span></div>
+          <div class="row"><span class="name">license</span><span class="meta opt">optional &middot; spdx</span></div>
+          <div class="row"><span class="name">signature_alg</span><span class="meta req">required &middot; enum</span></div>
+          <div class="row"><span class="name">signature</span><span class="meta req">required &middot; hex</span></div>
+          <div class="row"><span class="name">artifact_hash_input</span><span class="meta req">required &middot; object</span></div>
+        </div>
+        <p><code>format_version</code> selects the bundle layout (<code>"v1"</code> or <code>"v2"</code>); <code>kolm_version</code> is the toolchain that produced it. <code>license</code> records the SPDX identifier the artifact ships under. <code>signature_alg</code> encodes the cascade: <code>'sigstore+ed25519+hmac-sha256'</code> (full), <code>'ed25519+hmac-sha256'</code>, or <code>'hmac-sha256'</code> per RS-1 &sect;5.1. <code>artifact_hash_input</code> is the canonical-hash bundle every signature covers; any tamper drifts the artifact hash and breaks every downstream signature including the Rekor anchor.</p>
+      </div>
+    </div>
+    <p style="margin-top:18px;font-size:13.5px;color:var(--ink-faint)">The full canonical key set lives in the RS-1 v2.1 spec at <a href="/spec/rs-1#section-3" style="color:inherit;border-bottom:1px dashed var(--line)">&sect;3.1 Canonical manifest fields</a>. The JSON Schema source-of-truth is published at <code>kolm.ai/docs/manifest-v0.1.json</code> and the verifier cross-checks every required key as part of the 24-check cascade.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Backwards compatibility &middot; readers across the version boundary.</h2>
+    <p class="lede">Every <code>.kolm</code> file leads with a four-byte magic header. v1 artifacts start with <code>0x7B 0x22 0x73 0x63</code> (the ASCII bytes for <code>{"sc</code>, the opening of a canonical JSON object whose first key is <code>schema</code>). v2 bundles start with the ZIP local file header magic <code>0x50 0x4B 0x03 0x04</code>. Readers branch on the hex magic-byte check before allocating any further state.</p>
+    <p>A v2 reader on a v1 file detects the JSON magic, parses the artifact as a top-level JSON object, emits a <code>format_version_old</code> warn-level log entry, and continues verification using the v1 codepath. Verification passes when the v1 signatures cover the v1 canonical body. This is the fail-open branch.</p>
+    <p>A v1 reader on a v2 file detects the ZIP magic, recognizes the bytes are not a JSON document, and refuses to parse rather than risk silently treating raw archive bytes as a malformed manifest. The v1 reader prints <code>format_version_unsupported &middot; expected v1 JSON, saw ZIP local file header</code> and exits non-zero. No silent corruption: a v1 reader knows it cannot read a v2 file.</p>
+    <div class="takeaway">
+      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)">The version namespace for the on-disk container (<code>format_version</code>) is independent of the RS-1 spec revision (the manifest <code>version</code> field, currently <code>"2.0"</code>) and independent of the toolchain version (<code>kolm_version</code>). A v1 reader can verify a v1-format artifact built by a recent toolchain; a v2 reader can verify a v2-format artifact built by an older toolchain. The three version axes evolve on independent cadences.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Why a binary bundle, not just JSON.</h2>
+    <p class="lede">Promoting the container from one JSON blob to a binary bundle was a deliberate tradeoff. JSON was simpler to inspect with a text editor; the binary bundle costs the verifier a streaming-archive dependency. Four reasons made the tradeoff worth taking.</p>
+    <ul class="notes">
+      <li><b>Compiled binaries are bytes, not strings.</b> A 15 KB native Rust binary (RS-1 &sect;7.5) inflates to 20 KB of base64 inside JSON, plus the cost of double-decoding to verify <code>bin_hash</code>. A 500 MB GGUF model would balloon to roughly 670 MB of base64 and force the verifier to allocate the whole string before validating the first byte. Storing the binary as a raw archive entry preserves byte-exact identity without an encoding round-trip.</li>
+      <li><b>GGUF and WASM each can be 100 MB or more.</b> Distilled student weights routinely cross the 100 MB threshold; large MoE bundles cross 500 MB. A single-object JSON parse forces the parser to materialize the whole document; a streaming-archive reader walks entries one at a time and validates each entry's SHA-256 against the manifest claim without holding the full payload in memory.</li>
+      <li><b>Streaming parse for large packs.</b> The verifier hashes each entry in the bundle independently and compares against <code>manifest.artifact_hash_input</code>. Streaming the entries lets a verifier reject a tampered <code>seeds.jsonl</code> after reading 4 KB even when the bundle is 500 MB; in v1 the entire JSON would have to be loaded before <code>seeds_hash</code> could be cross-checked.</li>
+      <li><b>Byte-exact reproducibility for the receipt-chain integrity hash.</b> The receipt chain ends with the artifact hash; the artifact hash is sensitive to the byte order entries appear in the bundle. The deterministic ZIP layout (epoch-0 mtimes, sorted entries, pinned compression) guarantees byte-for-byte reproducibility across builders. Two independent rebuilds from the same canonical inputs produce two artifacts whose SHA-256 matches; the verifier can rebuild from sources and compare the bytes without reading the manifest at all.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The CLI flow, end to end.</h2>
+    <p class="lede">Four commands compose the format-aware build, inspect, verify, and downgrade flow. Items wrapped in an amber <span class="verify-tag">verify before ship</span> pill name a flag or sub-flag that is on the roadmap but not yet wired in <code>cli/kolm.js</code>; the underlying verb already exists and the flag is the additive piece. The bundle layout itself is already the production default.</p>
+    <div class="grid-4">
+      <div class="card">
+        <span class="vt">01 &middot; compile</span>
+        <h3>kolm compile</h3>
+        <p>Builds a <code>.kolm</code> bundle from a spec. The <code>--format=v2</code> flag <span class="verify-tag">verify before ship</span> selects the bundle layout explicitly; v2 is the default when the flag is omitted and a v2-capable toolchain is detected.</p>
+        <pre class="terminal">$ kolm compile <span class="mute">acme.spec.json</span>
+  <b>spec</b> &rarr; seeds &rarr; split &rarr; train
+  &rarr; recipes &rarr; evals &rarr; signatures
+
+  artifact: acme.kolm  <span class="mute">(1.4 MB)</span>
+  format:   v2  <span class="mute">(default)</span>
+  hash:     de78f0a1b234c567&hellip;</pre>
+      </div>
+      <div class="card">
+        <span class="vt">02 &middot; inspect</span>
+        <h3>kolm inspect</h3>
+        <p>Reads the manifest and prints the canonical key set, the receipt chain, and the signature cascade. The <code>--format-version</code> flag <span class="verify-tag">verify before ship</span> prints just the bundle layout discriminator (<code>v1</code> or <code>v2</code>) so a CI step can branch on the bundle layout without parsing the manifest.</p>
+        <pre class="terminal">$ kolm inspect <span class="mute">acme.kolm</span>
+  schema:         <b>rs-1</b>
+  version:        <b>2.0</b>
+  format_version: <b>v2</b>
+  kolm_version:   <b>0.1</b>
+  artifact_class: <b>rule</b>
+  k_score:        0.917</pre>
+      </div>
+      <div class="card">
+        <span class="vt">03 &middot; verify</span>
+        <h3>kolm verify</h3>
+        <p>Runs the 24-check verifier cascade. The <code>--format-strict</code> flag <span class="verify-tag">verify before ship</span> refuses to fail-open on a v1 artifact; useful when a regulated tenant has standardized on v2 and wants the CI step to fail loud on any legacy bundle sneaking through.</p>
+        <pre class="terminal">$ kolm verify <span class="mute">acme.kolm</span>
+  Bundle layout (v2)             <span><b>pass</b></span>
+  Canonical manifest fields      <span><b>pass</b></span>
+  Receipt chain integrity        <span><b>pass</b></span>
+  HMAC + Ed25519 signature       <span><b>pass</b></span>
+  All 24 checks                  <span><b>pass</b></span></pre>
+      </div>
+      <div class="card">
+        <span class="vt">04 &middot; export</span>
+        <h3>kolm export</h3>
+        <p>Re-serializes a bundle into an alternate target shape (binder PDF, tar.gz, etc). The <code>--downgrade=v1</code> flag <span class="verify-tag">verify before ship</span> emits a v1-format artifact for tenants whose verifier hasn't been upgraded; the downgrade is rejected if the source bundle contains any compiled binary that cannot round-trip into the v1 JSON-only layout.</p>
+        <pre class="terminal">$ kolm export <span class="mute">acme.kolm</span> <span class="warn">--downgrade=v1</span>
+  source:    acme.kolm <span class="mute">(v2, 1.4 MB)</span>
+  target:    acme-legacy.kolm <span class="mute">(v1, 0.9 MB)</span>
+  <span class="warn">warn:      compiled_targets dropped</span>
+  <span class="warn">           v1 cannot carry native bytes.</span></pre>
+      </div>
+    </div>
+    <p style="margin-top:18px;font-size:13.5px;color:var(--ink-faint)">The base verbs (<code>kolm compile</code>, <code>kolm inspect</code>, <code>kolm verify</code>, <code>kolm export</code>) are all currently wired in <code>cli/kolm.js</code>. The format-aware flags above are the additive piece that lands with the W187 surface; until the corresponding wave ships, treat the amber-pilled flags as roadmap and use the default codepath (v2 in, v2 out) which the existing CLI already implements.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Migrating a v1 artifact to v2.</h2>
+    <p class="lede">Existing v1 <code>.kolm</code> files remain valid forever. v2 readers fail-open on v1 input and the canonical manifest contract is stable across the version boundary, so a v1 artifact still verifies, still surfaces a K-score, still proves a receipt chain. Migration is opt-in: a tenant runs the migrate verb when they want the bundle benefits (streaming verify, compiled-binary support, downstream re-attestation against the latest toolchain).</p>
+    <pre class="terminal">$ kolm migrate <span class="mute">acme-legacy.kolm</span> <span class="warn">--format-v2</span>      <span class="warn"># verify before ship</span>
+  source:    acme-legacy.kolm <span class="mute">(v1, 0.9 MB)</span>
+  target:    acme-legacy-v2.kolm <span class="mute">(v2, 0.9 MB)</span>
+
+  receipt chain re-anchored against v2 layout
+  signatures re-emitted by the local signing key
+  original v1 artifact left untouched on disk
+
+  <b>migration is additive; the v1 file still verifies.</b></pre>
+    <p style="margin-top:18px;font-size:13.5px;color:var(--ink-faint)">The <code>kolm migrate</code> verb is not yet wired in <code>cli/kolm.js</code> (<span class="verify-tag">verify before ship</span>); the migration path above describes the planned shape. Until the verb ships, a tenant who wants v2 bytes can recompile from the original spec with the current default codepath, which emits v2 directly.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where this fits in the wider stack.</h2>
+    <div class="grid-2">
+      <a class="card" href="/spec/rs-1" style="text-decoration:none;color:inherit">
+        <span class="vt">spec &middot; canonical</span>
+        <h3>RS-1 v2.1 &sect;3 artifact layout</h3>
+        <p>The normative spec section for the <code>.kolm</code> bundle. Every canonical manifest field, the deterministic ZIP rules, the canonical-JSON serialization contract, and the three-signature cascade live here.</p>
+      </a>
+      <a class="card" href="/migrate" style="text-decoration:none;color:inherit">
+        <span class="vt">migrate &middot; v1 to v2</span>
+        <h3>Migrate a v1 .kolm to v2 <span class="pill warn">w188 pending</span></h3>
+        <p>The migration walk-through page. Shows the manifest-field diff, the receipt chain re-anchor step, the signature re-emission step, and the additive guarantee (the source v1 artifact is never mutated in place).</p>
+      </a>
+      <a class="card" href="/recipe-classes" style="text-decoration:none;color:inherit">
+        <span class="vt">recipe classes</span>
+        <h3>What can ride inside a .kolm</h3>
+        <p>The four recipe classes (<code>rule</code>, <code>compiled_rule</code>, <code>distilled_model</code>, <code>retrieval</code>) and the payload entries each class admits. The class-vs-payload table predicts which bundle entries every artifact carries.</p>
+      </a>
+      <a class="card" href="/k-score-explained" style="text-decoration:none;color:inherit">
+        <span class="vt">k-score</span>
+        <h3>What the manifest k_score number means</h3>
+        <p>The V1 composite formula (A, S, L, C, V) and the V2 axes (R, F, E, Z, T) the manifest <code>k_score</code> field encodes, with the calibrated-decode rule that ships every K-score surface.</p>
+      </a>
+    </div>
+    <div class="actions" style="margin-top:32px">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/spec/rs-1#section-3">RS-1 &sect;3 &rarr;</a>
+      <a class="btn" href="/verify-prod">Verify a .kolm &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Format</h4>
+        <a href="/format/v2">.kolm v2 layout</a>
+        <a href="/migrate">Migrate v1 to v2</a>
+        <a href="/recipe-classes">Recipe classes</a>
+        <a href="/k-score-explained">K-score</a>
+        <a href="/research/receipt-chains">Receipt chains</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/drift">Lifecycle &middot; drift</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>Format v2 is the on-disk container. Manifest contract is RS-1 v2.1 &sect;3.1.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

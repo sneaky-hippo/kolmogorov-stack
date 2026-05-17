@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm + LoRAX: build the adapter, serve it at scale</title>
+<meta name="description" content="LoRAX is Apache-2.0 multi-LoRA serving — the strongest adapter-serving infrastructure in market. kolm builds the signed adapter LoRAX serves. Complement, not competitor.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="kolm + LoRAX: complement, not competitor">
+<meta property="og:description" content="kolm builds the signed adapter; LoRAX serves it. The stack with both is the production-ready shape.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://kolm.ai/how-vs-lorax">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px}
+  .lede{font-size:17.5px;line-height:1.55;color:var(--ink-mute);max-width:720px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:56px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:26px;font-weight:500;letter-spacing:-0.018em;margin:0 0 14px}
+  .section h3{font-size:18px;font-weight:500;margin:24px 0 8px;color:var(--ink)}
+  .section p{color:var(--ink-mute);margin:0 0 14px;max-width:720px}
+  .section ul{color:var(--ink-mute);padding-left:18px;margin:0 0 14px}
+  .section ul li{margin-bottom:8px}
+  .section code{font-family:var(--mono);font-size:13px;background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  pre.cli{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:18px 20px;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink);overflow-x:auto;margin:14px 0}
+  pre.cli b{color:var(--accent);font-weight:500}
+  pre.cli .cm{color:var(--ink-faint)}
+  .stack-diagram{padding:24px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin:24px 0;font-family:var(--mono);font-size:13px;line-height:2;color:var(--ink-mute)}
+  .stack-diagram b{color:var(--accent);font-weight:500}
+  .stack-diagram .arr{color:var(--ink-faint);margin:0 8px}
+  table.matrix{width:100%;border-collapse:collapse;margin:20px 0;font-size:13.5px}
+  table.matrix th{font-family:var(--mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400}
+  table.matrix td{padding:14px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5;color:var(--ink-mute)}
+  table.matrix td.axis{font-weight:500;color:var(--ink);min-width:160px}
+  table.matrix td.kolm{color:var(--ink);background:var(--accent-soft)}
+  table.matrix td.kolm b{color:var(--accent);font-weight:500;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-family:var(--mono);font-size:12.5px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:36px 0;color:var(--ink-faint);font-size:13px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ft-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/compare">compare</a><a href="/spec/rs-1">RS-1</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/compare">compare</a> &nbsp;/&nbsp; how kolm relates to LoRAX</p>
+    <h1>kolm builds the adapter. LoRAX serves it.</h1>
+    <p class="lede">Predibase's LoRAX (<a href="https://github.com/predibase/lorax" style="color:var(--accent)">github.com/predibase/lorax</a>) is Apache-2.0 multi-LoRA serving infrastructure &mdash; heterogeneous continuous batching, adapter exchange scheduling, the SGMV kernel. It's the strongest adapter-serving infra in market. It is not a build tool, and kolm is not a serving cluster. The production-ready shape is both.</p>
+    <p class="stamp">Wave 169 &middot; reviewed 2026-05-17 &middot; complement, not competitor</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The stack with both.</h2>
+    <p>kolm takes captured input/output pairs and emits a signed, eval-gated, receipt-bearing LoRA adapter. LoRAX takes one or more LoRA adapters and serves them with multi-tenant batching on a single GPU. The split is clean:</p>
+    <div class="stack-diagram">
+      seeds.jsonl<span class="arr">&rarr;</span><b>kolm distill</b><span class="arr">&rarr;</span>signed .kolm + LoRA weights<span class="arr">&rarr;</span><b>LoRAX</b><span class="arr">&rarr;</span>OpenAI-compatible endpoint
+    </div>
+    <p>The signed file is the contract between the two systems. LoRAX serves the LoRA bytes; kolm proves where those bytes came from, who signed them, and what eval gate they cleared.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What LoRAX does (well).</h2>
+    <ul>
+      <li><b>Multi-LoRA serving</b> &mdash; thousands of fine-tuned models on a single GPU via Heterogeneous Continuous Batching + Adapter Exchange Scheduling + the SGMV kernel.</li>
+      <li><b>OpenAI-compatible API</b> &mdash; existing OpenAI SDK consumers can switch to LoRAX with a base-URL change.</li>
+      <li><b>Base model breadth</b> &mdash; Llama, CodeLlama, Mistral, Zephyr, Qwen. Loadable in fp16, bitsandbytes, GPT-Q, AWQ.</li>
+      <li><b>Production deployment</b> &mdash; Docker + Kubernetes/Helm. Apache-2.0 license, no SaaS tax.</li>
+    </ul>
+    <p>Where LoRAX is silent: it doesn't build the adapter, it doesn't sign anything, it doesn't gate on an eval, it doesn't ship offline / on-device / compiled native, and it doesn't carry a cryptographically verifiable provenance chain. Those are all kolm's surface.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What kolm adds on top of the LoRAX you already run.</h2>
+    <table class="matrix">
+      <thead><tr><th>Axis</th><th>LoRAX alone</th><th>kolm + LoRAX</th></tr></thead>
+      <tbody>
+        <tr><td class="axis">Adapter origin</td><td>opaque &mdash; whatever LoRA file you uploaded</td><td class="kolm"><b>signed receipt chain</b> &middot; seeds.jsonl &rarr; train/holdout &rarr; teacher call (W157 PHI redactor) &rarr; LoRA train &rarr; eval &rarr; Ed25519 sig (W161) &rarr; Sigstore/Rekor (W162)</td></tr>
+        <tr><td class="axis">Eval gate</td><td>none &mdash; serve whatever you load</td><td class="kolm"><b>K-score V2 gate</b> &middot; compile blocks if eval &lt; threshold; R/F/E/Z axes incl. external + adversarial holdouts (W164)</td></tr>
+        <tr><td class="axis">Tenant-data residency</td><td>raw PHI/PII in your training pipeline</td><td class="kolm"><b>Wave 157 PHI redactor</b> &middot; 18 HIPAA Safe Harbor + 3 kolm extensions; verifier check #14 confirms no raw PHI leaked into adapter weights</td></tr>
+        <tr><td class="axis">Teacher provenance</td><td>not tracked</td><td class="kolm"><b>Wave 158 cross-vendor manifest</b> &middot; teacher_vendor + teacher_model + student_base + distillation_method; check #15</td></tr>
+        <tr><td class="axis">Drift detection</td><td>none</td><td class="kolm"><b>Wave 167 drift cron</b> &middot; snapshot/report/cron with supersession chain bound into artifact_hash; checks #23+#24</td></tr>
+        <tr><td class="axis">Third-party verifiability</td><td>endpoint behavior &mdash; black box</td><td class="kolm"><b>auditor attestation</b> &middot; Wave 166 N+7: external auditor signs eval_result with own Ed25519 key</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The integration in one CLI session.</h2>
+    <pre class="cli"><span class="cm"># 1. Build the signed adapter with kolm</span>
+$ <b>kolm distill</b> phone-normalizer \
+    --teacher=anthropic:claude-opus-4-7 \
+    --student-base=qwen2.5-0.5b \
+    --redact=phi --eval-gate=0.85
+
+  PASS  K-score 0.917 (A=0.94 T=0.91 F=0.97 R=0.88)
+  PASS  PHI redactor: 18 Safe Harbor + 3 kolm extensions, no leakage
+  PASS  Ed25519 signature, Rekor transparency log entry
+  WROTE phone-normalizer.kolm (LoRA weights + manifest + receipt chain)
+
+<span class="cm"># 2. Extract the LoRA for LoRAX</span>
+$ <b>kolm extract</b> phone-normalizer.kolm --target=lora-weights --out=./adapters/phone-normalizer
+
+<span class="cm"># 3. Serve with LoRAX as you already do</span>
+$ <b>docker run</b> --gpus all -v ./adapters:/data ghcr.io/predibase/lorax:latest \
+    --model-id Qwen/Qwen2.5-0.5B --adapter-source local
+
+<span class="cm"># 4. Verify the served adapter still matches what kolm signed</span>
+$ <b>kolm verify</b> phone-normalizer.kolm
+  PASS  24/24 checks &middot; Ed25519 + Sigstore validated &middot; receipt chain intact</pre>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>When LoRAX alone is the right answer.</h2>
+    <p>Your team already controls the LoRA training pipeline, the data isn't regulated, and you don't need a portable signed file. LoRAX is excellent and Apache-2.0 &mdash; running it bare is the cheapest path to multi-tenant adapter serving. Don't pay kolm tax for a workflow that doesn't need the receipt.</p>
+    <h2 style="margin-top:32px">When kolm + LoRAX is the right shape.</h2>
+    <p>Your compliance team needs to know what each adapter was trained on, your auditor needs a third-party-verifiable signature on the eval, your tenant data can't leave its boundary, and you still want LoRAX's throughput. The signed .kolm is the contract between the build team and the serve team.</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/spec/rs-1#section-7-6">RS-1 &sect;7.6 redactor &rarr;</a>
+      <a class="btn" href="/compare">Back to differentiation matrix &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="ft-row">
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span><a href="/compare">/compare</a> &middot; <a href="/how-vs-predibase">vs Predibase</a> &middot; <a href="/how-vs-openpipe">vs OpenPipe</a> &middot; <a href="/how-vs-diy">vs DIY</a> &middot; <a href="/how-vs-hyperscaler">vs hyperscaler</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

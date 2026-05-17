@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Training-data registry &middot; reputable public datasets per task | kolm</title>
+<meta name="description" content="A registry of reputable public training datasets, per task, with licenses, sources, and citations. Use it to seed kolm seeds new, import into seeds.jsonl, or pin as an external holdout. Every row carries a verifiable citation and a license string a tenant can hand to procurement.">
+<meta name="keywords" content="training datasets, LIMA, UltraFeedback, Tulu-3, OpenHermes, Magpie, HelpSteer2, MATH, GSM8K, HumanEval, MBPP, OpenCodeReasoning, MIMIC-IV, i2b2, n2c2, CaseHOLD, FinGPT, Self-Instruct, Evol-Instruct, Persona-Hub, Apache-2.0, MIT, CC-BY-4.0, ODC-BY, research-only, licensing, redistribution">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="Training-data registry &middot; reputable public datasets per task">
+<meta property="og:description" content="LIMA, UltraFeedback, Tulu-3, MATH, GSM8K, HumanEval, MIMIC-IV. Per-task curated public datasets with licenses, sources, and citations. The kolm honest catalogue.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="kolm training-data registry" />
+<meta name="twitter:description" content="Every row is {task, dataset, size, license, source, citation, recommended use}. Use it to seed kolm seeds new or pin as external holdout. Domain rows carry verify-before-ship pills because per-tenant legal review is the only honest framing." />
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
+<meta property="og:url" content="https://kolm.ai/training/data-sources">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/training/data-sources">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.10);--bad:#ff6b91;--bad-soft:rgba(255,107,145,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#b8770b;--warn-soft:rgba(184,119,11,0.10);--bad:#c8385c;--bad-soft:rgba(200,56,92,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:46px;line-height:1.06;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+  .lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:820px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  .section{padding:64px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:30px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:820px}
+  .section p.lede{font-size:16px;max-width:820px;margin:0 0 28px}
+  .section p.body{font-size:15px;line-height:1.6;color:var(--ink-mute);max-width:820px;margin:0 0 14px}
+  .section p.body code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  .section p.body a{color:var(--ink);border-bottom:1px dashed var(--line)}
+  .tbl-wrap{overflow-x:auto;margin:20px 0;-webkit-overflow-scrolling:touch}
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;margin:20px 0;min-width:640px}
+  table.tbl th{font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400;vertical-align:bottom}
+  table.tbl td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45;color:var(--ink-mute)}
+  table.tbl td.key{font-family:var(--mono);color:var(--ink);font-size:12.5px;white-space:nowrap}
+  table.tbl td.lic{font-family:var(--mono);color:var(--ink);font-size:12px;white-space:nowrap}
+  table.tbl td.size{font-family:var(--mono);color:var(--ink-mute);font-size:12px;white-space:nowrap}
+  table.tbl td.cite{font-size:12.5px;color:var(--ink-mute)}
+  table.tbl td.cite a{color:var(--ink);border-bottom:1px dashed var(--line)}
+  table.tbl td.cite a:hover{border-bottom-style:solid}
+  table.tbl td.warn{color:var(--warn);font-family:var(--mono);font-size:12px}
+  table.tbl tr.domain td{background:var(--warn-soft)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:3px;border:1px solid var(--line);color:var(--ink-faint)}
+  .pill.ok{color:var(--accent);background:var(--accent-soft);border-color:rgba(16,185,129,0.30)}
+  .pill.warn{color:var(--warn);background:var(--warn-soft);border-color:rgba(240,184,107,0.30)}
+  .pill.bad{color:var(--bad);background:var(--bad-soft);border-color:rgba(255,107,145,0.30)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:820px){.grid-2{grid-template-columns:1fr}}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  @media(max-width:960px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.grid-4{grid-template-columns:1fr}}
+  .card{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:10px}
+  .card .vt{font-family:var(--mono);font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent)}
+  .card .vt.warn{color:var(--warn)}
+  .card h3{margin:0;font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+  .card p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+  .card code{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  .card .cite{font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:0.04em;margin-top:auto;padding-top:8px;border-top:1px solid var(--line)}
+  .card a{color:var(--accent);text-decoration:none;border-bottom:1px dashed var(--line)}
+  .card a:hover{border-bottom-style:solid}
+  .takeaway{padding:20px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin-top:24px}
+  .takeaway b{color:var(--accent)}
+  .scope-block{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);margin-top:16px}
+  .scope-block p{margin:0 0 12px;font-size:14.5px;line-height:1.6;color:var(--ink-mute)}
+  .scope-block p:last-child{margin-bottom:0}
+  .scope-block p b{color:var(--ink);font-weight:500}
+  .scope-block p code{font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 20px;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)}
+  .legend .pill{margin-right:6px}
+  footer.site{padding:32px 0;color:var(--ink-faint);font-size:13px;border-top:1px solid var(--line)}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr)}}
+  /* Wave 208 mobile audit: tighten hero+section at 360-560px so the registry
+     reads on a phone. Tables already scroll horizontally via .tbl-wrap. */
+  @media (max-width:560px){
+    .wrap{padding:0 16px}
+    .hero{padding:48px 0 24px}
+    h1{font-size:30px;line-height:1.12}
+    .lede{font-size:15.5px}
+    .section{padding:36px 0}
+    .section h2{font-size:22px}
+    .btn{padding:10px 14px;font-size:12px}
+    header.site nav{gap:10px;font-size:11px}
+  }
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.14em;color:var(--ink-faint);margin:0 0 12px;font-weight:400}
+  .footer-grid a{display:block;color:var(--ink-mute);text-decoration:none;font-size:13.5px;margin-bottom:6px;border:none}
+  .footer-tag{display:flex;justify-content:space-between;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line);padding-top:20px;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/training">training</a> &nbsp;/&nbsp; data-sources registry</p>
+    <h1>A registry of reputable public training datasets, per task, with licenses, sources, and citations.</h1>
+    <p class="lede">Every row is a <code style="font-family:var(--mono);background:var(--bg-elev);padding:2px 8px;border-radius:4px;color:var(--ink);font-size:14px">{task, dataset_name, size, license, source_url, citation, recommended_use}</code> tuple. Use it to seed a fresh <code style="font-family:var(--mono);background:var(--bg-elev);padding:2px 8px;border-radius:4px;color:var(--ink);font-size:14px">kolm seeds new</code> brief, import directly into <code style="font-family:var(--mono);background:var(--bg-elev);padding:2px 8px;border-radius:4px;color:var(--ink);font-size:14px">seeds.jsonl</code>, or pin a row as the external holdout your verifier compares against. kolm does not redistribute any of these; your customer-hosted compile bridge pulls them in your environment.</p>
+    <p class="stamp">Wave 201 registry &middot; reviewed 2026-05-17 &middot; grounded in <a style="color:inherit;border-bottom:1px dashed var(--line)" href="/research/methods-2026-q2">/research/methods-2026-q2</a> (W196)</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/training">Back to training tiers &rarr;</a>
+      <a class="btn" href="/research/methods-2026-q2#data-creation">Methods research &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>How to use this registry.</h2>
+    <p class="body">Three paths in. (1) <b>Seed-brief mode</b>: paste a dataset row into the prompt for <code>kolm seeds new "&lt;task&gt;"</code> and the scaffolder will produce a spec.json that names the dataset as <code>seed_source.public_dataset</code>. (2) <b>Direct import</b>: download a slice of the dataset, transform to <code>{input, target}</code> JSONL, drop into your repo as <code>seeds.jsonl</code>. (3) <b>External holdout</b>: pin one of these as your residency-free correctness reference; the holdout hash bound into <code>artifact_hash_input.external_holdout_hash</code> means the verifier can re-run it against any later artifact and detect drift. Every row carries a license string a tenant can hand to procurement, and an author + year that a third-party auditor can chase to a primary source.</p>
+    <p class="body">Honesty guard: licenses change. Verify the dataset's current license text on the source page before you ship; the values below were correct at the time of this review and are tagged with the review date in the page stamp. The W194 corpus-licensing-gate (<span class="pill warn">wave 194 roadmap</span>) will enforce license compatibility at compile time so a tenant cannot accidentally pin a research-only corpus as the external holdout of a commercial product.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>General-purpose instruction and preference datasets.</h2>
+    <p class="lede">The Tulu-3 / LIMA / UltraFeedback triumvirate is the de-facto open baseline for the SFT then preference distillation pipeline (per <a href="/research/methods-2026-q2#data-creation" style="color:inherit;border-bottom:1px dashed var(--line)">W196 &sect;5</a>). LIMA is the anchor for "quality beats volume." UltraFeedback is the open preference corpus most papers cite. Tulu-3 ships the on-policy DPO mix that outperforms UltraFeedback-alone at 70B scale.</p>
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>dataset</th><th>size</th><th>license</th><th>citation</th><th>recommended use</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="key">LIMA</td>
+          <td class="size">~1,000 examples</td>
+          <td class="lic">CC-BY-NC-SA-4.0</td>
+          <td class="cite">Zhou et al., <a href="https://arxiv.org/abs/2305.11206" rel="noopener">arXiv:2305.11206</a>, NeurIPS 2023</td>
+          <td>High-quality fine-tune anchor. Demonstrates that 1k curated SFT examples on a 65B base produce responses preferred or equivalent to GPT-4 in 43 percent of pairs. Use as the "quality over volume" reference when sizing a distilled_model recipe. Non-commercial license.</td>
+        </tr>
+        <tr>
+          <td class="key">UltraFeedback</td>
+          <td class="size">~64,000 prompts</td>
+          <td class="lic">MIT</td>
+          <td class="cite">Cui et al., <a href="https://arxiv.org/abs/2310.01377" rel="noopener">arXiv:2310.01377</a>, 2023</td>
+          <td>Preference distillation (SimPO / KTO / ORPO / DPO). 4-aspect annotations across UltraChat, ShareGPT, Evol-Instruct, TruthfulQA, FalseQA, FLAN. The de-facto open preference baseline.</td>
+        </tr>
+        <tr>
+          <td class="key">Tulu-3 SFT mix</td>
+          <td class="size">~939,000 examples</td>
+          <td class="lic">ODC-BY-1.0</td>
+          <td class="cite">Lambert et al., Allen AI, <a href="https://arxiv.org/abs/2411.15124" rel="noopener">arXiv:2411.15124</a>, 2024</td>
+          <td>Large-scale general-purpose instruction tuning. Drawn from WildChat, Persona-IF, math, code, safety mixes. ODC-BY permits commercial reuse with attribution.</td>
+        </tr>
+        <tr>
+          <td class="key">OpenHermes-2.5</td>
+          <td class="size">~1,000,000 entries</td>
+          <td class="lic">mixed (per-source)</td>
+          <td class="cite">Teknium / Nous Research, <a href="https://huggingface.co/datasets/teknium/OpenHermes-2.5" rel="noopener">HF: teknium/OpenHermes-2.5</a>, 2024</td>
+          <td>General instruction tuning. Aggregate of GPT-4 multi-turn conversations. License is per-source; some shards are non-commercial. Read the dataset card before pinning.</td>
+        </tr>
+        <tr>
+          <td class="key">Magpie-Llama-3.1-Pro-1M</td>
+          <td class="size">~1,000,000 conversations</td>
+          <td class="lic">Llama-3.1 community license</td>
+          <td class="cite">Xu et al., <a href="https://arxiv.org/abs/2406.08464" rel="noopener">arXiv:2406.08464</a>, ICLR 2025</td>
+          <td>Self-instruct extension; seed-free synthesis from Llama-3.1-70B-Instruct. Inherits the Llama-3.1 community license; verify the acceptable-use policy applies to your downstream artifact before redistribution.</td>
+        </tr>
+        <tr>
+          <td class="key">HelpSteer2</td>
+          <td class="size">~10,681 examples</td>
+          <td class="lic">CC-BY-4.0</td>
+          <td class="cite">Wang et al., NVIDIA, <a href="https://arxiv.org/abs/2406.08673" rel="noopener">arXiv:2406.08673</a>, 2024</td>
+          <td>Helpfulness scoring across multiple axes (helpfulness, correctness, coherence, complexity, verbosity). Good companion for any preference recipe that wants graded labels rather than binary pairs.</td>
+        </tr>
+        <tr>
+          <td class="key">Alpaca</td>
+          <td class="size">~52,000 instructions</td>
+          <td class="lic">CC-BY-NC-4.0</td>
+          <td class="cite">Taori et al., Stanford, <a href="https://github.com/tatsu-lab/stanford_alpaca" rel="noopener">tatsu-lab/stanford_alpaca</a>, 2023</td>
+          <td>Self-Instruct anchor (175 seeds expanded via text-davinci-003). Use as the canonical Self-Instruct reproduction. Non-commercial.</td>
+        </tr>
+        <tr>
+          <td class="key">Dolly-15k</td>
+          <td class="size">~15,000 examples</td>
+          <td class="lic">CC-BY-SA-3.0</td>
+          <td class="cite">Databricks, <a href="https://huggingface.co/datasets/databricks/databricks-dolly-15k" rel="noopener">HF: databricks/databricks-dolly-15k</a>, 2023</td>
+          <td>Human-authored instruction-response pairs across 7 task categories. Commercial-friendly; smaller than UltraFeedback but cleaner provenance.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Code, math, and reasoning datasets.</h2>
+    <p class="lede">Code and math have crisp success criteria, which means they double as <i>evaluations</i>. Pin one of these as the external holdout and the verifier can re-derive a numeric score on the same byte-stable input across any later artifact.</p>
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>dataset</th><th>size</th><th>license</th><th>citation</th><th>recommended use</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="key">MATH</td>
+          <td class="size">~12,500 problems</td>
+          <td class="lic">MIT</td>
+          <td class="cite">Hendrycks et al., <a href="https://arxiv.org/abs/2103.03874" rel="noopener">arXiv:2103.03874</a>, NeurIPS 2021</td>
+          <td>Competition-level math word problems with step-by-step solutions. Use as a generalist math reasoning eval and as a seed source for chain-of-thought distillation.</td>
+        </tr>
+        <tr>
+          <td class="key">GSM8K</td>
+          <td class="size">~8,500 problems</td>
+          <td class="lic">MIT</td>
+          <td class="cite">Cobbe et al., OpenAI, <a href="https://arxiv.org/abs/2110.14168" rel="noopener">arXiv:2110.14168</a>, 2021</td>
+          <td>Grade-school multi-step arithmetic word problems. The most-cited small-model math eval; pair with MATH for breadth vs depth.</td>
+        </tr>
+        <tr>
+          <td class="key">HumanEval</td>
+          <td class="size">164 problems</td>
+          <td class="lic">MIT</td>
+          <td class="cite">Chen et al., OpenAI, <a href="https://arxiv.org/abs/2107.03374" rel="noopener">arXiv:2107.03374</a>, 2021</td>
+          <td>Canonical code-generation eval (Python function completion). Small enough to run as a CI smoke gate on every artifact build.</td>
+        </tr>
+        <tr>
+          <td class="key">MBPP</td>
+          <td class="size">974 problems</td>
+          <td class="lic">CC-BY-4.0</td>
+          <td class="cite">Austin et al., Google, <a href="https://arxiv.org/abs/2108.07732" rel="noopener">arXiv:2108.07732</a>, 2021</td>
+          <td>Basic Python programming problems with crowd-sourced descriptions. Broader than HumanEval; complementary holdout.</td>
+        </tr>
+        <tr>
+          <td class="key">OpenCodeReasoning</td>
+          <td class="size">~735,000 samples</td>
+          <td class="lic">CC-BY-4.0</td>
+          <td class="cite">NVIDIA, <a href="https://huggingface.co/datasets/nvidia/OpenCodeReasoning" rel="noopener">HF: nvidia/OpenCodeReasoning</a>, 2024</td>
+          <td>Code reasoning traces for distillation into smaller code-reasoning students. Source competitive-programming problems with synthetic R1-style traces.</td>
+        </tr>
+        <tr>
+          <td class="key">APPS</td>
+          <td class="size">~10,000 problems</td>
+          <td class="lic">MIT</td>
+          <td class="cite">Hendrycks et al., <a href="https://arxiv.org/abs/2105.09938" rel="noopener">arXiv:2105.09938</a>, NeurIPS 2021</td>
+          <td>Coding problems across difficulty tiers (introductory, interview, competition). Use for graded difficulty reporting on code-recipe students.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Domain-specific datasets.</h2>
+    <p class="lede">Domain datasets are typically credentialed, research-only, or commercial-restricted. Every row in this section carries a <span class="pill warn">verify before ship</span> pill because per-tenant legal review is the only honest framing. kolm does not redistribute these; the tenant pulls them under their own credential in their own environment.</p>
+    <div class="legend">
+      <span><span class="pill warn">verify before ship</span> per-tenant legal review required</span>
+      <span><span class="pill bad">research-only</span> non-commercial use only</span>
+    </div>
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>domain &middot; dataset</th><th>size / scope</th><th>license</th><th>citation</th><th>recommended use</th></tr>
+      </thead>
+      <tbody>
+        <tr class="domain">
+          <td class="key">Healthcare &middot; MIMIC-IV</td>
+          <td class="size">~300k ICU stays</td>
+          <td class="warn">research-only license <span class="pill warn">verify</span></td>
+          <td class="cite">Johnson et al., MIT / PhysioNet, <a href="https://physionet.org/content/mimiciv/" rel="noopener">physionet.org/content/mimiciv</a>, 2023</td>
+          <td>De-identified electronic health records. Free with credentialed PhysioNet access (CITI human-subjects training required). NOT commercial-redistributable; tenant pulls per their PhysioNet credentials.</td>
+        </tr>
+        <tr class="domain">
+          <td class="key">Healthcare &middot; i2b2 / n2c2</td>
+          <td class="size">multiple shared-task corpora</td>
+          <td class="warn">research-only license <span class="pill warn">verify</span></td>
+          <td class="cite">Uzuner et al., Harvard / Mass General, <a href="https://www.i2b2.org/NLP/DataSets/" rel="noopener">i2b2.org/NLP/DataSets</a>, various 2006-2024</td>
+          <td>Clinical NLP shared-task datasets (de-identification, smoking status, medication, concept extraction). Data-use agreement per corpus; some require institutional sponsor.</td>
+        </tr>
+        <tr class="domain">
+          <td class="key">Legal &middot; CaseHOLD</td>
+          <td class="size">~53,000 examples</td>
+          <td class="warn">Apache-2.0 <span class="pill warn">verify</span></td>
+          <td class="cite">Zheng et al., <a href="https://arxiv.org/abs/2104.08671" rel="noopener">arXiv:2104.08671</a>, 2021</td>
+          <td>Multiple-choice legal holding identification from US case law (Harvard Caselaw Access Project). License permissive but verify the upstream case-text license per jurisdiction before redistribution.</td>
+        </tr>
+        <tr class="domain">
+          <td class="key">Legal &middot; LexGLUE</td>
+          <td class="size">7 task suites</td>
+          <td class="warn">CC-BY-4.0 <span class="pill warn">verify</span></td>
+          <td class="cite">Chalkidis et al., <a href="https://arxiv.org/abs/2110.00976" rel="noopener">arXiv:2110.00976</a>, ACL 2022</td>
+          <td>Legal language understanding benchmark suite (ECtHR, SCOTUS, EUR-LEX, LEDGAR, CaseHOLD). Verify per-task licenses; some sub-tasks inherit upstream restrictions.</td>
+        </tr>
+        <tr class="domain">
+          <td class="key">Finance &middot; FinGPT</td>
+          <td class="size">multiple corpora</td>
+          <td class="warn">MIT (code) <span class="pill warn">verify</span></td>
+          <td class="cite">Yang et al., <a href="https://arxiv.org/abs/2306.06031" rel="noopener">arXiv:2306.06031</a>, 2023</td>
+          <td>Open-source financial LLM datasets (sentiment, news, filings). Code is MIT but underlying news / filings inherit upstream source licenses; verify per shard.</td>
+        </tr>
+        <tr class="domain">
+          <td class="key">Finance &middot; FiQA</td>
+          <td class="size">~17,000 QA / sentiment</td>
+          <td class="warn">CC-BY-4.0 <span class="pill warn">verify</span></td>
+          <td class="cite">Maia et al., WWW 2018, <a href="https://sites.google.com/view/fiqa/" rel="noopener">FiQA shared task</a></td>
+          <td>Financial opinion mining and question answering. Verify the latest license text on the task site before pinning.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="takeaway">
+      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)"><b>Why amber on every row.</b> Domain corpora are the most license-heterogeneous data class. A dataset that ships "Apache-2.0 code" almost always pulls non-Apache source data underneath: case law, EHRs, filings, news. The honest framing for any regulated tenant is "verify the full license stack before pinning as your external holdout or distilling into your shipped artifact." kolm gives you the citation; your counsel gives you the green light.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Synthetic data generation methods.</h2>
+    <p class="lede">Sometimes the right answer is "make the data." Four open methods from the 2026-Q2 sweep, each linking back to the primary citation block in <a href="/research/methods-2026-q2#data-creation" style="color:inherit;border-bottom:1px dashed var(--line)">W196 &sect;5</a>.</p>
+    <div class="grid-4">
+      <a class="card" href="/research/methods-2026-q2#data-creation" style="text-decoration:none;color:inherit">
+        <span class="vt">method 01</span>
+        <h3>Self-Instruct</h3>
+        <p>175 hand-written seeds expanded via N-shot prompting (N approx 8), Rouge-L diversity filter, iterate. Stanford Alpaca scaled this recipe to 52k.</p>
+        <span class="cite">Wang et al., 2022 &middot; <a href="https://arxiv.org/abs/2212.10560" rel="noopener">arXiv:2212.10560</a></span>
+      </a>
+      <a class="card" href="/research/methods-2026-q2#data-creation" style="text-decoration:none;color:inherit">
+        <span class="vt">method 02</span>
+        <h3>Evol-Instruct</h3>
+        <p>Iteratively evolves instructions via five In-depth ops (add constraints, deepen, concretize, increase reasoning steps, complicate input) plus In-breadth. WizardLM beat ChatGPT by +7.9 pts win-rate on hard prompts.</p>
+        <span class="cite">Xu et al., ICLR 2024 &middot; <a href="https://arxiv.org/abs/2304.12244" rel="noopener">arXiv:2304.12244</a></span>
+      </a>
+      <a class="card" href="/research/methods-2026-q2#data-creation" style="text-decoration:none;color:inherit">
+        <span class="vt">method 03</span>
+        <h3>Magpie</h3>
+        <p>Seed-free synthesis. Feeds the pre-fill chat template alone; the aligned LLM hallucinates both a user query and a response. Llama-3-8B-Base fine-tuned on Magpie outperforms Evol-Instruct- and UltraChat-derived datasets.</p>
+        <span class="cite">Xu et al., ICLR 2025 &middot; <a href="https://arxiv.org/abs/2406.08464" rel="noopener">arXiv:2406.08464</a></span>
+      </a>
+      <a class="card" href="/research/methods-2026-q2#data-creation" style="text-decoration:none;color:inherit">
+        <span class="vt">method 04</span>
+        <h3>Persona-Hub</h3>
+        <p>1B personas via Text-to-Persona and Persona-to-Persona expansion. Inject one persona per generation prompt to diversify outputs (math, instructions, knowledge-rich text, tool calls).</p>
+        <span class="cite">Chan et al., Tencent AI Lab, 2024 &middot; <a href="https://arxiv.org/abs/2406.20094" rel="noopener">arXiv:2406.20094</a></span>
+      </a>
+    </div>
+    <p class="body" style="margin-top:24px">Composability: Magpie or Persona-Hub for diversity, Evol-Instruct for difficulty range, Self-Instruct as the baseline reproduction. Combine to cover topic breadth and difficulty depth simultaneously. The modal kolm narrow-task recipe is 20-100 hand seeds plus Evol-Instruct or Magpie expanding to 1k-10k pairs (per W196 &sect;5.3 practitioner range).</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>kolm-shipped seed examples.</h2>
+    <p class="body">The Wave 176-184 health-insurance template batch each ships 8-12 anonymized seed examples per task (EDI 837 / 835 / 834 / 270 / 271 / 278, FHIR USCDI, HEDIS measures, denial and prior-auth letters, MLR, Star ratings, NPI registry, ICD to CPT crosswalks). These are not public datasets; they are template seeds packaged with the spec.json so a tenant can run <code>kolm seeds new health-insurance/denial-letter --template=denial-codeset-2026</code> and get a working scaffold immediately. See the full template grid at <a href="/health-insurance" style="color:inherit;border-bottom:1px dashed var(--line)">/health-insurance</a>. The seed examples are intentionally small (8-12); the registry above is where you go when you need volume.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Honest scope: licensing and redistribution.</h2>
+    <div class="scope-block">
+      <p>Not every "open" dataset is commercial-redistributable. Read the license per dataset before pinning as your external holdout or distilling into your shipped artifact. <b>CC-BY-NC</b> means no commercial use; <b>CC-BY-SA</b> means derivative works inherit the share-alike clause; <b>ODC-BY</b> is commercial-friendly but requires attribution; <b>research-only</b> licenses (MIMIC, i2b2, n2c2) require credentialing and data-use agreements per institution. License strings drift; verify the dataset's current license text on the source page on the day you ship.</p>
+      <p>kolm does <b>not</b> redistribute any of the datasets named on this page. Your customer-hosted compile bridge pulls them in your environment under your credentials. The kolm artifact records the <code>external_holdout_hash</code> of the byte-stable slice you used; the verifier re-derives that hash on demand. No raw corpus data is bundled into the <code>.kolm</code> file.</p>
+      <p>The Wave 194 corpus-licensing-gate <span class="pill warn">wave 194 roadmap</span> will enforce license compatibility at compile time. When the gate ships, <code>kolm compile</code> will require a <code>dataset_license</code> declaration per pinned external corpus, cross-reference against a tenant-supplied allow-list of commercially-compatible licenses, and reject the build at gate time if a research-only corpus is named as the external holdout of a commercially-shipping artifact. Until then, the responsibility sits with the tenant operator and counsel.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Where this fits in the wider stack.</h2>
+    <div class="grid-4">
+      <a class="card" href="/research/methods-2026-q2" style="text-decoration:none;color:inherit">
+        <span class="vt">research &middot; W196</span>
+        <h3>Frontier methods &middot; 2026-Q2 sweep</h3>
+        <p>The seven-section research dump that grounds this registry: distillation, sample efficiency, base models, quantization, data creation, NL to recipe, rule of thumb.</p>
+      </a>
+      <a class="card" href="/training" style="text-decoration:none;color:inherit">
+        <span class="vt">training &middot; W198</span>
+        <h3>Six tiers, one CLI</h3>
+        <p>The six-tier ladder from rule recipe to MoE bundle, with the per-recipe-class "how much data" grid the registry above is meant to fill.</p>
+      </a>
+      <a class="card" href="/quickstart/nl" style="text-decoration:none;color:inherit">
+        <span class="vt">quickstart &middot; W200</span>
+        <h3>kolm nl &middot; natural-language scaffolder</h3>
+        <p>Type a free-text task description; get a structured spec.json and seeds.jsonl scaffold. Air-gap deterministic. Pair with a registry row to point at a real dataset.</p>
+      </a>
+      <a class="card" href="/recipe-classes" style="text-decoration:none;color:inherit">
+        <span class="vt">taxonomy &middot; W172</span>
+        <h3>Recipe-class taxonomy</h3>
+        <p>rule, synthesized_rule, compiled_rule, distilled_model. The taxonomy that determines how many seed pairs you need from the registry.</p>
+      </a>
+    </div>
+    <div class="actions" style="margin-top:32px">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/training">Back to training tiers &rarr;</a>
+      <a class="btn" href="/research/methods-2026-q2#data-creation">Methods research &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Train</h4>
+        <a href="/training">Training tiers</a>
+        <a href="/training/data-sources">Data sources</a>
+        <a href="/research/methods-2026-q2">Methods research</a>
+        <a href="/recipe-classes">Recipe classes</a>
+        <a href="/quickstart/nl">kolm nl</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/drift">Lifecycle &middot; drift</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+        <a href="/case-studies">Case studies</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/health-insurance">Health insurance</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
+      <span>kolm does not redistribute datasets. The tenant pulls them under their own credentials.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

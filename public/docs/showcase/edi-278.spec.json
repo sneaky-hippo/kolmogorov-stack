@@ -1,0 +1,82 @@
+{
+  "job_id": "job_edi_278_transformer_v1",
+  "task": "Parse an X12 EDI 278 services-review transaction (5010A1) for prior authorization / referral / admission certification. Emit normalized JSON: { format, direction, purpose, umo, requester, subscriber, patient, service, attached_paperwork?, response? }. Auto-detects request vs response by presence of HCR (health-care-services-review) segment.",
+  "base_model": "none",
+  "license": "LicenseRef-kolm-default-1.0",
+  "recipes": [
+    {
+      "id": "rcp_edi_278_v1",
+      "name": "edi-278",
+      "class": "rule",
+      "source": "function generate(input,lib){var t=(input&&typeof input.edi_text==='string')?input.edi_text:'';var DEC={A1:'certified',A2:'partial',A3:'denied',A4:'pended',A6:'modified'};var PUR={'13':'initial','15':'reconsideration','16':'appeal','01':'cancellation','06':'resubmission'};var d=function(s){return s?s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8):null};var S=t.split(/~\\s*/).filter(Boolean);var o={format:'278',direction:'request',purpose:'initial',umo:{},requester:{type:'physician'},subscriber:{redacted_member_id:'<hash>'},patient:{},service:{procedure_codes:[],diagnoses:[]}};var sH=false,sP=false,re={};for(var i=0;i<S.length;i++){var f=S[i].split('*'),T=f[0];if(T==='BHT')o.purpose=PUR[f[2]]||'initial';else if(T==='NM1'){var e=f[1];if(e==='X3'){o.umo.name=f[3]||null;o.umo.payer_id=f[8]||null;}else if(e==='1P'){o.requester.name=f[3]||null;o.requester.npi=f[9]||null;o.requester.type=f[2]==='2'?'facility':'physician';}else if(e==='QC')o.patient.relationship='01';}else if(T==='DMG'){o.patient.dob=f[1]==='D8'?d(f[2]):null;o.patient.gender=f[3]||null;}else if(T==='UM'){o.service.type_code=f[1]||null;o.service.level_of_care=f[6]||null;o.service.place_of_service=(f[4]||'').split(':')[0]||null;}else if(T==='REF'&&f[1]==='BB')re.certification_number=f[2]||null;else if(T==='DTP'){var x=f[3]||'';if(f[1]==='291'&&f[2]==='RD8'&&x.indexOf('-')>0){var p=x.split('-');o.service.requested_start=d(p[0]);o.service.requested_end=d(p[1]);}else if(f[1]==='348'&&f[2]==='D8')re.valid_from=d(x);else if(f[1]==='349'&&f[2]==='D8')re.valid_to=d(x);}else if(T==='HI')for(var j=1;j<f.length;j++){var h=(f[j]||'').split(':');if(h[1])o.service.diagnoses.push(h[1]);}else if(T==='PWK'){sP=true;o.attached_paperwork={type:f[1]||null,transmission:f[2]||null,control_number:f[6]||null};}else if(T==='HSD'){var u=parseInt(f[2]||'0',10);if(!o.service.requested_units&&u)o.service.requested_units=u;}else if(T==='HCR'){sH=true;re.action_code=f[1]||null;re.decision=DEC[f[1]]||null;re.decision_reason=f[3]||null;}}if(sH){o.direction='response';o.response=re;}return o;}",
+      "tags": ["health-insurance", "edi", "278", "prior-auth", "services-review", "x12", "5010"],
+      "schema": {
+        "input": { "edi_text": "string" },
+        "output": {
+          "format": "string",
+          "direction": "string",
+          "purpose": "string",
+          "umo": "object",
+          "requester": "object",
+          "subscriber": "object",
+          "patient": "object",
+          "service": "object",
+          "attached_paperwork": "object?",
+          "response": "object?"
+        }
+      }
+    }
+  ],
+  "pack": {
+    "spec": "kolm-pack-1",
+    "description": "X12 5010A1 278 reference rules. um01_request_categories are real UM01 request-category codes; hcr01_action_codes are the certification action codes the UMO returns in HCR01 on the response; level_of_service_codes are real UM02 values from the 5010A1 implementation guide.",
+    "rules": {
+      "um01_request_categories": {
+        "AR": "Admission Review",
+        "HS": "Health Services Review",
+        "SC": "Specialty Care Review",
+        "IN": "Individual",
+        "RT": "Reservation of Time"
+      },
+      "hcr01_action_codes": {
+        "A1": "Certified in Total",
+        "A2": "Certified Partial",
+        "A3": "Not Certified",
+        "A4": "Pended",
+        "A6": "Modified"
+      },
+      "level_of_service_codes": {
+        "U": "Urgent",
+        "E": "Emergency",
+        "R": "Routine",
+        "S": "Sensitivity to a Service"
+      }
+    }
+  },
+  "evals": {
+    "spec": "rs-1-evals",
+    "cases": [
+      {
+        "id": "request_hs_routine_facility",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*UMORG          *ZZ*REQUESTER      *260517*1430*^*00501*000000001*0*P*:~GS*HI*UMORG*REQUESTER*20260517*1430*1*X*005010X217~ST*278*0001*005010X217~BHT*0007*13*REQ0001*20260517*1430~HL*1**20*1~NM1*X3*2*ACME HEALTH PLAN UMO*****46*UMO001~HL*2*1*21*1~NM1*1P*2*MERCY CLINIC*****XX*1234567893~HL*3*2*22*1~NM1*IL*1*DOE*JANE****MI*W123456789~HL*4*3*23*1~NM1*QC*1*DOE*JOHN~DMG*D8*19850412*M~HL*5*4*SS*0~UM*HS*I*1*11:B:1**R~DTP*291*RD8*20260601-20260615~HI*BK:G43909~PWK*OB*EL***AC*PWK0001~HSD*VS*7*DA*7*34*RD8*20260601-20260615~SE*18*0001~GE*1*1~IEA*1*000000001~" },
+        "expected": { "format": "278", "direction": "request", "purpose": "initial", "requester": { "type": "facility" }, "service": { "type_code": "HS", "level_of_care": "R" } }
+      },
+      {
+        "id": "response_a1_certified",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*UMORG          *ZZ*REQUESTER      *260517*1500*^*00501*000000002*0*P*:~GS*HI*UMORG*REQUESTER*20260517*1500*2*X*005010X217~ST*278*0002*005010X217~BHT*0007*11*RES0001*20260517*1500~HL*1**20*1~NM1*X3*2*ACME HEALTH PLAN UMO*****46*UMO001~HL*2*1*21*1~NM1*1P*2*MERCY CLINIC*****XX*1234567893~HL*3*2*22*1~NM1*IL*1*DOE*JANE****MI*W123456789~HL*4*3*SS*0~UM*HS*I*1*11:B:1**R~HCR*A1*CERT-2026-00891**~REF*BB*CERT-2026-00891~DTP*348*D8*20260601~DTP*349*D8*20260615~HSD*VS*7*DA*7~SE*15*0002~GE*1*2~IEA*1*000000002~" },
+        "expected": { "format": "278", "direction": "response", "response": { "decision": "certified", "action_code": "A1", "certification_number": "CERT-2026-00891" } }
+      },
+      {
+        "id": "response_a3_not_certified",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*UMORG          *ZZ*REQUESTER      *260517*1530*^*00501*000000003*0*P*:~GS*HI*UMORG*REQUESTER*20260517*1530*3*X*005010X217~ST*278*0003*005010X217~BHT*0007*11*RES0002*20260517*1530~HL*1**20*1~NM1*X3*2*ACME HEALTH PLAN UMO*****46*UMO001~HL*2*1*21*1~NM1*1P*2*MERCY CLINIC*****XX*1234567893~HL*3*2*22*1~NM1*IL*1*DOE*JANE****MI*W123456789~HL*4*3*SS*0~UM*HS*I*1*11:B:1**R~HCR*A3**NCM*Y~SE*12*0003~GE*1*3~IEA*1*000000003~" },
+        "expected": { "format": "278", "direction": "response", "response": { "decision": "denied", "action_code": "A3" } }
+      },
+      {
+        "id": "request_admission_review_urgent",
+        "input": { "edi_text": "ISA*00*          *00*          *ZZ*UMORG          *ZZ*REQUESTER      *260517*1600*^*00501*000000004*0*P*:~GS*HI*UMORG*REQUESTER*20260517*1600*4*X*005010X217~ST*278*0004*005010X217~BHT*0007*13*REQ0002*20260517*1600~HL*1**20*1~NM1*X3*2*ACME HEALTH PLAN UMO*****46*UMO001~HL*2*1*21*1~NM1*1P*1*SMITH*ANN****XX*1987654320~HL*3*2*22*1~NM1*IL*1*ROE*JOHN****MI*W987654321~HL*4*3*SS*0~UM*AR*I*1*21:B:1**U~DTP*291*RD8*20260520-20260525~HI*BK:I214~HSD*DY*3*DA*3~SE*13*0004~GE*1*4~IEA*1*000000004~" },
+        "expected": { "format": "278", "direction": "request", "requester": { "type": "physician" }, "service": { "type_code": "AR", "level_of_care": "U" } }
+      }
+    ],
+    "coverage": 1.0
+  }
+}

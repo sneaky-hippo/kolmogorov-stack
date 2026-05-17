@@ -11,20 +11,28 @@
 //   V = eval coverage     (cases covered / cases declared)
 //   ship gate: composite >= 0.85
 //
-// v2 spec (target architecture): adds four optional axes that, when supplied,
+// v2 spec (target architecture): adds five optional axes that, when supplied,
 // shift the composite slightly without breaking v1 verification of old
 // artifacts. v2 carries `spec: 'k-score-2'` so verifiers can dispatch.
-//   R = robustness     (held-out accuracy / declared accuracy)
-//   F = fairness       (lowest sub-group accuracy / declared accuracy)
-//   E = energy         (1 / (1 + joules_per_call / 100))
-//   Z = drift          (1 - eval-set drift vs. registry baseline)
+//   R = robustness         (held-out accuracy / declared accuracy)
+//   F = fairness           (lowest sub-group accuracy / declared accuracy)
+//   E = energy             (1 / (1 + joules_per_call / 100))
+//   Z = drift              (1 - eval-set drift vs. registry baseline)
+//   T = teacher-fidelity   (student holdout accuracy / teacher holdout accuracy)
 //
-//   K2 = 0.30*A + 0.10*S + 0.10*L + 0.10*C + 0.10*V + 0.10*R + 0.10*F + 0.05*E + 0.05*Z
+//   K2 = 0.30*A + 0.10*S + 0.10*L + 0.10*C + 0.10*V + 0.05*R + 0.05*T + 0.10*F + 0.05*E + 0.05*Z
+//
+// T (added wave 145) is the distillation-honesty axis: A/T ratio reported in
+// the manifest makes the cost/quality tradeoff legible. 0.9 means student is
+// at 90% of teacher accuracy on the same holdout. Required by Doc 7 §4.7 for
+// cross-vendor distillation. Missing T (no teacher_holdout_accuracy supplied)
+// degrades gracefully — the v2 redistribution rule reshuffles weight to the
+// supplied axes.
 //
 // Both versions are normalized to [0..1] and gated at 0.85.
 
 const V1_WEIGHTS = { A: 0.40, S: 0.15, L: 0.15, C: 0.15, V: 0.15 };
-const V2_WEIGHTS = { A: 0.30, S: 0.10, L: 0.10, C: 0.10, V: 0.10, R: 0.10, F: 0.10, E: 0.05, Z: 0.05 };
+const V2_WEIGHTS = { A: 0.30, S: 0.10, L: 0.10, C: 0.10, V: 0.10, R: 0.05, T: 0.05, F: 0.10, E: 0.05, Z: 0.05 };
 const GATE = 0.85;
 
 function clamp01(x) { return Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0)); }
@@ -75,12 +83,17 @@ export function computeKScoreV1({ size_bytes, accuracy, coverage, p50_latency_us
   };
 }
 
-// v2 — accepts the same inputs as v1 plus optional R/F/E/Z. When an optional
+// v2 — accepts the same inputs as v1 plus optional R/F/E/Z/T. When an optional
 // input is missing, its weight is redistributed proportionally over the
 // supplied axes so the composite stays comparable. Spec emitted is 'k-score-2'
 // when any v2 axis is supplied; otherwise we return a v1 envelope.
+//
+// T (teacher-fidelity) is the distillation honesty axis added in wave 145.
+// It needs BOTH the student's holdout accuracy (already required for R) AND
+// the teacher's accuracy on the SAME holdout. Without both, T degrades to
+// null and its weight redistributes.
 export function computeKScoreV2(input) {
-  const hasV2 = ['holdout_accuracy', 'subgroup_min_accuracy', 'joules_per_call', 'eval_set_drift']
+  const hasV2 = ['holdout_accuracy', 'subgroup_min_accuracy', 'joules_per_call', 'eval_set_drift', 'teacher_holdout_accuracy']
     .some(k => input[k] != null);
   if (!hasV2) return computeKScoreV1(input);
 
@@ -93,9 +106,16 @@ export function computeKScoreV2(input) {
   const F = input.subgroup_min_accuracy == null ? null : clamp01(input.subgroup_min_accuracy / Math.max(1e-6, A));
   const E = energyScore(input.joules_per_call);
   const Z = driftScore(input.eval_set_drift);
+  // T = student-holdout / teacher-holdout. Reported as A/T (student / teacher).
+  // 1.0 = student matches teacher; 0.9 = student at 90% of teacher quality.
+  // Needs BOTH inputs; either missing → T=null and weight redistributes.
+  const T = (input.teacher_holdout_accuracy == null || input.holdout_accuracy == null)
+    ? null
+    : clamp01(input.holdout_accuracy / Math.max(1e-6, input.teacher_holdout_accuracy));
 
   const supplied = { A, S, L, C, V };
   if (R != null) supplied.R = R;
+  if (T != null) supplied.T = T;
   if (F != null) supplied.F = F;
   if (E != null) supplied.E = E;
   if (Z != null) supplied.Z = Z;
@@ -121,6 +141,8 @@ export function computeKScoreV2(input) {
     cost_score: round4(C),
     holdout_accuracy: input.holdout_accuracy == null ? null : round4(input.holdout_accuracy),
     robustness_score: R == null ? null : round4(R),
+    teacher_holdout_accuracy: input.teacher_holdout_accuracy == null ? null : round4(input.teacher_holdout_accuracy),
+    teacher_fidelity_score: T == null ? null : round4(T),
     subgroup_min_accuracy: input.subgroup_min_accuracy == null ? null : round4(input.subgroup_min_accuracy),
     fairness_score: F == null ? null : round4(F),
     joules_per_call: input.joules_per_call ?? null,

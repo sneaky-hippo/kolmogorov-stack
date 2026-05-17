@@ -1,6 +1,8 @@
 # RS-1 · the .kolm artifact contract
 
-**Status:** v0.1 (draft, MIT-licensed). Stable enough to build against; small enough to read in one sitting.
+**Status:** This is the v0.1 working draft. The canonical specification is **RS-1 v2.0** at [/spec/rs-1](/spec/rs-1), which describes the shipping implementation including the four-class recipe taxonomy (`rule` / `synthesized_rule` / `compiled_rule` / `distilled_model`), the three-signature cascade (HMAC-SHA256 + Ed25519 + sigstore), the seeds.jsonl train/holdout split for eval independence, pretokenization (KOLMIDX2/KOLMPCK2), MoE composition, the PHI redactor chain extension, and cross-vendor distillation manifest fields. Where this draft and v2.0 disagree, v2.0 wins.
+
+---
 
 A `.kolm` is the binary that comes out of `kolm compile`. RS-1 is the contract that makes one `.kolm` byte-identical to another given the same inputs, signed end-to-end, and runnable on any device that can read the format.
 

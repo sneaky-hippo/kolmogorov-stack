@@ -69,6 +69,7 @@
   <div class="wrap">
     <a href="/" class="brand" aria-label="kolm home">kolm</a>
     <nav class="site-nav" aria-label="Primary">
+      <a href="/training">Training</a>
       <a href="/healthcare">Healthcare</a>
       <a href="/health-insurance" aria-current="page">Health insurance</a>
       <a href="/pricing">Pricing</a>
@@ -88,7 +89,7 @@
     <div>
       <div class="eyebrow"><span class="pulse"></span>For US health insurers</div>
       <h1>Private AI for health plans. Compile once. Run forever. Zero&nbsp;PHI&nbsp;risk.</h1>
-      <p class="lede">Compile claims adjudication, prior-auth review, fraud detection, member support, risk-adjustment coding, and provider credentialing into signed, auditable <code>.kolm</code> artifacts that run inside your environment. PHI stays inside the customer-hosted bridge your VPC. BAA countersigned within 48&nbsp;hours.</p>
+      <p class="lede">Compile claims adjudication, prior-auth review, fraud detection, member support, risk-adjustment coding, and provider credentialing into signed, auditable <code>.kolm</code> artifacts that run inside your environment. PHI stays inside the customer-hosted bridge in your VPC. BAA countersigned within 48&nbsp;hours. For compliance, security, and HIPAA-regulated buyers: see <a href="/enterprise" style="color:inherit;text-decoration:underline">/enterprise</a> for procurement, or run the CLI in <a href="/quickstart" style="color:inherit;text-decoration:underline">/quickstart</a>.</p>
     </div>
     <div class="page-actions">
       <a class="btn primary" href="/upgrade?plan=business">Checkout &ndash; Business plan</a>
@@ -125,8 +126,8 @@
   </section>
 
   <section style="margin:34px 0" id="insurance-templates">
-    <h2 style="font-size:22px;margin:0 0 6px">Six ready templates for health plans</h2>
-    <p class="lede" style="margin-top:0">Each template ships with 8&ndash;12 anonymized examples, a held-out eval set, automatic PHI redaction, and a forced K-score gate of 0.95. Import to your private namespace in one click.</p>
+    <h2 style="font-size:22px;margin:0 0 6px">Twenty-one ready templates for health plans</h2>
+    <p class="lede" style="margin-top:0">Each template ships with 8&ndash;12 anonymized examples, a held-out eval set, automatic PHI redaction, and a forced K-score gate of 0.92&ndash;0.95. Six original templates plus fifteen shipped in the wave 176&ndash;184 health-insurance batch (EDI 837/835/834/270/271/278, FHIR USCDI v3, HEDIS CBP/CDC/BCS, denial-appeal + PA letter, MLR rebate, CMS Star contributor, NPI directory, ICD-10/CPT crosswalk). Import to your private namespace in one click.</p>
 
     <div class="hi-tpl-grid">
       <a class="hi-tpl" href="/insurance/templates/claims-adjudication" style="text-decoration:none;color:inherit;display:block">
@@ -181,6 +182,141 @@ with confidence per code. Redact PHI. Output
 items. Redact PHI. Output
 { status, flags, summary }.</pre>
         <p class="meta">input: credential packet &middot; output: <b>{status, flags, summary}</b> &middot; gate K &ge; 0.95 &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/edi-837" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">07 &middot; edi-837 &middot; rule (class 0)</div>
+        <h3>X12 837P/I claim transformer</h3>
+        <pre>Parse X12 5010A1/A2 837 professional or institutional claim
+into normalized JSON. Detect 837P vs 837I from CLM05.
+Redact PHI. Output { claim_type, header, service_lines }.</pre>
+        <p class="meta">input: X12 837 string &middot; output: <b>{claim_type, header, lines}</b> &middot; rule-class &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/edi-835" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">08 &middot; edi-835 &middot; rule (class 0)</div>
+        <h3>X12 835 ERA remittance parser</h3>
+        <pre>Parse X12 5010A1 835 electronic remittance advice into per-claim
+adjudication records. Map CLP02 status + CAS01 group codes
+(CO/OA/PI/PR). Output { payer, claims: [...] }.</pre>
+        <p class="meta">input: X12 835 string &middot; output: <b>{payer, claims}</b> &middot; rule-class &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/edi-834" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">09 &middot; edi-834 &middot; rule (class 0)</div>
+        <h3>X12 834 enrollment ingestion</h3>
+        <pre>Parse X12 5010A1 834 benefit enrollment + maintenance.
+Map BGN02 purpose + INS02 relationship codes.
+Output { sponsor, members: [{ relationship, segments }] }.</pre>
+        <p class="meta">input: X12 834 string &middot; output: <b>{sponsor, members}</b> &middot; rule-class &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/edi-270-271" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">10 &middot; edi-270-271 &middot; rule (class 0)</div>
+        <h3>X12 270/271 eligibility pair</h3>
+        <pre>Build 270 inquiry from member record; parse 271 response.
+EQ01 service-type, EB01 eligibility, AAA reject codes.
+Output { inquiry, response: { eligible, benefits, rejects } }.</pre>
+        <p class="meta">input: member + payer &middot; output: <b>{inquiry, response}</b> &middot; rule-class &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/edi-278" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">11 &middot; edi-278 &middot; rule (class 0)</div>
+        <h3>X12 278 services review (PA)</h3>
+        <pre>Parse X12 5010 278 services-review request + response.
+UM01 review type + HCR01 certification codes
+(A1 certified, A3 not certified). Output { request, response }.</pre>
+        <p class="meta">input: X12 278 string &middot; output: <b>{request, response}</b> &middot; rule-class &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/fhir-uscdi" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">12 &middot; fhir-uscdi &middot; rule (class 0)</div>
+        <h3>FHIR R4 &rarr; USCDI v3 normalizer</h3>
+        <pre>Map 11 FHIR R4 resource types to USCDI v3 data classes
+(Patient, Encounter, Condition, Observation, Procedure,
+Medication, Immunization, AllergyIntolerance, etc.).</pre>
+        <p class="meta">input: FHIR Bundle &middot; output: <b>{uscdi_classes: [...]}</b> &middot; rule-class &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/hedis-cbp" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">13 &middot; hedis-cbp &middot; synth-rule (class 1)</div>
+        <h3>HEDIS Controlling Blood Pressure</h3>
+        <pre>Compute HEDIS CBP measure (NCQA MY 2024+).
+LOINC 8480-6 systolic + 8462-4 diastolic; ICD-10 I10.
+Output { numerator, denominator, rate, exclusions }.</pre>
+        <p class="meta">input: BP obs + dx &middot; output: <b>{num, denom, rate}</b> &middot; gate K &ge; 0.93 &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/hedis-cdc-hba1c" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">14 &middot; hedis-cdc-hba1c &middot; synth-rule (class 1)</div>
+        <h3>HEDIS HbA1c Poor Control (&gt;9%)</h3>
+        <pre>Compute HEDIS CDC HbA1c Poor Control (&gt;9%) measure.
+LOINC 4548-4 HbA1c; ICD-10 E10.x / E11.x diabetes.
+Output { numerator, denominator, rate, exclusions }.</pre>
+        <p class="meta">input: HbA1c labs + dx &middot; output: <b>{num, denom, rate}</b> &middot; gate K &ge; 0.93 &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/hedis-bcs" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">15 &middot; hedis-bcs &middot; synth-rule (class 1)</div>
+        <h3>HEDIS Breast Cancer Screening</h3>
+        <pre>Compute HEDIS BCS measure (women 50&ndash;74).
+CPT 77065/77066/77067, HCPCS G0202; Z90.13 bilat-mast excl.
+Output { numerator, denominator, rate, exclusions }.</pre>
+        <p class="meta">input: imaging claims &middot; output: <b>{num, denom, rate}</b> &middot; gate K &ge; 0.93 &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/denial-appeal-letter" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">16 &middot; denial-appeal-letter &middot; model (class 3)</div>
+        <h3>Member denial appeal letter</h3>
+        <pre>Generate first-level appeal letter grounded in CARC code
+(50/197/204/16) + state regulatory basis (CA/NY/TX/FL).
+Qwen2.5-7B-Instruct base. Output appeal_text.</pre>
+        <p class="meta">input: denial + member &middot; output: <b>appeal_text</b> &middot; gate K &ge; 0.92 &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/prior-auth-letter" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">17 &middot; prior-auth-letter &middot; model (class 3)</div>
+        <h3>Prior authorization request letter</h3>
+        <pre>Generate PA submission letter grounded in 4-criterion
+medical-necessity framework + 278/portal/fax submission route.
+Qwen2.5-7B-Instruct base. Output pa_letter_text.</pre>
+        <p class="meta">input: clinical + CPT &middot; output: <b>pa_letter_text</b> &middot; gate K &ge; 0.92 &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/mlr-rebate" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">18 &middot; mlr-rebate &middot; rule (class 0)</div>
+        <h3>MLR rebate calculator (PPACA &sect;2718)</h3>
+        <pre>Compute Medical Loss Ratio and rebate amount per market
+segment (80% individual+small_group / 85% large_group).
+Output { mlr, threshold, rebate_owed, members_eligible }.</pre>
+        <p class="meta">input: premiums + claims &middot; output: <b>{mlr, rebate}</b> &middot; rule-class &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/cms-star" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">19 &middot; cms-star &middot; synth-rule (class 1)</div>
+        <h3>CMS Star contributor extractor</h3>
+        <pre>Weight measure-level performance by CMS Star category
+(outcome 3x, intermediate 3x, pt-experience 4x, access 4x,
+process 1x, improvement 5x). Output contributor_table.</pre>
+        <p class="meta">input: measure scores &middot; output: <b>{star_contrib}</b> &middot; gate K &ge; 0.93 &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/npi-directory" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">20 &middot; npi-directory &middot; rule (class 0)</div>
+        <h3>NPI directory lookup + Luhn validator</h3>
+        <pre>Validate NPI checksum (Luhn-mod-10 with prefix 80840).
+Lookup via NPPES API v2.1 (or local cache).
+Output { npi, valid, individual_or_org, ... }.</pre>
+        <p class="meta">input: NPI string &middot; output: <b>{npi, valid, record}</b> &middot; rule-class &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
+      </a>
+
+      <a class="hi-tpl" href="/insurance/templates/icd10-cpt-crosswalk" style="text-decoration:none;color:inherit;display:block">
+        <div class="lbl">21 &middot; icd10-cpt-crosswalk &middot; rule (class 0)</div>
+        <h3>ICD-10-CM &harr; CPT crosswalk</h3>
+        <pre>Bidirectional ICD-10-CM &harr; CPT lookup over a 20-key seed
+table (10 diagnosis + 10 procedure). Hot-paths I10, E11.x,
+J45.909, Z00.00. Output { matches, confidence }.</pre>
+        <p class="meta">input: ICD or CPT code &middot; output: <b>{matches}</b> &middot; rule-class &middot; <span style="color:var(--ink)">open template &rarr;</span></p>
       </a>
     </div>
   </section>

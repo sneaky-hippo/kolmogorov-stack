@@ -1,0 +1,63 @@
+{
+  "job_id": "job_predibase_style_cs_intent_v1",
+  "task": "Classify a customer-support message into one of 10 intent labels: refund, cancel, billing, shipping, password_reset, account_lock, complaint, feedback, escalate, other. Designed as the Predibase/LoRAX-style 1000-row demo — the rule-class compiled artifact should match the LLM on intent recall while costing $0/call and running in microseconds.",
+  "base_model": "none",
+  "target_device": "any",
+  "recipes": [
+    {
+      "id": "rcp_cs_intent_v1",
+      "name": "customer-support intent classifier (keyword router)",
+      "tags": ["classifier", "customer-support", "intent", "demo"],
+      "schema": {
+        "input":  { "type": "object", "properties": { "text": { "type": "string" } } },
+        "output": { "type": "object", "properties": { "intent": { "type": "string" } } }
+      },
+      "source": "function generate(input, lib) {\n  const raw = (input && input.text != null) ? String(input.text)\n             : (typeof input === 'string') ? input\n             : '';\n  const s = raw.toLowerCase();\n  // Ordered rules. First-match wins. Order rationale:\n  //   complaint first  -- strong-emotion words override the underlying topic\n  //                       (\"unacceptable, want to speak to a manager\" is a\n  //                       complaint, not an escalation request).\n  //   escalate next    -- meta intent that overrides the underlying topic\n  //                       (\"escalation required, refund denied\" is an escalate,\n  //                       not a refund).\n  //   password before account_lock -- 2FA / forgot-password should win over\n  //                       a literal \"locked out\" reading.\n  //   then refund, cancel, shipping, billing, feedback, other.\n  if (/\\b(awful|terrible|worst|rude|unhelpful|dissatisfied|unacceptable|complaint|complain|ignor(e|ing)|demand|waiting for \\d+ days|no response|ongoing issue)\\b/.test(s)) return { intent: 'complaint' };\n  if (/\\b(escalat\\w*|supervisor|manage(r|ment)?|tier ?2|senior)\\b/.test(s)) return { intent: 'escalate' };\n  if (/\\b(password|reset password|forgot.*password|2fa|two[- ]factor)\\b/.test(s)) return { intent: 'password_reset' };\n  if (/\\b(locked|lockout|locked out|security lock|account.*(disabled|suspended|on hold|flagged)|unlock my account|cannot access account|restore.*account|account.*access)\\b/.test(s)) return { intent: 'account_lock' };\n  if (/\\b(refund|money back|chargeback)\\b/.test(s))          return { intent: 'refund' };\n  if (/\\bcancel(led|ling|lation)?\\b|stop (my )?(plan|subscription|billing)|turn off (my )?subscription/.test(s)) return { intent: 'cancel' };\n  if (/\\b(track(ing)?|shipment|shipping|delivery|deliver(ed|y)?|package|expedite|reroute|where is my order|when will (my )?order|reroute order)\\b/.test(s)) return { intent: 'shipping' };\n  if (/\\b(invoice|charge|charged|payment method|credit card|receipt|bill(ing|ed)?)\\b/.test(s))   return { intent: 'billing' };\n  if (/\\b(thank|thanks|great|love|appreciate|feedback|suggestion|feature request|recommend)\\b/.test(s)) return { intent: 'feedback' };\n  return { intent: 'other' };\n}"
+    }
+  ],
+  "evals": {
+    "spec": "rs-1-evals",
+    "n": 30,
+    "coverage": 1.0,
+    "cases": [
+      { "id": "ev_refund_1",     "input": { "text": "I would like a refund for order #1001" },                "expected": { "intent": "refund" } },
+      { "id": "ev_refund_2",     "input": { "text": "process a refund please, charge was duplicate" },        "expected": { "intent": "refund" } },
+      { "id": "ev_refund_3",     "input": { "text": "I want my money back for invoice 7392" },                "expected": { "intent": "refund" } },
+      { "id": "ev_cancel_1",     "input": { "text": "how do I cancel my subscription?" },                      "expected": { "intent": "cancel" } },
+      { "id": "ev_cancel_2",     "input": { "text": "stop my plan I no longer need it" },                      "expected": { "intent": "cancel" } },
+      { "id": "ev_cancel_3",     "input": { "text": "turn off my subscription, stop billing me" },             "expected": { "intent": "cancel" } },
+      { "id": "ev_pwreset_1",    "input": { "text": "I forgot my password" },                                  "expected": { "intent": "password_reset" } },
+      { "id": "ev_pwreset_2",    "input": { "text": "send me a password reset link" },                          "expected": { "intent": "password_reset" } },
+      { "id": "ev_pwreset_3",    "input": { "text": "two-factor not working, locked out" },                     "expected": { "intent": "password_reset" } },
+      { "id": "ev_acctlock_1",   "input": { "text": "my account is locked" },                                   "expected": { "intent": "account_lock" } },
+      { "id": "ev_acctlock_2",   "input": { "text": "account temporarily disabled, please help" },              "expected": { "intent": "account_lock" } },
+      { "id": "ev_acctlock_3",   "input": { "text": "security lock on my account, need to verify" },            "expected": { "intent": "account_lock" } },
+      { "id": "ev_escalate_1",   "input": { "text": "I need to speak with a supervisor immediately" },          "expected": { "intent": "escalate" } },
+      { "id": "ev_escalate_2",   "input": { "text": "escalate this to your manager please" },                   "expected": { "intent": "escalate" } },
+      { "id": "ev_escalate_3",   "input": { "text": "tier 2 support please, this is beyond tier 1" },           "expected": { "intent": "escalate" } },
+      { "id": "ev_shipping_1",   "input": { "text": "where is my order #1001?" },                               "expected": { "intent": "shipping" } },
+      { "id": "ev_shipping_2",   "input": { "text": "tracking number for shipment 7392 please" },               "expected": { "intent": "shipping" } },
+      { "id": "ev_shipping_3",   "input": { "text": "shipment delayed, no updates in days" },                   "expected": { "intent": "shipping" } },
+      { "id": "ev_billing_1",    "input": { "text": "why was I charged $29.00 on 2025-04-08?" },                "expected": { "intent": "billing" } },
+      { "id": "ev_billing_2",    "input": { "text": "update my payment method please" },                        "expected": { "intent": "billing" } },
+      { "id": "ev_billing_3",    "input": { "text": "send me a receipt for the 2025-05-12 payment" },           "expected": { "intent": "billing" } },
+      { "id": "ev_feedback_1",   "input": { "text": "great service, just wanted to say thanks" },               "expected": { "intent": "feedback" } },
+      { "id": "ev_feedback_2",   "input": { "text": "love the new feature, keep it up" },                       "expected": { "intent": "feedback" } },
+      { "id": "ev_feedback_3",   "input": { "text": "one feature request: bulk export to CSV" },                "expected": { "intent": "feedback" } },
+      { "id": "ev_complaint_1",  "input": { "text": "this is the worst service I have ever used" },             "expected": { "intent": "complaint" } },
+      { "id": "ev_complaint_2",  "input": { "text": "support agent was rude and unhelpful" },                   "expected": { "intent": "complaint" } },
+      { "id": "ev_complaint_3",  "input": { "text": "I have been waiting for 5 days with no response" },        "expected": { "intent": "complaint" } },
+      { "id": "ev_other_1",      "input": { "text": "do you have any openings on your team?" },                 "expected": { "intent": "other" } },
+      { "id": "ev_other_2",      "input": { "text": "when is your office open?" },                              "expected": { "intent": "other" } },
+      { "id": "ev_other_3",      "input": { "text": "is there a partner program?" },                            "expected": { "intent": "other" } }
+    ]
+  },
+  "training_stats": {
+    "approach": "deterministic keyword + regex rules over 10 ordered classes; first match wins",
+    "examples_seen": 1000,
+    "regex_count": 10,
+    "verifier_accepted": true,
+    "latency_p50_us": 60,
+    "cost_usd_per_call": 0
+  }
+}

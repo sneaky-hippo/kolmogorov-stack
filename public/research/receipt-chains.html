@@ -176,7 +176,7 @@
     </div>
 
     <h2 id="problem">The provenance problem.</h2>
-    <p>You hand a fine-tuned model to a regulator. They ask three questions. What data trained it. What code produced it. What base model it descended from. The honest answer for most production fine-tunes today is a Slack thread, a Notion page, and a hope that the engineer who ran the job has not switched companies. The model itself is a tarball of weights with a filename and no embedded provenance.</p>
+    <p>You hand a fine-tuned model to a regulator. They ask three questions. What data trained it. What code produced it. What base model it descended from. The evidenced answer for most production fine-tunes today is a Slack thread, a Notion page, and a hope that the engineer who ran the job has not switched companies. The model itself is a tarball of weights with a filename and no embedded provenance.</p>
     <p>A receipt chain solves this at the artifact layer. <b>Every <code>.kolm</code> file carries an in-band proof of how it was built, signed under a tenant key, verifiable from the bytes alone.</b> No network call. No registry lookup. No trust in our continued existence. The verifier is open-source Rust; you can vendor it, embed it, and run it in an air-gapped network.</p>
 
     <h2 id="chain">The five-step chain.</h2>
@@ -189,6 +189,8 @@
 <span class="kw">step 5</span>  package  eval_set_hash     &rarr;  artifact_hash</pre>
 
     <p>Each <code>output_hash</code> is a sha256 over canonical-JSON of the corresponding input. The <code>spec_hash</code> is over the static artifact specification version (so a future format break invalidates old chains). The <code>task_hash</code> is over the user-supplied task description. The <code>training_stats_hash</code> is over the run-level metrics the trainer emitted. The <code>recipes_hash</code> is over the deterministic recipe registry the compiler synthesized. The <code>eval_set_hash</code> is over the held-out cases the K-score was computed against. The <code>artifact_hash</code> is over the canonical join of every emitted file's sha256.</p>
+
+    <p><b>Waves 164-167 extend the chain.</b> The original five-step ladder is unchanged; four additional optional blocks now bind into <code>artifact_hash_input</code> alongside the receipt body: <b>external + adversarial holdouts</b> (RS-1 &sect;7.12, R-axis, shipped wave 164), <b>tenant shadow corpus</b> (&sect;7.13, residency-preserving, wave 165), <b>third-party auditor attestation</b> (&sect;7.14, independent co-signer, wave 166), and <b>drift detection + supersession chain</b> (&sect;7.15, M+3/M+4 lifecycle tiers, wave 167). Verifier checks #20-#24 enforce the new blocks; receipts written before wave 164 still verify because each block is optional and absence is canonical. See <a href="/drift" style="color:#10b981">/drift</a> for the lifecycle ladder and <a href="/spec/rs-1" style="color:#10b981">/spec/rs-1</a> for the per-section schema.</p>
 
     <p>The Node reference implementation is short:</p>
 

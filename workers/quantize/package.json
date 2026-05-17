@@ -1,0 +1,30 @@
+{
+  "name": "@kolmogorov/quantize-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Isolated kolm quantization worker. Heavy ML deps (bitsandbytes/auto-gptq/optimum/torch/accelerate) live HERE, not in the root package. Root kolm install stays light; tenants opt in to the worker when they have the toolchain.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "quantize.mjs",
+  "bin": {
+    "kolm-quantize-worker": "quantize.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "doctor": "node quantize.mjs --doctor"
+  },
+  "dependencies": {},
+  "optionalDependencies": {},
+  "python": {
+    "requires": [
+      "bitsandbytes>=0.43",
+      "torch>=2.2",
+      "auto-gptq>=0.7",
+      "optimum>=1.20",
+      "accelerate>=0.30"
+    ],
+    "note": "Install in a separate Python venv. The Node entrypoint detects whether `python3` + `torch` + `bitsandbytes` are importable and only invokes scripts/quantize.py when all three succeed; otherwise it stops with an honest manifest naming what is missing."
+  }
+}
