@@ -263,6 +263,9 @@ export const MODELS = [
     modalities: ['text', 'image', 'audio', 'video'],
     notes: 'On-device Gemma. Per-Layer Embeddings: 2B effective, 5B raw weights.',
     use_for: ['mobile', 'edge', 'multimodal', 'on-device-clinical-intake'],
+    // W349: explicit mobile-target flag — Gemma 3n was designed and verified
+    // for phone-class devices (MediaPipe LLM Inference, MLC, llama.cpp arm64).
+    mobile_friendly: true,
   },
   {
     id: 'google/gemma-3n-E4B-it',
@@ -280,6 +283,8 @@ export const MODELS = [
     modalities: ['text', 'image', 'audio', 'video'],
     notes: 'On-device Gemma. 4B effective, 8B raw weights. Stronger than E2B.',
     use_for: ['mobile', 'edge', 'multimodal', 'on-device-clinical-intake'],
+    // W349: explicit mobile-target flag — see E2B note.
+    mobile_friendly: true,
   },
 
   // ----- MedGemma family (Google, medical Q&A; HIPAA workloads need BAA) -----
@@ -488,7 +493,11 @@ export const TIER_BY_USE = {
   legal: 'Qwen/Qwen2.5-3B-Instruct',
   code: 'Qwen/Qwen2.5-Coder-7B-Instruct',
   edge: 'Qwen/Qwen2.5-0.5B-Instruct',
-  mobile: 'Qwen/Qwen2.5-0.5B-Instruct',
+  // W349: mobile = phone-class on-device. Gemma 3n E2B was designed by
+  // Google for this tier (selective activation, MediaPipe-deployable,
+  // verified on Pixel 8 / iPhone 15 Pro). Qwen 0.5B is too weak for
+  // multilingual on-device intake — keep it as the wasm/edge default.
+  mobile: 'google/gemma-3n-E2B-it',
   wasm: 'Qwen/Qwen2.5-0.5B-Instruct',
   laptop: 'Qwen/Qwen2.5-1.5B-Instruct',
   classifier: 'Qwen/Qwen2.5-1.5B-Instruct',
@@ -587,6 +596,14 @@ export function recommend(reqs = {}) {
 
     // explicit-use bonus
     if (m.use_for.includes(use)) s += 0.20;
+
+    // W349: mobile-target boost. When the caller asks for a mobile pick,
+    // a phone-verified model (Gemma 3n, etc.) should beat a small generic
+    // model on license alone. mobile_friendly is a curator-set flag — the
+    // model card must claim phone deployment + a runtime path (MediaPipe,
+    // MLC, llama.cpp arm64) before it gets set. Bonus is large enough
+    // (+0.40) to overcome Apache-vs-Gemma license delta (0.30 vs 0.15).
+    if (use === 'mobile' && m.mobile_friendly === true) s += 0.40;
 
     // device fit gating: hard-fail if won't fit on target_device.
     if (reqs.target_device) {

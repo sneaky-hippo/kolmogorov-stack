@@ -67,15 +67,18 @@ test('W271 #2 - hero H1 includes an ownership pain beat (W334: PHI dropped as ni
     'H1 region must carry the ownership pain beat after the W334 rescue');
 });
 
-test('W271 #3 - hero H1 is a two-beat rent-vs-own pair (W334: 3rd GPT-5 beat dropped)', () => {
+test('W271 #3 - hero H1 is a two-beat rent-vs-own pair (W334: 3rd GPT-5 beat dropped; W335: spans may carry additional classes)', () => {
   // W334 trimmed the H1 from three stacked "Stop X" beats down to two so the
   // hero reads cleanly. The dropped third beat ("Stop rewriting your stack
   // when GPT-5 ships") was the weakest of the three; the rent-vs-own framing
   // now carries the message in two lines without piling up.
+  // W335 widened the marker match to allow additional classes on the .stop /
+  // .pain beat spans (the second-pass hero rescue added a w335-h1-sub class
+  // to render the beats as a muted sub-headline under the new H1 claim).
   const HERO = heroSlice(2000);
   const h1Match = HERO.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
   assert.ok(h1Match, 'H1 must exist');
-  const beats = (h1Match[1].match(/<span\s+class="(stop|pain)"/g) || []).length;
+  const beats = (h1Match[1].match(/<span\s+class="[^"]*\b(stop|pain)\b[^"]*"/g) || []).length;
   assert.ok(beats === 2,
     `H1 must carry exactly 2 rent-vs-own beats after W334 (saw ${beats})`);
 });
@@ -188,21 +191,22 @@ test('W271 #17 - /kscore-leaderboard.json file ships and has a non-empty rows ar
 // SEO category claim retained (no longer in H1)
 // =====================================================================
 
-test('W271 #18 - "the AI compiler" category claim still present as a SEO chip (not H1)', () => {
+test('W271 #18 - "the AI compiler" category claim still present as a SEO chip in the hero region', () => {
   // The SEO chip sits just above the H1 inside the hero <section>; we scan the
   // hero section block from <section ... data-w271="hero"> through the H1 region.
+  // W335 second-pass hero rescue: the new H1 leads with the "The AI compiler."
+  // claim as the visible eye line; the SEO chip above the H1 still carries the
+  // category claim so the SEO marker test still passes via the data-w271 chip.
+  // The earlier H1-exclusion assertion was a copy-only constraint and conflicted
+  // with the W335 directive ("H1 ≤6 words, suggested: <h1>The AI compiler.</h1>"),
+  // so it is dropped in favor of the marker assertion below.
   const secStart = INDEX.search(/<section[^>]*data-w271="hero"/i);
   assert.ok(secStart >= 0, 'hero section with data-w271="hero" must exist');
   const HERO_FULL = INDEX.slice(secStart, secStart + 6000);
   assert.match(HERO_FULL, /data-w271="seo-chip"/,
-    'SEO chip must exist as the new home for the "AI compiler" claim');
+    'SEO chip must exist as the home for the "AI compiler" claim');
   assert.match(HERO_FULL, /the AI compiler/i,
     '"the AI compiler" must remain prominent in the hero region');
-  // And it must NOT be inside the H1 element itself.
-  const h1Match = HERO_FULL.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-  assert.ok(h1Match, 'H1 must exist');
-  assert.ok(!/the AI compiler/i.test(h1Match[1]),
-    '"the AI compiler" must no longer be inside the H1 element itself');
 });
 
 // =====================================================================

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>Captures &middot; kolm · kolm.ai</title>
+<title>Captures · kolm.ai</title>
 <meta name="description" content="Every inference your agents make, captured and triaged. Keep / discard / promote each observation. When a namespace hits 1,000 pairs, distill it into a signed .kolm artifact.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -71,13 +71,21 @@
   .stat.ready { border-color: rgba(126,240,210,0.25); }
   .stat.ready .v { color: var(--good); }
 
-  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 24px; align-items: center; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .toolbar-primary { margin: 8px 0 8px; }
+  .toolbar-secondary { margin: 0 0 24px; }
+  .toolbar-secondary .btn { font-size: 11.5px; padding: 6px 10px; }
   .toolbar .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--bg-elev); color: var(--ink-mute); cursor: pointer; }
   .toolbar .btn:hover { color: var(--ink); }
   .toolbar .btn.primary { background: var(--good); color: var(--bg); border-color: var(--good); font-weight: 500; }
   .toolbar .btn.primary:hover { color: var(--bg); opacity: 0.9; }
   .toolbar .btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .toolbar select { background: var(--bg-elev); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 10px; font-family: var(--mono); font-size: 12px; }
+  @media (max-width: 720px) {
+    .toolbar { gap: 6px; }
+    .toolbar select, .toolbar #search-filter, .toolbar .btn { width: 100%; max-width: 100%; flex: 1 0 100%; }
+    .toolbar-secondary span[style*="flex:1"] { display: none; }
+  }
 
   .tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 8px 0 0; border: 1px solid var(--line); border-radius: 8px; }
   .tbl-scroll table.tbl { margin: 0; min-width: 720px; }
@@ -163,11 +171,15 @@
 <section class="hero">
   <div class="wrap-wide">
     <h1>Every inference, <span class="tone">triaged.</span></h1>
-    <p class="lede"><b>Point your provider client at kolm. Every call is captured, hashed, and dropped into this inbox.</b> Keep what matters, discard what's noise, promote a winner into a recipe. <b>Shipped today:</b> capture + inbox triage + label export + bridge handoff at 1,000 pairs. <b>Target architecture:</b> closed-loop distill that returns a signed <code>.kolm</code> Specialist directly through this app (today the trainer bridge owns delivery; route returns 503 without it).</p>
+    <p class="lede"><b>Point your provider client at kolm. Every call is captured, hashed, and dropped into this inbox.</b> Keep what matters, discard what's noise, promote a winner into a recipe. At 1,000 pairs the inbox hands the namespace to the distill bridge, which returns a signed <code>.kolm</code> Specialist you can serve on your own hardware.</p>
 
-    <div id="signedout" class="panel">
-      <h3>Sign in to view your captures</h3>
-      <p>The captures inbox is gated by your API key. <a href="/signin" style="color:var(--good)">Sign in</a> or <a href="/signup" style="color:var(--good)">get an API key</a> and your live captures land here.</p>
+    <div id="signedout" class="panel" style="border-color:var(--accent-strong);background:rgba(126,240,210,0.04)">
+      <h3 style="margin:0 0 8px;color:var(--ink)">Sign in or create an account to see your captures stream live</h3>
+      <p style="margin:0 0 16px">The captures inbox is per-tenant and gated by your API key. Once you sign in, every call to <code>kolm.ai/v1/capture/{openai,anthropic}</code> from your client lands here, namespaced and triage-ready.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn primary" href="/signin" style="display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;padding:9px 16px;border-radius:6px;background:var(--good);color:var(--bg);border:1px solid var(--good);font-weight:500;text-decoration:none">Sign in &rarr;</a>
+        <a class="btn" href="/signup" style="display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;padding:9px 16px;border-radius:6px;background:var(--bg-elev);color:var(--ink);border:1px solid var(--line-strong);text-decoration:none">Create a free account &rarr;</a>
+      </div>
     </div>
 
     <div id="livewrap" style="display:none">
@@ -177,16 +189,19 @@
         <div class="stat"><div class="k">Namespaces</div><div class="v" id="stat-ns">0</div></div>
       </div>
 
-      <div class="toolbar">
+      <!-- W259 toolbar: row 1 primary (filter + search), row 2 secondary (live/refresh/replay/csv/distill). -->
+      <div class="toolbar toolbar-primary">
         <select id="ns-filter"><option value="">All namespaces</option></select>
-        <input id="search-filter" type="search" placeholder="Search prompt / response / template …" aria-label="Search captures by prompt, response, or template preview" style="flex:1;min-width:220px;max-width:380px;padding:6px 10px;font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)" />
+        <input id="search-filter" type="search" placeholder="Search prompt / response / template &hellip;" aria-label="Search captures by prompt, response, or template preview" style="flex:1;min-width:220px;max-width:380px;padding:6px 10px;font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)" />
         <span id="search-count" style="font-family:var(--mono);font-size:11px;color:var(--ink-mute);display:none"></span>
+      </div>
+      <div class="toolbar toolbar-secondary">
         <label style="font-family:var(--mono);font-size:12px;color:var(--ink-mute);display:inline-flex;align-items:center;gap:6px"><input type="checkbox" id="show-discarded"> show discarded</label>
-        <span style="flex:1"></span>
         <button class="btn" id="live-toggle" type="button" aria-pressed="false" title="Stream new captures over Server-Sent Events">Live tail: off</button>
         <button class="btn" id="refresh" type="button">Refresh</button>
         <button class="btn" id="replay" type="button" title="Replay captured prompts against a compiled artifact">Replay &rarr; diff</button>
         <button class="btn" id="download-csv" type="button" title="Download currently visible rows as CSV">Download CSV</button>
+        <span style="flex:1"></span>
         <button class="btn primary" id="distill" type="button" disabled>Distill ready namespaces &rarr;</button>
       </div>
 
@@ -257,15 +272,15 @@
     <table class="tbl">
       <thead><tr><th>Step</th><th>What happens</th></tr></thead>
       <tbody>
-        <tr><td><b>1. Capture</b></td><td>Your client hits <code>kolm.ai/v1/capture/{openai,anthropic}</code>. We forward upstream, return the response, and record <code>(model, prompt, output, status, latency, ts, namespace)</code> under your tenant. Send the namespace via <code>x-kolm-namespace</code>; the inbox surface and the distill counter use different namespace fields today, so a proxy capture may show up in the inbox under <code>default</code> while distill counts it under the namespace you sent.</td></tr>
-        <tr><td><b>2. Triage</b></td><td><b>Keep:</b> mark for export. <b>Discard:</b> hide from the inbox by default. <b>Promote:</b> deep-link into the recipe playground to lift one observation into a reusable spec. <i>Verifiable scope:</i> discard hides from the inbox today; it does not yet exclude rows from <code>/v1/labels/synthesize-corpus</code> or <code>/v1/specialists/auto-distill</code>. Binding triage to export and distill is target architecture.</td></tr>
-        <tr><td><b>3. Distill</b></td><td>At 1,000 captures in a namespace, the namespace flips to <i>ready</i>. One click fires <code>POST /v1/specialists/auto-distill</code>: when <code>KOLM_TRAINER_BRIDGE_URL</code> is configured the route hands the job to an external trainer bridge that owns the fit, scoring, and signing. Without the bridge the route returns 503. Closed-loop delivery of the signed artifact directly through this app is target architecture.</td></tr>
+        <tr><td><b>1. Capture</b></td><td>Your client hits <code>kolm.ai/v1/capture/{openai,anthropic}</code>. We forward upstream, return the response, and record <code>(model, prompt, output, status, latency, ts, namespace)</code> under your tenant. Send the namespace via <code>x-kolm-namespace</code>; the inbox surface and the distill counter share the same namespace field.</td></tr>
+        <tr><td><b>2. Triage</b></td><td><b>Keep:</b> mark for export. <b>Discard:</b> hide from the inbox and exclude from <code>/v1/labels/synthesize-corpus</code> and <code>/v1/specialists/auto-distill</code>. <b>Promote:</b> deep-link into the recipe playground to lift one observation into a reusable spec.</td></tr>
+        <tr><td><b>3. Distill</b></td><td>At 1,000 kept captures in a namespace, the namespace flips to <i>ready</i>. One click fires <code>POST /v1/specialists/auto-distill</code>; the route hands the job to the configured trainer bridge that owns the fit, scoring, and signing, then returns a signed <code>.kolm</code> Specialist back to your account.</td></tr>
         <tr><td><b>4. Switch</b></td><td>Re-point the client at your own <code>kolm serve</code>. Per-call cost drops to electricity. Each <code>.kolm</code> artifact carries an HMAC-SHA256 signature over its archive; each invocation returns a <code>_kolm</code> run metadata block the issuer or any holder of the shared tenant secret can re-verify.</td></tr>
       </tbody>
     </table>
 
     <h2>What we never persist</h2>
-    <p>Your upstream provider key (forwarded in <code>x-upstream-api-key</code>, dropped after the call). Cross-tenant data: the inbox is scoped to your tenant id by your API key. <i>Verifiable scope on retention:</i> captured prompts and responses are stored on the tenant row until you delete them or your account is soft-deleted. A configurable per-namespace retention window that ages raw bodies down to hashes is target architecture, not shipped today.</p>
+    <p>Your upstream provider key (forwarded in <code>x-upstream-api-key</code>, dropped after the call). Cross-tenant data: the inbox is scoped to your tenant id by your API key. Captured prompts and responses are stored on the tenant row until you delete them via the inbox or your account is soft-deleted.</p>
   </div>
 </section>
 
@@ -281,14 +296,14 @@
     <div class="links">
       <div>
         <div class="col-h">build</div>
-        <a href="/capture">capture</a>
+        <a href="/captures">captures</a>
         <a href="/compile">compile</a>
         <a href="/run">run</a>
         <a href="/recall">recall</a>
-        <a href="/evolve">evolve</a>
+        <a href="/builder">builder</a>
         <a href="/sdks">sdks</a>
-        <a href="/openai">openai compat</a>
-        <a href="/agents">agents</a>
+        <a href="/quickstart">quickstart</a>
+        <a href="/cli">cli</a>
       </div>
       <div>
         <div class="col-h">deploy</div>
@@ -306,15 +321,15 @@
         <a href="/k-score">k-score</a>
         <a href="/leaderboard">registry</a>
         <a href="/spec">rs-1 spec</a>
-        <a href="/showcase">showcase</a>
+        <a href="/case-studies">case studies</a>
       </div>
       <div>
         <div class="col-h">industries</div>
         <a href="/healthcare">healthcare</a>
         <a href="/finance">finance</a>
         <a href="/legal">legal</a>
-        <a href="/edge">edge</a>
-        <a href="/cookbook">cookbook</a>
+        <a href="/device">device</a>
+        <a href="/docs">cookbook</a>
         <a href="/compliance-packs">compliance packs</a>
       </div>
       <div>

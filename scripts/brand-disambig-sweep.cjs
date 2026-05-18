@@ -46,11 +46,20 @@ function normalizeTitle(html) {
   const orig = m[1];
   let next = orig.trim();
 
-  if (/[·|]\s*kolm\.ai\s*$/i.test(next)) {
-    return { html, changed: false };
+  // Collapse double-suffix bug ("X · kolm.ai · kolm.ai" or "X · kolm.ai · kolm.ai")
+  next = next.replace(/((?:·|&middot;|\|)\s*kolm\.ai\s*){2,}$/i, '· kolm.ai');
+
+  // Pipe-separator → middot
+  if (/\|\s*kolm\.ai\s*$/i.test(next)) {
+    next = next.replace(/\|\s*kolm\.ai\s*$/i, '· kolm.ai');
   }
-  if (/[·|]\s*kolm\s*$/i.test(next)) {
-    next = next.replace(/([·|])\s*kolm\s*$/i, '$1 kolm.ai');
+
+  if (/(·|&middot;)\s*kolm\.ai\s*$/i.test(next)) {
+    const updated = html.replace(/<title>[^<]*<\/title>/i, `<title>${next}</title>`);
+    return { html: updated, changed: updated !== html };
+  }
+  if (/(·|&middot;|\|)\s*kolm\s*$/i.test(next)) {
+    next = next.replace(/(·|&middot;|\|)\s*kolm\s*$/i, '· kolm.ai');
   } else {
     next = `${next} · kolm.ai`;
   }

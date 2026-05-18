@@ -7,6 +7,7 @@
 import 'dotenv/config';
 import { libraryDescription, subroutines } from './library.js';
 import { compileJs, verify, hashSource, QUALITY_GATE } from './verifier.js';
+import { generateVariations as llmGenerateVariations, isConfigured as llmIsConfigured, describeConfig as llmDescribe } from './llm-call.js';
 
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-7';
@@ -299,22 +300,21 @@ export { QUALITY_GATE };
 
 // ---------- seedsNewFromBrief (Wave 199) ----------
 //
-// Natural-language brief -> deterministic candidate training rows.
-// Companion to scaffoldRecipeFromNl (W197): that wave scaffolds a recipe
-// spec, this wave fans out candidate seed examples. Both share the
-// air-gap-first contract: deterministic output, no network calls, no
-// telemetry. The networked teacher path is NOT YET WIRED.
+// Natural-language brief -> candidate training rows. Two paths:
+//   1. Air-gap mode (airGap:true) — deterministic; pulls from a per-class
+//      library of domain-keyed starter rows (CARC denial codes 50/197/204/16,
+//      EDI 837 fragments, HEDIS measure stubs, etc.). No network, no telemetry.
+//   2. Networked mode (default) — when KOLM_LLM_* env vars are configured,
+//      calls a real LLM endpoint via src/llm-call.js to fan the air-gap
+//      seed library into N synthesized variations. Concurrency 4, retry 2.
+//      When the LLM is unconfigured the path degrades to a deterministic
+//      template+synonym augmentation so the user always gets something.
 //
 // Honest scope contract:
 //   - candidates are CANDIDATES, not labels. They must go through
 //     `kolm seeds split` + `kolm eval` + the K-score gate before any
 //     promotion. The flow is "scaffold -> validate -> gate", not
 //     "scaffold -> ship".
-//   - air-gap mode pulls from a per-class library of domain-keyed
-//     starter rows (CARC denial codes 50/197/204/16, EDI 837 fragments,
-//     HEDIS measure stubs, etc.). These are deterministic and reproducible.
-//   - networked teacher mode is NOT YET WIRED: returns a single sentinel
-//     row explaining the user must pass --air-gap for now.
 //
 // Output shape:
 //   {
@@ -322,7 +322,7 @@ export { QUALITY_GATE };
 //     candidates: [{ input, output, tags }],
 //     gate_suggestion,    // suggested K-score gate per class
 //     next_steps: [string],
-//     network_status,     // 'air_gap' | 'not_yet_wired'
+//     network_status,     // 'air_gap' | 'networked_llm' | 'networked_fallback'
 //     class_inference_basis,
 //     note,
 //   }
@@ -456,7 +456,11 @@ function seedsNextSteps(klass, count) {
 // `count` defaulting: 10 candidates is what scaffoldRecipeFromNl (W197)
 // also returns; keep parity so callers chaining `kolm nl` -> `kolm seeds new`
 // see consistent shape sizes.
-export function seedsNewFromBrief(opts) {
+//
+// Returns a Promise because the networked path makes real LLM calls. The
+// air-gap path resolves synchronously inside the same promise so callers
+// can `await` either branch with a single shape.
+export async function seedsNewFromBrief(opts) {
   const o = opts || {};
   const brief = String(o.brief || '').trim();
   const classHint = o.classHint || null;
@@ -475,71 +479,152 @@ export function seedsNewFromBrief(opts) {
   const inferred = seedsInferClass(brief, classHint);
   const klass = inferred.class;
   const gate = seedsGateForClass(klass);
+  const lib = seedsLibraryFor(klass);
 
-  // Networked path: NOT YET WIRED. Same contract as scaffoldRecipeFromNl
-  // (W197): caller must opt into air-gap explicitly today. Emit a single
-  // sentinel row that explains the situation so callers cannot mistake
-  // it for real teacher output.
-  if (!airGap) {
-    const sentinel = {
-      input: `request: ${brief.slice(0, 200)}`,
-      output: 'NOT YET WIRED: pass --air-gap (or airGap:true) for deterministic candidates today. Teacher API path lands in a later wave.',
-      tags: ['synthesized', 'not_yet_wired'],
-      synthesized: true,
-      source: 'sentinel-not-yet-wired',
-    };
+  // Air-gap path: deterministic. Pull from the per-class library, tile to
+  // `count` if the library is shorter, annotate the first row with a
+  // verbatim slice of the brief so the output is not 100% generic. Same
+  // brief + same class + same count -> same bytes.
+  if (airGap) {
+    const candidates = buildAirGapCandidates(brief, klass, lib, count);
     return {
       ok: true,
       class: klass,
-      candidates: [sentinel],
+      candidates,
       gate_suggestion: gate,
-      next_steps: [
-        'rerun with --air-gap to get deterministic candidate rows now',
-        'the networked teacher path is reserved for a later wave',
-      ],
-      network_status: 'not_yet_wired',
+      next_steps: seedsNextSteps(klass, candidates.length),
+      network_status: 'air_gap',
       class_inference_basis: inferred.basis,
       teacher_vendor: teacherVendor,
-      note: 'candidates are CANDIDATES, not labels. K-score against candidates is not ground truth.',
+      note: 'candidates are CANDIDATES, not labels. Run `kolm seeds split` + `kolm eval` before promoting any row to ground truth.',
     };
   }
 
-  // Air-gap path: deterministic. Pull from the per-class library,
-  // tile to `count` if the library is shorter, annotate the first
-  // row with a verbatim slice of the brief so the output is not 100%
-  // generic. Same brief + same class + same count -> same bytes.
-  const lib = seedsLibraryFor(klass);
-  const candidates = [];
-  for (let i = 0; i < count; i++) {
-    const base = lib[i % lib.length];
-    const row = {
-      input: base.input,
-      output: base.output,
-      tags: ['synthesized', `class:${klass}`, `idx:${i}`],
-      synthesized: true,
-      source: 'deterministic-air-gap',
-    };
-    candidates.push(row);
-  }
-  if (candidates.length > 0) {
-    candidates[0] = {
-      input: `request: ${brief.slice(0, 200)}  ||  ${candidates[0].input}`,
-      output: candidates[0].output,
-      tags: candidates[0].tags.concat(['brief-anchor']),
-      synthesized: true,
-      source: 'deterministic-air-gap',
-    };
+  // Networked path: call the configured LLM to fan out the air-gap library
+  // seed into `count` semantically-equivalent variations preserving the
+  // input->output mapping. Concurrency 4, retry 2 (handled inside llm-call).
+  if (llmIsConfigured()) {
+    const seed = lib[0];
+    let rows = [];
+    try {
+      rows = await llmGenerateVariations({
+        seed,
+        count,
+        hint: `Domain: ${klass}. Brief: ${brief.slice(0, 200)}`,
+      });
+    } catch (_) {
+      // Fall through to the deterministic fallback path below.
+      rows = [];
+    }
+    if (rows.length > 0) {
+      const candidates = rows.slice(0, count).map((r, i) => ({
+        input: r.input,
+        output: r.output,
+        tags: ['synthesized', `class:${klass}`, `idx:${i}`, 'networked'],
+        synthesized: true,
+        source: 'networked-llm',
+      }));
+      if (candidates.length > 0) {
+        candidates[0] = { ...candidates[0], tags: candidates[0].tags.concat(['brief-anchor']) };
+      }
+      return {
+        ok: true,
+        class: klass,
+        candidates,
+        gate_suggestion: gate,
+        next_steps: seedsNextSteps(klass, candidates.length),
+        network_status: 'networked_llm',
+        llm: llmDescribe(),
+        class_inference_basis: inferred.basis,
+        teacher_vendor: teacherVendor,
+        note: 'candidates are CANDIDATES, not labels. Run `kolm seeds split` + `kolm eval` before promoting any row to ground truth.',
+      };
+    }
+    // Configured LLM responded with nothing usable — fall back deterministically.
   }
 
+  // Deterministic networked fallback: template+synonym augmentation over
+  // the air-gap library so the user always gets `count` rows. Same brief +
+  // same class + same count -> same bytes, but tags + source mark these as
+  // augmented (not air-gap and not LLM-generated).
+  const candidates = buildSynonymAugmentedCandidates(brief, klass, lib, count);
   return {
     ok: true,
     class: klass,
     candidates,
     gate_suggestion: gate,
     next_steps: seedsNextSteps(klass, candidates.length),
-    network_status: 'air_gap',
+    network_status: 'networked_fallback',
+    llm: llmDescribe(),
     class_inference_basis: inferred.basis,
     teacher_vendor: teacherVendor,
-    note: 'candidates are CANDIDATES, not labels. Run `kolm seeds split` + `kolm eval` before promoting any row to ground truth.',
+    note: 'LLM not configured (set KOLM_LLM_*) — emitted deterministic template+synonym variations. candidates are CANDIDATES; gate before promotion.',
   };
+}
+
+// ---------------------------------------------------------------------------
+// Deterministic candidate builders shared by air-gap + fallback paths.
+// ---------------------------------------------------------------------------
+function buildAirGapCandidates(brief, klass, lib, count) {
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const base = lib[i % lib.length];
+    out.push({
+      input: base.input,
+      output: base.output,
+      tags: ['synthesized', `class:${klass}`, `idx:${i}`],
+      synthesized: true,
+      source: 'deterministic-air-gap',
+    });
+  }
+  if (out.length > 0) {
+    out[0] = {
+      input: `request: ${brief.slice(0, 200)}  ||  ${out[0].input}`,
+      output: out[0].output,
+      tags: out[0].tags.concat(['brief-anchor']),
+      synthesized: true,
+      source: 'deterministic-air-gap',
+    };
+  }
+  return out;
+}
+
+// Deterministic template+synonym augmentation. Each row picks a base row
+// from the library and applies one of ~6 surface-form rewrites: change the
+// leading verb, swap article, add a context phrase, etc. Pure function of
+// (brief, class, count): same inputs produce identical bytes.
+const SYNONYM_TEMPLATES = [
+  (s) => s,
+  (s) => `please ${s.toLowerCase()}`,
+  (s) => `${s} (case A)`,
+  (s) => `${s} (case B)`,
+  (s) => s.replace(/^([A-Z])/, (m) => m.toLowerCase()),
+  (s) => `urgent: ${s}`,
+  (s) => `${s} — production`,
+  (s) => `[priority] ${s}`,
+];
+
+function buildSynonymAugmentedCandidates(brief, klass, lib, count) {
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const base = lib[i % lib.length];
+    const tpl = SYNONYM_TEMPLATES[i % SYNONYM_TEMPLATES.length];
+    out.push({
+      input: tpl(base.input),
+      output: base.output,
+      tags: ['synthesized', `class:${klass}`, `idx:${i}`, 'augmented'],
+      synthesized: true,
+      source: 'deterministic-synonym',
+    });
+  }
+  if (out.length > 0) {
+    out[0] = {
+      input: `request: ${brief.slice(0, 200)}  ||  ${out[0].input}`,
+      output: out[0].output,
+      tags: out[0].tags.concat(['brief-anchor']),
+      synthesized: true,
+      source: 'deterministic-synonym',
+    };
+  }
+  return out;
 }

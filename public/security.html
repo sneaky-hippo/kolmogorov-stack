@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#050607;color:#faf2e1}html{color-scheme:dark}</style>
-<title>Security and compliance roadmap, kolm · kolm.ai</title>
+<title>Security and compliance roadmap · kolm.ai</title>
 <meta name="description" content="One canonical page for your privacy officer. What we ship today, what we are working on with verifiable dates, what we have decided not to pursue, and how an auditor verifies any of it.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -421,7 +421,7 @@
         <div class="rung">
           <span class="tier shipped">shipped &middot; wave 193</span>
           <h4><code>kolm keys rotate [--kms &lt;target&gt;] [--overlap-days &lt;N&gt;]</code></h4>
-          <p>Generates a fresh Ed25519 keypair and emits a rotation receipt with <code>{old_key_fingerprint, new_key_fingerprint, rotated_at, overlap_until, kms_target}</code>. Default overlap window is 30 days (NIST SP 800-57 Part 1 Rev 5 recommendation for high-assurance signing keys), customer-configurable. For <code>--kms=local</code> the new private PEM is written to disk at <code>~/.kolm/&lt;fingerprint&gt;.pem</code> (mode 0600). For the four hosted KMS targets the wrap intent records <code>api_status: not_yet_wired</code> so the customer KMS hook can act on the receipt without re-deriving anything. kolm emits the rotation receipt; the customer KMS hook applies the wrapping.</p>
+          <p>Generates a fresh Ed25519 keypair and emits a rotation receipt with <code>{old_key_fingerprint, new_key_fingerprint, rotated_at, overlap_until, kms_target}</code>. Default overlap window is 30 days (NIST SP 800-57 Part 1 Rev 5 recommendation for high-assurance signing keys), customer-configurable. For <code>--kms=local</code> the new private PEM is written to disk at <code>~/.kolm/&lt;fingerprint&gt;.pem</code> (mode 0600). For the four hosted KMS targets the wrap intent records <code>api_status: awaiting_operator_hook</code> so the customer KMS hook can act on the receipt without re-deriving anything. kolm emits the rotation receipt; the customer KMS hook applies the wrapping on its own infrastructure.</p>
           <span class="wave"><span class="yes">shipped</span> &middot; <code>src/keys.js</code> + <code>cmdKeys</code> in <code>cli/kolm.js</code> (wave 193)</span>
         </div>
         <div class="rung">

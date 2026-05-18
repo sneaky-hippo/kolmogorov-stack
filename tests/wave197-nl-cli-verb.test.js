@@ -246,9 +246,9 @@ test('22. Honest scope: human-readable + JSON output both mention "scaffold" + "
     'JSON scaffold must carry honest-scope language in at least one field');
 });
 
-test('23. network_status is "air_gap" or "not_yet_wired" (no false networked claim)', () => {
+test('23. network_status is one of the W362 enum values (no false networked claim)', () => {
   const r = execNl(['parse EDI 837 claims', '--json']);
   const parsed = JSON.parse(r.stdout);
-  assert.ok(['air_gap', 'not_yet_wired'].includes(parsed.network_status),
-    `network_status must be air_gap or not_yet_wired (wave 197 networked LLM is NOT YET WIRED); got ${parsed.network_status}`);
+  assert.ok(['air_gap', 'networked_llm', 'networked_fallback'].includes(parsed.network_status),
+    `network_status must be air_gap | networked_llm | networked_fallback; got ${parsed.network_status}`);
 });

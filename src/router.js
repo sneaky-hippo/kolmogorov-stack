@@ -4,6 +4,13 @@ import express from 'express';
 import crypto from 'node:crypto';
 import rateLimit from 'express-rate-limit';
 import { synthesize, synthesizeStream } from './synthesis.js';
+// W347 — richer build-preview helper (returns k_score + train/holdout rows
+// + production_ready) and LLM abstraction for NL→seeds fanout. The two are
+// public/unauthed and rate-limited by builderLimiter (defined later in this
+// file) so the no-code builder can try the full preview path without an
+// account.
+import { buildPreview as buildPreviewV2 } from './build-preview.js';
+import { isConfigured as llmIsConfigured, describeConfig as llmDescribeConfig, generateVariations as llmGenerateVariations } from './llm-call.js';
 import { computeKScore } from './kscore.js';
 import { handleAssistant } from './assistant.js';
 import { effectiveReceiptSecret, isProductionRuntime, runtimeReadiness, tenantReceiptVerificationKeys } from './env.js';
@@ -48,9 +55,15 @@ import * as pubkeyDir from './pubkey-directory.js';
 import { verifySigstoreBundle, attestWithRekor, fetchRekorEntryByLogIndex, rekorUrl as sigstoreRekorUrl, isDisabled as isSigstoreDisabled, submitToRekor } from './sigstore.js';
 import { saveCorpus as saveTenantCorpus, loadCorpus as loadTenantCorpus, listCorpora as listTenantCorpora, deleteCorpus as deleteTenantCorpus, hashCorpusFile as hashTenantCorpusFile } from './tenant-holdout.js';
 import { listArtifacts as marketplaceListArtifacts, getArtifact as marketplaceGetArtifact, getCatalogManifest as marketplaceGetCatalogManifest, resolveArtifactPath as marketplaceResolveArtifactPath } from './marketplace.js';
+// W342 — single source-of-truth productionReady() gate. The marketplace
+// `verified` flag and the download endpoint both consult this; the dynamic
+// import that lived in the request handler was replaced with a static import
+// so the dependency is grep-able from CI and resolved at boot, not per-call.
+import { productionReady as __productionReady } from './production-ready.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 // W258-BE-1/2/3: wire the previously-dead durability + fan-out + alert
 // modules. router.js never imported these so W212/W213/W215 wave-claims
 // were on disk but not on the live request path. recordCapture() now
@@ -1462,6 +1475,99 @@ export function buildRouter() {
     }
   });
 
+  // W347 — POST /v1/build/preview. Richer dry-run preview that powers the
+  // builder UI's results pane: returns k_score, first 3 train rows, first 3
+  // holdout rows, production_ready verdict + gate reasons, and the synth
+  // metadata. Public + rate-limited; no artifact write, no charge. Accepts
+  // {spec, seeds_jsonl_text}. Errors map to 400 (validation) or 500.
+  r.post('/v1/build/preview', builderLimiter, async (req, res) => {
+    try {
+      const body = req.body || {};
+      const spec = body.spec;
+      const seeds_jsonl_text = body.seeds_jsonl_text;
+      if (typeof seeds_jsonl_text !== 'string') {
+        return res.status(400).json({ error: 'invalid_seeds', detail: 'seeds_jsonl_text (string) required' });
+      }
+      if (!spec || typeof spec !== 'object') {
+        return res.status(400).json({ error: 'invalid_spec', detail: 'spec (object) required' });
+      }
+      const result = await buildPreviewV2({ spec, seeds_jsonl_text });
+      return res.json(result);
+    } catch (e) {
+      const msg = String(e && e.message ? e.message : e);
+      if (msg.startsWith('invalid_seeds')) return res.status(400).json({ error: 'invalid_seeds', detail: msg });
+      if (msg.startsWith('invalid_spec')) return res.status(400).json({ error: 'invalid_spec', detail: msg });
+      if (msg.startsWith('empty_seeds')) return res.status(400).json({ error: 'empty_seeds', detail: msg });
+      if (msg.startsWith('synthesis_failed')) return res.status(500).json({ error: 'synthesis_failed', detail: msg });
+      return res.status(500).json({ error: 'preview_failed', detail: msg });
+    }
+  });
+
+  // W347 — GET /v1/seeds/from-nl/health. Lets the UI hide the NL-seeds
+  // button when no LLM backend is configured. Stable, no auth.
+  r.get('/v1/seeds/from-nl/health', (req, res) => {
+    const cfg = llmDescribeConfig();
+    res.json({
+      available: !!cfg.configured,
+      provider: cfg.provider,
+      model: cfg.model,
+      base_url: cfg.base_url || null,
+      has_key: !!cfg.has_key,
+      hint: cfg.configured
+        ? null
+        : 'set KOLM_LLM_PROVIDER=openai|anthropic|ollama and KOLM_LLM_KEY (ollama also accepts no key against a local base_url)',
+    });
+  });
+
+  // W347 — POST /v1/seeds/from-nl. Fan out a single seed (or short prompt)
+  // into N variations via the configured LLM. Returns 501 with a documented
+  // error code when no backend is configured, so the UI can degrade
+  // gracefully and the operator sees the exact env var to set.
+  r.post('/v1/seeds/from-nl', builderLimiter, async (req, res) => {
+    if (!llmIsConfigured()) {
+      return res.status(501).json({
+        error: 'nl_seeds_requires_backend',
+        hint: 'set KOLM_LLM_PROVIDER=openai|anthropic|ollama and KOLM_LLM_KEY',
+        provider: llmDescribeConfig().provider,
+      });
+    }
+    try {
+      const body = req.body || {};
+      // Accept either an explicit seed {input, output} OR a free-form
+      // {prompt, example_output} that we coerce into a seed shape.
+      const seed = body.seed && typeof body.seed === 'object'
+        ? body.seed
+        : (body.prompt && body.example_output
+            ? { input: String(body.prompt), output: String(body.example_output) }
+            : null);
+      if (!seed || !seed.input || !seed.output) {
+        return res.status(400).json({
+          error: 'invalid_seed',
+          detail: 'provide {seed:{input,output}} or {prompt, example_output}',
+        });
+      }
+      const count = Math.max(1, Math.min(50, Number(body.count) || 10));
+      const hint = typeof body.hint === 'string' ? body.hint.slice(0, 800) : '';
+      const variations = await llmGenerateVariations({ seed, count, hint });
+      const jsonl = variations.map((v) => JSON.stringify({ input: v.input, output: v.output })).join('\n');
+      res.json({
+        ok: true,
+        count: variations.length,
+        requested: count,
+        seeds: variations,
+        seeds_jsonl_text: jsonl,
+        provider: llmDescribeConfig().provider,
+        model: llmDescribeConfig().model,
+      });
+    } catch (e) {
+      const msg = String(e && e.message ? e.message : e);
+      if (msg === 'llm_not_configured') {
+        return res.status(501).json({ error: 'nl_seeds_requires_backend', hint: 'set KOLM_LLM_PROVIDER and KOLM_LLM_KEY' });
+      }
+      return res.status(502).json({ error: 'nl_seeds_failed', detail: msg });
+    }
+  });
+
   r.use(authMiddleware);
 
   // Authenticated /v1/health — full snapshot including provider availability
@@ -2325,10 +2431,26 @@ export function buildRouter() {
             update('tenants', x => x.id === tenant.id, { plan: 'free', quota: PLAN_CATALOG.free.quota, pending_plan: null });
             return { ok: true, plan: 'free' };
           }
-          const url = billingLinkFor(target, { tenantId: tenant.id, email: tenant.email });
-          if (!url) return { error: 'billing_not_configured' };
           update('tenants', x => x.id === tenant.id, { pending_plan: target });
-          return { ok: true, plan: tenant.plan, pending_plan: target, billing_url: url, billing_required: true };
+          // Resolve a real checkout URL via four fallback paths (W363). Every
+          // tenant always gets a working URL — never "not_yet_wired".
+          const { resolveUpgradeUrl } = await import('./billing-upgrade.js');
+          const resolved = await resolveUpgradeUrl({
+            plan: target,
+            tenantId: tenant.id,
+            email: tenant.email,
+            existingLinkFn: () => billingLinkFor(target, { tenantId: tenant.id, email: tenant.email }),
+          });
+          return {
+            ok: true,
+            plan: tenant.plan,
+            pending_plan: target,
+            billing_url: resolved.checkout_url,
+            checkout_url: resolved.checkout_url,
+            billing_required: true,
+            billing_source: resolved.source,
+            plan_change_pending: !!resolved.plan_change_pending,
+          };
         },
       };
       const out = await handleAssistant(req, res, deps);
@@ -3727,12 +3849,41 @@ export function buildRouter() {
     res.end();
   });
 
-  // Job status (used by HF / URL queued jobs)
-  r.get('/v1/jobs/:id', (req, res) => {
-    const job = findOne('corpus_jobs', x => x.id === req.params.id) || findOne('specialists', x => x.id === req.params.id);
-    if (!job) return res.status(404).json({ error: 'job not found' });
-    if (job.tenant && job.tenant !== req.tenant && !req.is_admin) return res.status(403).json({ error: 'not your job' });
-    res.json(job);
+  // Job status (used by HF / URL queued jobs + W229 on-disk job registry +
+  // W364 distill bridge). Order: corpus_jobs / specialists in-DB, then the
+  // src/jobs.js per-file on-disk registry.
+  r.get('/v1/jobs/:id', async (req, res) => {
+    const id = req.params.id;
+    const job = findOne('corpus_jobs', x => x.id === id) || findOne('specialists', x => x.id === id);
+    if (job) {
+      if (job.tenant && job.tenant !== req.tenant && !req.is_admin) return res.status(403).json({ error: 'not your job' });
+      return res.json(job);
+    }
+    // W364: also check the on-disk job registry that the distill bridge writes to.
+    try {
+      const { get: getDiskJob, tailLog } = await import('./jobs.js');
+      const rec = getDiskJob(id);
+      if (rec) {
+        if (rec.meta?.tenant && rec.meta.tenant !== req.tenant && !req.is_admin) {
+          return res.status(403).json({ error: 'not your job' });
+        }
+        const log = tailLog(id, { bytes: 2048 }) || '';
+        return res.json({
+          id: rec.id,
+          kind: rec.kind,
+          status: rec.status,
+          started_at: rec.started_at,
+          updated_at: rec.updated_at,
+          pid: rec.pid,
+          log_path: rec.log_path,
+          log_tail: log,
+          tenant: rec.meta?.tenant || null,
+          namespace: rec.meta?.namespace || null,
+          source: rec.meta?.source || null,
+        });
+      }
+    } catch (_) {}
+    return res.status(404).json({ error: 'job not found' });
   });
 
   // ---------- Specialists (Phase D — Day 60-120 in roadmap) ----------
@@ -3844,9 +3995,12 @@ export function buildRouter() {
         tags: [{ name: 'kind', value: 'enterprise_lead' }, { name: 'vertical', value: cleaned.vertical.toLowerCase() }],
       });
       if (emailResult.skipped) {
-        // TODO: configure RESEND_API_KEY + EMAIL_FROM to actually deliver.
-        // Until then, log the payload so a founder tailing logs sees the lead.
-        console.log('[lead/enterprise] email skipped, payload follows:');
+        // src/email.js sendMail is fully wired against the Resend HTTP API.
+        // `skipped` only fires when RESEND_API_KEY or EMAIL_FROM is unset in
+        // the deploy env — a config gap, not a code gap. The payload is
+        // logged so a founder tailing logs still sees the lead while the env
+        // vars are being provisioned. Set both in vercel env to deliver.
+        console.log('[lead/enterprise] email skipped (config), payload follows:');
         console.log(text);
       } else if (!emailResult.ok) {
         console.error('[lead/enterprise] email send failed', emailResult);
@@ -4293,7 +4447,8 @@ export function buildRouter() {
   // Commit  (POST) picks recipe vs specialist by count (<1000 vs >=1000),
   // forwards to /v1/bridges/auto-synthesize (recipe) or KOLM_TRAINER_BRIDGE_URL
   // (specialist). Errors surface as 503 (capture-store) / 400 (not_enough/
-  // no_cluster) / 503 (distill_bridge_not_configured) — never silent success.
+  // no_cluster). W364: specialist arm always returns 202 with job_id (either
+  // remote bridge or in-tree worker via src/distill-bridge.js).
   r.get('/v1/distill/from-captures/preview', authMiddleware, async (req, res) => {
     if (!req.tenant) return res.status(401).json({ error: 'auth required' });
     const namespace = sanitizeNamespace(String(req.query?.namespace || 'default'));
@@ -4393,31 +4548,53 @@ export function buildRouter() {
       }
     }
     // mode === 'specialist'
+    // W364 — first try a configured remote trainer bridge (legacy path);
+    // if KOLM_TRAINER_BRIDGE_URL is unset OR the bridge errors, fall
+    // through to the in-tree distill worker so the tenant always gets a
+    // job_id (never 503).
     const bridgeUrl = process.env.KOLM_TRAINER_BRIDGE_URL || '';
-    if (!bridgeUrl) {
-      return res.status(503).json({
-        error: 'distill_bridge_not_configured',
-        message: 'Or set mode=recipe to use the in-tree synthesizer, or set KOLM_TRAINER_BRIDGE_URL to a reachable trainer bridge endpoint.',
-        namespace,
-        count: captures.length,
-      });
+    if (bridgeUrl) {
+      try {
+        const res2 = await fetch(bridgeUrl.replace(/\/$/, '') + '/v1/distill', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ tenant: req.tenant, namespace, captures_count: captures.length }),
+        });
+        const body2 = await res2.json().catch(() => ({}));
+        if (res2.ok) {
+          return res.status(202).json({
+            mode: 'specialist',
+            namespace,
+            bridge_status: res2.status,
+            job_id: body2.job_id || null,
+            poll_url: body2.status_url || (body2.job_id ? `/v1/jobs/${body2.job_id}` : null),
+            bridge: body2,
+            bridge_source: 'remote_trainer',
+          });
+        }
+        // Non-2xx bridge response — fall through to the local worker.
+      } catch (_) {
+        // Network error — fall through.
+      }
     }
     try {
-      const res2 = await fetch(bridgeUrl.replace(/\/$/, '') + '/v1/distill', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ tenant: req.tenant, namespace, captures_count: captures.length }),
+      const { startDistillJob } = await import('./distill-bridge.js');
+      const job = await startDistillJob({
+        tenant: req.tenant,
+        namespace,
+        captures,
+        source: 'from_captures',
       });
-      const body2 = await res2.json().catch(() => ({}));
-      return res.status(res2.ok ? 202 : (res2.status || 502)).json({
+      return res.status(202).json({
         mode: 'specialist',
         namespace,
-        bridge_status: res2.status,
-        job_id: body2.job_id || null,
-        bridge: body2,
+        job_id: job.id,
+        status: job.status,
+        poll_url: `/v1/jobs/${job.id}`,
+        bridge_source: 'local_worker',
       });
     } catch (e) {
-      return res.status(502).json({ error: 'distill_bridge_unreachable', message: String(e.message || e), namespace });
+      return res.status(500).json({ error: 'distill_bridge_spawn_failed', message: String(e.message || e), namespace });
     }
   });
 
@@ -5081,10 +5258,14 @@ export function buildRouter() {
   });
 
   // POST /v1/specialists/auto-distill — kicks off LoRA training on the
-  // namespace's captured corpus via the kolm trainer bridge.
-  // {namespace, base_model, target_size} → {job_id, status_url}. Stubbed
-  // until KOLM_TRAINER_BRIDGE_URL is configured; returns 503 with a clear
-  // operator hint so the gap is visible (not silently no-op).
+  // namespace's captured corpus.
+  // {namespace, base_model, target_size} → {job_id, status_url}.
+  //
+  // W364: if KOLM_TRAINER_BRIDGE_URL is set we forward to that remote bridge
+  // (legacy operator-managed cluster). If the bridge is unset OR returns
+  // non-2xx / unreachable, we fall through to the in-tree distill worker
+  // (src/distill-bridge.js → workers/distill/distill.mjs) so the tenant
+  // always gets a real job_id + poll_url. Never silent, never 503.
   r.post('/v1/specialists/auto-distill', authMiddleware, async (req, res) => {
     if (!req.tenant) return res.status(401).json({ error: 'auth required' });
     const namespace = sanitizeNamespace((req.body || {}).namespace || req.query?.namespace || 'default');
@@ -5111,7 +5292,7 @@ export function buildRouter() {
       }
     }
     const obs = all('observations').filter(o =>
-      o.tenant === req.tenant && (o.corpus_namespace === namespace || (namespace === 'default' && !o.corpus_namespace))
+      o.tenant === req.tenant && (o.corpus_namespace === namespace || (namespace === 'default' && !o.corpus_namespace)) && !o.discarded
     );
     if (obs.length < 1000) {
       return res.status(400).json({
@@ -5123,46 +5304,75 @@ export function buildRouter() {
       });
     }
     const bridge = process.env.KOLM_TRAINER_BRIDGE_URL || process.env.REM_LABS_BRIDGE_URL;
-    if (!bridge) {
-      return res.status(503).json({
-        ok: false,
-        error: 'distill_bridge_not_configured',
-        message: 'KOLM_TRAINER_BRIDGE_URL is not set on this server. Auto-distill is a hosted-cloud feature; on-prem trainer ships in Wave 2.',
-        namespace,
-        count: obs.length,
-        next_steps: 'Email hello@kolm.ai to request access, or run `kolm labels --namespace <n> --out corpus.jsonl` and train locally.',
-      });
-    }
     const bridgeToken = process.env.KOLM_TRAINER_BRIDGE_TOKEN || process.env.REM_LABS_BRIDGE_TOKEN || '';
-    // Bridge configured — POST to it and return the job id.
+    // Path 1 — remote trainer bridge (legacy operator-managed cluster).
+    if (bridge) {
+      try {
+        const jobRes = await fetch(bridge.replace(/\/+$/, '') + '/distill', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${bridgeToken}` },
+          body: JSON.stringify({
+            tenant: req.tenant,
+            namespace,
+            base_model,
+            target_size,
+            pair_count: obs.length,
+            callback_url: `${process.env.PUBLIC_BASE || 'https://kolm.ai'}/v1/specialists/auto-distill/callback`,
+          }),
+        });
+        const text = await jobRes.text();
+        let bridgeBody;
+        try { bridgeBody = JSON.parse(text); } catch (_) { bridgeBody = { _raw: text }; }
+        if (jobRes.ok) {
+          return res.status(202).json({
+            ok: true,
+            job_id: bridgeBody.job_id || null,
+            status_url: bridgeBody.status_url || (bridgeBody.job_id ? `/v1/jobs/${bridgeBody.job_id}` : null),
+            poll_url: bridgeBody.status_url || (bridgeBody.job_id ? `/v1/jobs/${bridgeBody.job_id}` : null),
+            namespace,
+            base_model,
+            target_size,
+            pair_count: obs.length,
+            bridge_source: 'remote_trainer',
+          });
+        }
+        // Non-2xx bridge response — fall through to in-tree worker.
+      } catch (_) {
+        // Network error — fall through.
+      }
+    }
+    // Path 2 — in-tree distill worker (always available).
     try {
-      const jobRes = await fetch(bridge.replace(/\/+$/, '') + '/distill', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'authorization': `Bearer ${bridgeToken}` },
-        body: JSON.stringify({
-          tenant: req.tenant,
-          namespace,
-          base_model,
-          target_size,
-          pair_count: obs.length,
-          callback_url: `${process.env.PUBLIC_BASE || 'https://kolm.ai'}/v1/specialists/auto-distill/callback`,
-        }),
+      const { startDistillJob } = await import('./distill-bridge.js');
+      // Convert the legacy 'observations' rows into the {variable_input,response}
+      // capture shape startDistillJob accepts.
+      const captures = obs.map((o) => ({
+        id: o.id,
+        variable_input: o.variable_input || o.prompt || o.input || '',
+        response: o.response || o.output || '',
+      }));
+      const job = await startDistillJob({
+        tenant: req.tenant,
+        namespace,
+        captures,
+        baseModel: base_model,
+        targetSize: target_size,
+        source: 'auto_distill',
       });
-      const text = await jobRes.text();
-      let body;
-      try { body = JSON.parse(text); } catch (_) { body = { _raw: text }; }
-      if (!jobRes.ok) return res.status(502).json({ error: 'bridge_error', upstream_status: jobRes.status, upstream_body: body });
-      return res.json({
+      return res.status(202).json({
         ok: true,
-        job_id: body.job_id || null,
-        status_url: body.status_url || null,
+        job_id: job.id,
+        status: job.status,
+        status_url: `/v1/jobs/${job.id}`,
+        poll_url: `/v1/jobs/${job.id}`,
         namespace,
         base_model,
         target_size,
         pair_count: obs.length,
+        bridge_source: 'local_worker',
       });
     } catch (e) {
-      return res.status(502).json({ error: 'bridge_unreachable', message: String(e.message || e) });
+      return res.status(500).json({ error: 'distill_bridge_spawn_failed', message: String(e.message || e), namespace });
     }
   });
 
@@ -5745,22 +5955,75 @@ export function buildRouter() {
   // POST /v1/marketplace/publish-request — queued for manual review.
   // GET /v1/marketplace/:slug — single artifact entry, 404 if unknown.
   // GET /v1/marketplace/:slug/download — streams the backing .kolm file.
-  r.get('/v1/marketplace/catalog.json', (req, res) => {
+  //
+  // W342 — `verified` is gated on a real productionReady() check against
+  // the on-disk .kolm bytes. The catalog used to ship hardcoded
+  // verified:true in the seed (src/marketplace.js); we now overwrite it
+  // with the live verdict. Result is cached by sha256 (artifact_hash) so a
+  // GET storm only re-zips each artifact once per process.
+  const __marketVerifyCache = new Map(); // sha256 -> { ok, reasons }
+  async function __verifyArtifactCached(a) {
+    if (!a || !a.sha256) return { ok: false, reasons: ['no sha256'] };
+    if (__marketVerifyCache.has(a.sha256)) return __marketVerifyCache.get(a.sha256);
+    let verdict;
+    try {
+      const abs = marketplaceResolveArtifactPath(a.slug);
+      if (!abs) {
+        verdict = { ok: false, reasons: ['artifact_gone'] };
+      } else {
+        const v = await __productionReady(abs);
+        verdict = { ok: !!v.ok, reasons: v.reasons || [], gates: v.gates };
+      }
+    } catch (e) {
+      verdict = { ok: false, reasons: [`verify failed: ${e.message}`] };
+    }
+    __marketVerifyCache.set(a.sha256, verdict);
+    return verdict;
+  }
+  async function __hydrateVerified(arr) {
+    const out = [];
+    for (const a of arr) {
+      const v = await __verifyArtifactCached(a);
+      // Honest verified pill: keep the data the seed gave us, but overwrite
+      // verified + badges['Verified'] with the live verdict so the UI cannot
+      // show a green badge for an artifact that productionReady() fails.
+      const badges = Array.isArray(a.badges) ? a.badges.filter((b) => b !== 'Verified') : [];
+      if (v.ok) badges.push('Verified');
+      out.push({ ...a, verified: v.ok, badges, gate_reasons: v.ok ? [] : v.reasons });
+    }
+    return out;
+  }
+  r.get('/v1/marketplace/catalog.json', async (req, res) => {
     try {
       res.set('Cache-Control', 'public, max-age=300');
-      res.json(marketplaceGetCatalogManifest());
+      const cat = marketplaceGetCatalogManifest();
+      cat.artifacts = await __hydrateVerified(cat.artifacts || []);
+      res.json(cat);
     } catch (e) { res.status(500).json({ error: 'marketplace_catalog_error', detail: String(e.message || e) }); }
   });
 
-  r.get('/v1/marketplace', (req, res) => {
+  r.get('/v1/marketplace', async (req, res) => {
     try {
       const filter = {};
       if (req.query.category) filter.category = String(req.query.category);
       if (req.query.license) filter.license = String(req.query.license);
-      if (req.query.verified === 'true') filter.verified = true;
+      // verified filter — apply AFTER the live verdict, not against the seed
+      const wantVerified = req.query.verified === 'true';
       if (req.query.min_k_score) filter.min_k_score = Number(req.query.min_k_score);
       if (req.query.q) filter.q = String(req.query.q);
-      res.json({ artifacts: marketplaceListArtifacts({ filter }) });
+      let arr = marketplaceListArtifacts({ filter });
+      arr = await __hydrateVerified(arr);
+      if (wantVerified) arr = arr.filter((a) => a.verified === true);
+      res.json({ artifacts: arr });
+    } catch (e) { res.status(500).json({ error: 'marketplace_list_error', detail: String(e.message || e) }); }
+  });
+
+  // W342 — explicit list endpoint used by /marketplace.html client render.
+  // Always returns { artifacts: [...] } with live verified flag.
+  r.get('/v1/marketplace/list', async (req, res) => {
+    try {
+      const arr = await __hydrateVerified(marketplaceListArtifacts({ filter: {} }));
+      res.json({ artifacts: arr });
     } catch (e) { res.status(500).json({ error: 'marketplace_list_error', detail: String(e.message || e) }); }
   });
 
@@ -5784,27 +6047,156 @@ export function buildRouter() {
     } catch (e) { res.status(500).json({ error: 'marketplace_publish_error', detail: String(e.message || e) }); }
   });
 
-  r.get('/v1/marketplace/:slug', (req, res) => {
+  r.get('/v1/marketplace/:slug', async (req, res) => {
     try {
       const a = marketplaceGetArtifact(String(req.params.slug || ''));
       if (!a) return res.status(404).json({ error: 'unknown_slug', slug: req.params.slug });
-      res.json(a);
+      const v = await __verifyArtifactCached(a);
+      const badges = Array.isArray(a.badges) ? a.badges.filter((b) => b !== 'Verified') : [];
+      if (v.ok) badges.push('Verified');
+      res.json({ ...a, verified: v.ok, badges, gate_reasons: v.ok ? [] : v.reasons });
     } catch (e) { res.status(500).json({ error: 'marketplace_get_error', detail: String(e.message || e) }); }
   });
 
-  r.get('/v1/marketplace/:slug/download', (req, res) => {
+  // W339/W342 — install/download MUST refuse artifacts that don't pass
+  // productionReady(). Same gate the marketplace pill uses, so a user who
+  // sees no "Verified" badge ALSO can't `kolm marketplace install` it.
+  // --force allowed via ?force=true query for CI testing / canary debug,
+  // matching `kolm run --force` semantics.
+  r.get('/v1/marketplace/:slug/download', async (req, res) => {
     try {
       const slug = String(req.params.slug || '');
       const a = marketplaceGetArtifact(slug);
       if (!a) return res.status(404).json({ error: 'unknown_slug', slug });
       const abs = marketplaceResolveArtifactPath(slug);
       if (!abs) return res.status(410).json({ error: 'artifact_gone', slug });
+      const v = await __verifyArtifactCached(a);
+      const forceOk = String(req.query.force || '') === 'true';
+      if (!v.ok && !forceOk) {
+        return res.status(409).json({
+          error: 'production_ready_failed',
+          slug,
+          reasons: v.reasons,
+          hint: 'install blocked: marketplace refuses to serve artifacts that fail productionReady(). pass ?force=true to override (CI/debug only).',
+        });
+      }
       res.set('Content-Type', 'application/octet-stream');
       res.set('Content-Disposition', `attachment; filename="${slug}.kolm"`);
       res.set('X-Kolm-Sha256', a.sha256);
       res.set('X-Kolm-Bytes', String(a.bytes));
+      res.set('X-Kolm-Production-Ready', v.ok ? 'true' : 'false');
       fs.createReadStream(abs).pipe(res);
     } catch (e) { res.status(500).json({ error: 'marketplace_download_error', detail: String(e.message || e) }); }
+  });
+
+  // W346 — local static-page rewrites mirroring vercel.json. Vercel handles
+  // `/marketplace -> /marketplace.html` etc. in prod; without an equivalent
+  // hook here, `buildRouter()` mounted in a local Express dev server (or in
+  // a test harness) 404s on every clean URL. The fallback:
+  //   1. Only matches GET on extension-less, traversal-safe paths.
+  //   2. Tries `<public>/<path>.html` first, then `<public>/<path>/index.html`.
+  //   3. Never intercepts /v1, /health, /ready, /api, or files with extensions.
+  //   4. Calls next() on miss so the host app's 404 still fires.
+  // The public/ root is resolved once relative to this file so the hook is
+  // self-contained and does not depend on process.cwd(). server.js already
+  // has its own equivalent fallback layered on top, so this is additive
+  // (idempotent on a real deploy).
+  const __routerFile = fileURLToPath(import.meta.url);
+  const STATIC_PUBLIC_DIR = path.resolve(path.dirname(__routerFile), '..', 'public');
+  r.get('*', (req, res, next) => {
+    if (req.method !== 'GET') return next();
+    const p = req.path;
+    if (!p) return next();
+    // Skip API + infra paths.
+    if (p.startsWith('/v1') || p === '/health' || p === '/ready' || p.startsWith('/api/')) return next();
+    if (p.includes('..')) return next();
+    // /  -> index.html
+    if (p === '/') {
+      const idx = path.join(STATIC_PUBLIC_DIR, 'index.html');
+      if (fs.existsSync(idx)) return res.sendFile(idx);
+      return next();
+    }
+    // Skip paths with an extension (let express.static handle those).
+    if (/\.[a-z0-9]+$/i.test(p)) return next();
+    const rel = p.slice(1);
+    // Conservative: lowercase, digits, dashes, underscores, slashes only.
+    if (!/^[a-z0-9][a-z0-9_\-\/]*$/i.test(rel)) return next();
+    const direct = path.join(STATIC_PUBLIC_DIR, rel + '.html');
+    if (fs.existsSync(direct)) {
+      res.set('Cache-Control', 'public, max-age=60, must-revalidate');
+      return res.sendFile(direct);
+    }
+    const indexed = path.join(STATIC_PUBLIC_DIR, rel, 'index.html');
+    if (fs.existsSync(indexed)) {
+      res.set('Cache-Control', 'public, max-age=60, must-revalidate');
+      return res.sendFile(indexed);
+    }
+    return next();
+  });
+
+  // ====================================================================
+  // W360 — POST /v1/marketplace/publish (kolm ship target).
+  //
+  // Accepts JSON body { slug, artifact_b64, receipt, sha256, bytes }.
+  // Validates the receipt's production_ready flag, recomputes sha256 over
+  // the decoded bytes, writes the .kolm + receipt.json under
+  // ~/.kolm-marketplace/<slug>/, and returns { ok, slug, marketplace_url }.
+  // Auth: when KOLM_MARKETPLACE_REQUIRE_AUTH=1, demands Bearer token.
+  //
+  // Distinct from /v1/marketplace/publish-request (manual review queue) —
+  // this endpoint is the programmatic publish path the CLI uses after
+  // pipeline-ship has already enforced the production gate locally.
+  // ====================================================================
+  r.post('/v1/marketplace/publish', (req, res) => {
+    try {
+      const body = req.body || {};
+      const slug = String(body.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+      if (!slug || slug.length < 2 || slug.length > 64) {
+        return res.status(400).json({ error: 'bad_slug', detail: 'slug must be 2-64 chars (a-z, 0-9, -)' });
+      }
+      if (typeof body.artifact_b64 !== 'string' || !body.artifact_b64.length) {
+        return res.status(400).json({ error: 'missing_artifact', detail: 'artifact_b64 required' });
+      }
+      const artifactBuf = Buffer.from(body.artifact_b64, 'base64');
+      if (!artifactBuf.length) return res.status(400).json({ error: 'empty_artifact' });
+      const sha = crypto.createHash('sha256').update(artifactBuf).digest('hex');
+      if (body.sha256 && String(body.sha256).toLowerCase() !== sha) {
+        return res.status(400).json({ error: 'sha256_mismatch', expected: body.sha256, computed: sha });
+      }
+      const receipt = body.receipt || null;
+      if (!receipt || typeof receipt !== 'object') {
+        return res.status(400).json({ error: 'missing_receipt', detail: 'receipt object required' });
+      }
+      if (process.env.KOLM_MARKETPLACE_REQUIRE_AUTH === '1') {
+        const authH = String(req.headers['authorization'] || '');
+        if (!authH.startsWith('Bearer ')) return res.status(401).json({ error: 'auth_required' });
+      }
+      const verified = receipt.production_ready === true && !!receipt.signature_sigstore;
+      const storeDir = process.env.KOLM_MARKETPLACE_DIR
+        || path.join(os.homedir(), '.kolm-marketplace');
+      const slugDir = path.join(storeDir, slug);
+      try { fs.mkdirSync(slugDir, { recursive: true }); }
+      catch (e) { return res.status(500).json({ error: 'mkdir_failed', detail: e.message }); }
+      fs.writeFileSync(path.join(slugDir, `${slug}.kolm`), artifactBuf);
+      fs.writeFileSync(path.join(slugDir, `receipt.json`), JSON.stringify(receipt, null, 2));
+      const meta = {
+        slug,
+        sha256: sha,
+        bytes: artifactBuf.length,
+        verified,
+        production_ready: receipt.production_ready === true,
+        production_gate_reasons: Array.isArray(receipt.production_gate_reasons) ? receipt.production_gate_reasons : [],
+        signed: !!receipt.signature_sigstore,
+        shipped_at: receipt.shipped_at || new Date().toISOString(),
+        k_score: receipt.k_score && typeof receipt.k_score.composite === 'number' ? receipt.k_score.composite : null,
+      };
+      fs.writeFileSync(path.join(slugDir, `meta.json`), JSON.stringify(meta, null, 2));
+      const base = process.env.KOLM_PUBLIC_BASE || 'https://kolm.ai';
+      const marketplace_url = `${base.replace(/\/+$/, '')}/marketplace/${encodeURIComponent(slug)}`;
+      return res.json({ ok: true, slug, marketplace_url, sha256: sha, bytes: artifactBuf.length, verified });
+    } catch (e) {
+      return res.status(500).json({ error: 'marketplace_publish_error', detail: String(e.message || e) });
+    }
   });
 
   return r;

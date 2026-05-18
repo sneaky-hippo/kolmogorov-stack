@@ -21,14 +21,13 @@
 //   awq     AutoAWQ activation-aware weight quantization
 //
 // Honest-scope contract:
-//   * kolm ships the Node entrypoint + dep detection + honest manifest. The
-//     python script (scripts/quantize.py) is OUT OF SCOPE for wave 195 and
-//     is left to the customer to drop in. The worker handles the absence
-//     gracefully: running the verb today returns a "scaffolding present,
-//     python script not yet shipped" manifest with no crash.
-//   * The Python ML stack must be installed by the customer in a separate
-//     venv at workers/quantize/.venv (see README.md). kolm does not pip
-//     install on the customer's behalf.
+//   * kolm ships the Node entrypoint + dep detection + the real python
+//     script (scripts/quantize.py — W336 P2 fix). The customer still must
+//     create the venv and pip install workers/quantize/requirements.txt
+//     because kolm does NOT pip install on the customer's behalf (the
+//     heavy ML deps would otherwise leak into the root install).
+//   * If the venv is missing, the worker emits a manifest naming the
+//     missing pieces and exits 2 (W253 ML#9 — CI must fail loud).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -88,10 +87,10 @@ if (!report.ready_for_quantize || !pyScriptExists) {
     doctor: report,
     note: pyScriptExists
       ? 'python stack missing; install workers/quantize/requirements.txt in a venv'
-      : 'scripts/quantize.py not yet shipped with this worker; kolm ships the scaffolding, the python heavy lifting is the customer opt-in',
+      : 'scripts/quantize.py missing — reinstall workers/quantize/ from upstream',
     next: pyScriptExists
       ? 'cd workers/quantize && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt'
-      : 'drop a scripts/quantize.py in workers/quantize/ that takes --method --in --out and runs the chosen quantizer',
+      : 'restore workers/quantize/scripts/quantize.py from the kolm repo',
     finished_at: new Date().toISOString(),
   };
   if (outDir) {

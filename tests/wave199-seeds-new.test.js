@@ -57,7 +57,7 @@ test('1. seedsNewFromBrief is importable from src/synthesis.js as a function', a
 
 test('2. Air-gap call returns exactly `count` candidates (default 10)', async () => {
   const mod = await import('file://' + SYNTH.replace(/\\/g, '/'));
-  const r = mod.seedsNewFromBrief({ brief: 'teach me about denial codes', airGap: true });
+  const r = await mod.seedsNewFromBrief({ brief: 'teach me about denial codes', airGap: true });
   assert.equal(r.ok, true, 'seedsNewFromBrief must return ok:true under airGap:true');
   assert.ok(Array.isArray(r.candidates), 'candidates must be an array');
   assert.equal(r.candidates.length, 10, `default count is 10; got ${r.candidates.length}`);
@@ -65,7 +65,7 @@ test('2. Air-gap call returns exactly `count` candidates (default 10)', async ()
 
 test('3. Each candidate has {input, output, tags} shape with synthesized:true tag', async () => {
   const mod = await import('file://' + SYNTH.replace(/\\/g, '/'));
-  const r = mod.seedsNewFromBrief({ brief: 'parse EDI 837 claims', airGap: true });
+  const r = await mod.seedsNewFromBrief({ brief: 'parse EDI 837 claims', airGap: true });
   for (let i = 0; i < r.candidates.length; i++) {
     const c = r.candidates[i];
     assert.ok(typeof c.input === 'string' && c.input.length > 0, `candidate ${i} must have non-empty input`);
@@ -80,26 +80,38 @@ test('3. Each candidate has {input, output, tags} shape with synthesized:true ta
 
 test('4. Air-gap call has network_status: "air_gap" (not not_yet_wired)', async () => {
   const mod = await import('file://' + SYNTH.replace(/\\/g, '/'));
-  const r = mod.seedsNewFromBrief({ brief: 'parse EDI 837 claims', airGap: true });
+  const r = await mod.seedsNewFromBrief({ brief: 'parse EDI 837 claims', airGap: true });
   assert.equal(r.network_status, 'air_gap',
     `airGap:true must yield network_status:"air_gap"; got ${r.network_status}`);
 });
 
-test('5. No-air-gap call returns network_status: "not_yet_wired" with sentinel row', async () => {
+test('5. No-air-gap call returns real candidates (W362: networked_llm or networked_fallback)', async () => {
   const mod = await import('file://' + SYNTH.replace(/\\/g, '/'));
-  const r = mod.seedsNewFromBrief({ brief: 'parse EDI 837 claims', airGap: false });
-  assert.equal(r.network_status, 'not_yet_wired',
-    `airGap:false must yield network_status:"not_yet_wired"; got ${r.network_status}`);
-  assert.ok(Array.isArray(r.candidates) && r.candidates.length >= 1,
-    'sentinel must include at least one row explaining the situation');
-  assert.match(JSON.stringify(r.candidates[0]), /not yet wired|air-gap|NOT YET WIRED/i,
-    'sentinel row must say NOT YET WIRED so caller cannot mistake it for real teacher output');
+  const saved = {
+    base: process.env.KOLM_LLM_BASE_URL, key: process.env.KOLM_LLM_KEY, prov: process.env.KOLM_LLM_PROVIDER,
+  };
+  delete process.env.KOLM_LLM_BASE_URL;
+  delete process.env.KOLM_LLM_KEY;
+  delete process.env.KOLM_LLM_PROVIDER;
+  try {
+    const r = await mod.seedsNewFromBrief({ brief: 'parse EDI 837 claims', airGap: false });
+    assert.ok(r.network_status === 'networked_fallback' || r.network_status === 'networked_llm',
+      `non-air-gap must yield networked_llm or networked_fallback; got ${r.network_status}`);
+    assert.ok(Array.isArray(r.candidates) && r.candidates.length >= 1,
+      'candidates must be a non-empty array');
+    assert.doesNotMatch(JSON.stringify(r.candidates), /not yet wired|NOT YET WIRED/i,
+      'candidates must NOT contain a not-yet-wired sentinel');
+  } finally {
+    if (saved.base) process.env.KOLM_LLM_BASE_URL = saved.base;
+    if (saved.key) process.env.KOLM_LLM_KEY = saved.key;
+    if (saved.prov) process.env.KOLM_LLM_PROVIDER = saved.prov;
+  }
 });
 
 test('6. classHint override forces the requested recipe class', async () => {
   const mod = await import('file://' + SYNTH.replace(/\\/g, '/'));
   // "draft an appeal letter" alone infers distilled_model. Force rule.
-  const r = mod.seedsNewFromBrief({
+  const r = await mod.seedsNewFromBrief({
     brief: 'draft an appeal letter for a denial',
     classHint: 'rule',
     airGap: true,
@@ -112,21 +124,21 @@ test('6. classHint override forces the requested recipe class', async () => {
 
 test('7. Keyword inference: "denial appeal" -> distilled_model', async () => {
   const mod = await import('file://' + SYNTH.replace(/\\/g, '/'));
-  const r = mod.seedsNewFromBrief({ brief: 'draft a denial appeal letter', airGap: true });
+  const r = await mod.seedsNewFromBrief({ brief: 'draft a denial appeal letter', airGap: true });
   assert.equal(r.class, 'distilled_model',
     `"denial appeal letter" should map to distilled_model; got ${r.class} (basis: ${r.class_inference_basis})`);
 });
 
 test('8. Keyword inference: "EDI 837" -> rule', async () => {
   const mod = await import('file://' + SYNTH.replace(/\\/g, '/'));
-  const r = mod.seedsNewFromBrief({ brief: 'parse EDI 837 claim segments', airGap: true });
+  const r = await mod.seedsNewFromBrief({ brief: 'parse EDI 837 claim segments', airGap: true });
   assert.equal(r.class, 'rule',
     `"EDI 837 parser" should map to rule; got ${r.class} (basis: ${r.class_inference_basis})`);
 });
 
 test('9. Keyword inference: "HEDIS measure" -> synthesized_rule', async () => {
   const mod = await import('file://' + SYNTH.replace(/\\/g, '/'));
-  const r = mod.seedsNewFromBrief({ brief: 'compute HEDIS CBP measure for a cohort', airGap: true });
+  const r = await mod.seedsNewFromBrief({ brief: 'compute HEDIS CBP measure for a cohort', airGap: true });
   assert.equal(r.class, 'synthesized_rule',
     `"HEDIS measure" should map to synthesized_rule; got ${r.class} (basis: ${r.class_inference_basis})`);
 });
@@ -140,7 +152,7 @@ test('10. Gate suggestion matches per-class default (rule=0.88, synth=0.90, comp
     distilled_model: 0.85,
   };
   for (const klass of RECIPE_CLASSES) {
-    const r = mod.seedsNewFromBrief({ brief: 'some brief', classHint: klass, airGap: true });
+    const r = await mod.seedsNewFromBrief({ brief: 'some brief', classHint: klass, airGap: true });
     assert.equal(r.gate_suggestion, expected[klass],
       `class ${klass} must suggest gate ${expected[klass]}; got ${r.gate_suggestion}`);
   }
@@ -231,7 +243,7 @@ test('18. Honest scope: human output mentions "candidate" or "scaffold" AND K-sc
 test('19. seedsNewFromBrief({airGap:true}) completes in < 300ms (no network)', async () => {
   const mod = await import('file://' + SYNTH.replace(/\\/g, '/'));
   const start = Date.now();
-  const r = mod.seedsNewFromBrief({ brief: 'parse EDI 837 claims', airGap: true });
+  const r = await mod.seedsNewFromBrief({ brief: 'parse EDI 837 claims', airGap: true });
   const dt = Date.now() - start;
   assert.equal(r.ok, true);
   assert.ok(dt < 300,
@@ -251,7 +263,7 @@ test('21. CARC denial codes 50/197/204/16 appear in the rule-class library', asy
   // CARC codes from W183. This locks the domain choice so a future
   // refactor cannot silently swap in generic stubs.
   const mod = await import('file://' + SYNTH.replace(/\\/g, '/'));
-  const r = mod.seedsNewFromBrief({ brief: 'classify denial codes', classHint: 'rule', airGap: true, count: 10 });
+  const r = await mod.seedsNewFromBrief({ brief: 'classify denial codes', classHint: 'rule', airGap: true, count: 10 });
   // Search the raw input/output text of the candidates (NOT the stringified
   // form, where inner quotes get escaped). Each CARC code must literally
   // appear in the row text so a future refactor cannot silently swap in
@@ -265,7 +277,7 @@ test('21. CARC denial codes 50/197/204/16 appear in the rule-class library', asy
 
 test('22. Brief route output has note field calling rows "CANDIDATES, not labels"', async () => {
   const mod = await import('file://' + SYNTH.replace(/\\/g, '/'));
-  const r = mod.seedsNewFromBrief({ brief: 'parse EDI 837 claims', airGap: true });
+  const r = await mod.seedsNewFromBrief({ brief: 'parse EDI 837 claims', airGap: true });
   assert.ok(typeof r.note === 'string' && r.note.length > 0, 'result must carry a note field');
   assert.match(r.note, /CANDIDATES|candidates/,
     `note field must call rows "CANDIDATES" so callers cannot misframe; got: ${r.note}`);

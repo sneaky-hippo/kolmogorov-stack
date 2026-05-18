@@ -111,16 +111,19 @@ export async function insertCapture(row) {
   return row;
 }
 
-export async function listCaptures(tenant, namespace, limit = 10000) {
+export async function listCaptures(tenant, namespace, limit = 10000, opts = {}) {
+  const includeDiscarded = !!opts.includeDiscarded;
   const driver = await loadDriver();
   if (driver && driver.findByTenantNamespace) {
-    return driver.findByTenantNamespace('observations', tenant, namespace, limit);
+    const rows = await driver.findByTenantNamespace('observations', tenant, namespace, limit);
+    return includeDiscarded ? rows : rows.filter((o) => !o.discarded);
   }
   // Legacy: synchronous filter on in-memory rows.
   const rows = store.all('observations');
   return rows.filter((o) =>
     o.tenant === tenant
     && (o.corpus_namespace === namespace || (namespace === 'default' && !o.corpus_namespace))
+    && (includeDiscarded || !o.discarded)
   ).slice(0, limit);
 }
 

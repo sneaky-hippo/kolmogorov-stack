@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { createRequire } from 'node:module';
 import { loadArtifact, runArtifact } from './artifact-runner.js';
+import { scoreCase } from './case-scorer.js';
 
 const require = createRequire(import.meta.url);
 
@@ -18,6 +19,11 @@ export async function benchmarkArtifact(artifactPath, opts = {}) {
   let passed = 0;
   let graded = 0;
 
+  // W345 — bench and eval share src/case-scorer.js. Comparator is pulled from
+  // the artifact's manifest (or the bundle's embedded evals.comparator) so the
+  // pass-count for a given .kolm + case set is independent of which verb the
+  // user ran. opts.comparator is the per-call override.
+  const comparatorName = opts.comparator || bundle.evals?.comparator || 'subset_equal';
   const restore = egress.install();
   try {
     for (const c of cases) {
@@ -27,7 +33,8 @@ export async function benchmarkArtifact(artifactPath, opts = {}) {
           latencies.push(result.latency_us);
           if (c.expected !== undefined) {
             graded++;
-            if (deepEqual(result.output, c.expected)) passed++;
+            const sc = scoreCase({ input: c.input, expected: c.expected }, result.output, { comparator: comparatorName, latency_us: result.latency_us });
+            if (sc.pass) passed++;
             else if (errors.length < 10) {
               errors.push({ id: c.id, expected: c.expected, got: result.output });
             }
@@ -140,6 +147,9 @@ function round(x, d) {
   return Math.round(x * m) / m;
 }
 
+// W345 — superseded by src/case-scorer.js::scoreCase (shared with eval). Kept
+// for backward compat with anything that imported the legacy helper; the
+// active pass/fail path no longer calls this function.
 function deepEqual(a, b) {
   if (a === b) return true;
   if (typeof a !== typeof b) return false;

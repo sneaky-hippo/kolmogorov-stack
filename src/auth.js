@@ -359,7 +359,17 @@ const PUBLIC_API = (p) =>
   p.startsWith('/v1/lineage/') ||                                       // lineage build/validate are stateless
   p === '/v1/ir/stats' ||                                               // IR stats over body-supplied IR
   p === '/v1/ir/validate' ||                                            // IR shape validation over body
-  p === '/v1/ir/replay';                                                // IR cache-seed replay over body
+  p === '/v1/ir/replay' ||                                              // IR cache-seed replay over body
+  // W342 marketplace catalog is public (it's a published catalog of signed
+  // artifacts). All routes are read-only metadata + download; the download
+  // path enforces a productionReady() gate (409 unless ?force=true).
+  // publish-request remains queue-write-only (audit ledger), so we keep it
+  // bound here too — it doesn't touch tenant rows.
+  p === '/v1/marketplace' ||
+  p === '/v1/marketplace/list' ||
+  p === '/v1/marketplace/catalog.json' ||
+  p === '/v1/marketplace/publish-request' ||
+  /^\/v1\/marketplace\/[A-Za-z0-9._-]+(?:\/download)?$/.test(p);
 
 export function adminApiKey() {
   return process.env.ADMIN_KEY || null;

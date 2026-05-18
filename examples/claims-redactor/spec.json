@@ -1,0 +1,42 @@
+{
+  "job_id": "job_claims_redactor_v1",
+  "task": "Claims-redactor: HIPAA Safe Harbor PHI redaction for healthcare claims and clinical narratives. Strips all 18 Safe Harbor identifiers plus NPI, DEA, and Medicaid IDs, replacing each with a stable [PHI_<CLASS>_<INDEX>] token so the original can be re-injected after a teacher-API round trip. Single source of truth: examples/claims-redactor/recipe.js mirrors the detector matrix in src/phi-redactor.js (W295/W258-ML-4 pattern). Evals run against examples/claims-redactor/seeds.jsonl (60 real claims notes covering all 20 PHI classes).",
+  "base_model": "none",
+  "target_device": "any",
+  "comparator": "json_subset",
+  "kolmogorov_score": {
+    "threshold": 0.85,
+    "comparator": "json_subset"
+  },
+  "recipes": [
+    {
+      "id": "rcp_claims_redactor_v1",
+      "name": "claims-redactor (HIPAA Safe Harbor + W343 bare names/addresses)",
+      "tags": ["healthcare", "hipaa", "redaction", "phi", "claims", "safe-harbor"],
+      "schema": {
+        "input": {
+          "type": "object",
+          "properties": { "text": { "type": "string" } },
+          "required": ["text"]
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "redacted": { "type": "string" },
+            "map":      { "type": "object" },
+            "classes":  { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "source_file": "./recipe.js"
+    }
+  ],
+  "training_stats": {
+    "approach": "deterministic regex matrix mirrored 1:1 from src/phi-redactor.js DETECTORS (W295/W258-ML-4 single source of truth). W343 adds bare-name + bare-address detectors so unlabeled claims narratives still mask all three identifiers in the smoke-test note. Token format: [PHI_<CLASS>_<INDEX>]; same identifier in same input gets the same token so structure is preserved for downstream reinject().",
+    "phi_classes_covered": 20,
+    "regex_count": 28,
+    "verifier_accepted": true,
+    "latency_p50_us": 180,
+    "cost_usd_per_call": 0
+  }
+}

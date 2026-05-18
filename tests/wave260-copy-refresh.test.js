@@ -55,27 +55,34 @@ test('W260 #1 - index.html hero adds "Stop renting intelligence" framing', () =>
     'hero must include "Stop renting intelligence" framing');
 });
 
-test('W260 #2 - index.html hero names broad buyer outcomes (W334: PHI/privileged/KYC vertical pile-up dropped)', () => {
+test('W260 #2 - index.html hero region names broad buyer outcomes (W334: PHI/privileged/KYC vertical pile-up dropped; W335: thesis moved below the fold)', () => {
   // W334 dropped the PHI/privileged/KYC niche pile-up from the home hero;
   // those vertical targets now live on /healthcare, /legal, /finance.
   // The home hero must still surface buyer outcomes (own + audit + hardware
   // control); that framing carries the rent-vs-own narrative without the
   // vertical naming.
-  const heroIdx = INDEX.search(/<h1[\s>]/i);
-  const HERO = INDEX.slice(heroIdx, heroIdx + 4000);
-  assert.match(HERO, /hardware you control/i, 'hero must name hardware control as a buyer outcome');
-  assert.match(HERO, /weights on disk you own/i, 'hero must name ownership of weights as a buyer outcome');
-  assert.match(HERO, /receipt for every inference/i, 'hero must name receipt-per-inference as a buyer outcome');
+  // W335 second-pass hero rescue moved the dense thesis paragraph from the
+  // above-the-fold hero into its own framed section below the cinematic demo
+  // so the hero reads as one breath. The data-w260="thesis" marker is
+  // preserved on the moved element. We assert outcome presence anywhere in
+  // INDEX and verify the thesis marker is still present.
+  assert.match(INDEX, /hardware you control/i, 'thesis must name hardware control as a buyer outcome');
+  assert.match(INDEX, /weights on disk you own/i, 'thesis must name ownership of weights as a buyer outcome');
+  assert.match(INDEX, /receipt for every inference/i, 'thesis must name receipt-per-inference as a buyer outcome');
+  assert.match(INDEX, /data-w260="thesis"/, 'data-w260="thesis" marker must be preserved on the moved thesis element');
 });
 
-test('W260 #3 - index.html keeps the W220 Capture/Compile/Ship/Audit lede beats', () => {
+test('W260 #3 - index.html keeps the W220 Capture/Compile/Ship/Audit lede beats (W335: moved below the cinematic, marker preserved)', () => {
   // Regression assertion: the W220 4-beat lede must still be present.
-  const heroIdx = INDEX.search(/<h1[\s>]/i);
-  const HERO = INDEX.slice(heroIdx, heroIdx + 4000);
-  assert.match(HERO, /Capture your real prompts/i, 'lede capture beat preserved');
-  assert.match(HERO, /Compile them into your own model/i, 'lede compile beat preserved');
-  assert.match(HERO, /Ship it on/i, 'lede ship beat preserved');
-  assert.match(HERO, /Audit every call/i, 'lede audit beat preserved');
+  // W335 second-pass hero rescue moved the lede paragraph below the cinematic
+  // demo into its own framed section. The data-w260="lede-beats" marker is
+  // preserved on the moved element. We assert lede-beat presence anywhere in
+  // INDEX and verify the marker is intact.
+  assert.match(INDEX, /Capture your real prompts/i, 'lede capture beat preserved');
+  assert.match(INDEX, /Compile them into your own model/i, 'lede compile beat preserved');
+  assert.match(INDEX, /Ship it on/i, 'lede ship beat preserved');
+  assert.match(INDEX, /Audit every call/i, 'lede audit beat preserved');
+  assert.match(INDEX, /data-w260="lede-beats"/, 'data-w260="lede-beats" marker preserved on the moved element');
 });
 
 test('W260 #4 - index.html v0.2 strip names all four CLI verbs', () => {

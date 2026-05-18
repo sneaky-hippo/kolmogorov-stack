@@ -22,8 +22,9 @@
 // What this module does NOT do:
 //   * does not call any KMS API (aws-sdk, @google-cloud/kms, @azure/keyvault,
 //     node-vault). Those are operator-side concerns. The kmsTarget enum is
-//     bound to a `not_yet_wired` API status flag in the returned manifest so
-//     a verifier can confirm the wrap intent was generated honestly.
+//     bound to a concrete `api_status` flag in the returned manifest
+//     ('applied' for local; 'awaiting_operator_hook' for hosted KMS) so a
+//     verifier can confirm whether the wrap intent has been acted on.
 //   * does not pick the cadence. Customer's compliance officer picks the
 //     overlap window; this module records what was picked.
 //   * does not register the new public key with the directory. That is the
@@ -44,7 +45,13 @@ import {
 // ---------------------------------------------------------------------------
 export const KMS_TARGETS = ['aws-kms', 'gcp-kms', 'azure-keyvault', 'vault', 'local'];
 export const DEFAULT_OVERLAP_DAYS = 30;
-export const KMS_API_STATUS_NOT_WIRED = 'not_yet_wired';
+// Hosted-KMS api_status: 'awaiting_operator_hook' (kolm emitted the wrap intent;
+// customer's KMS hook has not yet pushed the key to the named KMS).
+// Local: 'applied' (key is on disk; nothing further to do).
+export const KMS_API_STATUS_AWAITING_HOOK = 'awaiting_operator_hook';
+// Back-compat alias so older callers that imported KMS_API_STATUS_NOT_WIRED
+// keep resolving to the same value. New callers should use the renamed const.
+export const KMS_API_STATUS_NOT_WIRED = KMS_API_STATUS_AWAITING_HOOK;
 export const KEY_STATUSES = ['active', 'rotated', 'retired'];
 
 // Per-target import format hint. The customer KMS hook reads this to know
@@ -131,8 +138,8 @@ export function listKeys(opts = {}) {
 // Plus a wrap_intent block recording what kolm would pass to the KMS:
 //   kms_target, import_format, native_api, api_status, new_key_path (when local)
 //
-// `api_status` is always 'not_yet_wired' for hosted KMS targets. kolm emits
-// the rotation receipt; the customer wires the KMS hook to act on it.
+// `api_status` is 'awaiting_operator_hook' for hosted KMS targets. kolm
+// emits the rotation receipt; the customer wires the KMS hook to act on it.
 // ---------------------------------------------------------------------------
 export function rotateKey(opts = {}) {
   const kmsTarget = opts.kmsTarget || 'local';
@@ -195,7 +202,7 @@ export function rotateKey(opts = {}) {
       kms_target: kmsTarget,
       import_format: KMS_IMPORT_FORMAT[kmsTarget],
       native_api: KMS_NATIVE_API[kmsTarget],
-      api_status: kmsTarget === 'local' ? 'applied' : KMS_API_STATUS_NOT_WIRED,
+      api_status: kmsTarget === 'local' ? 'applied' : KMS_API_STATUS_AWAITING_HOOK,
       new_key_path: newKeyPath,
     },
     honest_scope: 'kolm emits rotation receipt; customer KMS hook applies the wrapping',

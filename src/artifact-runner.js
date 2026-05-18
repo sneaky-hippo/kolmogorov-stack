@@ -29,6 +29,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { compileJs } from './verifier.js';
 import { verifyManifestSignature, decodePack, decodeIndex } from './artifact.js';
+import { scoreCase } from './case-scorer.js';
 import { runWasmTarget } from './runners/wasm-runner.js';
 import { runNativeTarget } from './runners/native-runner.js';
 import { runGgufTarget, ggufRuntimeAvailable } from './runners/gguf-runner.js';
@@ -570,11 +571,17 @@ export async function evalArtifact(artifactPath, opts = {}) {
   const latencies = [];
   let passed = 0;
   const errors = [];
+  // W345 — comparator pulled from artifact manifest so eval and bench score
+  // the same artifact identically. Default is 'subset_equal' (the canonical
+  // matcher). Embedded evals.comparator wins when set; opts.comparator is the
+  // CLI override.
+  const comparatorName = opts.comparator || bundle.evals?.comparator || 'subset_equal';
   for (const c of cases) {
     try {
       const r = await runArtifact(artifactPath, c.input, { params: c.params || opts.params });
       latencies.push(r.latency_us);
-      if (matches(r.output, c.expected)) passed++;
+      const sc = scoreCase({ input: c.input, expected: c.expected }, r.output, { comparator: comparatorName, latency_us: r.latency_us });
+      if (sc.pass) passed++;
       else errors.push({ id: c.id, expected: c.expected, got: r.output });
     } catch (e) {
       errors.push({ id: c.id, error: String(e.message || e) });
@@ -601,6 +608,10 @@ export async function evalArtifact(artifactPath, opts = {}) {
 // this is a copy because src/artifact-runner.js is the runtime hot path and we
 // don't want it to pull the full verifier sandbox (vm, source guards, etc.)
 // just for the matcher.
+//
+// W345: this local copy is retained as a safety reference. The active scoring
+// path goes through src/case-scorer.js::scoreCase so eval and bench share one
+// implementation — if you change semantics here, also update case-scorer.js.
 function matches(actual, expected) {
   if (expected === undefined || expected === null) return actual !== undefined;
   if (typeof expected === 'function') return expected(actual);

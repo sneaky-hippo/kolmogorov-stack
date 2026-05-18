@@ -1120,9 +1120,21 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
 
   const sharedBlocks = { capability, lineage, workflow_ir, attestation_report, confidential_compute, extra_files, export: exportInput, moe: moeInput, pretokenize: pretokenizeInput, external_holdout: externalHoldoutInput, tenant_shadow_corpus: tenantShadowInput, auditor_attestation: auditorAttestationInput, supersession: supersessionInput, drift_report: driftReportInput, allow_below_gate };
 
+  // W350 — temp-file cleanup registry. The two-pass build writes a probe zip
+  // to measure its size before the K-score is embedded; on success the probe
+  // is overwritten in place by the final zip (same outPath). On FAILURE
+  // (ship-gate throw, Rekor pinning failure, anything else between Pass 1 and
+  // the return) the probe zip used to leak — a half-baked .kolm with no
+  // K-score in its manifest would sit in ~/.kolm/artifacts/. Track every
+  // temp file we create and unlink them in the finally if `success` never
+  // flips true.
+  const cleanupOnFail = [];
+  let success = false;
+  const outPath = path.join(dir, `${job_id}.kolm`);
+  try {
   // Pass 1 — zip to measure size.
   const probePayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, judge_id: _judgeId, eval_score, tier: _tier, pack, index, target_device, train_device, license, artifact_class, seed_provenance, compiled_targets, ...sharedBlocks });
-  const outPath = path.join(dir, `${job_id}.kolm`);
+  cleanupOnFail.push(outPath);
   await packageArtifact({ job_id, payload: probePayload, outPath });
   const probeBytes = fs.statSync(outPath).size;
 
@@ -1199,6 +1211,7 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
   }
   const stat = fs.statSync(outPath);
 
+  success = true;
   return {
     outPath,
     manifest: finalPayload.manifest,
@@ -1211,6 +1224,16 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
     k_score: finalPayload.manifest.k_score,
     rekor_attestation: rekorAttestation,
   };
+  } finally {
+    // W350 — only clean up on failure. On success the same outPath is the
+    // canonical artifact and must remain on disk; tracking it in cleanupOnFail
+    // is harmless because `success === true` short-circuits the unlink loop.
+    if (!success) {
+      for (const p of cleanupOnFail) {
+        try { fs.unlinkSync(p); } catch { /* file may not exist if Pass 1 failed before packageArtifact resolved */ }
+      }
+    }
+  }
 }
 
 export function verifyManifestSignature(manifest_json, signature) {

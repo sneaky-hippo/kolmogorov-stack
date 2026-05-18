@@ -1,10 +1,9 @@
-// local-cpu — always available, slow, no GPU required.
-//
-// Detection: we never claim "unavailable" for CPU. Reports core count and
-// total RAM so the picker can downgrade if a 7B job is asked for on a tiny
-// box. Run() bridges to apps/trainer via /distill with backend=local-cpu.
+// local-cpu — always available, slow, no GPU. Detect reports cores + RAM.
+// No API. run() spawns the command on this box via node:child_process.
+// Env: KOLM_TRAINER_BACKEND=local for the training bridge; run() is generic exec.
 
 import os from 'node:os';
+import { spawn } from 'node:child_process';
 
 export async function detect() {
   return {
@@ -20,11 +19,41 @@ export async function test() {
   return { ok: true, latency_ms: Date.now() - t0, device: 'cpu', cores: os.cpus().length };
 }
 
-// Run is delegated to the Python trainer — JS never imports torch.
-export async function run(spec, { on_progress } = {}) {
-  // The actual dispatch happens in router.js -> apps/trainer (KOLM_TRAINER_MODE=local).
-  // This stub exists so pick() can route to local-cpu and the caller routes the spec.
-  throw new Error('local-cpu.run() not direct-callable; use trainer bridge with KOLM_TRAINER_BACKEND=local');
+// run({ image, command, env, timeoutMs }) — `image` is ignored (no container
+// runtime on local). `command` is argv. Returns the same envelope as remote
+// backends so callers can treat all backends uniformly.
+export async function run({ image, command = [], env = {}, timeoutMs = 30 * 60 * 1000 } = {}) {
+  const t0 = Date.now();
+  if (!command || command.length === 0) {
+    return { ok: false, reason: 'local-cpu.run requires command', next_step: 'pass command=["echo","hello"]' };
+  }
+  const [bin, ...args] = command;
+  return await new Promise((resolve) => {
+    const child = spawn(bin, args, {
+      env: { ...process.env, ...env },
+      shell: process.platform === 'win32',
+    });
+    const outChunks = []; const errChunks = [];
+    child.stdout.on('data', (c) => outChunks.push(c));
+    child.stderr.on('data', (c) => errChunks.push(c));
+    const killer = setTimeout(() => { try { child.kill('SIGKILL'); } catch {} }, timeoutMs);
+    child.on('close', (code) => {
+      clearTimeout(killer);
+      resolve({
+        ok: code === 0,
+        exit_code: code == null ? 1 : code,
+        stdout: Buffer.concat(outChunks).toString('utf8'),
+        stderr: Buffer.concat(errChunks).toString('utf8'),
+        artifact_url: null,
+        latency_ms: Date.now() - t0,
+        device: 'cpu',
+      });
+    });
+    child.on('error', (e) => {
+      clearTimeout(killer);
+      resolve({ ok: false, reason: `spawn ${bin} failed: ${e.message}`, latency_ms: Date.now() - t0 });
+    });
+  });
 }
 
 export default { detect, test, run };

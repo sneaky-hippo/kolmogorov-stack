@@ -138,6 +138,22 @@ const SEED_CATALOG = [
     vertical: 'support',
     tags: ['classification', 'support', 'intent', 'predibase-style'],
   },
+  // W343 — claims-redactor: HIPAA Safe Harbor PHI redactor backed by
+  // examples/claims-redactor/recipe.js (single-source mirror of
+  // src/phi-redactor.js DETECTORS). 60 real seed rows, K-score ~0.985,
+  // productionReady() true.
+  {
+    slug: 'claims-redactor',
+    name: 'Claims Redactor (HIPAA Safe Harbor)',
+    description: 'HIPAA Safe Harbor PHI redactor for healthcare claims and clinical narratives. Strips all 18 Safe Harbor identifiers plus NPI/DEA/Medicaid IDs; mints stable [PHI_<CLASS>_<INDEX>] tokens so the original can be re-injected after a teacher-API round trip. Single source of truth: examples/claims-redactor/recipe.js mirrors src/phi-redactor.js.',
+    category: 'compliance',
+    license: 'Apache-2.0',
+    badges: ['HIPAA', 'BAA', 'Verified'],
+    source_path: path.join('examples', 'claims-redactor', 'claims-redactor.kolm'),
+    download_url: '/v1/marketplace/claims-redactor/download',
+    vertical: 'healthcare',
+    tags: ['redaction', 'healthcare', 'phi', 'hipaa', 'safe-harbor', 'claims'],
+  },
 ];
 
 // Manifest from public/registry-pack/ — populated at startup. Used to pull

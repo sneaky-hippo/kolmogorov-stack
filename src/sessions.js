@@ -17,8 +17,9 @@
 //
 //   rescue({ pid })
 //     Reptyr-style adoption of an orphaned PID. On Linux with `reptyr`
-//     installed we shell out to it. Everywhere else we return an honest
-//     amber-pill record listing the workaround so users aren't surprised.
+//     installed we shell out to it. macOS uses `script -F` redirection;
+//     Windows uses `kolm watch <job-id>` on the existing log path. In every
+//     case the caller gets a structured {supported, tool|reason} record.
 //
 // All session metadata is jobs.jsonl rows with kind='compile'|'distill'|...
 // so `kolm jobs`, `kolm watch`, and the W232 .kolm-state surfaces all see

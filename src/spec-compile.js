@@ -42,6 +42,7 @@ import path from 'node:path';
 import { compileJs, verify as verifyRecipe } from './verifier.js';
 import { subroutines as LIBRARY } from './library.js';
 import { prepareSeedSplit, MIN_PRODUCTION_HOLDOUT, MIN_PRODUCTION_TRAIN } from './seeds.js';
+import { computeSeedProductionReady } from './production-ready.js';
 import { scoreHoldout, SUPPORTED_COMPARATORS } from './comparators.js';
 import { validateDsl, emitJs, emitCompiledTargets, DSL_SPEC } from './dsl.js';
 import { loadDistillProvenance } from './distill-provenance.js';
@@ -310,19 +311,12 @@ export async function compileSpec(spec, opts = {}) {
   // 'sample_check' when the holdout is too small to ground a public K-score.
   let seed_provenance = null;
   if (seedSplit) {
-    // W258-ML-4: production_ready must AND every leakage signal seeds.js
-    // computes, not just the exact-overlap pair. Near-duplicate (Jaccard
-    // bigram) and group-id (member_id / claim_id / case_id) overlaps both
-    // contaminate eval just as badly as exact overlap. Original W283
-    // group-aware split work already flows these counts up; the gate was
-    // simply not reading them.
-    const _lr = seedSplit.leakage_report || {};
-    const production_ready = seedSplit.train_count >= MIN_PRODUCTION_TRAIN
-      && seedSplit.holdout_count >= MIN_PRODUCTION_HOLDOUT
-      && (_lr.input_overlap_count || 0) === 0
-      && (_lr.output_overlap_count || 0) === 0
-      && (_lr.near_duplicate_count || 0) === 0
-      && (_lr.grouped_overlap_count || 0) === 0;
+    // W258-ML-4 + W339: production_ready ANDs every leakage signal seeds.js
+    // computes (near-duplicate / group-id / exact input+output overlap) with
+    // the min-train + min-holdout counts. Logic now lives in
+    // src/production-ready.js so cmdCompile, cmdRun, cmdVerify, and the
+    // marketplace gate all read the same definition.
+    const production_ready = computeSeedProductionReady(seedSplit);
     seed_provenance = {
       seeds_hash: seedSplit.seeds_hash,
       split_seed: seedSplit.split_seed,
@@ -788,6 +782,15 @@ export async function compileSpec(spec, opts = {}) {
     allow_below_gate: opts.allow_below_gate === true || opts.allowBelowGate === true,
   });
 
+  // W350 — once buildAndZip has produced an artifact, any post-build failure
+  // (auditor cross-check, copy-to-outPath, hash) must roll back the on-disk
+  // .kolm so a half-baked build does not leak into ~/.kolm/artifacts/. The
+  // user-supplied opts.outPath is also rolled back to avoid a partial copy
+  // looking like a real artifact in CI dirs.
+  const postBuildCleanup = [built.outPath];
+  let postBuildOk = false;
+  let final;
+  try {
   // Wave 166 — post-build cross-check: every auditor attestation that was
   // embedded MUST sign-claim the artifact_hash this build just produced. If
   // the attestation was made against an OLDER build (i.e. the tenant tried
@@ -814,10 +817,21 @@ export async function compileSpec(spec, opts = {}) {
     }
   }
 
-  const final = opts.outPath || built.outPath;
+  final = opts.outPath || built.outPath;
   if (final !== built.outPath) {
+    // Track the destination too — if copyFileSync throws partway, the partial
+    // file at `final` is a leak. The try/finally below removes it on failure.
+    postBuildCleanup.push(final);
     fs.copyFileSync(built.outPath, final);
     try { fs.unlinkSync(built.outPath); } catch {}
+  }
+  postBuildOk = true;
+  } finally {
+    if (!postBuildOk) {
+      for (const p of postBuildCleanup) {
+        try { fs.unlinkSync(p); } catch { /* may not exist */ }
+      }
+    }
   }
   const bytes = fs.statSync(final).size;
   const sha = crypto.createHash('sha256').update(fs.readFileSync(final)).digest('hex');

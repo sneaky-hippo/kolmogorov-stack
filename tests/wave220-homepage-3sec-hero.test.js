@@ -51,10 +51,16 @@ test('W220 #4 - new lede is the 3-sec value prop, not the dense pre-W220 lede', 
   // "Capture / Compile / Ship / Audit" structure. W245 widened "Ship it on
   // your hardware" to "Ship it on every device you own" — both satisfy the
   // ship-beat, so we match on the action verb only.
-  assert.match(HERO, /Capture your real prompts/i, 'lede must open with capture beat');
-  assert.match(HERO, /Compile them into your own model/i, 'lede must include compile beat');
-  assert.match(HERO, /Ship it on/i, 'lede must include ship beat');
-  assert.match(HERO, /Audit every call/i, 'lede must close with audit beat');
+  // W335 second-pass hero rescue moved the lede paragraph below the cinematic
+  // demo into its own framed section to give the above-the-fold hero room to
+  // breathe; the data-w260="lede-beats" marker is preserved on the moved
+  // element. We assert lede-beat presence anywhere in INDEX (not just the
+  // 4KB-after-H1 slice) since the lede was moved, not deleted.
+  assert.match(INDEX, /Capture your real prompts/i, 'lede must open with capture beat');
+  assert.match(INDEX, /Compile them into your own model/i, 'lede must include compile beat');
+  assert.match(INDEX, /Ship it on/i, 'lede must include ship beat');
+  assert.match(INDEX, /Audit every call/i, 'lede must close with audit beat');
+  assert.match(INDEX, /data-w260="lede-beats"/, 'lede-beats marker must be preserved on the moved element');
   // Old lede must be gone.
   assert.ok(!/Describe what your AI should do\. kolm builds it on your data/.test(INDEX),
     'pre-W220 dense lede must be replaced');
@@ -77,8 +83,11 @@ test('W220 #6 - em-dash budget on index.html still <= 1 (W205 lock)', () => {
 test('W220 #7 - hero collapses 5+ moat strips into ONE proof + ONE artifact', () => {
   // Single hero-quant line (proof) + single hero-artifact line (live download).
   // The pre-W220 hero-promise + hero-moat + hero-stack strips must be removed.
-  assert.match(HERO, /class=["']hero-quant["']/);
-  assert.match(HERO, /class=["']hero-artifact["']/);
+  // W335 second-pass rescue: hero-quant / hero-artifact may carry additional
+  // classes (w335-proof / w335-artifact) for the new section's spacing, so the
+  // assertion accepts the class as one token in a multi-class attribute.
+  assert.match(HERO, /class=["'][^"']*\bhero-quant\b/, 'hero must carry a hero-quant proof line');
+  assert.match(HERO, /class=["'][^"']*\bhero-artifact\b/, 'hero must carry a hero-artifact artifact line');
   assert.ok(!/class=["']hero-promise["']/.test(INDEX),
     'hero-promise strip must be removed (collapsed into lede)');
   assert.ok(!/class=["']hero-moat["']/.test(INDEX),

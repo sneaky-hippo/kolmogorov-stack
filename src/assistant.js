@@ -322,14 +322,20 @@ export async function handleAssistant(req, _res, deps) {
     case 'upgrade': {
       const target = extractTargetPlan(prompt);
       const billing = await deps.changePlan({ tenant, target });
+      let narration;
+      if (billing?.error === 'invalid_plan') {
+        narration = `${target} is not a valid plan. Pick one of starter / pro / teams / business / enterprise.`;
+      } else if (billing?.plan_change_pending) {
+        narration = `Logged your ${target} request. Open ${billing.checkout_url} to talk to a human — we'll provision the upgrade within one business day.`;
+      } else if (billing?.checkout_url || billing?.billing_url) {
+        narration = `Open the secure billing link to switch to ${target}. Plan flips when payment clears.`;
+      } else {
+        narration = `Plan changed to ${billing?.plan || target}.`;
+      }
       return {
         ok: true,
         intent,
-        narration: billing?.billing_url
-          ? `Open the secure billing link to switch to ${target}. Plan flips when payment clears.`
-          : billing?.error === 'billing_not_configured'
-            ? `${target} billing is not yet wired in. Mail founders@kolm.ai and we'll set you up directly.`
-            : `Plan changed to ${billing?.plan || target}.`,
+        narration,
         data: billing,
       };
     }
@@ -363,9 +369,10 @@ export async function handleAssistant(req, _res, deps) {
 // This is the backend the `kolm nl` CLI verb routes to. Air-gap mode
 // (airGap:true) is deterministic and never calls a network: classification
 // is a keyword match over the input text, and seed examples are emitted
-// from a small template library. Networked mode is NOT YET WIRED: the
-// scaffolder always returns the air-gap output and stamps
-// `network_status: 'not_yet_wired'` on the result so callers know.
+// from a small template library. Networked mode delegates seed expansion
+// to src/llm-call.js (KOLM_LLM_* env) — when unconfigured it falls back to
+// a deterministic template+synonym path inside synthesis.js so callers
+// always get usable rows.
 //
 // Returns:
 //   {
@@ -376,7 +383,7 @@ export async function handleAssistant(req, _res, deps) {
 //     suggested_seed_examples,     // length-10 [{prompt, completion}]
 //     next_steps: [string],
 //     class_inference_basis,       // 'class_hint' | 'keyword:<word>' | 'default'
-//     network_status,              // 'air_gap' | 'not_yet_wired'
+//     network_status,              // 'air_gap' | 'networked_llm' | 'networked_fallback'
 //   }
 
 const NL_RECIPE_CLASSES = ['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'];
@@ -547,7 +554,7 @@ export function scaffoldRecipeFromNl(opts) {
     suggested_seed_examples: seeds,
     next_steps: steps,
     class_inference_basis: inferred.basis,
-    network_status: airGap ? 'air_gap' : 'not_yet_wired',
+    network_status: airGap ? 'air_gap' : 'networked_fallback',
     note: 'scaffolds are starting points. refine + verify before compile.',
   };
 }

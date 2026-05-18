@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Builder &middot; no-code .kolm artifact builder &middot; kolm.ai · kolm.ai</title>
+<title>Builder · no-code .kolm artifact builder · kolm.ai</title>
 <meta name="description" content="Describe a task in plain English, add a few examples, and compile a signed .kolm artifact. No CLI, no Python, no GPU.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -82,6 +82,7 @@
     border-radius: 10px; padding: 12px;
   }
   @media (max-width: 720px) { .steps { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px) { .steps { grid-template-columns: 1fr; } }
   .step-tab {
     padding: 10px 12px; border-radius: 6px;
     border: 1px solid transparent;
@@ -315,6 +316,20 @@
         </div>
       </div>
 
+      <!-- W347: NL fan-out. Hidden by default; revealed if /v1/seeds/from-nl/health
+           reports backend available. We do not stub a "soon" badge here; if no
+           backend is configured the button never appears. -->
+      <div id="nl-seeds-strip" style="display:none;margin-top:12px;padding:12px;border:1px dashed var(--line);border-radius:8px;background:var(--bg-card)">
+        <div style="font-family:var(--mono);text-transform:uppercase;font-size:12px;color:var(--ink-faint);letter-spacing:0.04em;margin-bottom:6px">Generate from one seed</div>
+        <p style="margin:0 0 8px;font-size:13px;color:var(--ink-mute)">Add one input/output pair above, then ask the configured LLM to fan it out into <code id="nl-count-pill">10</code> variations.</p>
+        <div class="row" style="gap:8px;align-items:center">
+          <label for="nl-count" style="font-size:12px;color:var(--ink-mute)">Variations</label>
+          <input id="nl-count" type="number" min="2" max="50" value="10" style="width:80px;padding:4px 6px;border:1px solid var(--line);background:var(--bg-elev);color:var(--ink);border-radius:6px;font-family:var(--mono)">
+          <button class="btn" id="gen-nl-seeds">Generate variations</button>
+          <span id="nl-status" style="font-size:12px;color:var(--ink-mute)"></span>
+        </div>
+      </div>
+
       <div class="row">
         <button class="btn" id="back-step-1">&larr; Back</button>
         <button class="btn primary" id="to-step-3">Next: preview K-score &rarr;</button>
@@ -332,8 +347,24 @@
       </div>
 
       <div id="preview-out" style="display:none">
+        <!-- W347: production_ready verdict ribbon. Green when ships, amber
+             when gated; reasons list the failing gates so the visitor can
+             fix them before paying for compile. -->
+        <div id="verdict-ribbon" style="margin:14px 0 0;padding:12px 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg-card);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span id="verdict-dot" aria-hidden="true" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--ink-mute)"></span>
+          <strong id="verdict-text" style="font-family:var(--mono)">checking</strong>
+          <span id="verdict-reasons" style="font-size:13px;color:var(--ink-mute)"></span>
+        </div>
+
         <h3 style="margin:20px 0 8px;font-size:14px;color:var(--ink-faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.04em">K-score breakdown</h3>
         <div class="ks-grid" id="ks-grid"></div>
+
+        <!-- W347: sample train + holdout rows. Caller already capped to 3 per side. -->
+        <h3 style="margin:20px 0 8px;font-size:14px;color:var(--ink-faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.04em">Train sample <span id="train-count-pill" style="color:var(--ink-mute);font-weight:normal"></span></h3>
+        <table class="ex-table" id="train-tbl"><thead><tr><th style="width:50%">Input</th><th>Output</th></tr></thead><tbody></tbody></table>
+
+        <h3 style="margin:20px 0 8px;font-size:14px;color:var(--ink-faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.04em">Holdout sample <span id="holdout-count-pill" style="color:var(--ink-mute);font-weight:normal"></span></h3>
+        <table class="ex-table" id="holdout-tbl"><thead><tr><th style="width:50%">Input</th><th>Output</th></tr></thead><tbody></tbody></table>
 
         <h3 style="margin:20px 0 8px;font-size:14px;color:var(--ink-faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.04em">Synthesized recipe</h3>
         <pre class="code" id="recipe-src"></pre>
@@ -375,6 +406,12 @@
           <button class="copy" id="copy-verify">Copy</button>
         </div>
         <p class="sub" style="margin-top:16px">That command runs the K-score check offline and confirms the artifact's signature chain. Built with <a class="link" href="/quickstart">kolm quickstart</a>.</p>
+        <div class="row" style="margin-top:20px;gap:12px;flex-wrap:wrap">
+          <a class="btn primary" href="/captures">Capture live traffic &rarr;</a>
+          <a class="btn" href="/marketplace">List on the marketplace</a>
+          <a class="btn" href="/sdks">Embed in an app</a>
+        </div>
+        <p class="sub" style="margin-top:10px;font-size:13px">Next: point your client at <code>kolm.ai/v1/capture</code> to grow the corpus, then re-compile when a namespace crosses 1,000 pairs.</p>
       </div>
     </div>
 
@@ -491,15 +528,31 @@
     renderExamples();
   });
 
-  // ---- Preview ----
+  // ---- Preview (W347: richer payload via /v1/build/preview) ----
+  // We POST {spec, seeds_jsonl_text}; the server runs synthesize + split
+  // + production_ready and returns k_score, train/holdout samples and the
+  // gate verdict. Falls back to the legacy /v1/builder/preview only on
+  // route-missing (older deploys) to keep the page resilient.
+  function examplesToJsonl(examples) {
+    return examples.map(function(ex){
+      return JSON.stringify({ input: ex.input, output: ex.expected });
+    }).join('\n');
+  }
+  function buildSpec() {
+    return {
+      name: (state.task || 'preview').slice(0, 64).replace(/[^a-z0-9_\-]/gi, '-'),
+      task: state.task || '',
+      output_spec: { type: 'string' },
+    };
+  }
   document.getElementById('run-preview').addEventListener('click', function(){
     var btn = this;
     btn.disabled = true;
     btn.textContent = 'Synthesizing&hellip;';
-    fetch('/v1/builder/preview', {
+    fetch('/v1/build/preview', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ task: state.task, examples: state.examples }),
+      body: JSON.stringify({ spec: buildSpec(), seeds_jsonl_text: examplesToJsonl(state.examples) }),
     }).then(function(r){ return r.json().then(function(j){ return { status: r.status, json: j }; }); })
       .then(function(res){
         btn.disabled = false; btn.textContent = 'Run preview';
@@ -519,7 +572,7 @@
   });
 
   function renderPreview(p) {
-    var ks = p.k_score_estimate || {};
+    var ks = p.k_score || p.k_score_estimate || {};
     var grid = document.getElementById('ks-grid');
     grid.innerHTML = '';
     var rows = [
@@ -538,6 +591,24 @@
       div.appendChild(k); div.appendChild(v);
       grid.appendChild(div);
     });
+    // production_ready verdict ribbon.
+    var pr = p.production_ready || { ok: !!(ks && ks.ships), reasons: [] };
+    var dot = document.getElementById('verdict-dot');
+    var vtxt = document.getElementById('verdict-text');
+    var vreas = document.getElementById('verdict-reasons');
+    if (pr.ok) {
+      dot.style.background = 'var(--ok, #58b768)';
+      vtxt.textContent = 'production_ready';
+      vreas.textContent = 'all gates pass';
+    } else {
+      dot.style.background = 'var(--warn, #d2a132)';
+      vtxt.textContent = 'gated';
+      var rs = Array.isArray(pr.reasons) ? pr.reasons : [];
+      vreas.textContent = rs.length ? rs.join(' · ') : 'gates incomplete';
+    }
+    // Train + holdout sample rows.
+    renderRowTable('train-tbl', p.train_rows || [], p.train_count, 'train-count-pill');
+    renderRowTable('holdout-tbl', p.holdout_rows || [], p.holdout_count, 'holdout-count-pill');
     document.getElementById('recipe-src').textContent = p.recipe_source || '/* no recipe synthesized */';
     var warns = document.getElementById('warn-list');
     warns.innerHTML = '';
@@ -558,7 +629,80 @@
       });
     }
   }
-  function fmt(n) { return (typeof n === 'number') ? n.toFixed(4) : '&mdash;'; }
+  function renderRowTable(tableId, rows, total, pillId) {
+    var tbl = document.getElementById(tableId);
+    var tbody = tbl ? tbl.querySelector('tbody') : null;
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!rows.length) {
+      var tr = document.createElement('tr');
+      var td = document.createElement('td'); td.colSpan = 2; td.className = 'empty';
+      td.textContent = '(no rows in this split)';
+      tr.appendChild(td); tbody.appendChild(tr);
+    } else {
+      rows.forEach(function(r){
+        var tr = document.createElement('tr');
+        var ti = document.createElement('td'); ti.className = 'mono';
+        ti.textContent = String(r.input == null ? '' : (typeof r.input === 'string' ? r.input : JSON.stringify(r.input)));
+        var to = document.createElement('td'); to.className = 'mono';
+        to.textContent = String(r.output == null ? '' : (typeof r.output === 'string' ? r.output : JSON.stringify(r.output)));
+        tr.appendChild(ti); tr.appendChild(to);
+        tbody.appendChild(tr);
+      });
+    }
+    var pill = document.getElementById(pillId);
+    if (pill && typeof total === 'number') pill.textContent = '(' + total + ' total)';
+  }
+  function fmt(n) { return (typeof n === 'number') ? n.toFixed(4) : '—'; }
+
+  // ---- W347: NL fan-out from a single seed ----
+  // Probe /v1/seeds/from-nl/health on load; if available, reveal the strip.
+  fetch('/v1/seeds/from-nl/health', { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (j && j.available) {
+        var strip = document.getElementById('nl-seeds-strip');
+        if (strip) strip.style.display = 'block';
+      }
+    })
+    .catch(function(){ /* silent — strip stays hidden */ });
+  var genBtn = document.getElementById('gen-nl-seeds');
+  if (genBtn) genBtn.addEventListener('click', function(){
+    if (!state.examples.length) {
+      alert('Add at least one input/output pair first; the NL fan-out preserves your seed.');
+      return;
+    }
+    var seed = state.examples[state.examples.length - 1];
+    var count = Math.max(2, Math.min(50, parseInt(document.getElementById('nl-count').value || '10', 10)));
+    var statusEl = document.getElementById('nl-status');
+    statusEl.textContent = 'generating ' + count + '…';
+    genBtn.disabled = true;
+    fetch('/v1/seeds/from-nl', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ seed: { input: seed.input, output: seed.expected }, count: count, hint: state.task }),
+    }).then(function(r){ return r.json().then(function(j){ return { status: r.status, json: j }; }); })
+      .then(function(res){
+        genBtn.disabled = false;
+        if (res.status !== 200) {
+          statusEl.textContent = '';
+          alert('Generation failed: ' + (res.json && (res.json.error || res.json.detail) || res.status));
+          return;
+        }
+        var seeds = (res.json && res.json.seeds) || [];
+        seeds.forEach(function(s){
+          if (state.examples.length >= 100) return;
+          state.examples.push({ input: s.input, expected: s.output });
+        });
+        renderExamples();
+        statusEl.textContent = 'added ' + seeds.length + ' variations';
+      })
+      .catch(function(e){
+        genBtn.disabled = false;
+        statusEl.textContent = '';
+        alert('Network error: ' + (e && e.message ? e.message : 'unknown'));
+      });
+  });
 
   // ---- Compile ----
   document.getElementById('run-compile').addEventListener('click', function(){

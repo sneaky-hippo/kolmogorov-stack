@@ -2,7 +2,9 @@
 //
 // Behavior assertions (per Pablo W202-W210 correction - no page-text markers).
 //
-// W214 contract this test enforces:
+// W214 contract this test enforces (W364 update: specialist always returns
+// 202 with a real job_id via the in-tree worker; 503 distill_bridge_not_configured
+// is no longer reachable from the shipped router):
 //   1. POST /v1/distill/from-captures registered behind authMiddleware.
 //   2. GET  /v1/distill/from-captures/preview registered behind authMiddleware
 //      and is read-only (the handler must NOT call synthesize() or fetch a
@@ -17,12 +19,13 @@
 //      best cluster.
 //   6. Capture-store-unavailable surfaces as 503 with a structured error
 //      (not a 200 with empty rows) - same durability contract as W212.
-//   7. The specialist path returns 503 distill_bridge_not_configured when
-//      KOLM_TRAINER_BRIDGE_URL is unset (no silent success).
+//   7. The specialist path tries KOLM_TRAINER_BRIDGE_URL first, then falls
+//      through to the in-tree distill-bridge.js worker so the tenant always
+//      gets a real job_id (never 503 distill_bridge_not_configured).
 //   8. cli/kolm.js - cmdDistill routes --from-captures to cmdDistillFromCaptures.
 //   9. cmdDistillFromCaptures honors --preview (GET), --mode, --min-pairs,
 //      --json, and exits non-zero on every error branch (not_enough_captures,
-//      no_cluster, capture_store_unavailable, distill_bridge_not_configured).
+//      no_cluster, capture_store_unavailable).
 //  10. public/captures.html promote-button calls the preview GET first and
 //      only POSTs after user confirmation.
 
@@ -98,10 +101,17 @@ test('W214 #7 - capture_store_unavailable returns 503 (W212 durability contract)
   assert.match(preview, /status\(503\)[\s\S]{0,400}capture_store_unavailable/);
 });
 
-test('W214 #8 - specialist path returns 503 when KOLM_TRAINER_BRIDGE_URL unset', () => {
+test('W214 #8 - specialist path tries KOLM_TRAINER_BRIDGE_URL then falls through to in-tree worker (W364)', () => {
   const handler = sliceHandler(ROUTER_SRC, POST_MARKER);
   assert.match(handler, /KOLM_TRAINER_BRIDGE_URL/);
-  assert.match(handler, /distill_bridge_not_configured/);
+  // W364: in-tree worker is the always-available fallback.
+  assert.match(handler, /distill-bridge\.js/);
+  assert.match(handler, /startDistillJob/);
+  // Response shape must include a job_id + poll_url.
+  assert.match(handler, /poll_url/);
+  // The pre-W364 503 sentinel must NOT appear in the specialist arm of the
+  // POST /v1/distill/from-captures handler.
+  assert.doesNotMatch(handler, /distill_bridge_not_configured/);
 });
 
 test('W214 #9 - POST refuses < min_pairs with 400 not_enough_captures', () => {
@@ -138,6 +148,9 @@ test('W214 #12 - cmdDistillFromCaptures exits non-zero on every server error bra
   const fnBody = CLI_SRC.slice(fnIdx, fnIdx + 5000);
   assert.match(fnBody, /not_enough_captures[\s\S]{0,500}process\.exit\(3\)/);
   assert.match(fnBody, /no_cluster[\s\S]{0,500}process\.exit\(3\)/);
+  // W364: distill_bridge_not_configured is retained as a back-compat branch
+  // (only reachable when an operator-side shim explicitly emits it). The
+  // shipped router always returns 202 with a job_id.
   assert.match(fnBody, /distill_bridge_not_configured[\s\S]{0,500}process\.exit\(2\)/);
   assert.match(fnBody, /capture_store_unavailable[\s\S]{0,500}process\.exit\(EXIT\.EXECUTION\)/);
 });
@@ -164,11 +177,14 @@ test('W214 #15 - POST response always includes mode + namespace + job_id contrac
   const handler = sliceHandler(ROUTER_SRC, POST_MARKER);
   // Recipe success: res.status(synth.accepted ? 200 : 422).json({ ... mode: 'recipe' ... job_id })
   assert.match(handler, /res\.status\(synth\.accepted[\s\S]{0,600}mode:\s*['"]recipe['"][\s\S]{0,600}job_id/);
-  // Specialist success arm appears after the bridge-unconfigured early-return.
-  // Slice from after that to isolate the success arm.
-  const bridgeReturnEnd = handler.indexOf("'Or set mode=");
-  assert.ok(bridgeReturnEnd > 0, 'specialist no-bridge return must exist');
-  const successArm = handler.slice(bridgeReturnEnd);
+  // W364: specialist success arm is now backed by the in-tree distill worker.
+  // Anchor on the worker import and assert the success contract there.
+  const workerImportIdx = handler.indexOf('distill-bridge.js');
+  assert.ok(workerImportIdx > 0, 'specialist arm must import distill-bridge.js');
+  const successArm = handler.slice(workerImportIdx);
   assert.match(successArm, /mode:\s*['"]specialist['"]/);
-  assert.match(successArm, /job_id:\s*body2\.job_id/);
+  assert.match(successArm, /job_id:\s*job\.id/);
+  assert.match(successArm, /poll_url/);
+  // Remote-bridge path still supported when KOLM_TRAINER_BRIDGE_URL is set.
+  assert.match(handler, /mode:\s*['"]specialist['"][\s\S]{0,400}bridge_source:\s*['"]remote_trainer['"]/);
 });
