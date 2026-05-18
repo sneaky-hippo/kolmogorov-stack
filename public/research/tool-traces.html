@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Tool traces &middot; distilling tool-using agents &middot; kolm.ai</title>
+<meta name="description" content="A tool trace records the full sequence of tool calls a teacher made while answering a prompt: function names, arguments, results, ordering. Distilling tool-using agents requires the trace, not just the final response.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Tool traces &middot; kolm.ai">
+<meta property="og:description" content="Recording teacher tool-call sequences for distilling agentic behavior.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/tool-traces">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tool traces &middot; kolm.ai">
+<meta name="twitter:description" content="Recording teacher tool-call sequences for distilling agents.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/tool-traces">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Tool traces","description":"Recording and distilling teacher tool-call sequences for agentic students.","url":"https://kolm.ai/research/tool-traces","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / tool-traces</div>
+<h1>Tool traces</h1>
+<p class="lede">A tool trace records the full sequence of tool calls a teacher made while answering a prompt: function names, arguments, results, and the ordering between them. Distilling a tool-using agent into a smaller student requires the trace, not just the final response: the student needs to learn which tool to call and in which order.</p>
+
+<h2 id="what">What it is</h2>
+<p>Modern teacher models do not always answer in a single forward pass. They call search, calculator, retrieval, code-execution, and domain-specific functions, then condition their next step on the results. The trace of these calls is the agent's working memory. ReAct (Yao et al. 2023) formalized the interleaving of <em>thought</em>, <em>action</em>, and <em>observation</em>; Toolformer (Schick et al. 2023) showed that a model can be fine-tuned to insert tool calls in-line; the OpenAI function-calling API and the Anthropic tool-use API ratified the structured-tool-call schema in 2024. For distillation, a response-only training row is insufficient when the teacher used tools: the student sees the answer but not the lookup chain that produced it, and at inference time will hallucinate the lookups. The standard fix is to record the full tool trace and train the student on a flattened representation: <code>(prompt -&gt; tool_call_1 -&gt; tool_result_1 -&gt; tool_call_2 -&gt; ... -&gt; final_response)</code>. Tool-trace distillation produces students that are weaker per-token (more conditional generation steps) but stronger end-to-end on agentic tasks. The Gorilla line (Patil et al. 2023) and the ToolLLM corpus (Qin et al. 2023) demonstrated the gain on API-calling benchmarks.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>Tool-trace capture is wired into the kolm capture proxy when the teacher uses the OpenAI <code>tools</code> or Anthropic <code>tool_use</code> API. Each tool call and tool result becomes a span in the trace (<a href="/research/teacher-trace">/research/teacher-trace</a>) with name, arguments, result, and ordering preserved. Tool-trace distillation as a training mode is partially shipped in v0.2.6: the trainer can target a flattened tool-call sequence when the recipe sets <code>distill.with_tools: true</code> and the student tokenizer covers the tool-call special tokens. The K-score gate scores tool-call exact-match (function name + canonicalized arguments) at intermediate steps and end-to-end answer correctness at the leaf; both must pass the recipe threshold to sign. Replay re-executes the tool calls (when the tools are deterministic and online) and diffs the student's call sequence against the teacher's. Streaming tool calls, parallel tool calls, and MCP tool transport are on the v0.3 roadmap.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Yao, S. et al. <em>ReAct: Synergizing Reasoning and Acting in Language Models.</em> ICLR 2023. arXiv:2210.03629.</p>
+<p>Schick, T. et al. <em>Toolformer: Language Models Can Teach Themselves to Use Tools.</em> NeurIPS 2023. arXiv:2302.04761.</p>
+<p>Patil, S. G. et al. <em>Gorilla: Large Language Model Connected with Massive APIs.</em> 2023. arXiv:2305.15334.</p>
+<p>Qin, Y. et al. <em>ToolLLM: Facilitating Large Language Models to Master 16000+ Real-World APIs.</em> ICLR 2024. arXiv:2307.16789.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

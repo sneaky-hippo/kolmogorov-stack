@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Supervised fine-tuning &middot; the SFT baseline for distillation &middot; kolm.ai</title>
+<meta name="description" content="Supervised fine-tuning is the workhorse of post-training: cross-entropy on labelled prompt-response pairs. It is the default training mode for response distillation and the baseline every alignment method is measured against.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Supervised fine-tuning &middot; kolm.ai">
+<meta property="og:description" content="The SFT baseline: cross-entropy on labelled pairs, the training mode behind response distillation.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/sft">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Supervised fine-tuning &middot; kolm.ai">
+<meta name="twitter:description" content="The SFT baseline behind response distillation.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/sft">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"ScholarlyArticle","headline":"Supervised fine-tuning","description":"Cross-entropy on labelled prompt-response pairs, the workhorse baseline of post-training.","url":"https://kolm.ai/research/sft","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / sft</div>
+<h1>Supervised fine-tuning</h1>
+<p class="lede">Supervised fine-tuning is cross-entropy on labelled prompt-response pairs. It is the simplest and most reliable post-training method, the workhorse behind response distillation, and the baseline every preference-optimization method (DPO, KTO, ORPO, GRPO) is measured against.</p>
+
+<h2 id="what">What it is</h2>
+<p>Supervised fine-tuning takes a base language model and continues training it with the standard next-token cross-entropy objective on a curated set of <code>(prompt, response)</code> pairs. The model's parameters update to maximize the log-likelihood of each target response conditioned on its prompt. The method was named in Ouyang et al. (2022, <em>Training Language Models to Follow Instructions</em>) as the first stage of InstructGPT, and predates the term itself by decades in the form of plain supervised learning. SFT is the dominant fine-tuning method in production because the loss is convex per token, gradients are well-behaved, and the training loop is identical to pretraining. Three things make SFT good: a clean prompt format, a response set with low intra-cluster variance on the answer field, and a learning rate small enough to preserve base-model capability outside the training distribution. Three things make SFT bad: distribution shift on rare prompts, overfitting to verbose response patterns, and the inability to express preferences (the model learns what to say, not what not to say). PEFT methods (LoRA, QLoRA; Hu et al. 2021, Dettmers et al. 2023) make SFT cheap by training a low-rank adapter rather than full weights; for the 1B to 14B student range typical of kolm, a rank-32 LoRA on attention and MLP projections recovers within 1 percent of full fine-tune K-score at a tenth of the compute.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>SFT is the actual training loop behind every distillation mode in kolm v0.2.6. Response distillation (<a href="/research/response-distill">/research/response-distill</a>) is SFT on teacher-sampled responses. Rationale distillation (planned for v0.3) will be SFT on rationale-then-answer sequences. The trainer is a thin wrapper over Hugging Face TRL's <code>SFTTrainer</code> with kolm-specific extensions: per-row receipt linkage, LoRA-by-default with rank chosen from the recipe size class (rank 16 for 1B students, rank 32 for 3B to 8B, rank 64 for 14B), gradient checkpointing on by default, and the K-score gate run on holdout after each epoch with early stopping when the curve plateaus. The receipt records the trainer git revision, the LoRA config, the per-epoch holdout K-scores, and the final selected checkpoint hash. Full fine-tune (no LoRA) is opt-in per recipe and is required for any artifact that will be quantized below 4-bit, where adapter weights merge poorly.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Ouyang, L. et al. <em>Training Language Models to Follow Instructions with Human Feedback.</em> NeurIPS 2022. arXiv:2203.02155.</p>
+<p>Hu, E. J. et al. <em>LoRA: Low-Rank Adaptation of Large Language Models.</em> ICLR 2022. arXiv:2106.09685.</p>
+<p>Dettmers, T. et al. <em>QLoRA: Efficient Finetuning of Quantized LLMs.</em> NeurIPS 2023. arXiv:2305.14314.</p>
+<p>Wang, Y. et al. <em>Self-Instruct: Aligning Language Models with Self-Generated Instructions.</em> ACL 2023. arXiv:2212.10560.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

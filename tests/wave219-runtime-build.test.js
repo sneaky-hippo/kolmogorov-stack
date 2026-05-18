@@ -117,8 +117,11 @@ test('W219 #5 - cli/kolm.js wires runtime: dispatch + cmdRuntime + COMPLETION', 
     assert.ok(subsMatch[1].includes(`'${sub}'`), `COMPLETION_SUBS.runtime missing ${sub}`);
   }
   // cmdRuntime should delegate build-from-source via spawnSync of the worker.
+  // W380d: widened window — W372 policy ladder (start/status/policy/install/
+  // decisions/stats) sits before build-from-source in cmdRuntime and pushed
+  // the spawnSync call past the old 6000-char slice.
   const cmdIdx = CLI_SRC.indexOf('async function cmdRuntime(');
-  const cmdBody = CLI_SRC.slice(cmdIdx, cmdIdx + 6000);
+  const cmdBody = CLI_SRC.slice(cmdIdx, cmdIdx + 16000);
   assert.match(cmdBody, /build-from-source/);
   assert.match(cmdBody, /spawnSync/);
   assert.match(cmdBody, /workers[/\\]+runtime-build[/\\]+build\.mjs|workers.{1,10}runtime-build.{1,10}build\.mjs/);

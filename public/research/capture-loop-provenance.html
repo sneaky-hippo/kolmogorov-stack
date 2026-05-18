@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Capture-loop provenance &middot; kolm.ai</title>
+<meta name="description" content="How kolm records the full chain of custody from the original captured prompt through distillation, training, gate evaluation, and signed artifact. The provenance ledger that lets an auditor replay any step.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Capture-loop provenance &middot; kolm.ai">
+<meta property="og:description" content="Chain of custody from captured prompt through distillation, training, gate, and signed artifact.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/capture-loop-provenance">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Capture-loop provenance &middot; kolm.ai">
+<meta name="twitter:description" content="The provenance ledger from captured prompt to signed .kolm artifact.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/capture-loop-provenance">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture-loop provenance","description":"Provenance ledger for the kolm capture, distill, train, gate, sign pipeline. Each stage records inputs, outputs, and the hash chain that links them.","url":"https://kolm.ai/research/capture-loop-provenance","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+h3{font-size:16px;font-weight:500;letter-spacing:-0.01em;margin:28px 0 8px;max-width:780px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+ul{color:var(--ink-mute);font-size:15px;line-height:1.7;max-width:780px}
+li{margin:4px 0}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / capture-loop-provenance</div>
+<h1>Capture-loop provenance</h1>
+<p class="lede">Provenance is the chain of custody from a captured prompt to a signed artifact. Every stage of the kolm loop emits a content-addressed record, each record references the hash of its inputs, and the final receipt names every record in the chain so an auditor can re-walk it without trusting the runtime.</p>
+
+<h2 id="what">What it is</h2>
+<p>Provenance for an ML artifact is the sequence of operations and data that produced it, recorded in a way a third party can verify. The strongest formulation is the W3C PROV data model (Moreau et al., 2013): a directed acyclic graph of <em>entities</em> (datasets, models, configs), <em>activities</em> (training runs, evaluations), and <em>agents</em> (the human or machine that ran the activity), where every node is uniquely identified and every edge is signed. For ML supply chains the same idea appears as SLSA (Supply-chain Levels for Software Artifacts) and as recent academic frameworks like MLflow's tracking schema and the model cards proposal (Mitchell et al., 2019). Without provenance a buyer can verify what the artifact does today but not where its training data came from, whether the gate ran on the same split that was promised, or whether the published K-score was measured on the same holdout the receipt names.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>Every captured prompt-response pair is content-addressed by SHA-256 and written to the capture log. The distillation stage references each pair by hash; the resulting corpus has a hash that is itself referenced by the trainer config. The trainer emits checkpoints that hash the corpus, the base model, the optimizer state, and the seed. The K-score gate references the checkpoint hash and the holdout hash. The final HMAC receipt-chain (<a href="/research/receipt-chain">/research/receipt-chain</a>) seals all four hashes into a single signed root that the runtime serves at <code>/v1/receipts/&lt;id&gt;</code> and the CLI verifies offline. Stages that are not yet content-addressed in v0.2.6 (the seed-mining oracle, the per-tenant cloud sync metadata) are listed in the spec as <em>planned for v0.3</em>; for now they record an opaque source identifier and a timestamp.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Moreau, L. et al. <em>PROV-DM: The PROV Data Model.</em> W3C Recommendation, 2013.</p>
+<p>Mitchell, M. et al. <em>Model Cards for Model Reporting.</em> FAT* 2019. arXiv:1810.03993.</p>
+<p>SLSA Working Group. <em>Supply-chain Levels for Software Artifacts.</em> Open Source Security Foundation, 2023.</p>
+<p>Souza, R. et al. <em>Provenance Data in the Machine Learning Lifecycle in Computational Science.</em> WORKS 2019.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

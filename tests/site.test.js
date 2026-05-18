@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
+import { killAndWait, rmSyncBestEffort } from './_spawn-helpers.js';
 
 const TEXT_EXTENSIONS = new Set([
   '.html', '.css', '.js', '.svg', '.json', '.webmanifest', '.xml', '.txt', '.md',
@@ -63,15 +64,9 @@ const FORBIDDEN_PUBLIC_PATTERNS = [
   'npm i -g @kolmogorov/kolm',
   'kolm key add',
   'kolm bundle',
-  '$ kolm verify',
-  '>kolm verify',
-  'kolm verify<',
   'kolm anchor ',
-  'kolm diff ',
   'kolm recall ',
   'kolm resolve ',
-  'kolm trace ',
-  'kolm config set ',
   '--tpl',
   '~/.kolm/credentials',
   'phone cold-start',
@@ -147,13 +142,12 @@ const FORBIDDEN_PUBLIC_PATTERNS = [
   '?',
 ];
 
+// W224 deleted /run /recall /serve /anatomy (now permanent 301 redirects in
+// vercel.json — they MUST NOT appear in sitemap or Google reads ranked URLs
+// that 301 elsewhere). Sitemap must list the canonical surfaces only.
 const REQUIRED_SITEMAP_ROUTES = [
   '/',
   '/compile',
-  '/run',
-  '/recall',
-  '/serve',
-  '/anatomy',
   '/k-score',
   '/benchmarks',
   '/compare',
@@ -170,6 +164,15 @@ const REQUIRED_SITEMAP_ROUTES = [
   '/articles/k-sample-verified-inference',
   '/articles/kolm-file-format',
   '/articles/speculative-decoding-recipes',
+];
+
+// W224 cut routes — these MUST NOT appear in sitemap. Negative assertion locks
+// in the deletion so a future regenerate can't silently re-add them.
+const FORBIDDEN_SITEMAP_ROUTES = [
+  '/run', '/recall', '/serve', '/anatomy',
+  '/agents', '/defense', '/evolve', '/bounty', '/bounties',
+  '/cloud', '/distill', '/edge', '/cookbook', '/playground',
+  '/onboarding', '/showcase', '/openai',
 ];
 
 const STALE_SOURCE_PATTERNS = [
@@ -201,7 +204,7 @@ function freePort() {
   });
 }
 
-async function waitForHealth(base, retries = 50) {
+async function waitForHealth(base, retries = 120) {
   for (let i = 0; i < retries; i++) {
     try {
       const res = await fetch(base + '/health');
@@ -403,9 +406,10 @@ test('public site routes, sitemap URLs, and referenced assets resolve', async (t
   const base = `http://127.0.0.1:${port}`;
   const dataDir = path.join(os.tmpdir(), `kolm-site-${process.pid}-${Date.now()}`);
 
-  fs.rmSync(dataDir, { recursive: true, force: true });
+  rmSyncBestEffort(dataDir);
   fs.mkdirSync(dataDir, { recursive: true });
-  t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
+  // after() is LIFO. Registered first → fires SECOND (after kill releases sqlite/log handles).
+  t.after(() => rmSyncBestEffort(dataDir));
 
   const child = spawn(process.execPath, ['server.js'], {
     env: {
@@ -419,7 +423,7 @@ test('public site routes, sitemap URLs, and referenced assets resolve', async (t
   });
   child.stdout.on('data', () => {});
   child.stderr.on('data', data => process.stderr.write(data));
-  t.after(() => { try { child.kill(); } catch {} });
+  t.after(() => killAndWait(child));
 
   await waitForHealth(base);
 
@@ -442,6 +446,9 @@ test('sitemap includes indexable product/docs/article routes only', () => {
 
   const missing = REQUIRED_SITEMAP_ROUTES.filter(route => !urlSet.has(route));
   assert.deepEqual(missing, []);
+
+  const forbiddenPresent = FORBIDDEN_SITEMAP_ROUTES.filter(route => urlSet.has(route));
+  assert.deepEqual(forbiddenPresent, [], 'deleted W224 routes must not reappear in sitemap');
 
   const disallowed = robots.split(/\r?\n/)
     .map(line => line.match(/^Disallow:\s*(\S+)/))

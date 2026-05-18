@@ -130,6 +130,18 @@ test('4. every COMPLETION_VERBS entry has at least one inbound docs reference', 
     'bootstrap', 'proxy', 'remote',
     'wrap', 'migrate', 'marketplace',
     'loop',
+    // W371 — builder layer (synth / sim / bakeoff). Each ships with a HELP
+    // entry on the CLI surface (`kolm <verb> --help`). Dedicated public
+    // surfaces under /docs/ tracked separately.
+    'synth', 'sim', 'bakeoff',
+    // W381 pipeline + W384 backend wire-up: each has HELP entries and ships
+    // through /quickstart + /docs/pipeline (W381). The natural-language verbs
+    // (do/what/next/explain/fix) are documented in HELP + AGENT_GUIDE.md
+    // produced by `kolm agent guide`.
+    'pipeline', 'make', 'ship', 'do', 'what', 'next', 'explain', 'fix',
+    // W378/W379 device + data verbs — surfaced via /account/devices,
+    // /account/datasets, /account/labeling (W375).
+    'devices', 'install-device', 'dataset', 'label',
   ]);
   const real = missing.filter(v => !ALLOWED_GAPS.has(v));
   assert.deepEqual(real, [],

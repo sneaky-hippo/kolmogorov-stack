@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Cloud sync · kolm.ai</title>
+<meta name="description" content="kolm.ai cloud sync states (disabled, metadata_only, redacted_only, raw_enabled) and per-class privacy gating before bytes leave the laptop.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Cloud sync &middot; kolm.ai">
+<meta property="og:description" content="kolm.ai cloud sync states (disabled, metadata_only, redacted_only, raw_enabled) and per-class privacy gating before bytes leave the laptop.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/docs/cloud-sync">
+<meta property="og:image" content="https://kolm.ai/og/docs-cloud-sync.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cloud sync &middot; kolm.ai">
+<meta name="twitter:description" content="kolm.ai cloud sync states (disabled, metadata_only, redacted_only, raw_enabled) and per-class privacy gating before bytes leave the laptop.">
+<meta name="twitter:image" content="https://kolm.ai/og/docs-cloud-sync.svg">
+<link rel="canonical" href="https://kolm.ai/docs/cloud-sync">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Cloud sync","description":"kolm.ai cloud sync states (disabled, metadata_only, redacted_only, raw_enabled) and per-class privacy gating before bytes leave the laptop.","url":"https://kolm.ai/docs/cloud-sync","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+h3{font-size:16px;font-weight:500;letter-spacing:-0.01em;margin:28px 0 8px;max-width:780px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+pre{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:14px 0 18px}
+pre code{background:none;border:none;padding:0;color:inherit;font:inherit}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+ul,ol{color:var(--ink-mute);font-size:15px;line-height:1.7;max-width:780px}
+li{margin:4px 0}
+table{border-collapse:collapse;width:100%;max-width:840px;margin:14px 0;font-size:13.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink);font-weight:500}
+td code{font-size:12px}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+@media(max-width:820px){.related{grid-template-columns:1fr}}
+.related a{padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:4px}
+.related a:hover{border-color:var(--accent-soft)}
+.related b{font-size:14px;color:var(--ink);font-weight:500}
+.related span{font-size:12.5px;color:var(--ink-mute);line-height:1.5}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/docs">docs</a> / cloud-sync</div>
+<h1>Cloud sync</h1>
+<p class="lede">Cloud sync is opt-in. By default nothing about your traffic leaves your machine. When you turn sync on you pick one of four states, and the privacy policy gates every byte that goes upstream. The sync target can be the hosted kolm.ai backend or a self-hosted bucket you control.</p>
+
+<h2 id="states">The 4 sync states</h2>
+<table>
+<thead><tr><th>State</th><th>What gets sent</th></tr></thead>
+<tbody>
+<tr><td><code>disabled</code></td><td>Nothing. The default. Sync daemon is not even running.</td></tr>
+<tr><td><code>metadata_only</code></td><td>Row count, latency p50/p95, cost totals, error rate. No message text. No prompt shas. No detector spans.</td></tr>
+<tr><td><code>redacted_only</code></td><td>Redacted message bodies (VAR_ placeholders only), redacted response bodies, schema-bound. Privacy classes set to <code>block</code> still block sync.</td></tr>
+<tr><td><code>raw_enabled</code></td><td>Raw and redacted bodies. Only available when storage mode is <code>raw_local</code> or <code>raw_cloud_sync</code>. Requires explicit per-namespace opt-in.</td></tr>
+</tbody>
+</table>
+
+<h2 id="per-class-gating">Per-class privacy gating</h2>
+<p>Even with cloud sync on, the privacy policy is the gatekeeper. Each detector class can have a different action for local storage and cloud sync.</p>
+<pre><code>{
+  "default": {
+    "ssn":        { "local": "redact", "sync": "block" },
+    "credit_card":{ "local": "redact", "sync": "block" },
+    "email":      { "local": "redact", "sync": "redact" },
+    "mrn":        { "local": "redact", "sync": "block" },
+    "ip_v4":      { "local": "allow",  "sync": "redact" }
+  }
+}</code></pre>
+<p>If the sync action for a class is <code>block</code>, any row that contained that class is held back from sync entirely, even if the local action redacted it.</p>
+
+<h2 id="set">Turn it on</h2>
+<pre><code>kolm sync set redacted_only
+kolm sync set disabled
+kolm sync show
+# state:      redacted_only
+# target:     https://kolm.ai/v1/sync
+# pending:    412 rows queued
+# last-sync:  2026-05-18T09:02:14Z (124 rows, 312 KB)</code></pre>
+
+<h2 id="target">Sync target</h2>
+<p>The default target is the hosted kolm.ai sync endpoint. Self-hosted is a single env var pointing at your own S3-compatible bucket or kolm.ai cloud relay.</p>
+<pre><code>export KOLM_SYNC_TARGET=s3://my-bucket/kolm-lake
+kolm sync set redacted_only</code></pre>
+
+<h2 id="encryption">Wire encryption</h2>
+<p>Sync uses TLS to the target and signs each batch with the local ed25519 key. The cloud cannot accept a batch that does not verify against the device's public key registered on first sync.</p>
+
+<h2 id="audit">Audit what was sent</h2>
+<p>Every sync run writes a line to <code>~/.kolm/runtime/sync.log</code> with batch sha, row count, class counts, and the public key fingerprint.</p>
+<pre><code>kolm sync audit --window 7d
+# 2026-05-18T09:02 batch_sha=8f3a... rows=124 classes=email:18,phone:4,jwt:1
+# 2026-05-17T09:01 batch_sha=4d12... rows=98  classes=email:14,phone:3</code></pre>
+
+<h2 id="pause">Pause and resume</h2>
+<pre><code>kolm sync pause
+kolm sync resume
+kolm sync flush  # send everything queued now</code></pre>
+
+<h2 id="next">Next steps</h2>
+<p>Pair sync with <a href="/docs/team">team</a> shared namespaces if other people will read this data, and revisit <a href="/docs/privacy">privacy</a> any time you flip a class to <code>allow</code>. Start from <a href="/docs/quickstart">/docs/quickstart</a> if your lake is still empty.</p>
+
+<div class="related">
+  <a href="/docs/storage"><b>Storage &rarr;</b><span>Decides what local rows exist to sync at all.</span></a>
+  <a href="/docs/privacy"><b>Privacy &rarr;</b><span>The gate that controls what bytes leave the machine.</span></a>
+  <a href="/docs/team"><b>Team &rarr;</b><span>Share synced namespaces with teammates.</span></a>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  kolm.ai &middot; the AI compiler &middot; <a href="/articles/kolm-ai-vs-kolm-therapeutics">not the band, not the therapeutics company</a>
+</div></footer>
+
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Eval drift detection &middot; kolm.ai</title>
+<meta name="description" content="How kolm detects when a frozen evaluation set has started to overlap with the training corpus, and refuses to grade until fresh seeds are supplied. Distribution-shift and contamination tests.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Eval drift detection &middot; kolm.ai">
+<meta property="og:description" content="Distribution-shift and contamination tests on the frozen evaluation set.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/eval-drift">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Eval drift detection &middot; kolm.ai">
+<meta name="twitter:description" content="Distribution-shift and contamination tests on the frozen evaluation set.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/eval-drift">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Eval drift detection","description":"Detect when a frozen evaluation set has drifted into the training corpus and refuse to grade until fresh seeds are supplied.","url":"https://kolm.ai/research/eval-drift","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / eval-drift</div>
+<h1>Eval drift detection</h1>
+<p class="lede">A frozen evaluation set is only useful while it stays out of the training distribution. As more data is captured, mined, or synthesized, the holdout can leak in by accident: near-duplicates, paraphrased prompts, or the same task in a new template. Eval drift detection is the set of statistical tests that catch this before the gate publishes a number that has no meaning.</p>
+
+<h2 id="what">What it is</h2>
+<p>Three failure modes are conflated under the heading "drift". The first is <em>contamination</em>: a training-corpus row that is byte-identical or near-duplicate of a holdout row, usually from a sloppy synthesis pipeline. The second is <em>distributional overlap</em>: the holdout was sampled from the same generator as the train set, so the gate measures interpolation rather than generalization. The third is <em>covariate shift</em>: the production prompt distribution has moved, so even an honest gate reports a number that does not predict downstream behavior. The literature covers all three: Carlini et al. (2022) on memorization, Gao et al. (2021) on the Pile's contamination audits, Magar and Schwartz (2022) on what train-test overlap actually buys, and the classical Sugiyama et al. (2007) framework for covariate-shift detection via density-ratio estimation.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>Three checks are wired into the gate stage in v0.2.6. First, byte-level near-duplicate detection on every holdout row against the training corpus using MinHash with a Jaccard threshold of 0.85. Second, n-gram overlap (n=13) flagged at the per-prompt level, mirroring the OpenAI <em>evals</em> contamination heuristic. Third, an embedding-space KL estimate between the training and holdout embedding distributions; if the estimate falls below a configurable threshold the gate refuses to run and emits a <code>holdout_drift</code> error asking for fresh seeds. The density-ratio formulation (Sugiyama) is on the v0.3 roadmap; for now the KL surrogate is sufficient for the typical 8k-row holdout sizes kolm buyers ship. The receipt records the three drift statistics so the auditor can re-compute them.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Carlini, N. et al. <em>Quantifying Memorization Across Neural Language Models.</em> ICLR 2023. arXiv:2202.07646.</p>
+<p>Magar, I., Schwartz, R. <em>Data Contamination: From Memorization to Exploitation.</em> ACL 2022. arXiv:2203.08242.</p>
+<p>Gao, L. et al. <em>The Pile: An 800GB Dataset of Diverse Text for Language Modeling.</em> 2020. arXiv:2101.00027.</p>
+<p>Sugiyama, M., Suzuki, T., Kanamori, T. <em>Density Ratio Estimation in Machine Learning.</em> Cambridge University Press, 2012.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Runtime · kolm.ai</title>
+<meta name="description" content="kolm.ai runtime policies (local_first, frontier_first, cost_optimized, privacy_only) and the decision chain: privacy -> cache -> local artifact -> cheaper model -> frontier.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Runtime &middot; kolm.ai">
+<meta property="og:description" content="kolm.ai runtime policies (local_first, frontier_first, cost_optimized, privacy_only) and the decision chain: privacy -> cache -> local artifact -> cheaper model -> frontier.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/docs/runtime">
+<meta property="og:image" content="https://kolm.ai/og/docs-runtime.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Runtime &middot; kolm.ai">
+<meta name="twitter:description" content="kolm.ai runtime policies (local_first, frontier_first, cost_optimized, privacy_only) and the decision chain: privacy -> cache -> local artifact -> cheaper model -> frontier.">
+<meta name="twitter:image" content="https://kolm.ai/og/docs-runtime.svg">
+<link rel="canonical" href="https://kolm.ai/docs/runtime">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Runtime","description":"kolm.ai runtime policies (local_first, frontier_first, cost_optimized, privacy_only) and the decision chain: privacy -> cache -> local artifact -> cheaper model -> frontier.","url":"https://kolm.ai/docs/runtime","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+h3{font-size:16px;font-weight:500;letter-spacing:-0.01em;margin:28px 0 8px;max-width:780px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+pre{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:14px 0 18px}
+pre code{background:none;border:none;padding:0;color:inherit;font:inherit}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+ul,ol{color:var(--ink-mute);font-size:15px;line-height:1.7;max-width:780px}
+li{margin:4px 0}
+table{border-collapse:collapse;width:100%;max-width:840px;margin:14px 0;font-size:13.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink);font-weight:500}
+td code{font-size:12px}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+@media(max-width:820px){.related{grid-template-columns:1fr}}
+.related a{padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:4px}
+.related a:hover{border-color:var(--accent-soft)}
+.related b{font-size:14px;color:var(--ink);font-weight:500}
+.related span{font-size:12.5px;color:var(--ink-mute);line-height:1.5}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/docs">docs</a> / runtime</div>
+<h1>Runtime</h1>
+<p class="lede">Runtime is what happens at request time. The proxy walks a deterministic decision chain on every call: privacy gate, cache lookup, local artifact lookup, cheaper-model swap, frontier fallback. You pick the policy that matches your risk tolerance. The runtime records every decision so you can audit and revert.</p>
+
+<h2 id="policies">The 4 runtime policies</h2>
+<table>
+<thead><tr><th>Policy</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td><code>local_first</code></td><td>Try local artifact, fall back to cheaper model, fall back to requested frontier model. Default.</td></tr>
+<tr><td><code>frontier_first</code></td><td>Always call the requested model. Local artifacts are scored offline but never serve traffic.</td></tr>
+<tr><td><code>cost_optimized</code></td><td>Try cache, try local artifact, try cheaper model, fall back to requested frontier. Aggressive.</td></tr>
+<tr><td><code>privacy_only</code></td><td>Only call local artifacts. Block anything that would require a network call. Strict.</td></tr>
+</tbody>
+</table>
+
+<h2 id="chain">The decision chain</h2>
+<p>Every request walks this chain in order. The first stage that produces a confident response wins. Every decision is recorded in <code>privacy_actions_json</code> and <code>artifact_id</code> on the lake row.</p>
+<ol>
+<li><strong>Privacy</strong>. Run the 17 detectors. Apply <code>allow / redact / block / override</code> from the policy. If the result is <code>block</code>, return 451 immediately.</li>
+<li><strong>Cache</strong>. Hash the redacted prompt. If a cache row exists in the window, return it.</li>
+<li><strong>Local artifact</strong>. Look up artifacts registered for this namespace. Score the prompt against the artifact's seeds. If above the confidence threshold, run locally and return.</li>
+<li><strong>Cheaper model</strong>. If a cheaper-model routing rule fires for this template, rewrite the upstream model id.</li>
+<li><strong>Frontier</strong>. Forward to the originally requested upstream model. Capture as usual.</li>
+</ol>
+
+<h2 id="register">Register an artifact</h2>
+<pre><code>kolm runtime register ./summarizer.kolm --namespace summarizer --policy local_first
+# artifact summarizer-v1.kolm bound to namespace=summarizer
+# next call to /summarize will try local first</code></pre>
+
+<h2 id="set-policy">Set the policy</h2>
+<pre><code># Default policy for this machine
+kolm runtime policy set local_first
+
+# Per-namespace override
+kolm runtime policy set privacy_only --namespace medical-claims
+
+# Inspect
+kolm runtime policy show
+# default     local_first
+# namespaces:
+#   medical-claims  privacy_only</code></pre>
+
+<h2 id="stats">Replacement stats</h2>
+<p>How often did each stage win? The runtime maintains a rolling counter.</p>
+<pre><code>kolm runtime stats --window 24h
+# total requests:     18,442
+# blocked (privacy):    312    1.7%
+# cache hits:         3,118   16.9%
+# local artifact:     9,420   51.1%
+# cheaper model:      1,840   10.0%
+# frontier:           3,752   20.3%
+# avg savings vs frontier-first: $0.083 per call</code></pre>
+
+<h2 id="rollback">Rollback</h2>
+<p>Unregister an artifact or switch policy back. Live traffic switches on the next call. No restart.</p>
+<pre><code>kolm runtime unregister summarizer-v1
+kolm runtime policy set frontier_first --namespace summarizer</code></pre>
+
+<h2 id="next">Next steps</h2>
+<p>Read <a href="/docs/devices">devices</a> to know which targets the runtime can dispatch to and <a href="/docs/storage">storage</a> for the local-first guarantees. Start from <a href="/docs/quickstart">/docs/quickstart</a> if you have not yet shipped an artifact.</p>
+
+<div class="related">
+  <a href="/docs/distillation"><b>Distillation &rarr;</b><span>Where the local artifact comes from.</span></a>
+  <a href="/docs/devices"><b>Devices &rarr;</b><span>Where the runtime dispatches.</span></a>
+  <a href="/docs/privacy"><b>Privacy &rarr;</b><span>The first stage of the decision chain.</span></a>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  kolm.ai &middot; the AI compiler &middot; <a href="/articles/kolm-ai-vs-kolm-therapeutics">not the band, not the therapeutics company</a>
+</div></footer>
+
+</body>
+</html>

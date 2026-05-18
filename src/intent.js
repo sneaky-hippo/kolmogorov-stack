@@ -828,6 +828,10 @@ function pickContextualNamespace(normalized, context) {
 // ---------------------------------------------------------------------------
 
 export async function snapshotContext({ cwd = process.cwd(), home = null } = {}) {
+  // When caller passes home explicitly, treat as a sandbox: skip the
+  // capture-store probe (which reads from a process-wide SQLite path that
+  // is not parameterized by HOME). This keeps tests deterministic.
+  const SANDBOX_MODE = home != null;
   const HOME = home || (process.env.KOLM_HOME || (await import('node:os')).homedir());
   const KOLM_DIR = path.join(HOME, '.kolm');
   const ARTIFACTS_DIR = path.join(KOLM_DIR, 'artifacts');
@@ -927,18 +931,23 @@ export async function snapshotContext({ cwd = process.cwd(), home = null } = {})
 
   // Capture-namespace summary. Best-effort: try src/capture-store.allCapturesForTenant
   // when a tenant + driver are reachable, else read the JSON store directly.
-  try {
-    const captureStore = await import('./capture-store.js');
-    // We only want a namespace-aggregated summary, so we use the in-process
-    // path. If a driver is configured and there's no tenant, we still get an
-    // empty list — that's fine, we'll fall through to the JSON-store reader.
-    const tenant = (out.current_tenant && (out.current_tenant.id || out.current_tenant)) || 'local';
-    let rows = [];
-    try { rows = await captureStore.allCapturesForTenant(tenant, 50000); } catch (_) {}
-    if (rows && rows.length) {
-      out.captures_summary = aggregateNamespaces(rows);
-    }
-  } catch (_) { /* capture-store not usable in this context */ }
+  // In SANDBOX_MODE (caller passed an isolated HOME), skip this probe — the
+  // capture store reads from a process-wide path that the HOME override does
+  // not isolate.
+  if (!SANDBOX_MODE) {
+    try {
+      const captureStore = await import('./capture-store.js');
+      // We only want a namespace-aggregated summary, so we use the in-process
+      // path. If a driver is configured and there's no tenant, we still get an
+      // empty list — that's fine, we'll fall through to the JSON-store reader.
+      const tenant = (out.current_tenant && (out.current_tenant.id || out.current_tenant)) || 'local';
+      let rows = [];
+      try { rows = await captureStore.allCapturesForTenant(tenant, 50000); } catch (_) {}
+      if (rows && rows.length) {
+        out.captures_summary = aggregateNamespaces(rows);
+      }
+    } catch (_) { /* capture-store not usable in this context */ }
+  }
 
   // Fallback to reading the on-disk observations table (JSON store) directly.
   // We respect the `cwd` parameter (so tests can override) and only fall back

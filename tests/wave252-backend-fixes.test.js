@@ -24,6 +24,7 @@ import crypto from 'node:crypto';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
+import { killAndWait, rmSyncBestEffort } from './_spawn-helpers.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const ROUTER_SRC = fs.readFileSync(path.join(ROOT, 'src/router.js'), 'utf8');
@@ -105,11 +106,13 @@ test('W252 #1 — stripe webhook returns 503 when idempotency op throws AND tena
   });
   proc.stdout.on('data', () => {});
   proc.stderr.on('data', () => {});
+  // after() is LIFO. dir cleanup registered first → fires AFTER killAndWait,
+  // which guarantees the spawned server has released sqlite/log handles.
   t.after(() => {
-    try { proc.kill(); } catch {}
-    fs.rmSync(dataDir, { recursive: true, force: true });
-    fs.rmSync(home, { recursive: true, force: true });
+    rmSyncBestEffort(dataDir);
+    rmSyncBestEffort(home);
   });
+  t.after(() => killAndWait(proc));
 
   await waitForHealth(BASE);
 
@@ -366,11 +369,11 @@ test('W252 #12 — /v1/recall/sources rejects 2MB sidecar with 413', async (t) =
   proc.stdout.on('data', () => {});
   proc.stderr.on('data', () => {});
   t.after(() => {
-    try { proc.kill(); } catch {}
-    fs.rmSync(dataDir, { recursive: true, force: true });
-    fs.rmSync(home, { recursive: true, force: true });
-    fs.rmSync(recallRoot, { recursive: true, force: true });
+    rmSyncBestEffort(dataDir);
+    rmSyncBestEffort(home);
+    rmSyncBestEffort(recallRoot);
   });
+  t.after(() => killAndWait(proc));
 
   await waitForHealth(BASE);
 

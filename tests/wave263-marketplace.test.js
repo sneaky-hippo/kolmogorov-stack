@@ -33,6 +33,7 @@ const SLUGS = [
   'code-issue-classifier',
   'multilingual-greeter',
   'cs-intent-classifier',
+  'claims-redactor',
 ];
 
 function read(p) { return fs.readFileSync(p, 'utf8'); }
@@ -285,11 +286,15 @@ test('W263 #23 catalog manifest sha256 anchor matches a re-computation', async (
 test('W263 #24 no em-dashes in marketplace.html or detail pages (copy hygiene)', () => {
   // Em-dash policy: load-bearing em-dashes are out per W244 lede / W245 lock-in.
   // We allow them in CLI snippets within <pre> blocks since those reproduce
-  // server output verbatim. So we strip <pre>...</pre> first.
+  // server output verbatim, AND in HTML comments since those never render to
+  // the user. So we strip <pre>...</pre> AND <!-- ... --> first.
   const files = [path.join(PUBLIC, 'marketplace.html'), ...SLUGS.map((s) => path.join(PUBLIC, 'marketplace', `${s}.html`))];
   for (const f of files) {
-    const html = read(f).replace(/<pre[\s\S]*?<\/pre>/g, '');
+    const html = read(f)
+      .replace(/<pre[\s\S]*?<\/pre>/g, '')
+      .replace(/<script[\s\S]*?<\/script>/g, '')
+      .replace(/<!--[\s\S]*?-->/g, '');
     const em = (html.match(/—/g) || []).length;
-    assert.equal(em, 0, `${path.basename(f)} contains ${em} em-dash(es) outside <pre>`);
+    assert.equal(em, 0, `${path.basename(f)} contains ${em} em-dash(es) outside <pre>, <script>, and comments`);
   }
 });

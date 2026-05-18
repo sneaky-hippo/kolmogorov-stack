@@ -305,6 +305,49 @@ $ kolm compile --task "classify support tickets" --target-device rtx-5090
       </tbody>
     </table>
 
+    <h2 id="weights">Pre-cached weights <span style="font-size:12px;font-family:var(--mono);color:var(--ink-faint);font-weight:400">(W386)</span></h2>
+    <p>The CLI ships with a curated manifest of HuggingFace GGUF repos for every model in this catalog. Run <code>kolm models prefetch --tier=edge</code> once and the small models live on disk; <code>kolm models pull &lt;id&gt;</code> grabs one on demand. The manifest is also served at <a href="/v1/models/manifest" style="color:var(--ink);text-decoration:underline"><code>/v1/models/manifest</code></a> and a 302 redirect to the file lives at <code>/v1/models/pull?id=&amp;variant=</code>.</p>
+    <table>
+      <thead><tr><th>Tier</th><th>Variants</th><th>Total size</th><th>Status</th></tr></thead>
+      <tbody id="w386-tiers">
+        <tr><td colspan="4" style="color:var(--ink-faint)">Loading manifest&hellip;</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--ink-faint);margin-top:14px">Where some 2026 catalog rows are still future-tense (DeepSeek V4 / Step 3.5 / Kimi K2.5), the manifest falls back to a closest current-shipping repo and discloses the substitution in the per-variant <code>notes</code>. Run <code>kolm models manifest</code> to see the full table on your terminal.</p>
+    <script>
+    (function(){
+      var body = document.getElementById('w386-tiers');
+      if (!body) return;
+      function fmtBytes(n){ if(!n) return '0 B'; if(n<1024) return n+' B'; if(n<1048576) return (n/1024).toFixed(1)+' KB'; if(n<1073741824) return (n/1048576).toFixed(1)+' MB'; return (n/1073741824).toFixed(2)+' GB'; }
+      function esc(s){ return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+      Promise.all([
+        fetch('/v1/models/manifest',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return null;}),
+        fetch('/v1/models/cache',{cache:'no-store'}).then(function(r){return r.json();}).catch(function(){return null;})
+      ]).then(function(arr){
+        var m = arr[0], c = arr[1];
+        if (!m || !m.variants) { body.innerHTML = '<tr><td colspan="4" style="color:var(--warn)">Manifest endpoint unreachable.</td></tr>'; return; }
+        var tiers = {};
+        m.variants.forEach(function(v){ (tiers[v.tier] = tiers[v.tier] || []).push(v); });
+        var cached = {};
+        if (c && c.entries) c.entries.forEach(function(e){ cached[e.model_id + '::' + e.variant] = true; });
+        var order = ['edge','mobile','laptop','workstation','datacenter'];
+        var html = '';
+        order.forEach(function(t){
+          var rows = tiers[t]; if (!rows) return;
+          var total = rows.reduce(function(a,r){return a+(r.total_bytes||0);},0);
+          var hit = rows.filter(function(r){return cached[r.model_id+'::'+r.variant];}).length;
+          var status = hit === rows.length
+            ? '<span style="color:#7ef0d2">pre-cached locally (' + hit + '/' + rows.length + ')</span>'
+            : (hit > 0
+              ? '<span style="color:var(--warn)">partial (' + hit + '/' + rows.length + ')</span>'
+              : '<span style="color:var(--ink-faint)">not cached (run <code>kolm models prefetch --tier=' + esc(t) + '</code>)</span>');
+          html += '<tr><td><code>' + esc(t) + '</code></td><td>' + rows.length + '</td><td>' + fmtBytes(total) + '</td><td>' + status + '</td></tr>';
+        });
+        body.innerHTML = html || '<tr><td colspan="4" style="color:var(--ink-faint)">(no rows)</td></tr>';
+      });
+    })();
+    </script>
+
     <h2 id="tiers">Hardware tiers</h2>
     <p>Pre-flighted hardware presets. Pass <code>kolm compile --tier=3090</code> (or 5090 / a100-80 / h100-80 / h200-141 / dgx-spark / m3-ultra-512) and kolm picks the matching base+quant+context settings.</p>
     <ul>

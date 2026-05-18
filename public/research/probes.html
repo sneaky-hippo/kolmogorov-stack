@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Probes &middot; internal-state probes for capability auditing &middot; kolm.ai</title>
+<meta name="description" content="Linear probes, sparse autoencoders, and adversarial red-team probes for capability auditing. How kolm uses adversarial probes at the K-score gate and what the literature says about representation probes.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Probes &middot; kolm.ai">
+<meta property="og:description" content="Linear, sparse-autoencoder, and adversarial probes for capability auditing.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/probes">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Probes &middot; kolm.ai">
+<meta name="twitter:description" content="Linear, sparse-autoencoder, and adversarial probes for capability auditing.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/probes">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Probes for capability auditing","description":"Linear probes, sparse autoencoders, and adversarial red-team probes for capability auditing in the kolm gate.","url":"https://kolm.ai/research/probes","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / probes</div>
+<h1>Probes</h1>
+<p class="lede">A probe is a small auxiliary model or test suite that inspects what a base model "knows" beyond what its outputs reveal. The word covers two distinct ideas: representation probes that read hidden states to test for encoded concepts, and adversarial probes that feed crafted inputs to test for unwanted behaviors. Both are useful at the gate.</p>
+
+<h2 id="what">What it is</h2>
+<p>Representation probing trains a small classifier (often a linear layer) on a frozen language model's hidden states to predict a target property: factual knowledge (Hewitt and Manning, 2019, on syntactic structure), refusal direction (Belrose et al. 2023, tuned lens), or sentiment of input. The probe's accuracy is read as evidence the model "represents" the property. The recent sparse-autoencoder line (Bricken et al. 2023, Anthropic; Cunningham et al. 2024) trains overcomplete autoencoders on hidden states to expose monosemantic features that can be probed individually. Adversarial probes are the operational complement: a curated set of inputs designed to elicit specific bad behaviors (prompt-injection, jailbreak, refusal of legitimate requests, leakage of training data) so the pass rate can be measured. The classical reference is Perez et al. (2022) on red-teaming; current standards include HarmBench (Mazeika et al. 2024) and the OpenAI Preparedness evaluation suite.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>Representation probes are not implemented in kolm v0.2.6; the trainer does not currently train auxiliary classifiers on student hidden states. Adversarial probes are wired in: each recipe can declare a <code>probes</code> block listing built-in probe sets (prompt-injection-v1, jailbreak-mini, pii-leak-v2, refusal-of-legit-v1) and the K-score gate runs them, reporting pass rate per class. Failure on any class above the recipe's threshold blocks the artifact. The probe set hashes are recorded in the receipt so the auditor can replay them; the probe prompts themselves are public and live in <code>/research/probes</code> repos that ship with the trainer. Representation-level probes (linear, tuned lens, SAE) are on the v0.3 roadmap as an optional gate component for safety-critical recipes.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Hewitt, J., Manning, C. D. <em>A Structural Probe for Finding Syntax in Word Representations.</em> NAACL 2019.</p>
+<p>Belrose, N. et al. <em>Eliciting Latent Predictions from Transformers with the Tuned Lens.</em> 2023. arXiv:2303.08112.</p>
+<p>Bricken, T. et al. <em>Towards Monosemanticity: Decomposing Language Models With Dictionary Learning.</em> Anthropic, 2023.</p>
+<p>Perez, E. et al. <em>Red Teaming Language Models with Language Models.</em> EMNLP 2022. arXiv:2202.03286.</p>
+<p>Mazeika, M. et al. <em>HarmBench: A Standardized Evaluation Framework for Automated Red Teaming.</em> ICML 2024. arXiv:2402.04249.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

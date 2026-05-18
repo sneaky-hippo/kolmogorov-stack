@@ -369,7 +369,15 @@ const PUBLIC_API = (p) =>
   p === '/v1/marketplace/list' ||
   p === '/v1/marketplace/catalog.json' ||
   p === '/v1/marketplace/publish-request' ||
-  /^\/v1\/marketplace\/[A-Za-z0-9._-]+(?:\/download)?$/.test(p);
+  /^\/v1\/marketplace\/[A-Za-z0-9._-]+(?:\/download)?$/.test(p) ||
+  // W384 — sync inbox accepts pushes from peer daemons; the sender supplies
+  // an Authorization: Bearer <key> via the body/headers and validates it itself
+  // (the body's source_device_id + state envelope acts as the auth contract).
+  p === '/v1/sync/inbox' ||
+  // W384 — accept-invite is invite-token-authenticated (the URL token IS the
+  // credential); the workspace lookup happens inside team.js with explicit
+  // expiry + consumed checks. Public so a new member with no api_key can join.
+  p === '/v1/team/accept-invite';
 
 export function adminApiKey() {
   return process.env.ADMIN_KEY || null;

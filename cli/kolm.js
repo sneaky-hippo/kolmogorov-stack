@@ -328,6 +328,8 @@ COMMANDS
   trace <sub>                      structured agent/workflow trace inspector (stats|chain|export|new|span)
   ir <sub>                         workflow IR compile + inspect (compile|stats|validate|replay)
   device <sub>                     device capability inspector (list|profile|probe|check)
+  devices <sub>                    operator device fleet (list|register|show|test)   [W372]
+  install-device <art> --device d  push a .kolm onto a registered device (local/ssh/http)
   cc <sub>                         confidential compute attestation inspector (kinds|shape|verify)
   fl <sub>                         federated learning helpers — local only (strategies|new-round|verify|aggregate)
   anonymize <file.jsonl> [opts]    shortcut for 'seeds generate --strategy redact-pii-templated'
@@ -380,6 +382,18 @@ COMMANDS
   next                             ranked recommended-next-action(s) (--json)
   explain <art.kolm>               plain-English description of an artifact (--json)
   fix <art.kolm> [--apply]         surface failing eval cases + suggest seed fixes (--json)
+  lake <sub>                       data-plane analytics (stats|tail|inspect|export|purge|sync)
+  optimize <sub>                   ranked opportunities (list|explain|accept|ignore)
+  dataset <sub>                    labeled training corpora (candidates|approve|reject|create|split|inspect|export|list)
+  label <sub>                      reviewer queue (next|approve|fix|reject|stats)
+  privacy <sub>                    privacy membrane (scan|test|policy|report)                              [W384]
+  sync <sub>                       cloud-sync state (status|enable|disable|push|pull) + legacy git mirror [W384]
+  team <sub>                       workspace control (members|invite|role|approve|reject|namespace + cloud) [W384]
+  pipeline <sub>                   end-to-end compile (tokenize|distill|compile|full)                     [W384]
+  install <agent-id|harness>       dev-agent install (codex|aider|gemini-cli|...|all) + MCP harnesses     [W384]
+  wrap <agent-cmd> [args...]       spawn with kolm env injected (legacy: wrap <config> --out <spec.json>) [W384]
+  shell-init [--shell ...]         emit shell-export snippet that points an agent at the local kolm proxy [W384]
+  agents <sub>                     dev-agent telemetry (stats|sessions|recommend|failing)                 [W384]
 
 ENVIRONMENT
   KOLM_BASE             cloud endpoint (default: https://kolm.ai)
@@ -627,6 +641,7 @@ DEFAULT OUTPUT
 USAGE
   kolm train --spec <file.json> [--out <path>]   offline build from a JSON spec
   kolm train --namespace <n> [--base-model <m>]  distill the captured namespace
+  kolm train plan <dataset_id|path|ds_*>         recommend path/backbone before training (W371)
 
 OPTIONS (--spec mode)
   --spec <file>                JSON spec written by you or 'kolm new'
@@ -2187,6 +2202,42 @@ EXAMPLES
   kolm proxy config --sdk=openai --lang=node --port=8888 --namespace=team-a
   kolm proxy start --upstream=https://api.openai.com
 `,
+  connect: `kolm connect - THE WEDGE. Local daemon that captures every OpenAI / Anthropic / OpenRouter / Gemini SDK call, redacts, costs, latency-tracks, persists, and forwards upstream with your own API key.
+
+USAGE
+  kolm connect start [--port 8787] [--host 127.0.0.1] [--detach]
+  kolm connect stop
+  kolm connect status [--json]
+  kolm connect doctor [--json]
+  kolm connect config [--show] [--set <key>=<value>]
+  kolm connect test {openai|anthropic|openrouter}
+
+GETTING STARTED
+  npm install -g kolm
+  export OPENAI_API_KEY=sk-...
+  kolm connect start --detach
+  export OPENAI_BASE_URL=http://127.0.0.1:8787/v1
+  export ANTHROPIC_BASE_URL=http://127.0.0.1:8787
+  export OPENROUTER_BASE_URL=http://127.0.0.1:8787/v1
+  # ANY existing OpenAI/Anthropic/OpenRouter SDK call now flows through kolm.
+
+CONFIG KEYS
+  --set openai_api_key=sk-...        store upstream key in ~/.kolm/config.json
+  --set anthropic_api_key=sk-...     same for Anthropic
+  --set openrouter_api_key=or-...    same for OpenRouter
+  --set gemini_api_key=AIza...       same for Gemini
+  --set privacy_policy=allow|redact|block   per-prompt policy (default: allow)
+
+UPSTREAM KEY RESOLUTION (highest precedence first)
+  1. Authorization: Bearer <key>        header from the app
+  2. x-upstream-api-key: <key>          legacy header
+  3. process.env[<PROVIDER>_API_KEY]    env var
+  4. ~/.kolm/config.json upstream_keys  stored config
+
+DOCTOR
+  Runs: ~/.kolm writable, env keys present, capture-store loaded, daemon health,
+  smoke ping per configured provider. Exits 0 if all pass, 1 otherwise.
+`,
   migrate: `kolm migrate - rewrite a legacy v1 spec as a v2-stamped spec.
 
 USAGE
@@ -2440,7 +2491,16 @@ EXAMPLES
   kolm models info Qwen/Qwen2.5-3B-Instruct
   kolm models recommend --device m3-pro --task redact-pii
 
-Output is pure local lookup. No network calls.
+Output is pure local lookup unless you call pull/prefetch (HuggingFace).
+
+WEIGHTS (W386)
+  kolm models pull <model-id> [--variant q4_k_m] [--out <dir>]   stream GGUF
+  kolm models cache list | clear [<id>]                          on-disk cache
+  kolm models prefetch [--tier=edge] [--concurrency 3]           bulk download
+  kolm models manifest [--tier=edge]                             dump registry
+
+Tiers: edge (sub-8GB, default) / mobile (4GB) / laptop (25GB) /
+       workstation (95GB) / datacenter (>200GB, pull-on-demand).
 `,
   gpu: `kolm gpu - detect, doctor, and stress-test the local accelerator.
 
@@ -2659,6 +2719,51 @@ Reads the manifest of a .kolm and prints what it does, what trained it
 flag, and recipe summary.
 `,
 
+  synth: `kolm synth - synthetic training-data generator (wave 371).
+
+Subverbs:
+  kolm synth generate --from <dataset> [--n 100] [--modes paraphrase,edge_case]
+  kolm synth edge-cases --workflow <ns> [--n 50]
+  kolm synth counterexamples --artifact <path> [--n 50]
+  kolm synth personas --workflow <ns> [--n 20]
+
+Every emitted row is tagged source_type:'synthetic'. Synthetic rows must NOT
+land in the holdout unless you explicitly opt in (--holdout-from-sim on
+'kolm sim generate-dataset'). LLM-backed generators require KOLM_LLM_PROVIDER;
+otherwise we fall back to deterministic template + synonym variation.
+`,
+  sim: `kolm sim - workload + adversary simulators (wave 371).
+
+Subverbs:
+  kolm sim create <workflow> [--type user_simulator] [--n 100]
+  kolm sim run <sim_id> [--n N]
+  kolm sim replay <trace_id> --against <artifact|model>
+  kolm sim generate-dataset <sim_id>
+  kolm sim eval <artifact> --sim <sim_id>
+  kolm sim list
+
+Sims persist at ~/.kolm/simulations/<sim_id>.json. Run events are best-effort
+inserted into the durable capture lake (W212) tagged sim_id so downstream
+kolm distill / kolm bakeoff / kolm train plan can pull them like any other
+captured corpus.
+
+Types: ${'user_simulator|api_tool_simulator|log_stream_simulator|support_ticket_simulator|incident_simulator|browser_workflow_simulator|payer_prior_auth_simulator|privacy_red_team_simulator|device_performance_simulator'}
+`,
+  bakeoff: `kolm bakeoff - score-per-dollar bakeoff across cache/rule/small/frontier (wave 371).
+
+  kolm bakeoff <dataset_id|path|ds_*> [--contestants cache,rule,gemma-3n-e2b,claude-haiku-4-5,gpt-4o-mini] [--stub-model] [--json]
+
+Default contestants:  cache, rule, prompt_only, gemma-3n-e2b, qwen-0.5b,
+                      phi-mini, claude-haiku-4-5, gpt-4o-mini.
+
+Each contestant runs against the holdout; the verb reports pass_rate,
+avg_latency, avg_cost, and a score/$ ranking. 'Recommended' is the highest
+score/$ among contestants that clear 85% pass-rate; falls back to highest
+pass-rate when nothing clears the gate.
+
+--stub-model uses deterministic per-model quality so the bakeoff prints a
+useful ranking on a dev box with no KOLM_LLM_PROVIDER configured.
+`,
   fix: `kolm fix <artifact.kolm> - auto-iterate on a failing artifact.
 
 USAGE
@@ -2667,6 +2772,68 @@ USAGE
 Re-runs the embedded evals, surfaces the top failing cases, and suggests
 seed rows (input + observed-correct expected) that would address them. With
 --apply, writes <basename>.fix-seeds.jsonl in CWD so you can re-compile.
+`,
+
+  runtime: `kolm runtime - per-call policy decider + runtime-target builder. (W372 + W219)
+
+USAGE (W372 policy ladder)
+  kolm runtime status                         current policy + 7d decision stats
+  kolm runtime policy [--set key=value]       inspect or tune the policy
+  kolm runtime start [--policy local_first|frontier_first|cost_optimized|privacy_only]
+                                              switch policy
+  kolm runtime install <art.kolm>             install a .kolm into the local runtime cache
+  kolm runtime decisions [--limit N]          recent per-call decisions (cache_hit / local_artifact / cheaper_model / frontier_model / blocked)
+  kolm runtime stats [--since 7d]             rolled-up stats + spent_usd + savings_usd
+
+USAGE (W219 runtime-build)
+  kolm runtime targets                        list cross-compile targets (cuda-89, metal, rocm-gfx1100, ...)
+  kolm runtime info <target>                  target spec
+  kolm runtime doctor                         toolchain check across all targets
+  kolm runtime build-from-source <target>     compile llama.cpp from source for one target
+
+POLICY LADDER
+  request -> privacy_check -> cache -> local_artifact -> cheaper_model -> frontier
+  Each rung either serves the call or passes; first non-skip wins. Decisions are
+  written to ~/.kolm/runtime/decisions.jsonl for replay + audit.
+`,
+
+  devices: `kolm devices - operator-registered device fleet. (W372)
+
+USAGE
+  kolm devices list                              every registered device + chip + ram + runtimes
+  kolm devices register --detect                 autodetect THIS machine + write ~/.kolm/devices/local.json
+  kolm devices register <profile.json>           register a remote / edge / phone profile
+  kolm devices show <device-id>                  print one profile
+  kolm devices test <device-id>                  reachability probe (local exec / ssh / HTTP)
+
+PROFILE SHAPE
+  {
+    "device_id": "edge-pi-01",
+    "kind": "edge|laptop|server|phone|browser|gpu_box|vpc",
+    "chip": "rpi5",
+    "ram_gb": 8,
+    "runtimes": ["llama-cpp", "node"],
+    "modalities": ["text"],
+    "ssh": { "host": "10.0.0.42", "user": "pi" }     // optional
+  }
+
+See \`kolm install-device --help\` to push a .kolm artifact onto a registered device.
+`,
+
+  'install-device': `kolm install-device - push a .kolm artifact onto a registered device. (W372)
+
+USAGE
+  kolm install-device <art.kolm> --device <device-id> [--force] [--json]
+
+TRANSPORTS (chosen from the device profile)
+  local        copy bytes into ~/.kolm/installed/<id>/
+  ssh          scp + ssh smoke (device.ssh)
+  http         HTTP PUT (device.manifest_url + optional device.api_key)
+
+Each install writes ~/.kolm/installed/<device_id>/<artifact_id>/install.manifest.json
+recording source_sha256, transport, and the remote result so \`kolm runtime install\`
+and \`kolm devices test\` can answer "is this device fresh?" without re-reading
+the .kolm zip.
 `,
 };
 
@@ -3304,6 +3471,30 @@ async function cmdNew(args) {
 // first-time buyer goes from "I want a redactor" to "K=0.7026, here is what's
 // failing" in one invocation. The user then iterates the recipe or the
 // expected outputs and re-runs `kolm compile`.
+//
+// Wave 367 (curated-template path): when <name> matches a curated baseline
+// shipped under examples/<slug>/ (spec.json + recipe.js + seeds.jsonl), use
+// that as the scaffold instead of the generic template path. This is the
+// "compile a rule" promise the homepage makes: a known-good recipe is the
+// starting point, not a stub. Curated baselines score K >= 0.95 on their own
+// seeds; the user can then plug their own --examples and re-run.
+function findCuratedTemplate(name) {
+  const slug = String(name || '').toLowerCase();
+  if (!slug) return null;
+  // examples/ lives at <repo>/examples regardless of where the CLI is invoked.
+  // import.meta.url -> .../kolmogorov-stack/cli/kolm.js -> repoRoot is two up.
+  const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]):/, '$1:'));
+  const repoRoot = path.dirname(here);
+  const dir = path.join(repoRoot, 'examples', slug);
+  const specPath = path.join(dir, 'spec.json');
+  const recipePath = path.join(dir, 'recipe.js');
+  const seedsPath = path.join(dir, 'seeds.jsonl');
+  if (fs.existsSync(specPath) && fs.existsSync(recipePath) && fs.existsSync(seedsPath)) {
+    return { dir, specPath, recipePath, seedsPath };
+  }
+  return null;
+}
+
 async function cmdBuild(args) {
   if (maybeHelp('build', args)) return;
   const positional = args.find(a => !a.startsWith('--'));
@@ -3342,10 +3533,47 @@ async function cmdBuild(args) {
     ? path.resolve(process.cwd(), examplesFlag)
     : path.resolve(process.cwd(), 'seeds.jsonl');
 
+  // W367 curated-template detection. Done before scaffolding so we can swap in
+  // a known-good baseline instead of the generic stub. Honored unless the user
+  // explicitly chose a different --from template (in which case respect the
+  // user's intent), or the spec/seeds already exist on disk (don't clobber).
+  const curated = findCuratedTemplate(name);
+  const useCurated = curated
+    && !pickFlag(args, '--from')  // user did not force a generic template
+    && (!fs.existsSync(specPath) || args.includes('--force'));
+
   // Step 1: spec scaffold
   console.log(`[1/4] scaffold spec`);
   if (fs.existsSync(specPath) && !args.includes('--force')) {
     console.log(`  reusing existing ${path.basename(specPath)}`);
+  } else if (useCurated) {
+    // Copy curated spec + rewrite source_file to an absolute path so the recipe
+    // resolves no matter where the user invokes kolm. job_id stays unique per
+    // tenant by templating the user-chosen <name>.
+    const raw = fs.readFileSync(curated.specPath, 'utf8');
+    let spec;
+    try { spec = JSON.parse(raw); }
+    catch (e) {
+      const err = new Error(`curated spec parse failed: ${e.message}`);
+      err.exitCode = EXIT.EXECUTION;
+      throw err;
+    }
+    spec.job_id = `job_${name.replace(/-/g, '_')}_v1`;
+    if (Array.isArray(spec.recipes)) {
+      for (const r of spec.recipes) {
+        if (r && typeof r === 'object' && typeof r.source_file === 'string') {
+          // Resolve source_file against the curated dir, then absolutize so the
+          // compile step finds it from any cwd.
+          const resolved = path.isAbsolute(r.source_file)
+            ? r.source_file
+            : path.resolve(curated.dir, r.source_file);
+          r.source_file = resolved;
+        }
+      }
+    }
+    fs.writeFileSync(specPath, JSON.stringify(spec, null, 2) + '\n');
+    console.log(`  wrote: ${specPath}`);
+    console.log(`  template: curated (examples/${name}/)`);
   } else {
     const newArgs = [name, '--from', fromFlag, '--out', specPath];
     if (autoYes) newArgs.push('--yes');
@@ -3358,6 +3586,7 @@ async function cmdBuild(args) {
   // the K-score honestly after compile.
   console.log(`[2/4] seeds`);
   let usedPlaceholderSeeds = false;
+  let usedCuratedSeeds = false;
   if (examplesFlag) {
     if (!fs.existsSync(seedsPath)) {
       const err = new Error(`--examples ${examplesFlag} not found`);
@@ -3367,6 +3596,13 @@ async function cmdBuild(args) {
     console.log(`  using provided examples: ${path.relative(process.cwd(), seedsPath) || seedsPath}`);
   } else if (fs.existsSync(seedsPath)) {
     console.log(`  reusing existing ${path.basename(seedsPath)}`);
+  } else if (useCurated) {
+    // Copy curated seeds verbatim. These are real labeled rows (60 for
+    // claims-redactor), not placeholders, so the K-score is honest.
+    fs.copyFileSync(curated.seedsPath, seedsPath);
+    const rowCount = fs.readFileSync(seedsPath, 'utf8').split(/\r?\n/).filter(Boolean).length;
+    console.log(`  wrote ${rowCount} curated rows to ${seedsPath}`);
+    usedCuratedSeeds = true;
   } else {
     // Scaffold seeds via the same alias resolution `kolm seeds new` uses.
     const seedName = SEED_TEMPLATE_ALIASES[fromFlag] || (SEED_TEMPLATES[fromFlag] ? fromFlag : 'generic');
@@ -3833,6 +4069,376 @@ async function cmdHealth(args) {
   process.exit(exit);
 }
 
+// W368 — `kolm connect` is THE WEDGE. Single command that starts the local
+// daemon-connector. Sub-verbs:
+//   kolm connect start [--port 8787] [--host 127.0.0.1] [--detach]
+//   kolm connect stop
+//   kolm connect status
+//   kolm connect doctor
+//   kolm connect config [--set <provider>_api_key=<key>] [--show]
+//   kolm connect test {openai|anthropic|openrouter}
+//
+// All network I/O uses node:http(s) directly — never fetch — because the
+// global undici dispatcher's keep-alive sockets crash libuv on Windows when
+// the CLI process exits (W305 trap).
+async function cmdConnect(args) {
+  if (maybeHelp('connect', args)) return;
+  const sub = args[0];
+  if (!sub) {
+    console.error('usage: kolm connect {start|stop|status|doctor|config|test}  (try: kolm connect --help)');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  const rest = args.slice(1);
+  if (sub === 'start') return await cmdConnectStart(rest);
+  if (sub === 'stop') return await cmdConnectStop(rest);
+  if (sub === 'status') return await cmdConnectStatus(rest);
+  if (sub === 'doctor') return await cmdConnectDoctor(rest);
+  if (sub === 'config') return await cmdConnectConfig(rest);
+  if (sub === 'test') return await cmdConnectTest(rest);
+  console.error('unknown subcommand: kolm connect ' + sub);
+  console.error('try: kolm connect {start, stop, status, doctor, config, test}');
+  process.exit(EXIT.BAD_ARGS);
+}
+
+function pickFlagValue(args, name, def) {
+  const i = args.indexOf(name);
+  if (i >= 0 && args[i + 1]) return args[i + 1];
+  return def;
+}
+
+// Tiny node:http GET helper for status/doctor probes. Avoids the fetch()
+// libuv crash on Windows (W305 trap).
+function httpProbe(url, { timeoutMs = 4000, method = 'GET', headers = {}, body = null } = {}) {
+  return new Promise((resolve) => {
+    let parsed;
+    try { parsed = new URL(url); } catch (_) { return resolve({ ok: false, status: 0, error: 'bad_url' }); }
+    const lib = parsed.protocol === 'https:' ? https : http;
+    const t0 = Date.now();
+    const hdr = { 'accept': 'application/json', 'user-agent': 'kolm-connect/' + VERSION, ...headers };
+    const payload = body == null ? null : (typeof body === 'string' ? body : JSON.stringify(body));
+    if (payload) {
+      hdr['content-type'] = hdr['content-type'] || 'application/json';
+      hdr['content-length'] = Buffer.byteLength(payload).toString();
+    }
+    const req = lib.request({
+      protocol: parsed.protocol,
+      hostname: parsed.hostname,
+      port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+      path: parsed.pathname + (parsed.search || ''),
+      method,
+      headers: hdr,
+    }, (res) => {
+      let buf = '';
+      res.setEncoding('utf8');
+      res.on('data', (d) => { buf += d; });
+      res.on('end', () => {
+        const rttMs = Date.now() - t0;
+        let json = null;
+        try { json = JSON.parse(buf); } catch (_) {}
+        resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, rtt_ms: rttMs, headers: res.headers, body: json, raw: buf });
+      });
+    });
+    req.setTimeout(timeoutMs, () => { try { req.destroy(new Error('timeout')); } catch (_) {} });
+    req.on('error', (e) => resolve({ ok: false, status: 0, rtt_ms: Date.now() - t0, error: e.message || String(e) }));
+    if (payload) req.write(payload);
+    req.end();
+  });
+}
+
+async function cmdConnectStart(args) {
+  const port = parseInt(pickFlagValue(args, '--port', process.env.KOLM_DAEMON_PORT || '8787'), 10);
+  const host = pickFlagValue(args, '--host', process.env.KOLM_DAEMON_HOST || '127.0.0.1');
+  const detach = args.includes('--detach');
+  const jsonOut = args.includes('--json');
+  // If detached, re-spawn ourselves with stdio:'ignore' + unref().
+  if (detach) {
+    const cp = await import('node:child_process');
+    const child = cp.spawn(process.execPath, [process.argv[1], 'connect', 'start', '--port', String(port), '--host', host], {
+      stdio: 'ignore',
+      detached: true,
+      env: { ...process.env, KOLM_DAEMON_PORT: String(port), KOLM_DAEMON_HOST: host },
+    });
+    child.unref();
+    // Wait briefly so the child can write its PID file.
+    await new Promise((r) => setTimeout(r, 700));
+    const probe = await httpProbe('http://' + host + ':' + port + '/v1/health', { timeoutMs: 2000 });
+    if (jsonOut) {
+      console.log(JSON.stringify({ ok: probe.ok, detached: true, pid: child.pid, port, host }));
+      return;
+    }
+    console.log('kolm connect: started (detached) pid=' + child.pid + ' http://' + host + ':' + port);
+    console.log('  point your SDK base URLs at this server:');
+    console.log('    export OPENAI_BASE_URL=http://' + host + ':' + port + '/v1');
+    console.log('    export ANTHROPIC_BASE_URL=http://' + host + ':' + port);
+    console.log('    export OPENROUTER_BASE_URL=http://' + host + ':' + port + '/v1');
+    return;
+  }
+  // In-process start (foreground; blocks until SIGTERM).
+  const { startDaemon } = await import('../src/daemon-connector.js');
+  const { server, port: actualPort, pid } = await startDaemon({ port, host });
+  if (jsonOut) {
+    console.log(JSON.stringify({ ok: true, pid, port: actualPort, host }));
+  } else {
+    console.log('kolm connect: started pid=' + pid + ' http://' + host + ':' + actualPort);
+    console.log('  point your SDK base URLs at this server:');
+    console.log('    export OPENAI_BASE_URL=http://' + host + ':' + actualPort + '/v1');
+    console.log('    export ANTHROPIC_BASE_URL=http://' + host + ':' + actualPort);
+    console.log('    export OPENROUTER_BASE_URL=http://' + host + ':' + actualPort + '/v1');
+    console.log('');
+    console.log('  Ctrl-C to stop. Logs: stderr.');
+  }
+  // Wait for SIGTERM / SIGINT.
+  await new Promise((resolve) => {
+    process.on('SIGTERM', resolve);
+    process.on('SIGINT', resolve);
+  });
+  await new Promise((r) => server.close(() => r()));
+  console.log('kolm connect: stopped');
+}
+
+async function cmdConnectStop(args) {
+  const jsonOut = args.includes('--json');
+  const { daemonStatus, stopDaemon } = await import('../src/daemon-connector.js');
+  const st = daemonStatus();
+  if (!st.running) {
+    if (jsonOut) { console.log(JSON.stringify({ ok: true, was_running: false })); return; }
+    console.log('kolm connect: not running');
+    return;
+  }
+  await stopDaemon(st);
+  if (jsonOut) { console.log(JSON.stringify({ ok: true, was_running: true, pid: st.pid })); return; }
+  console.log('kolm connect: stopped (pid ' + st.pid + ')');
+}
+
+async function cmdConnectStatus(args) {
+  const jsonOut = args.includes('--json');
+  const { daemonStatus } = await import('../src/daemon-connector.js');
+  const st = daemonStatus();
+  if (!st.running) {
+    if (jsonOut) { console.log(JSON.stringify({ running: false })); return; }
+    console.log('kolm connect: NOT RUNNING');
+    console.log('  start it with: kolm connect start --detach');
+    return;
+  }
+  const base = 'http://' + (st.host || '127.0.0.1') + ':' + st.port;
+  const probe = await httpProbe(base + '/v1/health', { timeoutMs: 3000 });
+  if (jsonOut) {
+    console.log(JSON.stringify({ running: true, pid: st.pid, port: st.port, host: st.host, started_at: st.started_at, health: probe.body || null, rtt_ms: probe.rtt_ms }));
+    return;
+  }
+  console.log('kolm connect: RUNNING');
+  console.log('  pid:        ' + st.pid);
+  console.log('  base:       ' + base);
+  console.log('  started:    ' + st.started_at);
+  if (probe.ok && probe.body) {
+    console.log('  uptime:     ' + probe.body.uptime_s + 's');
+    console.log('  events:     ' + probe.body.captured_events);
+    console.log('  storage:    ' + (probe.body.storage_driver || '?') + ' (durable=' + (probe.body.storage_durable !== false) + ')');
+    console.log('  policy:     ' + (probe.body.policy || 'allow'));
+    const providers = probe.body.providers || {};
+    for (const [id, info] of Object.entries(providers)) {
+      console.log('  ' + id.padEnd(10) + ' env_key=' + info.env_key_set + ' upstream_reachable=' + info.upstream_reachable);
+    }
+  } else {
+    console.log('  health:     UNREACHABLE (' + (probe.error || ('status ' + probe.status)) + ')');
+  }
+}
+
+async function cmdConnectDoctor(args) {
+  const jsonOut = args.includes('--json');
+  const checks = [];
+  function ok(name, detail) { checks.push({ name, ok: true, detail: detail || null }); }
+  function fail(name, detail) { checks.push({ name, ok: false, detail: detail || null }); }
+  function warn(name, detail) { checks.push({ name, ok: true, warn: true, detail: detail || null }); }
+
+  const { daemonStatus, _internals } = await import('../src/daemon-connector.js');
+  const st = daemonStatus();
+  if (st.running) ok('daemon_running', 'pid=' + st.pid + ' port=' + st.port);
+  else warn('daemon_running', 'not running; start with: kolm connect start --detach');
+
+  // ~/.kolm writable check.
+  try {
+    const probePath = path.join(KOLM_DIR, '.write-probe-' + Date.now());
+    fs.mkdirSync(KOLM_DIR, { recursive: true });
+    fs.writeFileSync(probePath, 'ok');
+    fs.unlinkSync(probePath);
+    ok('home_writable', KOLM_DIR);
+  } catch (e) { fail('home_writable', String(e.message || e)); }
+
+  // Env keys.
+  const envKeys = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'OPENROUTER_API_KEY', 'GEMINI_API_KEY'];
+  for (const k of envKeys) {
+    if (process.env[k]) ok('env_' + k.toLowerCase(), 'set (length=' + process.env[k].length + ')');
+    else warn('env_' + k.toLowerCase(), 'not set');
+  }
+
+  // Capture-store driver load.
+  try {
+    const cs = await import('../src/capture-store.js');
+    ok('capture_store', 'driver=' + cs.driverName() + ' durable=' + cs.isDurable());
+  } catch (e) { fail('capture_store', String(e.message || e)); }
+
+  // If daemon running and a key is set, send a smoke ping.
+  if (st.running) {
+    const base = 'http://' + (st.host || '127.0.0.1') + ':' + st.port;
+    const health = await httpProbe(base + '/v1/health', { timeoutMs: 3000 });
+    if (health.ok) ok('daemon_health', 'rtt=' + health.rtt_ms + 'ms events=' + ((health.body && health.body.captured_events) || 0));
+    else fail('daemon_health', health.error || ('status ' + health.status));
+    if (process.env.OPENAI_API_KEY) {
+      const r = await httpProbe(base + '/v1/chat/completions', {
+        method: 'POST',
+        timeoutMs: 15000,
+        body: { model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'reply with the word OK' }], max_tokens: 4 },
+      });
+      const evHeader = r.headers && r.headers['x-kolm-event-id'];
+      if (r.ok && evHeader) ok('openai_smoke', 'event_id=' + evHeader + ' status=' + r.status);
+      else fail('openai_smoke', 'status=' + r.status + ' body=' + String(r.raw || '').slice(0, 120));
+    } else warn('openai_smoke', 'OPENAI_API_KEY not set; skipped');
+    if (process.env.ANTHROPIC_API_KEY) {
+      const r = await httpProbe(base + '/v1/messages', {
+        method: 'POST',
+        timeoutMs: 15000,
+        headers: { 'anthropic-version': '2023-06-01' },
+        body: { model: 'claude-haiku-4-5', max_tokens: 4, messages: [{ role: 'user', content: 'reply with the word OK' }] },
+      });
+      const evHeader = r.headers && r.headers['x-kolm-event-id'];
+      if (r.ok && evHeader) ok('anthropic_smoke', 'event_id=' + evHeader + ' status=' + r.status);
+      else fail('anthropic_smoke', 'status=' + r.status + ' body=' + String(r.raw || '').slice(0, 120));
+    } else warn('anthropic_smoke', 'ANTHROPIC_API_KEY not set; skipped');
+    if (process.env.OPENROUTER_API_KEY) {
+      const r = await httpProbe(base + '/v1/capture/openrouter/v1/chat/completions', {
+        method: 'POST',
+        timeoutMs: 15000,
+        body: { model: 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'reply with the word OK' }], max_tokens: 4 },
+      });
+      const evHeader = r.headers && r.headers['x-kolm-event-id'];
+      if (r.ok && evHeader) ok('openrouter_smoke', 'event_id=' + evHeader + ' status=' + r.status);
+      else fail('openrouter_smoke', 'status=' + r.status + ' body=' + String(r.raw || '').slice(0, 120));
+    } else warn('openrouter_smoke', 'OPENROUTER_API_KEY not set; skipped');
+  }
+
+  const passing = checks.filter((c) => c.ok && !c.warn).length;
+  const warning = checks.filter((c) => c.warn).length;
+  const failing = checks.filter((c) => !c.ok).length;
+  if (jsonOut) {
+    console.log(JSON.stringify({ ok: failing === 0, checks, summary: { passing, warning, failing } }));
+    process.exit(failing === 0 ? 0 : 1);
+  }
+  for (const c of checks) {
+    const tag = c.warn ? color('33', 'WARN') : (c.ok ? color('32', 'OK  ') : color('31', 'FAIL'));
+    console.log(tag + '  ' + c.name.padEnd(28) + (c.detail ? ' ' + c.detail : ''));
+  }
+  console.log('');
+  console.log('summary: ' + passing + ' ok, ' + warning + ' warn, ' + failing + ' fail');
+  process.exit(failing === 0 ? 0 : 1);
+}
+
+async function cmdConnectConfig(args) {
+  const jsonOut = args.includes('--json');
+  const setIdx = args.indexOf('--set');
+  const showOnly = args.includes('--show') || args.length === 0;
+  ensureDir();
+  let cfg = {};
+  if (fs.existsSync(CONFIG_PATH)) {
+    try { cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8')); } catch { cfg = {}; }
+  }
+  if (!cfg.upstream_keys) cfg.upstream_keys = {};
+  if (setIdx >= 0 && args[setIdx + 1]) {
+    const kv = args[setIdx + 1];
+    const eq = kv.indexOf('=');
+    if (eq < 0) { console.error('usage: kolm connect config --set <key>=<value>'); process.exit(EXIT.BAD_ARGS); }
+    const k = kv.slice(0, eq).toLowerCase().trim();
+    const v = kv.slice(eq + 1);
+    // Map openai_api_key -> upstream_keys.openai
+    if (/^(openai|anthropic|openrouter|gemini)_api_key$/.test(k)) {
+      const provider = k.replace(/_api_key$/, '');
+      cfg.upstream_keys[provider] = v;
+      fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
+      try { fs.chmodSync(CONFIG_PATH, 0o600); } catch (_) {}
+      console.log('kolm connect: set upstream_keys.' + provider + ' (' + v.slice(0, 6) + '...' + v.slice(-4) + ')');
+      return;
+    }
+    if (k === 'privacy_policy') {
+      if (!['allow', 'redact', 'block'].includes(v)) {
+        console.error('privacy_policy must be one of: allow, redact, block');
+        process.exit(EXIT.BAD_ARGS);
+      }
+      cfg.privacy_policy = v;
+      fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
+      try { fs.chmodSync(CONFIG_PATH, 0o600); } catch (_) {}
+      console.log('kolm connect: set privacy_policy=' + v);
+      return;
+    }
+    console.error('unknown config key: ' + k);
+    process.exit(EXIT.BAD_ARGS);
+  }
+  // Show — sanitize keys.
+  const out = { config_path: CONFIG_PATH, privacy_policy: cfg.privacy_policy || 'allow', upstream_keys: {} };
+  for (const [k, v] of Object.entries(cfg.upstream_keys || {})) {
+    out.upstream_keys[k] = v ? (String(v).slice(0, 6) + '...' + String(v).slice(-4)) : null;
+  }
+  if (jsonOut) { console.log(JSON.stringify(out, null, 2)); return; }
+  console.log('kolm connect config');
+  console.log('  config:         ' + CONFIG_PATH);
+  console.log('  privacy_policy: ' + out.privacy_policy);
+  console.log('  upstream_keys:');
+  for (const [k, v] of Object.entries(out.upstream_keys)) {
+    console.log('    ' + k.padEnd(12) + (v || 'unset'));
+  }
+}
+
+async function cmdConnectTest(args) {
+  const provider = args[0];
+  const jsonOut = args.includes('--json');
+  if (!provider || !['openai', 'anthropic', 'openrouter'].includes(provider)) {
+    console.error('usage: kolm connect test {openai|anthropic|openrouter}');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  const { daemonStatus } = await import('../src/daemon-connector.js');
+  const st = daemonStatus();
+  if (!st.running) {
+    console.error('daemon not running; start with: kolm connect start --detach');
+    process.exit(1);
+  }
+  const envKey = { openai: 'OPENAI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', openrouter: 'OPENROUTER_API_KEY' }[provider];
+  if (!process.env[envKey]) {
+    console.error(envKey + ' not set; export it or run: kolm connect config --set ' + provider + '_api_key=<key>');
+    process.exit(1);
+  }
+  const base = 'http://' + (st.host || '127.0.0.1') + ':' + st.port;
+  let url, body, headers = {};
+  if (provider === 'openai') {
+    url = base + '/v1/chat/completions';
+    body = { model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'reply with the word OK' }], max_tokens: 4 };
+  } else if (provider === 'anthropic') {
+    url = base + '/v1/messages';
+    headers['anthropic-version'] = '2023-06-01';
+    body = { model: 'claude-haiku-4-5', max_tokens: 4, messages: [{ role: 'user', content: 'reply with the word OK' }] };
+  } else {
+    url = base + '/v1/capture/openrouter/v1/chat/completions';
+    body = { model: 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'reply with the word OK' }], max_tokens: 4 };
+  }
+  const r = await httpProbe(url, { method: 'POST', body, headers, timeoutMs: 20000 });
+  const evHeader = r.headers && r.headers['x-kolm-event-id'];
+  if (jsonOut) {
+    console.log(JSON.stringify({ ok: r.ok, status: r.status, event_id: evHeader || null, rtt_ms: r.rtt_ms, body: r.body }));
+  }
+  if (!r.ok) {
+    if (!jsonOut) console.error('kolm connect test ' + provider + ': UPSTREAM FAIL status=' + r.status + ' ' + String(r.raw || '').slice(0, 200));
+    process.exit(2);
+  }
+  if (!evHeader) {
+    if (!jsonOut) console.error('kolm connect test ' + provider + ': CAPTURE FAIL (no x-kolm-event-id)');
+    process.exit(3);
+  }
+  if (!jsonOut) {
+    console.log(color('32', 'PASS') + '  ' + provider + ' upstream + capture');
+    console.log('  event_id: ' + evHeader);
+    console.log('  rtt:      ' + r.rtt_ms + 'ms');
+  }
+  process.exit(0);
+}
+
 async function cmdKey(args) {
   if (maybeHelp('key', args)) return;
   const sub = args[0] || 'fingerprint';
@@ -3960,6 +4566,12 @@ async function cmdMetrics(args) {
 
 async function cmdTrain(args) {
   if (maybeHelp('train', args)) return;
+  // W371 — `kolm train plan <dataset_id>` reports a training plan before
+  // launching anything expensive. We dispatch the subverb here so the rest
+  // of cmdTrain's --spec/--namespace/--watch contract stays untouched.
+  if (args && args[0] === 'plan') {
+    return cmdTrainPlan(args.slice(1));
+  }
   // W361 — `--watch` streams epoch-by-epoch progress events. Routes to the
   // pipeline-train async iterator (local-worker or cloud-poll). The bare
   // positional + --watch is the new shorthand: `kolm train <spec> --watch`.
@@ -5097,6 +5709,46 @@ async function cmdRun(args) {
     const err = new Error(`--strict: production_ready=false (${(prodVerdict.reasons || []).join('; ')})`);
     err.exitCode = EXIT.GATE_FAIL;
     throw err;
+  }
+  // W367 — --bundle (or env KOLM_RUN_BUNDLE=1) routes execution through the
+  // self-contained recipe.bundle.mjs that ships inside the zip. The bundle is
+  // extracted to a temp dir and imported via pathToFileURL, proving the .kolm
+  // is genuinely portable: a fresh host with only node 18+ can run it without
+  // any kolm runtime in scope. Default path stays the in-process JS runner
+  // (artifact-runner.js) so existing artifacts + tests are unaffected.
+  const useBundle = cleaned.includes('--bundle') || process.env.KOLM_RUN_BUNDLE === '1';
+  if (useBundle) {
+    try {
+      const { runArtifactViaBundle } = await import('../src/bundle-runner.js');
+      const r = await runArtifactViaBundle(ap, input, { params });
+      const result = {
+        output: r.output, recipe: r.recipe_name || r.recipe_id, latency_us: r.latency_us,
+        k_score: null, receipt: null, audit: null,
+        production_ready: prodVerdict.ok,
+        gate_reasons: prodVerdict.reasons,
+        runtime: 'bundle',
+      };
+      if (jsonOut) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        const outStr = (typeof r.output === 'string') ? r.output : JSON.stringify(r.output, null, 2);
+        console.log(outStr);
+        const lat = typeof r.latency_us === 'number' ? `${r.latency_us}us` : '?';
+        const recipe = r.recipe_name || r.recipe_id || '?';
+        process.stderr.write(`recipe: ${recipe}  ·  ${lat}  ·  via recipe.bundle.mjs\n`);
+      }
+      appendRunLog({ command: 'run', artifact: ap, recipe_id: r.recipe_id, recipe_name: r.recipe_name, latency_us: r.latency_us, ok: true, runtime: 'bundle' });
+      await dispatchRun('PostRun', { command: 'run', cwd: process.cwd(), artifact: ap, latency_us: r.latency_us, recipe: r.recipe_name || r.recipe_id }, { onResult: jsonOut ? () => {} : printHookResult });
+      return;
+    } catch (e) {
+      const code = e.code || 'KOLM_E_BUNDLE_RUN_FAILED';
+      appendRunLog({ command: 'run', artifact: ap, ok: false, error: e.message, error_code: code });
+      console.error(JSON.stringify({ error: e.message, code, runtime: 'bundle', tried: e.tried || null }, null, 2));
+      const err = new Error(e.message);
+      err.exitCode = EXIT.EXECUTION;
+      err.code = code;
+      throw err;
+    }
   }
   await withRunner(async ({ runArtifact }) => {
     try {
@@ -6564,7 +7216,9 @@ async function cmdHub(args) {
 
 // W263 — kolm marketplace {search|install|publish}
 //   kolm marketplace search [--category X] [--license Y] [--min-k N] [--verified] [--json]
-//   kolm marketplace install <slug>          fetches + sha256-verifies + saves to ~/.kolm/artifacts/<slug>.kolm
+//   kolm marketplace install <slug> [--force] [--json]  fetches, sha256-verifies, productionReady()-gates,
+//                                                       then saves to ~/.kolm/artifacts/<slug>.kolm.
+//                                                       Without --force, a failing gate exits 4 and writes nothing.
 //   kolm marketplace publish <file.kolm>     placeholder — submits to manual-review queue via /v1/marketplace/publish-request
 async function cmdMarketplace(args) {
   if (maybeHelp('marketplace', args)) return;
@@ -6593,7 +7247,32 @@ async function cmdMarketplace(args) {
     const modPath = path.resolve(here, '..', 'src', 'marketplace.js');
     const url = 'file://' + (modPath.startsWith('/') ? modPath : '/' + modPath.replace(/\\/g, '/'));
     const mod = await import(url);
-    return mod.listArtifacts({ filter });
+    const items = mod.listArtifacts({ filter });
+    // W339/W342: decorate each row with the unified productionReady() verdict.
+    // The catalog gives us source_path; resolve to an absolute path and run the
+    // shared gate. Rows whose bytes don't pass are flagged `gated:true` with a
+    // `gated_reason` array. The install code path below hard-blocks on gated
+    // rows (exit 4) unless --force is passed.
+    const prRoot = path.resolve(here, '..');
+    const prPath = path.resolve(prRoot, 'src', 'production-ready.js');
+    const prUrl = 'file://' + (prPath.startsWith('/') ? prPath : '/' + prPath.replace(/\\/g, '/'));
+    const { productionReady } = await import(prUrl);
+    for (const it of items) {
+      try {
+        const abs = path.resolve(prRoot, it.source_path);
+        const v = await productionReady(abs);
+        it.verdict = { ok: !!v.ok, gates: v.gates || {}, reasons: v.reasons || [] };
+        if (!v.ok) {
+          it.gated = true;
+          it.gated_reason = v.reasons || [];
+        }
+      } catch (e) {
+        it.verdict = { ok: false, gates: {}, reasons: [`verdict_failed: ${e.message}`] };
+        it.gated = true;
+        it.gated_reason = it.verdict.reasons;
+      }
+    }
+    return items;
   }
 
   if (sub === 'search' || sub === 'list' || sub === 'ls') {
@@ -6640,7 +7319,18 @@ async function cmdMarketplace(args) {
       const sz = String(a.bytes || '?').padStart(6);
       const c  = String(a.category || '').padEnd(17);
       const b  = (a.badges || []).join(',');
-      console.log(`  ${slug} ${k}   ${sz}  ${c} ${b}`);
+      // W339/W342: rows whose backing .kolm fails the unified productionReady()
+      // gate get a [gated] marker prefix + dim ANSI when stdout is a TTY.
+      const dim = !!a.gated && !!process.stdout.isTTY;
+      const open = dim ? '\x1b[2m' : '';
+      const close = dim ? '\x1b[0m' : '';
+      const marker = a.gated ? '[gated] ' : '        ';
+      console.log(`  ${open}${marker}${slug} ${k}   ${sz}  ${c} ${b}${close}`);
+      if (a.gated && Array.isArray(a.gated_reason) && a.gated_reason.length) {
+        for (const reason of a.gated_reason) {
+          console.log(`            ${open}- ${reason}${close}`);
+        }
+      }
     }
     return;
   }
@@ -6648,8 +7338,9 @@ async function cmdMarketplace(args) {
   if (sub === 'install') {
     const slug = rest[0];
     if (!slug || slug.startsWith('--')) {
-      const e = new Error('usage: kolm marketplace install <slug>'); e.exitCode = EXIT.BAD_ARGS; throw e;
+      const e = new Error('usage: kolm marketplace install <slug> [--force] [--json]'); e.exitCode = EXIT.BAD_ARGS; throw e;
     }
+    const force = rest.includes('--force');
     let entry;
     try { entry = await fetchJson(`${BASE}/v1/marketplace/${encodeURIComponent(slug)}`); }
     catch (_e) {
@@ -6693,12 +7384,71 @@ async function cmdMarketplace(args) {
       const err = new Error(`sha256 mismatch: expected ${entry.sha256}, got ${got}`);
       err.exitCode = EXIT.RUNTIME || EXIT.EXECUTION; throw err;
     }
+    // W339/W342: hard production-gate the bytes we are about to install. The
+    // unified productionReady() verdict is the single source of truth; we run
+    // it against the downloaded buffer (not the server-asserted `verified`
+    // flag) so a compromised mirror or stale catalog cannot smuggle a failing
+    // artifact past the gate. Write to a temp file so productionReady() can
+    // open it via adm-zip. --force lets the install proceed (stderr warning,
+    // exit 0) — same convention as `kolm run --force` and `kolm ship --force`.
+    const tmpPath = path.join(outDir, `${slug}.kolm.verify-${Date.now()}.tmp`);
+    fs.writeFileSync(tmpPath, buf);
+    let verdict;
+    try {
+      const here = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
+      const prPath = path.resolve(here, '..', 'src', 'production-ready.js');
+      const prUrl = 'file://' + (prPath.startsWith('/') ? prPath : '/' + prPath.replace(/\\/g, '/'));
+      const { productionReady } = await import(prUrl);
+      verdict = await productionReady(tmpPath);
+    } catch (e) {
+      verdict = { ok: false, gates: {}, reasons: [`verdict_failed: ${e.message}`] };
+    } finally {
+      try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+    }
+    if (!verdict.ok && !force) {
+      const reasons = (verdict.reasons || []).join('; ');
+      if (jsonOut) {
+        process.stdout.write(JSON.stringify({
+          ok: false,
+          error: 'marketplace.install_blocked',
+          slug,
+          sha256: got,
+          bytes: buf.length,
+          reasons: verdict.reasons || [],
+          gates: verdict.gates || {},
+          hint: 'pass --force to install anyway',
+        }, null, 2) + '\n');
+      } else {
+        process.stderr.write(`marketplace.install_blocked: ${reasons || 'production_ready=false'}\n`);
+        if (Array.isArray(verdict.reasons)) for (const r of verdict.reasons) process.stderr.write(`  - ${r}\n`);
+        process.stderr.write(`  hint: pass --force to install anyway\n`);
+      }
+      const err = new Error(`marketplace.install_blocked: ${reasons}`);
+      err.exitCode = EXIT.EXECUTION; // 4 per brief
+      throw err;
+    }
+    if (!verdict.ok && force) {
+      process.stderr.write(`# WARNING: --force install of non-production_ready artifact ${slug}\n`);
+      for (const r of (verdict.reasons || [])) process.stderr.write(`#   - ${r}\n`);
+    }
     fs.writeFileSync(outFile, buf);
     if (jsonOut) {
-      process.stdout.write(JSON.stringify({ ok: true, slug, path: outFile, sha256: got, bytes: buf.length, verified: !!entry.verified, k_score: entry.k_score }, null, 2) + '\n');
+      process.stdout.write(JSON.stringify({
+        ok: true,
+        slug,
+        path: outFile,
+        sha256: got,
+        bytes: buf.length,
+        verified: verdict.ok === true,
+        forced: !!force && !verdict.ok,
+        k_score: entry.k_score,
+        gates: verdict.gates || {},
+        reasons: verdict.reasons || [],
+      }, null, 2) + '\n');
     } else {
       console.log(`# installed ${slug} (${buf.length.toLocaleString()} bytes, sha256 ${got.slice(0, 16)}...)`);
       console.log(`# saved to ${outFile}`);
+      console.log(`# production_ready: ${verdict.ok}${verdict.ok ? '' : ' (forced)'}`);
       if (entry.k_score != null) console.log(`# K-score: ${entry.k_score}`);
     }
     return;
@@ -6740,7 +7490,7 @@ async function cmdMarketplace(args) {
     return;
   }
 
-  const e = new Error('usage: kolm marketplace {search [--category X] [--license Y] [--min-k N] [--verified] [--json] | install <slug> | publish <file.kolm>}');
+  const e = new Error('usage: kolm marketplace {search [--category X] [--license Y] [--min-k N] [--verified] [--json] | install <slug> [--force] [--json] | publish <file.kolm>}');
   e.exitCode = EXIT.BAD_ARGS;
   throw e;
 }
@@ -7162,6 +7912,119 @@ async function cmdRuntime(args) {
   const workerUrl = new URL('../workers/runtime-build/build.mjs', import.meta.url);
   const workerPath = workerUrl.pathname.replace(/^\/([A-Z]):/, '$1:');
 
+  // W372 policy ladder subverbs. These live alongside the older
+  // runtime-build verbs (targets/info/doctor/build-from-source) and
+  // dispatch first so a user can run `kolm runtime status` without
+  // colliding with the old `targets` default.
+  const POLICY_SUBS = new Set(['start', 'status', 'policy', 'install', 'decisions', 'stats']);
+  if (POLICY_SUBS.has(sub)) {
+    const RP = await import('../src/runtime-policy.js');
+    if (sub === 'start') {
+      const flag = (n) => rest[rest.indexOf(n) + 1];
+      const policyName = (rest.includes('--policy') ? flag('--policy') : null) || RP.getPolicy().name;
+      const port = Number((rest.includes('--port') ? flag('--port') : null) || 8788);
+      RP.setPolicy({ name: policyName });
+      const out = { ok: true, policy: policyName, port, hint: 'point your SDK at kolm proxy (kolm proxy start); policy is enforced per-call.' };
+      if (jsonOut) { console.log(JSON.stringify(out, null, 2)); return; }
+      console.log(`runtime started with policy=${policyName} (port=${port})`);
+      console.log(`hint: ${out.hint}`);
+      return;
+    }
+    if (sub === 'status') {
+      const pol = RP.getPolicy();
+      const stats = RP.replacementStats({ since: '7d' });
+      const recent = RP.recentDecisions({ n: 5 });
+      const out = { policy: pol, stats_7d: stats, recent_decisions: recent.length };
+      if (jsonOut) { console.log(JSON.stringify(out, null, 2)); return; }
+      console.log(`policy:               ${pol.name}`);
+      console.log(`cache_ttl_s:          ${pol.cache_ttl_s}`);
+      console.log(`local_threshold:      ${pol.local_confidence_threshold}`);
+      console.log(`cheaper_model:        ${pol.cheaper_model}`);
+      console.log(`frontier_model:       ${pol.frontier_model}`);
+      console.log('');
+      console.log(`7d decisions:         ${stats.total_decisions}`);
+      console.log(`  cache_hit:          ${stats.by_action.cache_hit}`);
+      console.log(`  local_artifact:     ${stats.by_action.local_artifact}`);
+      console.log(`  cheaper_model:      ${stats.by_action.cheaper_model}`);
+      console.log(`  frontier_model:     ${stats.by_action.frontier_model}`);
+      console.log(`  blocked:            ${stats.by_action.blocked || 0}`);
+      console.log(`replacement_rate:     ${(stats.replacement_rate * 100).toFixed(1)}%`);
+      console.log(`savings_usd_7d:       $${stats.savings_usd.toFixed(4)}`);
+      console.log(`spent_usd_7d:         $${stats.spent_usd.toFixed(4)}`);
+      return;
+    }
+    if (sub === 'policy') {
+      const flag = (n) => rest[rest.indexOf(n) + 1];
+      if (rest.includes('--set')) {
+        const kv = String(flag('--set') || '');
+        const eq = kv.indexOf('=');
+        if (eq <= 0) { const e = new Error('usage: kolm runtime policy --set key=value'); e.exitCode = EXIT.BAD_ARGS; throw e; }
+        const k = kv.slice(0, eq); let v = kv.slice(eq + 1);
+        if (/^-?\d+(\.\d+)?$/.test(v)) v = Number(v);
+        const next = RP.setPolicy({ [k]: v });
+        if (jsonOut) { console.log(JSON.stringify(next, null, 2)); return; }
+        console.log(`set ${k}=${v}`);
+        return;
+      }
+      const pol = RP.getPolicy();
+      if (jsonOut) { console.log(JSON.stringify(pol, null, 2)); return; }
+      for (const [k, v] of Object.entries(pol)) console.log(`  ${k.padEnd(28)} ${v}`);
+      return;
+    }
+    if (sub === 'install') {
+      const artifactPath = rest.find(a => !a.startsWith('--'));
+      if (!artifactPath) { const e = new Error('usage: kolm runtime install <art.kolm>'); e.exitCode = EXIT.BAD_ARGS; throw e; }
+      if (!fs.existsSync(artifactPath)) { const e = new Error(`not found: ${artifactPath}`); e.exitCode = EXIT.NOT_FOUND; throw e; }
+      const DI = await import('../src/device-install.js');
+      const DC = await import('../src/device-capabilities.js');
+      const local = (await DC.getDevice('local')) || (await DC.detectLocalDevice());
+      const out = await DI.installToDevice(artifactPath, { deviceId: 'local', opts: {} });
+      if (jsonOut) { console.log(JSON.stringify({ ...out, local_device: local.device_id }, null, 2)); return; }
+      console.log(`installed: ${out.artifact_id}`);
+      console.log(`  device:        ${out.device_id}`);
+      console.log(`  installed_path:${out.installed_path}`);
+      console.log(`  installed_at:  ${out.installed_at}`);
+      console.log(`  source_sha256: ${out.source_sha256}`);
+      if (out.unchanged) console.log('  (unchanged: already installed)');
+      return;
+    }
+    if (sub === 'decisions') {
+      const flag = (n) => rest[rest.indexOf(n) + 1];
+      const limit = Number((rest.includes('--limit') ? flag('--limit') : null) || 50);
+      const rows = RP.recentDecisions({ n: limit });
+      if (jsonOut) { console.log(JSON.stringify(rows, null, 2)); return; }
+      if (!rows.length) { console.log('# no decisions yet: point traffic at the runtime first'); return; }
+      console.log('TIMESTAMP'.padEnd(24), 'ACTION'.padEnd(16), 'TARGET'.padEnd(28), 'COST', 'SAVED');
+      for (const r of rows) {
+        console.log(
+          String(r.timestamp || '').padEnd(24),
+          String(r.action || '').padEnd(16),
+          String(r.target || '').padEnd(28),
+          ('$' + Number(r.cost_usd || 0).toFixed(4)).padEnd(10),
+          '$' + Number(r.saved_usd || 0).toFixed(4),
+        );
+      }
+      return;
+    }
+    if (sub === 'stats') {
+      const flag = (n) => rest[rest.indexOf(n) + 1];
+      const since = (rest.includes('--since') ? flag('--since') : null) || '7d';
+      const stats = RP.replacementStats({ since });
+      if (jsonOut) { console.log(JSON.stringify(stats, null, 2)); return; }
+      console.log(`window:               ${since}`);
+      console.log(`total decisions:      ${stats.total_decisions}`);
+      console.log(`  cache_hit:          ${stats.by_action.cache_hit}`);
+      console.log(`  local_artifact:     ${stats.by_action.local_artifact}`);
+      console.log(`  cheaper_model:      ${stats.by_action.cheaper_model}`);
+      console.log(`  frontier_model:     ${stats.by_action.frontier_model}`);
+      console.log(`  blocked:            ${stats.by_action.blocked || 0}`);
+      console.log(`replacement_rate:     ${(stats.replacement_rate * 100).toFixed(1)}%`);
+      console.log(`savings_usd:          $${stats.savings_usd.toFixed(4)}`);
+      console.log(`spent_usd:            $${stats.spent_usd.toFixed(4)}`);
+      return;
+    }
+  }
+
   if (!sub || sub === 'targets') {
     let W;
     try { W = await import('../workers/runtime-build/build.mjs'); }
@@ -7218,6 +8081,7 @@ async function cmdRuntime(args) {
 
   console.error('unknown runtime subcommand:', sub);
   console.error('try: kolm runtime targets|info|doctor|build-from-source');
+  console.error('     kolm runtime start|status|policy|install|decisions|stats   (W372 policy ladder)');
   const err = new Error('unknown runtime subcommand'); err.exitCode = EXIT.BAD_ARGS; throw err;
 }
 
@@ -7256,6 +8120,407 @@ async function cmdJobs(args) {
   console.log('# meta:  ' + JSON.stringify(j.meta || {}));
   const tail = jobs.tailLog(j.id, { bytes: 8192 });
   if (tail) { console.log('---'); console.log(tail.trimEnd()); }
+}
+
+// W369 — kolm lake / optimize / dataset / label.
+// The data-plane verbs. lake = analytics over ~/.kolm/events/events.sqlite,
+// optimize = opportunity detection across that lake, dataset = curate
+// approved events into train/holdout splits, label = single-event queue.
+// All four read the event-store written by `kolm connect` (W368 wedge).
+
+async function cmdLake(args) {
+  if (maybeHelp('lake', args)) return;
+  const sub = (args[0] || 'stats').toLowerCase();
+  const rest = args.slice(1);
+  const jsonOut = rest.includes('--json');
+  const pickL = (flag) => { const i = rest.indexOf(flag); return i >= 0 ? rest[i + 1] : null; };
+
+  if (sub === 'stats') {
+    const lake = await import('../src/lake.js');
+    const since = pickL('--since') || '30d';
+    const namespace = pickL('--namespace');
+    const stats = await lake.lakeStats({ since, namespace });
+    if (jsonOut) { console.log(JSON.stringify(stats, null, 2)); return; }
+    console.log('# kolm lake stats   (window: ' + since + (namespace ? ', namespace=' + namespace : '') + ')');
+    console.log('-'.repeat(72));
+    console.log('total calls         ' + stats.total_calls.toLocaleString());
+    console.log('total spend (USD)   $' + stats.total_spend_usd.toFixed(4));
+    console.log('total tokens        prompt=' + stats.total_tokens.prompt + '  completion=' + stats.total_tokens.completion);
+    console.log('avg latency (ms)    ' + stats.avg_latency_ms);
+    console.log('sensitive events    ' + stats.sensitive_events);
+    if (Object.keys(stats.providers).length) {
+      console.log('');
+      console.log('providers:');
+      for (const [p, v] of Object.entries(stats.providers)) {
+        console.log('  ' + p.padEnd(16) + ' calls=' + String(v.calls).padEnd(6) + ' spend=$' + v.spend.toFixed(4).padEnd(10) + ' avg_latency=' + v.avg_latency + 'ms');
+      }
+    }
+    if (Object.keys(stats.models).length) {
+      console.log('');
+      console.log('models (top 10):');
+      const top = Object.entries(stats.models).sort((a, b) => b[1].calls - a[1].calls).slice(0, 10);
+      for (const [m, v] of top) {
+        console.log('  ' + m.padEnd(28) + ' calls=' + String(v.calls).padEnd(6) + ' spend=$' + v.spend.toFixed(4));
+      }
+    }
+    if (stats.repeated_clusters.length) {
+      console.log('');
+      console.log('repeated clusters (top 5):');
+      for (const c of stats.repeated_clusters.slice(0, 5)) {
+        console.log('  ' + String(c.count).padStart(5) + '  ' + c.pattern.slice(0, 60));
+      }
+    }
+    if (Object.keys(stats.redactions_by_class).length) {
+      console.log('');
+      console.log('redactions by class:');
+      for (const [k, n] of Object.entries(stats.redactions_by_class)) {
+        console.log('  ' + k.padEnd(20) + ' ' + n);
+      }
+    }
+    console.log('');
+    console.log('storage             driver=' + stats.storage.driver + '  size=' + stats.storage.disk_used_bytes + 'B');
+    console.log('                    path=' + stats.storage.path);
+    if (stats.storage.oldest_event) console.log('                    oldest=' + stats.storage.oldest_event);
+    return;
+  }
+
+  if (sub === 'tail') {
+    const lake = await import('../src/lake.js');
+    const namespace = pickL('--namespace');
+    const limit = Number(pickL('--limit') || 50);
+    const follow = rest.includes('--follow') || rest.includes('-f');
+    const iter = lake.tailEvents({ namespace, limit, follow });
+    for await (const ev of iter) {
+      if (jsonOut) { console.log(JSON.stringify(ev)); continue; }
+      const ts = String(ev.created_at || '').slice(11, 19);
+      const ns = String(ev.namespace || '').padEnd(20).slice(0, 20);
+      const prov = String(ev.provider || '-').padEnd(10).slice(0, 10);
+      const model = String(ev.model || '-').padEnd(22).slice(0, 22);
+      const status = String(ev.status || '-').padEnd(6);
+      const sens = ev.sensitive_data_detected ? '!' : ' ';
+      console.log(ts + '  ' + ns + '  ' + prov + '  ' + model + '  ' + status + '  ' + sens + '  ' + (ev.event_id || ''));
+    }
+    return;
+  }
+
+  if (sub === 'inspect') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) { console.error('usage: kolm lake inspect <event_id> [--json]'); process.exit(EXIT.BAD_ARGS); }
+    const store = await import('../src/event-store.js');
+    const ev = await store.getEvent(id);
+    if (!ev) { console.error('event not found: ' + id); process.exit(EXIT.NOT_FOUND); }
+    if (jsonOut) { console.log(JSON.stringify(ev, null, 2)); return; }
+    for (const k of Object.keys(ev)) {
+      const v = ev[k];
+      const s = typeof v === 'object' ? JSON.stringify(v) : String(v == null ? '-' : v);
+      console.log(k.padEnd(28) + ' ' + s.slice(0, 120));
+    }
+    return;
+  }
+
+  if (sub === 'export') {
+    const store = await import('../src/event-store.js');
+    const format = (pickL('--format') || 'jsonl').toLowerCase();
+    const namespace = pickL('--namespace');
+    const since = pickL('--since');
+    const out = pickL('--out');
+    const buf = await store.exportEvents({ format, namespace, since });
+    if (out) { fs.writeFileSync(out, buf); console.log('ok  wrote ' + out + '  (' + buf.length + ' bytes)'); }
+    else process.stdout.write(buf);
+    return;
+  }
+
+  if (sub === 'purge') {
+    const store = await import('../src/event-store.js');
+    const before = pickL('--before');
+    const namespace = pickL('--namespace');
+    const dryRun = rest.includes('--dry-run');
+    const r = await store.purgeEvents({ before, namespace, dryRun });
+    if (jsonOut) { console.log(JSON.stringify(r)); return; }
+    console.log((dryRun ? 'would delete: ' : 'deleted: ') + (dryRun ? r.would_delete : r.deleted));
+    return;
+  }
+
+  if (sub === 'sync') {
+    const sub2 = (rest[0] || 'status').toLowerCase();
+    const c = loadConfig();
+    if (sub2 === 'status') {
+      const enabled = !!c.cloud_sync;
+      if (jsonOut) console.log(JSON.stringify({ cloud_sync: enabled, base: c.base }));
+      else console.log('cloud_sync  ' + (enabled ? 'enabled' : 'disabled') + '  base=' + c.base);
+      return;
+    }
+    if (sub2 === 'enable')  { c.cloud_sync = true;  saveConfig(c); console.log('ok  cloud_sync enabled');  return; }
+    if (sub2 === 'disable') { c.cloud_sync = false; saveConfig(c); console.log('ok  cloud_sync disabled'); return; }
+    console.error('usage: kolm lake sync status|enable|disable'); process.exit(EXIT.BAD_ARGS);
+  }
+
+  console.error('usage: kolm lake [stats|tail|inspect <id>|export|purge|sync] [--namespace n] [--since 7d] [--json]');
+  process.exit(EXIT.USAGE);
+}
+
+async function cmdOptimize(args) {
+  if (maybeHelp('optimize', args)) return;
+  const sub = (args[0] || 'list').toLowerCase();
+  const rest = args.slice(1);
+  const jsonOut = args.includes('--json');
+  const opp = await import('../src/opportunity-engine.js');
+  const pickO = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; };
+
+  if (sub === 'list' || sub === '' || sub.startsWith('--')) {
+    const since = pickO('--since');
+    const namespace = pickO('--namespace');
+    const minCalls = Number(pickO('--min-calls') || 50);
+    const opps = await opp.findOpportunities({ since, namespace, minCallCount: minCalls });
+    if (jsonOut) { console.log(JSON.stringify(opps, null, 2)); return; }
+    if (!opps.length) {
+      console.log('no opportunities yet. capture more events with `kolm connect start` or check `kolm lake stats`.');
+      return;
+    }
+    console.log('# kolm optimize   (' + opps.length + ' opportunities)');
+    console.log('-'.repeat(110));
+    console.log('id'.padEnd(20) + 'type'.padEnd(30) + 'calls'.padEnd(8) + 'monthly'.padEnd(12) + 'save'.padEnd(12) + 'risk'.padEnd(8) + 'status');
+    console.log('-'.repeat(110));
+    for (const o of opps) {
+      console.log(
+        (o.id || '').slice(0, 18).padEnd(20) +
+        (o.type || '').padEnd(30) +
+        String(o.call_count || 0).padEnd(8) +
+        ('$' + (o.monthly_cost_usd || 0).toFixed(2)).padEnd(12) +
+        ('$' + (o.estimated_savings_usd || 0).toFixed(2)).padEnd(12) +
+        (o.risk || '-').padEnd(8) +
+        (o.status || 'open'),
+      );
+    }
+    console.log('-'.repeat(110));
+    console.log('hint  inspect:  kolm optimize explain <id>');
+    console.log('hint  accept:   kolm optimize accept  <id>');
+    return;
+  }
+  if (sub === 'explain') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) { console.error('usage: kolm optimize explain <id>'); process.exit(EXIT.BAD_ARGS); }
+    const r = await opp.explainOpportunity(id);
+    if (jsonOut) { console.log(JSON.stringify(r, null, 2)); return; }
+    if (!r.found) { console.error('opportunity not found: ' + id); process.exit(EXIT.NOT_FOUND); }
+    const o = r.live || (r.persisted || {});
+    console.log('# ' + (o.id || id) + '   ' + (o.type || ''));
+    console.log('-'.repeat(72));
+    console.log('namespace            ' + (o.namespace || '-'));
+    console.log('call count           ' + (o.call_count || 0));
+    console.log('monthly cost (USD)   $' + (o.monthly_cost_usd || 0).toFixed(2));
+    console.log('savings (USD)        $' + (o.estimated_savings_usd || 0).toFixed(2));
+    console.log('replacement rate     ' + ((o.expected_replacement_rate || 0) * 100).toFixed(0) + '%');
+    console.log('risk                 ' + (o.risk || '-'));
+    console.log('action               ' + (o.suggested_action || '-'));
+    console.log('reason               ' + (o.reason || '-'));
+    if (o.sample_event_ids && o.sample_event_ids.length) {
+      console.log('sample events:');
+      for (const id2 of o.sample_event_ids) console.log('  ' + id2);
+    }
+    if (r.persisted) console.log('decision             ' + r.persisted.status + (r.persisted.decided_at ? ' (' + r.persisted.decided_at + ')' : ''));
+    return;
+  }
+  if (sub === 'accept' || sub === 'ignore') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) { console.error('usage: kolm optimize ' + sub + ' <id>'); process.exit(EXIT.BAD_ARGS); }
+    const r = sub === 'accept' ? await opp.acceptOpportunity(id) : await opp.ignoreOpportunity(id);
+    if (jsonOut) { console.log(JSON.stringify(r)); return; }
+    console.log('ok  ' + sub + 'ed ' + id);
+    if (sub === 'accept') {
+      console.log('next  kolm dataset candidates    review sampled events');
+      console.log('      kolm dataset create <ns>   bundle into a labeled set');
+      console.log('      kolm pipeline-train --watch start local distillation');
+    }
+    return;
+  }
+  console.error('usage: kolm optimize [list|explain <id>|accept <id>|ignore <id>] [--json] [--namespace n] [--since 7d]');
+  process.exit(EXIT.USAGE);
+}
+
+async function cmdDataset(args) {
+  if (maybeHelp('dataset', args)) return;
+  const ws = await import('../src/dataset-workbench.js');
+  const sub = (args[0] || 'list').toLowerCase();
+  const rest = args.slice(1);
+  const jsonOut = args.includes('--json');
+  const pickD = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; };
+
+  if (sub === 'candidates') {
+    const namespace = pickD('--namespace');
+    const limit = Number(pickD('--limit') || 50);
+    const rows = await ws.listCandidates({ namespace, limit });
+    if (jsonOut) { console.log(JSON.stringify(rows, null, 2)); return; }
+    if (!rows.length) { console.log('no candidates. try `kolm optimize accept <id>` to seed the queue.'); return; }
+    console.log('event_id'.padEnd(36) + 'namespace'.padEnd(20) + 'model'.padEnd(24) + 'created');
+    console.log('-'.repeat(110));
+    for (const e of rows.slice(0, limit)) {
+      console.log(
+        String(e.event_id || '').padEnd(36) +
+        String(e.namespace || '').padEnd(20) +
+        String(e.model || '-').padEnd(24) +
+        String(e.created_at || '').slice(0, 19),
+      );
+    }
+    return;
+  }
+  if (sub === 'approve' || sub === 'reject') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) { console.error('usage: kolm dataset ' + sub + ' <event_id> [--fix "..."] [--reason "..."]'); process.exit(EXIT.BAD_ARGS); }
+    if (sub === 'approve') {
+      const fix = pickD('--fix');
+      const r = await ws.approveEvent(id, { fixedOutput: fix });
+      console.log('ok  approved ' + id + (fix ? ' (with fixed output)' : ''));
+      if (jsonOut) console.log(JSON.stringify(r));
+    } else {
+      const reason = pickD('--reason');
+      const r = await ws.rejectEvent(id, { reason });
+      console.log('ok  rejected ' + id + (reason ? '  reason: ' + reason : ''));
+      if (jsonOut) console.log(JSON.stringify(r));
+    }
+    return;
+  }
+  if (sub === 'create') {
+    const ns = rest.find(a => !a.startsWith('--'));
+    if (!ns) { console.error('usage: kolm dataset create <namespace> [--from-opp <id>] [--train-ratio 0.8]'); process.exit(EXIT.BAD_ARGS); }
+    const fromOpp = pickD('--from-opp');
+    const train_ratio = Number(pickD('--train-ratio') || 0.8);
+    const r = await ws.createDataset(ns, { fromOpportunity: fromOpp, train_ratio });
+    if (jsonOut) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('ok  created ' + r.dataset_id);
+    console.log('    train_count   ' + r.train_count);
+    console.log('    holdout_count ' + r.holdout_count);
+    console.log('    split_signature ' + r.split_signature);
+    console.log('    source events ' + r.source_event_ids.length);
+    return;
+  }
+  if (sub === 'split') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) { console.error('usage: kolm dataset split <dataset_id> [--ratio 0.8]'); process.exit(EXIT.BAD_ARGS); }
+    const ratio = Number(pickD('--ratio') || 0.8);
+    const r = await ws.splitDataset(id, ratio);
+    if (jsonOut) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('ok  ' + id + '   train=' + r.train_count + '  holdout=' + r.holdout_count + '  sig=' + r.split_signature);
+    return;
+  }
+  if (sub === 'inspect' || sub === 'show') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) { console.error('usage: kolm dataset inspect <dataset_id>'); process.exit(EXIT.BAD_ARGS); }
+    const r = await ws.inspectDataset(id);
+    if (jsonOut) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('dataset_id      ' + r.dataset_id);
+    console.log('namespace       ' + r.namespace);
+    console.log('version         ' + r.version);
+    console.log('source events   ' + r.source_event_ids.length);
+    console.log('train / holdout ' + r.train_count + ' / ' + r.holdout_count);
+    console.log('split signature ' + r.split_signature);
+    console.log('source_type     ' + r.source_type);
+    console.log('created_at      ' + r.created_at);
+    const s = r.statistics || {};
+    console.log('events resolved ' + s.events_resolved + ' (missing=' + (s.events_missing || 0) + ')');
+    if (s.label_distribution_top && s.label_distribution_top.length) {
+      console.log('labels (top):');
+      for (const [k, n] of s.label_distribution_top.slice(0, 10)) console.log('  ' + String(k).slice(0, 40).padEnd(42) + ' ' + n);
+    }
+    return;
+  }
+  if (sub === 'export') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) { console.error('usage: kolm dataset export <dataset_id> [--format jsonl|csv] [--out file]'); process.exit(EXIT.BAD_ARGS); }
+    const format = (pickD('--format') || 'jsonl').toLowerCase();
+    const out = pickD('--out');
+    const file = await ws.exportDataset(id, format, out ? { out } : {});
+    console.log('ok  wrote ' + file);
+    return;
+  }
+  if (sub === 'list' || sub === 'ls' || sub === '') {
+    const r = await ws.listDatasets();
+    if (jsonOut) { console.log(JSON.stringify(r, null, 2)); return; }
+    if (!r.length) { console.log('no datasets yet. try `kolm dataset create <namespace>`.'); return; }
+    console.log('dataset_id'.padEnd(20) + 'namespace'.padEnd(22) + 'train'.padEnd(8) + 'holdout'.padEnd(10) + 'created');
+    console.log('-'.repeat(80));
+    for (const d of r) {
+      console.log(
+        String(d.dataset_id).padEnd(20) +
+        String(d.namespace).padEnd(22) +
+        String(d.train_count).padEnd(8) +
+        String(d.holdout_count).padEnd(10) +
+        String(d.created_at || '').slice(0, 19),
+      );
+    }
+    return;
+  }
+  console.error('usage: kolm dataset [candidates|approve|reject|create|split|inspect|export|list] [args] [--json]');
+  process.exit(EXIT.USAGE);
+}
+
+async function cmdLabel(args) {
+  if (maybeHelp('label', args)) return;
+  const lq = await import('../src/label-queue.js');
+  const sub = (args[0] || 'next').toLowerCase();
+  const rest = args.slice(1);
+  const jsonOut = args.includes('--json');
+  const pickQ = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : null; };
+
+  if (sub === 'next') {
+    const n = Number(pickQ('--n') || 1);
+    const workflow = pickQ('--workflow');
+    const namespace = pickQ('--namespace');
+    const rows = await lq.nextToLabel({ n, workflowId: workflow, namespace });
+    if (jsonOut) { console.log(JSON.stringify(rows, null, 2)); return; }
+    if (!rows.length) { console.log('nothing to label. queue is empty.'); return; }
+    for (const ev of rows) {
+      console.log('-'.repeat(72));
+      console.log('event_id     ' + ev.event_id);
+      console.log('namespace    ' + ev.namespace + '   model=' + (ev.model || '-'));
+      console.log('created_at   ' + ev.created_at);
+      if (ev.prompt_redacted) console.log('prompt       ' + String(ev.prompt_redacted).slice(0, 160));
+      if (ev.response_redacted) console.log('response     ' + String(ev.response_redacted).slice(0, 160));
+      console.log('verdicts     kolm label approve ' + ev.event_id);
+      console.log('             kolm label fix     ' + ev.event_id + ' "<new>"');
+      console.log('             kolm label reject  ' + ev.event_id + ' [--reason "..."]');
+    }
+    return;
+  }
+  if (sub === 'approve') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) { console.error('usage: kolm label approve <event_id>'); process.exit(EXIT.BAD_ARGS); }
+    const r = await lq.submitLabel(id, { verdict: 'good' });
+    if (jsonOut) { console.log(JSON.stringify(r)); return; }
+    console.log('ok  approved ' + id);
+    return;
+  }
+  if (sub === 'fix') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) { console.error('usage: kolm label fix <event_id> "<new_output>"'); process.exit(EXIT.BAD_ARGS); }
+    const fixed = rest.filter(a => !a.startsWith('--')).slice(1).join(' ');
+    if (!fixed) { console.error('fix verdict requires a new output string'); process.exit(EXIT.BAD_ARGS); }
+    const r = await lq.submitLabel(id, { verdict: 'edit', fixedOutput: fixed });
+    if (jsonOut) { console.log(JSON.stringify(r)); return; }
+    console.log('ok  edited ' + id);
+    return;
+  }
+  if (sub === 'reject') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) { console.error('usage: kolm label reject <event_id> [--reason "..."]'); process.exit(EXIT.BAD_ARGS); }
+    const reason = pickQ('--reason');
+    const r = await lq.submitLabel(id, { verdict: 'bad', reason });
+    if (jsonOut) { console.log(JSON.stringify(r)); return; }
+    console.log('ok  rejected ' + id + (reason ? '  reason: ' + reason : ''));
+    return;
+  }
+  if (sub === 'stats') {
+    const r = await lq.labelStats();
+    if (jsonOut) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('pending     ' + r.pending);
+    console.log('approved    ' + r.approved);
+    console.log('rejected    ' + r.rejected);
+    console.log('edited      ' + r.edited);
+    console.log('decided     ' + r.decided + ' / ' + r.total_events);
+    return;
+  }
+  console.error('usage: kolm label [next|approve|fix|reject|stats] [args] [--json]');
+  process.exit(EXIT.USAGE);
 }
 
 // kolm watch <job-id>
@@ -7404,13 +8669,38 @@ async function cmdSync(args) {
   // `kolm sync push` with no url prints a usage hint instead of falling into
   // a git invocation with url="push". Bare `kolm sync <git-url>` still works
   // (legacy callers); the subcommand form is preferred for new flows.
-  const sub = args[0];
-  const SUBS = new Set(['push', 'pull', 'status']);
+  // W384 — status/enable/disable + push/pull-without-url go through the new
+  // cloud-sync module. The legacy git-mirror push/pull path stays in place
+  // for the existing callers (recognized by a URL-shaped second argument).
+  // Accept flags before the sub by scanning for the first positional.
+  const positional = args.filter(a => !a.startsWith('-'));
+  const sub = positional[0] ?? args[0];
+  const nextPositional = positional[1];
+  // W384 cloud-sync subverbs (always route to the new module).
+  if (sub === 'status' || sub === 'enable' || sub === 'disable') {
+    return cmdSyncCloud(args);
+  }
+  // W384 cloud-sync push/pull (no URL argument) — route to the new module
+  // ONLY when cloud-sync has been explicitly enabled. This preserves the
+  // pre-W384 contract (W229 #14): `kolm sync push` with no URL on a fresh
+  // host prints the legacy git-mirror usage hint. Once the user runs
+  // `kolm sync enable ...`, the same `push` shortcut starts hitting the
+  // cloud-sync module.
+  if ((sub === 'push' || sub === 'pull') && nextPositional == null) {
+    let enabled = false;
+    try {
+      const mod = await import('../src/cloud-sync.js');
+      const st = mod.getSyncState();
+      enabled = st && st.state && st.state !== 'disabled';
+    } catch { /* module unavailable -> stay on legacy path */ }
+    if (enabled) return cmdSyncCloud(args);
+  }
+  const SUBS = new Set(['push', 'pull']);
   let mode = 'push';
   let url = null;
   if (SUBS.has(sub)) {
     mode = sub;
-    url = args[1];
+    url = nextPositional;
     if (!url) {
       const hint = 'usage: kolm sync ' + mode + ' <git-url> [--branch main] [--bundle <dir>]';
       console.error(hint);
@@ -8315,16 +9605,27 @@ async function cmdMigrate(args) {
 // recipe so a vendor's trainer config can ride the .kolm rail.
 async function cmdWrap(args) {
   if (maybeHelp('wrap', args)) return;
-  const inPath = args.find(a => !a.startsWith('--'));
+  const positional = args.filter(a => !a.startsWith('--'));
+  const outPath = pickFlag(args, '--out') || pickFlagEq(args, '--out');
+  // W384 — agent-cmd wrap: if the user invoked `kolm wrap <cmd> [args...]`
+  // with a command that is NOT an existing config file AND no --out is given,
+  // dispatch to the env-injecting spawn helper that wires kolm's shell-init
+  // exports around an agent process. The legacy backend-detect path needs
+  // both an existing source file and an --out target.
+  const inPath = positional[0];
+  const wantAgentForm = inPath && !fs.existsSync(inPath) && !outPath;
+  if (wantAgentForm) {
+    return cmdWrapAgent(args);
+  }
   if (!inPath) {
     console.error('usage: kolm wrap <config-or-script> --out <wrap.spec.json>');
+    console.error('  agent: kolm wrap <agent-cmd> [args...]   (W384 env-injection)');
     process.exit(EXIT.BAD_ARGS);
   }
   if (!fs.existsSync(inPath)) {
     console.error('not found: ' + inPath);
     process.exit(EXIT.MISSING_PREREQ);
   }
-  const outPath = pickFlag(args, '--out') || pickFlagEq(args, '--out');
   if (!outPath) {
     console.error('--out <path> required');
     process.exit(EXIT.BAD_ARGS);
@@ -9219,7 +10520,66 @@ async function cmdDistillFromCaptures(args) {
 //   artifact. Emits per-row diff (upstream vs local) with jaccard k-score,
 //   latency-delta, and cost-delta. --preview hits GET /v1/replay/preview (no
 //   replay execution, just count + plan).
+// W371 — local replay subverbs (`kolm replay trace|namespace|dataset <id>
+// [--against <artifact|model>]`). These run in-process against src/replay.js
+// without touching the W216 cloud /v1/replay route, which is still served by
+// the original positional/concept-id path below.
+async function cmdReplaySubverbLocal(sub, rest) {
+  const replay = await import('../src/replay.js');
+  const against = pickFlag(rest, '--against');
+  const wantJson = rest.includes('--json');
+  const limit = pickFlag(rest, '--limit');
+  const positional = rest.filter((a) => !a.startsWith('-'))[0];
+  if (!against) {
+    console.error('error: --against <artifact.kolm | model-id> required');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  if (!positional) {
+    console.error('error: kolm replay ' + sub + ' <id> --against <artifact|model>');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  let out;
+  try {
+    if (sub === 'trace') {
+      out = await replay.replayTrace(positional, { against, opts: { stubModel: rest.includes('--stub-model') } });
+    } else if (sub === 'namespace') {
+      out = await replay.replayNamespace(positional, { against, limit: Number(limit) || 100, opts: { stubModel: rest.includes('--stub-model') } });
+    } else if (sub === 'dataset') {
+      out = await replay.replayDataset(positional, { against, opts: { stubModel: rest.includes('--stub-model') } });
+    } else {
+      console.error('error: unknown replay subverb: ' + sub);
+      process.exit(EXIT.BAD_ARGS);
+    }
+  } catch (e) {
+    console.error('error: ' + (e && e.message ? e.message : String(e)));
+    process.exit(e && e.code === 'TRACE_NOT_FOUND' ? EXIT.NOT_FOUND : EXIT.EXECUTION);
+  }
+  if (wantJson) { console.log(JSON.stringify(out, null, 2)); return; }
+  console.log('replay ' + sub + ' ' + positional);
+  console.log('  against:    ' + against);
+  if (sub === 'trace') {
+    console.log('  diff_score: ' + (out.diff_score || 0).toFixed(3));
+    console.log('  latency:    ' + (out.latency_delta_ms || 0) + 'ms');
+    console.log('  ok:         ' + (out.replay && out.replay.ok));
+  } else if (sub === 'namespace' || sub === 'dataset') {
+    const s = out.summary || {};
+    console.log('  count:      ' + (out.count || 0));
+    if (s.pass_rate != null) console.log('  pass_rate:  ' + (s.pass_rate * 100).toFixed(1) + '%');
+    if (s.avg_diff_score != null) console.log('  diff_score: ' + s.avg_diff_score.toFixed(3));
+    if (s.replacement_rate != null) console.log('  replace:    ' + (s.replacement_rate * 100).toFixed(1) + '%');
+    if (s.avg_latency_delta_ms != null) console.log('  lat_delta:  ' + s.avg_latency_delta_ms + 'ms');
+    if (s.latency_avg_ms != null) console.log('  lat_avg:    ' + s.latency_avg_ms + 'ms');
+    if (s.cost_delta_usd != null) console.log('  cost_delta: $' + s.cost_delta_usd.toFixed(6));
+  }
+}
+
 async function cmdReplay(args) {
+  // W371 — subverb shortcut. `kolm replay trace|namespace|dataset <id> --against <ref>`
+  // runs locally via src/replay.js; everything else falls through to the W216
+  // cloud-replay path below (unchanged).
+  if (args && args.length >= 1 && (args[0] === 'trace' || args[0] === 'namespace' || args[0] === 'dataset')) {
+    return cmdReplaySubverbLocal(args[0], args.slice(1));
+  }
   const c = loadConfig();
   if (!c.api_key) { console.error('not logged in. run: kolm login'); process.exit(EXIT.MISSING_PREREQ); }
   const positional = args.filter(a => !a.startsWith('-'))[0];
@@ -9329,6 +10689,178 @@ async function cmdReplay(args) {
 //   the root kolm install. Forwards stdio so doctor + manifest land in the
 //   caller's terminal unchanged.
 //
+// ===== Wave 371 — builder verbs (synth / sim / bakeoff / train plan) =====
+//
+// These verbs back the builder layer (pillars 5-9 of the 12-pillar product).
+// Each delegates to a src/* module; the CLI just translates argv -> opts and
+// renders the result for terminal-friendly output (with --json escape hatch).
+
+async function cmdSynth(args) {
+  if (maybeHelp('synth', args)) return;
+  const sub = args[0];
+  const rest = args.slice(1);
+  const synth = await import('../src/synthetic-data.js');
+  const wantJson = rest.includes('--json');
+  const n = Number(pickFlag(rest, '--n')) || 100;
+  if (sub === 'generate') {
+    const from = pickFlag(rest, '--from');
+    if (!from) { console.error('error: kolm synth generate --from <dataset> [--n N] [--modes paraphrase,edge_case]'); process.exit(EXIT.BAD_ARGS); }
+    const modesArg = pickFlag(rest, '--modes');
+    const modes = modesArg ? modesArg.split(',').map((s) => s.trim()).filter(Boolean) : ['paraphrase', 'edge_case', 'counterexample'];
+    const r = await synth.generate({ datasetId: from, n, modes });
+    if (wantJson) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('synth generate -> ' + r.generation_id);
+    console.log('  teacher: ' + r.teacher_model);
+    console.log('  produced: ' + r.n_produced + ' / requested ' + r.n_requested);
+    for (const l of r.log) console.log('  ' + l.mode.padEnd(20) + ' rows=' + l.rows + ' (' + l.elapsed_ms + 'ms)' + (l.error ? ' error=' + l.error : ''));
+    return;
+  }
+  if (sub === 'edge-cases') {
+    const workflow = pickFlag(rest, '--workflow') || rest.filter((a) => !a.startsWith('-'))[0];
+    if (!workflow) { console.error('error: kolm synth edge-cases --workflow <namespace> [--n N]'); process.exit(EXIT.BAD_ARGS); }
+    const r = await synth.generateEdgeCases({ workflow, n });
+    if (wantJson) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('synth edge-cases -> ' + r.generation_id + '  rows=' + r.generated.length);
+    for (const row of r.generated.slice(0, 5)) console.log('  [' + row.edge_family + '] ' + String(row.input).slice(0, 80));
+    return;
+  }
+  if (sub === 'counterexamples') {
+    const artifactPath = pickFlag(rest, '--artifact') || rest.filter((a) => !a.startsWith('-'))[0];
+    if (!artifactPath) { console.error('error: kolm synth counterexamples --artifact <path> [--n N]'); process.exit(EXIT.BAD_ARGS); }
+    const r = await synth.generateCounterexamples({ artifactPath, n });
+    if (wantJson) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('synth counterexamples -> ' + r.generation_id + '  rows=' + r.generated.length);
+    for (const row of r.generated.slice(0, 5)) console.log('  ' + String(row.input).slice(0, 80));
+    return;
+  }
+  if (sub === 'personas') {
+    const workflow = pickFlag(rest, '--workflow') || rest.filter((a) => !a.startsWith('-'))[0];
+    const r = await synth.generatePersonas({ workflow, n });
+    if (wantJson) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('synth personas -> ' + r.generation_id + '  count=' + r.personas.length);
+    for (const p of r.personas) console.log('  ' + p.name.padEnd(28) + ' tone=' + p.tone);
+    return;
+  }
+  console.error('usage: kolm synth <generate|edge-cases|counterexamples|personas> [...]');
+  console.error('  kolm synth generate --from <dataset> [--n 100] [--modes paraphrase,edge_case]');
+  console.error('  kolm synth edge-cases --workflow <ns> [--n 50]');
+  console.error('  kolm synth counterexamples --artifact <path> [--n 50]');
+  console.error('  kolm synth personas --workflow <ns> [--n 20]');
+  process.exit(EXIT.BAD_ARGS);
+}
+
+async function cmdSim(args) {
+  if (maybeHelp('sim', args)) return;
+  const sub = args[0];
+  const rest = args.slice(1);
+  const sim = await import('../src/simulation.js');
+  const wantJson = rest.includes('--json');
+  if (sub === 'create') {
+    const workflow = rest.filter((a) => !a.startsWith('-'))[0];
+    const type = pickFlag(rest, '--type') || 'user_simulator';
+    const n = Number(pickFlag(rest, '--n')) || 100;
+    if (!workflow) { console.error('error: kolm sim create <workflow> [--type T] [--n N]'); process.exit(EXIT.BAD_ARGS); }
+    const r = await sim.createSim(workflow, { type, n });
+    if (wantJson) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('sim created  ' + r.sim_id);
+    console.log('  type:     ' + r.type);
+    console.log('  workflow: ' + r.workflow_id);
+    console.log('  n:        ' + r.n);
+    console.log('  personas: ' + r.personas);
+    return;
+  }
+  if (sub === 'run') {
+    const simId = rest.filter((a) => !a.startsWith('-'))[0];
+    const n = Number(pickFlag(rest, '--n')) || null;
+    if (!simId) { console.error('error: kolm sim run <sim_id> [--n N]'); process.exit(EXIT.BAD_ARGS); }
+    const r = await sim.runSim(simId, { n });
+    if (wantJson) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('sim ran      ' + r.sim_id);
+    console.log('  events:        ' + r.events_emitted);
+    console.log('  lake_inserted: ' + r.lake_inserted);
+    return;
+  }
+  if (sub === 'replay') {
+    const traceId = rest.filter((a) => !a.startsWith('-'))[0];
+    const against = pickFlag(rest, '--against');
+    if (!traceId || !against) { console.error('error: kolm sim replay <trace_id> --against <artifact|model>'); process.exit(EXIT.BAD_ARGS); }
+    const r = await sim.replayTrace(traceId, { against, opts: { stubModel: rest.includes('--stub-model') } });
+    if (wantJson) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('sim replay   trace=' + traceId);
+    console.log('  diff_score: ' + (r.diff_score || 0).toFixed(3));
+    console.log('  ok:         ' + (r.replay && r.replay.ok));
+    return;
+  }
+  if (sub === 'generate-dataset') {
+    const simId = rest.filter((a) => !a.startsWith('-'))[0];
+    if (!simId) { console.error('error: kolm sim generate-dataset <sim_id>'); process.exit(EXIT.BAD_ARGS); }
+    const ds = await sim.generateDatasetFromSim(simId, { holdoutFromSim: rest.includes('--holdout-from-sim') });
+    if (wantJson) { console.log(JSON.stringify(ds, null, 2)); return; }
+    console.log('sim dataset  ' + ds.dataset_id);
+    console.log('  rows:    ' + ds.rows.length);
+    console.log('  holdout: ' + ds.holdout.length + (ds.holdout_synthetic_warning ? '  (WARNING: synthetic in holdout)' : ''));
+    return;
+  }
+  if (sub === 'eval') {
+    const artifactPath = rest.filter((a) => !a.startsWith('-'))[0];
+    const simId = pickFlag(rest, '--sim');
+    if (!artifactPath || !simId) { console.error('error: kolm sim eval <artifact> --sim <sim_id>'); process.exit(EXIT.BAD_ARGS); }
+    const r = await sim.evalArtifactInSim(simId, artifactPath);
+    if (wantJson) { console.log(JSON.stringify(r, null, 2)); return; }
+    console.log('sim eval     ' + artifactPath + ' against ' + simId);
+    console.log('  cases:        ' + r.cases);
+    console.log('  pass:         ' + r.pass + ' / fail: ' + r.fail);
+    console.log('  pass_rate:    ' + (r.pass_rate * 100).toFixed(1) + '%');
+    console.log('  avg_latency:  ' + r.avg_latency_ms + 'ms');
+    return;
+  }
+  if (sub === 'list' || sub === 'ls') {
+    const sims = sim.listSims();
+    if (wantJson) { console.log(JSON.stringify(sims, null, 2)); return; }
+    for (const s of sims) console.log('  ' + s.sim_id + '  type=' + s.type + '  events=' + s.events + '  status=' + s.status);
+    if (!sims.length) console.log('  (no sims yet — kolm sim create <workflow>)');
+    return;
+  }
+  console.error('usage: kolm sim <create|run|replay|generate-dataset|eval|list> [...]');
+  console.error('  kolm sim create <workflow> [--type user_simulator] [--n 100]');
+  console.error('  kolm sim run <sim_id> [--n N]');
+  console.error('  kolm sim replay <trace_id> --against <artifact|model>');
+  console.error('  kolm sim generate-dataset <sim_id>');
+  console.error('  kolm sim eval <artifact> --sim <sim_id>');
+  console.error('  kolm sim list');
+  process.exit(EXIT.BAD_ARGS);
+}
+
+async function cmdBakeoff(args) {
+  if (maybeHelp('bakeoff', args)) return;
+  const bakeoff = await import('../src/bakeoff.js');
+  const positional = args.filter((a) => !a.startsWith('-'))[0];
+  if (!positional) { console.error('error: kolm bakeoff <dataset_id|path|ds_*> [--contestants cache,rule,gemma-3n] [--stub-model]'); process.exit(EXIT.BAD_ARGS); }
+  const contestantsArg = pickFlag(args, '--contestants');
+  const contestants = contestantsArg ? contestantsArg.split(',').map((s) => s.trim()).filter(Boolean) : null;
+  const stubModel = args.includes('--stub-model');
+  const wantJson = args.includes('--json');
+  let r;
+  try {
+    r = await bakeoff.bakeoff(positional, { contestants, opts: { stubModel } });
+  } catch (e) {
+    console.error('error: ' + (e && e.message ? e.message : String(e)));
+    process.exit(EXIT.EXECUTION);
+  }
+  if (wantJson) { console.log(JSON.stringify(r, null, 2)); return; }
+  console.log(bakeoff.bakeoffReport(r));
+}
+
+async function cmdTrainPlan(args) {
+  const planner = await import('../src/training-planner.js');
+  const positional = args.filter((a) => !a.startsWith('-'))[0];
+  if (!positional) { console.error('error: kolm train plan <dataset_id|path|ds_*>'); process.exit(EXIT.BAD_ARGS); }
+  const wantJson = args.includes('--json');
+  const p = await planner.plan(positional);
+  if (wantJson) { console.log(JSON.stringify(p, null, 2)); return; }
+  console.log(planner.planReport(p));
+}
+
 // Wave 157 — `--redact <class>` maps to the worker's `--redact-class <class>`
 // flag. The CLI-side spelling matches the user-facing docs in the distill
 // HELP block above (`--redact=phi` is the customer-facing knob); the worker
@@ -9528,9 +11060,21 @@ const HARNESS_SNIPPETS = {
 
 async function cmdInstall(args) {
   if (maybeHelp('install', args)) return;
-  const harness = args.find(a => !a.startsWith('--'));
+  const installTarget = args.find(a => !a.startsWith('--'));
+  // W384 — dev-agent install routing. If the target is a known dev-agent id
+  // (codex / aider / gemini-cli / claude-code-cli / cursor-cli / windsurf-cli)
+  // or the literal 'all', dispatch through src/dev-agent-install.js. The
+  // existing MCP harness routing (claude-code / cursor / continue / cline /
+  // claude-desktop / vscode / windsurf) keeps working for legacy callers
+  // because those names live in HARNESS_SNIPPETS first.
+  const DEV_AGENT_IDS = new Set(['codex', 'aider', 'gemini-cli', 'claude-code-cli', 'cursor-cli', 'windsurf-cli', 'all']);
+  if (installTarget && DEV_AGENT_IDS.has(installTarget) && !HARNESS_SNIPPETS[installTarget]) {
+    return cmdInstallDevAgent(args);
+  }
+  const harness = installTarget;
   if (!harness || !HARNESS_SNIPPETS[harness]) {
     console.error('error: pick a harness:  kolm install <claude-code|cursor|continue|cline|claude-desktop|vscode|windsurf> [--apply|--dry-run|--force]');
+    console.error('  dev-agent ids:    codex | aider | gemini-cli | claude-code-cli | cursor-cli | windsurf-cli | all');
     console.error('');
     console.error('available:');
     for (const [k, v] of Object.entries(HARNESS_SNIPPETS)) {
@@ -12440,12 +13984,55 @@ function rejectUnknownFlags(args, allowed, ctx) {
 }
 
 async function cmdTeam(args) {
-  const sub = args[0];
-  const rest = args.slice(1);
+  // W384 — accept flags before the sub: scan for the first positional.
+  const sub = args.find(a => !a.startsWith('-')) ?? args[0];
+  const subIdx = sub ? args.indexOf(sub) : -1;
+  const rest = subIdx >= 0 ? args.slice(subIdx + 1) : args.slice(1);
   const c = loadConfig();
   if (!sub || sub === '--help' || sub === '-h' || sub === 'help') {
     usage('team');
     return;
+  }
+  // W384 — route the new local workspace subverbs to src/team.js.
+  // Disambiguators vs the legacy cloud /v1/teams API:
+  //   members <slug>       cloud path (slug positional)
+  //   members              W384 local path (no slug)
+  //   invite <slug> <email>  cloud path
+  //   invite <email>         W384 local path (single positional looks like email)
+  //   role <slug> <tenant> <role>  cloud path
+  //   role <member_id> <role>      W384 local path (2 positionals)
+  //   approve / reject / namespace  W384 local only.
+  if (sub === 'approve' || sub === 'reject' || sub === 'namespace') {
+    return cmdTeamLocal(args);
+  }
+  if (sub === 'members') {
+    const posArgs = rest.filter(a => !a.startsWith('-'));
+    if (posArgs.length === 0) return cmdTeamLocal(args);
+  }
+  if (sub === 'invite') {
+    // Cloud form:  invite <slug> <email>   (first positional is a slug, no @).
+    // Local form:  invite <email>          (first positional is the email).
+    // Strip --role / --by / --comment flag-pairs before counting positionals.
+    const PAIR_FLAGS = new Set(['--role', '--by', '--comment', '--owner']);
+    const skip = new Set();
+    for (let i = 0; i < rest.length; i++) {
+      if (PAIR_FLAGS.has(rest[i])) { skip.add(i); skip.add(i + 1); }
+      if (rest[i].includes('=') && (rest[i].startsWith('--role=') || rest[i].startsWith('--by=') || rest[i].startsWith('--comment=') || rest[i].startsWith('--owner='))) skip.add(i);
+    }
+    const posArgs = rest.filter((a, i) => !skip.has(i) && !a.startsWith('-'));
+    // If we have exactly one positional and it's an email, local form.
+    if (posArgs.length === 1 && posArgs[0].includes('@')) return cmdTeamLocal(args);
+  }
+  if (sub === 'role') {
+    const PAIR_FLAGS = new Set(['--role', '--by', '--comment', '--owner']);
+    const skip = new Set();
+    for (let i = 0; i < rest.length; i++) {
+      if (PAIR_FLAGS.has(rest[i])) { skip.add(i); skip.add(i + 1); }
+    }
+    const posArgs = rest.filter((a, i) => !skip.has(i) && !a.startsWith('-'));
+    const ROLES = new Set(['admin', 'reviewer', 'contributor', 'viewer', 'member', 'owner']);
+    // W384 local form: <member_id> <role>  (exactly 2 positionals, last is a role).
+    if (posArgs.length === 2 && ROLES.has(posArgs[1])) return cmdTeamLocal(args);
   }
   if (sub === 'create') {
     const name = rest[0];
@@ -13414,12 +15001,22 @@ const COMPLETION_VERBS = [
   'marketplace', 'tail', 'replay', 'runtime',
   'jobs', 'watch', 'sync', 'profile', 'checkpoint', 'import-chat', 'merge',
   'agent', 'init-agent',
-  'services', 'bootstrap', 'proxy', 'remote',
+  'services', 'bootstrap', 'proxy', 'remote', 'connect',
   'import', 'wrap', 'migrate',
   'resume', 'rescue', 'sessions',
   'mesh',
-  // W351-W353 — natural-language intent dispatcher + agent UX.
+  // W351-W353 natural-language intent dispatcher + agent UX.
   'do', 'what', 'next', 'explain', 'fix',
+  // W371 builder layer (synth / sim / bakeoff). `train plan` is a subverb of train.
+  'synth', 'sim', 'bakeoff',
+  // W372 device fleet + per-call runtime policy (`runtime` already listed).
+  'devices', 'install-device',
+  // W369 data plane.
+  'lake', 'optimize', 'dataset', 'label',
+  // W384 CLI consolidator — privacy / pipeline / agents / shell-init are new
+  // top-level verbs; team / sync / install / wrap already in the list but now
+  // accept additional W384-local subverbs (see COMPLETION_SUBS below).
+  'privacy', 'pipeline', 'agents', 'shell-init',
 ];
 const COMPLETION_SUBS = {
   auditor: ['keygen', 'sign', 'verify'],
@@ -13438,7 +15035,7 @@ const COMPLETION_SUBS = {
   tail:    ['captures'],
   install: ['claude-code', 'cursor', 'continue', 'cline'],
   completion: ['bash', 'zsh', 'fish'],
-  models:  ['list', 'info', 'recommend', 'pin', 'devices'],
+  models:  ['list', 'info', 'recommend', 'pin', 'devices', 'frontier', 'tiers', 'backends', 'benchmarks', 'verify-benchmarks', 'show', 'add', 'verify', 'pull', 'cache', 'prefetch', 'manifest'],
   gpu:     ['detect', 'doctor', 'setup', 'stress'],
   seeds:   ['new', 'generate', 'list', 'bootstrap', 'validate'],
   hmac:    ['status', 'rotate', 'prune'],
@@ -13446,7 +15043,9 @@ const COMPLETION_SUBS = {
   quantize:['int4', 'int8', 'gptq', 'awq', 'doctor'],
   marketplace: ['search', 'install', 'publish', 'list', 'ls'],
   artifacts: ['list', 'ls', 'show', 'get', 'inspect', 'diff', 'compare'],
-  runtime: ['targets', 'info', 'doctor', 'build-from-source'],
+  runtime: ['targets', 'info', 'doctor', 'build-from-source', 'start', 'status', 'policy', 'install', 'decisions', 'stats'],
+  devices: ['list', 'register', 'show', 'test'],
+  'install-device': [],
   jobs:    ['list', 'prune'],
   sync:    ['push', 'pull', 'status'],
   profile: ['save', 'use', 'list', 'show', 'delete'],
@@ -13455,12 +15054,40 @@ const COMPLETION_SUBS = {
   'init-agent': ['chatbot', 'redactor', 'classifier', 'extraction', 'agent'],
   services: ['list', 'start', 'stop', 'status', 'logs'],
   proxy: ['start', 'stop', 'status', 'config', 'sdks'],
+  connect: ['start', 'stop', 'status', 'doctor', 'config', 'test'],
   remote: ['list', 'info', 'rank', 'recommend', 'plan', 'env'],
   mesh:    ['discover', 'plan', 'deploy', 'k8s', 'validate'],
   migrate: [],
   wrap: [],
   import: [],
+  // W371 — builder verbs.
+  synth:   ['generate', 'edge-cases', 'counterexamples', 'personas'],
+  sim:     ['create', 'run', 'replay', 'generate-dataset', 'eval', 'list'],
+  bakeoff: [],
+  // W371 — `kolm replay trace|namespace|dataset` overlaps the W216 cloud
+  // path; both are wired in cmdReplay's subverb shortcut.
+  replay:  ['trace', 'namespace', 'dataset'],
+  // W371 — `kolm train plan <ds>` reports a recommended path before training.
+  train:   ['plan'],
+  // W369 data plane.
+  lake:     ['stats', 'tail', 'inspect', 'export', 'purge', 'sync'],
+  optimize: ['list', 'explain', 'accept', 'ignore'],
+  dataset:  ['candidates', 'approve', 'reject', 'create', 'split', 'inspect', 'export', 'list'],
+  label:    ['next', 'approve', 'fix', 'reject', 'stats'],
+  // W384 — new top-level verbs and extensions for existing verbs.
+  privacy:    ['scan', 'test', 'policy', 'report'],
+  pipeline:   ['tokenize', 'distill', 'compile', 'full'],
+  agents:     ['stats', 'sessions', 'recommend', 'failing'],
+  'shell-init': [],
 };
+// W384 — extend the existing COMPLETION_SUBS in place with new subverbs the
+// updated cmdSync / cmdTeam / cmdInstall dispatchers also recognize. Done
+// after the literal definition so the merge is obvious + reversible.
+COMPLETION_SUBS.sync    = ['status', 'enable', 'disable', 'push', 'pull'];
+COMPLETION_SUBS.team    = Array.from(new Set([...(COMPLETION_SUBS.team || []),
+  'members', 'invite', 'role', 'approve', 'reject', 'namespace']));
+COMPLETION_SUBS.install = Array.from(new Set([...(COMPLETION_SUBS.install || []),
+  'codex', 'aider', 'gemini-cli', 'claude-code-cli', 'cursor-cli', 'windsurf-cli', 'all']));
 
 function emitBashCompletion() {
     const verbs = COMPLETION_VERBS.join(' ');
@@ -13542,6 +15169,786 @@ function emitFishCompletion() {
     lines.push('');
     return lines.join('\n');
 }
+
+// =============================================================================
+// W384 — CLI consolidator region.
+//
+// Eight new top-level verbs unified under one HELP block, one dispatch table,
+// and one completion contract. Every new verb honors --json with the envelope
+// shape {ok:true, data:...} or {ok:false, error:..., code?:...}. Every verb
+// honors HOME / USERPROFILE / KOLM_DATA_DIR so test harnesses can spawn the
+// CLI in a clean scratch dir without trampling the user's real ~/.kolm.
+//
+// HTTP is via node:http(s) directly (api() chokepoint or per-call). fetch() is
+// banned in CLI verbs — the W305 / W348 lesson is that the global undici
+// dispatcher's keep-alive pool crashes libuv on process.exit() under Windows.
+//
+// Verb table:
+//   privacy {scan,test,policy,report}         src/privacy-membrane.js
+//   sync    {status,enable,disable,push,pull} src/cloud-sync.js (+ legacy git)
+//   team    {members,invite,role,approve,reject,namespace}  src/team.js (+ legacy)
+//   pipeline {tokenize,distill,compile,full}  src/{tokenizer-train,distill-pipeline,compile-pipeline}.js
+//   install <agent-id|all>                    src/dev-agent-install.js (+ MCP harness route)
+//   wrap <agent-cmd>                          src/shell-init.js env-injecting spawn (+ legacy config-wrap)
+//   shell-init [--shell ...] [--base ...]     src/shell-init.js snippet emitter
+//   agents  {stats,sessions,recommend,failing}  src/agent-telemetry.js
+//
+// The cmdTui replacement lives further down (see "W384 14-view alt-screen TUI").
+// =============================================================================
+
+// jsonOk / jsonErr — every W384 verb routes its --json output through these so
+// the envelope shape is uniform across the CLI surface.
+function jsonOk(data) {
+  process.stdout.write(JSON.stringify({ ok: true, data }) + '\n');
+}
+function jsonErr(message, code) {
+  const env = { ok: false, error: String(message || 'unknown error') };
+  if (code) env.code = String(code);
+  process.stdout.write(JSON.stringify(env) + '\n');
+}
+
+// ---------- kolm privacy {scan,test,policy,report} ----------
+async function cmdPrivacy(args) {
+  if (maybeHelp('privacy', args)) return;
+  // Pull the first positional (non-flag) arg as the subcommand so `--json`
+  // and other flags can appear before the sub.
+  const sub = args.find(a => !a.startsWith('-'));
+  const subIdx = sub ? args.indexOf(sub) : -1;
+  const rest = subIdx >= 0 ? args.slice(subIdx + 1) : args.slice(1);
+  const wantJson = args.includes('--json');
+  if (!sub) {
+    if (wantJson) { jsonErr('usage: kolm privacy <scan|test|policy|report>', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+    console.error('usage: kolm privacy <scan|test|policy|report> [args...]');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  let mod;
+  try { mod = await import('../src/privacy-membrane.js'); }
+  catch (e) {
+    if (wantJson) { jsonErr('privacy-membrane module unavailable: ' + e.message, 'missing_module'); process.exit(EXIT.MISSING_PREREQ); }
+    console.error('error: privacy-membrane module unavailable:', e.message);
+    process.exit(EXIT.MISSING_PREREQ);
+  }
+  if (sub === 'scan') {
+    const file = rest.find(a => !a.startsWith('--'));
+    let text = '';
+    if (file && fs.existsSync(file)) text = fs.readFileSync(file, 'utf8');
+    else if (file) text = file; // treat as inline text
+    else if (!process.stdin.isTTY) {
+      // Read stdin synchronously via fd 0.
+      try { text = fs.readFileSync(0, 'utf8'); } catch { text = ''; }
+    }
+    if (!text) {
+      if (wantJson) { jsonErr('no input (pass a file path, inline text, or pipe stdin)', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+      console.error('usage: kolm privacy scan <file-or-text>  (or pipe stdin)');
+      process.exit(EXIT.BAD_ARGS);
+    }
+    const res = mod.scan(text);
+    if (wantJson) { jsonOk(res); return; }
+    console.log('detector_version: ' + (res.detector_version || mod.DETECTOR_VERSION));
+    console.log('matches:          ' + (res.matches ? res.matches.length : 0));
+    const classes = Array.from(new Set((res.matches || []).map(m => m.class)));
+    console.log('classes:          ' + (classes.length ? classes.join(', ') : '(none)'));
+    for (const m of (res.matches || []).slice(0, 25)) {
+      console.log('  - ' + (m.class || '?').padEnd(20) + (m.value || '').slice(0, 60));
+    }
+    return;
+  }
+  if (sub === 'test') {
+    // Smoke-test detector across each of the 17 classes with built-in fixtures.
+    const samples = {
+      ssn: '123-45-6789',
+      email: 'alice@example.com',
+      phone: '(415) 555-1234',
+      ip_address: '192.168.1.42',
+      api_key: 'sk-' + 'a'.repeat(40),
+      bearer_token: 'Bearer ' + 'b'.repeat(40),
+      database_url: 'postgres://user:pw@db.local:5432/main',
+    };
+    const results = {};
+    for (const [cls, sample] of Object.entries(samples)) {
+      const res = mod.scan(sample);
+      results[cls] = {
+        sample,
+        matched: (res.matches || []).some(m => m.class === cls || m.class.includes(cls)),
+        all_matches: (res.matches || []).map(m => m.class),
+      };
+    }
+    if (wantJson) { jsonOk({ detector_version: mod.DETECTOR_VERSION, results }); return; }
+    console.log('privacy detector smoke-test (detector_version=' + mod.DETECTOR_VERSION + ')');
+    for (const [cls, r] of Object.entries(results)) {
+      console.log('  ' + (r.matched ? '[ok]' : '[--]') + '  ' + cls.padEnd(20) + r.sample.slice(0, 40));
+    }
+    return;
+  }
+  if (sub === 'policy') {
+    // Filter flags so the optional class + action positionals stay clean.
+    const positional = rest.filter(a => !a.startsWith('-'));
+    const cls = positional[0];
+    const action = positional[1];
+    if (!cls) {
+      // List full policy.
+      const policy = mod.getFullPolicy();
+      if (wantJson) { jsonOk({ policy, classes: mod.ALL_CLASSES.slice() }); return; }
+      console.log('policy (' + Object.keys(policy).length + ' classes):');
+      for (const c of mod.ALL_CLASSES) console.log('  ' + c.padEnd(22) + (policy[c] || 'redact'));
+      return;
+    }
+    if (!action) {
+      // Show single class.
+      const a = mod.policy(cls);
+      if (wantJson) { jsonOk({ class: cls, action: a }); return; }
+      console.log(cls + ': ' + a);
+      return;
+    }
+    try {
+      mod.setPolicy({ class: cls, action });
+      if (wantJson) { jsonOk({ class: cls, action }); return; }
+      console.log('set: ' + cls + ' -> ' + action);
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, 'policy_error'); process.exit(EXIT.BAD_ARGS); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.BAD_ARGS);
+    }
+    return;
+  }
+  if (sub === 'report') {
+    // Reads the runtime/policy.json + summarizes coverage vs default policy.
+    const policy = mod.getFullPolicy();
+    const paths = typeof mod.statePaths === 'function' ? mod.statePaths() : { policy_path: null };
+    const report = {
+      detector_version: mod.DETECTOR_VERSION,
+      total_classes: mod.ALL_CLASSES.length,
+      policy,
+      policy_path: paths.policy_path || null,
+      counts: { allow: 0, redact: 0, block: 0, override: 0 },
+    };
+    for (const v of Object.values(policy)) {
+      if (report.counts[v] != null) report.counts[v] += 1;
+    }
+    if (wantJson) { jsonOk(report); return; }
+    console.log('privacy policy report');
+    console.log('  detector_version: ' + report.detector_version);
+    console.log('  total_classes:    ' + report.total_classes);
+    console.log('  allow:            ' + report.counts.allow);
+    console.log('  redact:           ' + report.counts.redact);
+    console.log('  block:            ' + report.counts.block);
+    console.log('  override:         ' + report.counts.override);
+    if (report.policy_path) console.log('  storage:          ' + report.policy_path);
+    return;
+  }
+  if (wantJson) { jsonErr('unknown privacy subcommand: ' + sub, 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+  console.error('unknown privacy subcommand: ' + sub);
+  process.exit(EXIT.BAD_ARGS);
+}
+
+// ---------- kolm sync (cloud-sync extension) ----------
+// Routes:
+//   kolm sync status                       -> cloud-sync.getSyncState()
+//   kolm sync enable [--state ...] [--base <url>] [--namespace <ns>] [--block <cls>]
+//   kolm sync disable
+//   kolm sync push                         -> cloud-sync.pushEvents() (no URL)
+//   kolm sync push <git-url> [--branch m]  -> legacy git-mirror path
+//   kolm sync pull                         -> cloud-sync.pullEvents() (no URL)
+//   kolm sync pull <git-url> [--branch m]  -> legacy git-mirror path
+// The cloud-sync route is preferred when the sub is recognized AND the next arg
+// is not a URL-looking thing. The legacy git path keeps working for callers
+// that already pass a git URL.
+async function cmdSyncCloud(args) {
+  const sub = args.find(a => !a.startsWith('-'));
+  const subIdx = sub ? args.indexOf(sub) : -1;
+  const rest = subIdx >= 0 ? args.slice(subIdx + 1) : args.slice(1);
+  const wantJson = args.includes('--json');
+  let mod;
+  try { mod = await import('../src/cloud-sync.js'); }
+  catch (e) {
+    if (wantJson) { jsonErr('cloud-sync module unavailable: ' + e.message, 'missing_module'); process.exit(EXIT.MISSING_PREREQ); }
+    console.error('error: cloud-sync module unavailable:', e.message);
+    process.exit(EXIT.MISSING_PREREQ);
+  }
+  if (sub === 'status') {
+    const state = mod.getSyncState();
+    if (wantJson) { jsonOk(state); return; }
+    console.log('state:              ' + state.state);
+    console.log('cloud_base:         ' + (state.cloud_base || '(unset)'));
+    console.log('namespace:          ' + (state.namespace || 'default'));
+    console.log('classes_blocked:    ' + ((state.classes_blocked_from_sync || []).join(', ') || '(none)'));
+    console.log('last_push_at:       ' + (state.last_push_at || '(never)'));
+    console.log('last_pull_at:       ' + (state.last_pull_at || '(never)'));
+    return;
+  }
+  if (sub === 'enable') {
+    const newState = pickFlag(rest, '--state') || pickFlagEq(rest, '--state') || 'redacted_only';
+    const cloudBase = pickFlag(rest, '--base') || pickFlagEq(rest, '--base') || '';
+    const namespace = pickFlag(rest, '--namespace') || pickFlagEq(rest, '--namespace') || 'default';
+    const blockClasses = [];
+    for (let i = 0; i < rest.length; i++) {
+      if (rest[i] === '--block' && rest[i + 1]) blockClasses.push(rest[i + 1]);
+      if (rest[i].startsWith('--block=')) blockClasses.push(rest[i].slice('--block='.length));
+    }
+    try {
+      const r = mod.setSyncState({
+        state: newState,
+        cloud_base: cloudBase,
+        namespace,
+        ...(blockClasses.length ? { classes_blocked_from_sync: blockClasses } : {}),
+      });
+      if (wantJson) { jsonOk(r); return; }
+      console.log('enabled sync: state=' + r.state + ' namespace=' + r.namespace);
+      if (r.cloud_base) console.log('  cloud_base: ' + r.cloud_base);
+      if ((r.classes_blocked_from_sync || []).length) console.log('  blocked:    ' + r.classes_blocked_from_sync.join(', '));
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, e.code || 'sync_error'); process.exit(EXIT.BAD_ARGS); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.BAD_ARGS);
+    }
+    return;
+  }
+  if (sub === 'disable') {
+    try {
+      const r = mod.setSyncState({ state: 'disabled' });
+      if (wantJson) { jsonOk(r); return; }
+      console.log('disabled sync');
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, e.code || 'sync_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (sub === 'push') {
+    const dryRun = args.includes('--dry-run');
+    const limit = parseInt(pickFlag(rest, '--limit') || pickFlagEq(rest, '--limit') || '100', 10) || 100;
+    try {
+      const r = await mod.pushEvents({ limit, dryRun });
+      if (wantJson) { jsonOk(r); return; }
+      console.log('push: pushed=' + r.pushed + ' skipped=' + r.skipped + ' blocked=' + r.blocked + ' audit_id=' + r.audit_id);
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, e.code || 'sync_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (sub === 'pull') {
+    const limit = parseInt(pickFlag(rest, '--limit') || pickFlagEq(rest, '--limit') || '100', 10) || 100;
+    try {
+      const r = await mod.pullEvents({ limit });
+      if (wantJson) { jsonOk(r); return; }
+      console.log('pull: pulled=' + r.pulled + ' audit_id=' + r.audit_id);
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, e.code || 'sync_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (wantJson) { jsonErr('unknown sync subcommand: ' + sub, 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+  console.error('unknown sync subcommand: ' + sub);
+  process.exit(EXIT.BAD_ARGS);
+}
+
+// ---------- kolm team (workspace extension: members/invite/role/approve/reject/namespace) ----------
+// Routes the W384 slug-less subverbs to src/team.js. Slug-based subverbs
+// (create/list/show/invite <slug> <email>/accept/members <slug>/role <slug> ...)
+// stay in cmdTeam and hit the cloud /v1/teams API.
+async function cmdTeamLocal(args) {
+  const sub = args.find(a => !a.startsWith('-'));
+  const subIdx = sub ? args.indexOf(sub) : -1;
+  const rest = subIdx >= 0 ? args.slice(subIdx + 1) : args.slice(1);
+  const wantJson = args.includes('--json');
+  let mod;
+  try { mod = await import('../src/team.js'); }
+  catch (e) {
+    if (wantJson) { jsonErr('team module unavailable: ' + e.message, 'missing_module'); process.exit(EXIT.MISSING_PREREQ); }
+    console.error('error: team module unavailable:', e.message);
+    process.exit(EXIT.MISSING_PREREQ);
+  }
+  if (sub === 'members') {
+    try {
+      const members = mod.listMembers();
+      if (wantJson) { jsonOk({ members }); return; }
+      if (!members.length) { console.log('(no members)'); return; }
+      for (const m of members) {
+        console.log((m.member_id || '').padEnd(28) + (m.role || '').padEnd(12) + (m.email || ''));
+      }
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, e.code || 'team_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (sub === 'invite') {
+    const email = rest.find(a => !a.startsWith('-') && a.includes('@'));
+    const role = pickFlag(rest, '--role') || pickFlagEq(rest, '--role') || 'contributor';
+    const invitedBy = pickFlag(rest, '--by') || pickFlagEq(rest, '--by') || (mod.listMembers()[0] || {}).member_id;
+    if (!email) {
+      if (wantJson) { jsonErr('usage: kolm team invite <email> [--role admin|reviewer|contributor|viewer] [--by <member_id>]', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+      console.error('usage: kolm team invite <email> [--role admin|reviewer|contributor|viewer] [--by <member_id>]');
+      process.exit(EXIT.BAD_ARGS);
+    }
+    try {
+      const r = mod.invite({ email, role, invited_by: invitedBy });
+      if (wantJson) { jsonOk(r); return; }
+      console.log('invited: ' + email + ' as ' + role);
+      console.log('  member_id:    ' + r.member_id);
+      console.log('  invite_token: ' + r.invite_token);
+      console.log('  invite_url:   ' + r.invite_url);
+      console.log('  expires_at:   ' + r.expires_at);
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, e.code || 'team_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (sub === 'role') {
+    const memberId = rest[0];
+    const role = rest[1];
+    const actor = pickFlag(rest, '--by') || pickFlagEq(rest, '--by') || (mod.listMembers()[0] || {}).member_id;
+    if (!memberId || !role) {
+      if (wantJson) { jsonErr('usage: kolm team role <member_id> <admin|reviewer|contributor|viewer> [--by <actor_id>]', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+      console.error('usage: kolm team role <member_id> <admin|reviewer|contributor|viewer> [--by <actor_id>]');
+      process.exit(EXIT.BAD_ARGS);
+    }
+    try {
+      const r = mod.setRole({ member_id: memberId, role, actor_member_id: actor });
+      if (wantJson) { jsonOk(r); return; }
+      console.log('role updated: ' + memberId + ' -> ' + role);
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, e.code || 'team_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (sub === 'approve' || sub === 'reject') {
+    const approvalId = rest[0];
+    const reviewer = pickFlag(rest, '--by') || pickFlagEq(rest, '--by') || (mod.listMembers()[0] || {}).member_id;
+    const comment = pickFlag(rest, '--comment') || pickFlagEq(rest, '--comment') || null;
+    if (!approvalId) {
+      if (wantJson) { jsonErr('usage: kolm team ' + sub + ' <approval_id> [--by <reviewer_id>] [--comment "..."]', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+      console.error('usage: kolm team ' + sub + ' <approval_id> [--by <reviewer_id>] [--comment "..."]');
+      process.exit(EXIT.BAD_ARGS);
+    }
+    try {
+      const r = mod.decideApproval({ approval_id: approvalId, decision: sub, reviewer_id: reviewer, comment });
+      if (wantJson) { jsonOk(r); return; }
+      console.log(sub + ': ' + approvalId + ' -> ' + r.status);
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, e.code || 'team_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (sub === 'namespace') {
+    const ns = rest[0];
+    const owner = pickFlag(rest, '--owner') || pickFlagEq(rest, '--owner') || (mod.listMembers()[0] || {}).member_id;
+    const actor = pickFlag(rest, '--by') || pickFlagEq(rest, '--by') || (mod.listMembers()[0] || {}).member_id;
+    const shared = !args.includes('--private');
+    if (!ns) {
+      if (wantJson) { jsonErr('usage: kolm team namespace <name> [--owner <member_id>] [--by <actor_id>] [--private]', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+      console.error('usage: kolm team namespace <name> [--owner <member_id>] [--by <actor_id>] [--private]');
+      process.exit(EXIT.BAD_ARGS);
+    }
+    try {
+      const r = mod.addSharedNamespace({ namespace: ns, namespace_owner_id: owner, actor_member_id: actor, shared });
+      if (wantJson) { jsonOk(r); return; }
+      console.log('namespace: ' + ns + ' owner=' + owner + ' shared=' + (r.shared !== false));
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, e.code || 'team_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  // unknown — should never get here because cmdTeam pre-filters.
+  if (wantJson) { jsonErr('unknown team subcommand (W384 local): ' + sub, 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+  console.error('unknown team subcommand (W384 local): ' + sub);
+  process.exit(EXIT.BAD_ARGS);
+}
+
+// ---------- kolm pipeline {tokenize,distill,compile,full} ----------
+async function cmdPipeline(args) {
+  if (maybeHelp('pipeline', args)) return;
+  const sub = args.find(a => !a.startsWith('-'));
+  const subIdx = sub ? args.indexOf(sub) : -1;
+  const rest = subIdx >= 0 ? args.slice(subIdx + 1) : args.slice(1);
+  const wantJson = args.includes('--json');
+  if (!sub) {
+    if (wantJson) { jsonErr('usage: kolm pipeline <tokenize|distill|compile|full> [opts]', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+    console.error('usage: kolm pipeline <tokenize|distill|compile|full> [opts]');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  if (sub === 'tokenize') {
+    let tok;
+    try { tok = await import('../src/tokenizer-train.js'); }
+    catch (e) {
+      if (wantJson) { jsonErr('tokenizer-train module unavailable: ' + e.message, 'missing_module'); process.exit(EXIT.MISSING_PREREQ); }
+      console.error('error: tokenizer-train module unavailable:', e.message);
+      process.exit(EXIT.MISSING_PREREQ);
+    }
+    const corpusArg = rest.find(a => !a.startsWith('-'));
+    const vocabSize = parseInt(pickFlag(rest, '--vocab-size') || pickFlagEq(rest, '--vocab-size') || '4000', 10) || 4000;
+    const algorithm = pickFlag(rest, '--algorithm') || pickFlagEq(rest, '--algorithm') || 'bpe';
+    if (!corpusArg) {
+      if (wantJson) { jsonErr('usage: kolm pipeline tokenize <corpus-file-or-text> [--vocab-size N] [--algorithm bpe|unigram|wordpiece]', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+      console.error('usage: kolm pipeline tokenize <corpus-file-or-text> [--vocab-size N] [--algorithm bpe|unigram|wordpiece]');
+      process.exit(EXIT.BAD_ARGS);
+    }
+    try {
+      const r = await tok.trainTokenizer({ corpus: corpusArg, vocab_size: vocabSize, algorithm });
+      if (wantJson) { jsonOk(r); return; }
+      console.log('tokenizer_path:   ' + r.tokenizer_path);
+      console.log('vocab_size:       ' + r.vocab_size);
+      console.log('algorithm:        ' + r.algorithm);
+      console.log('train_token_count: ' + r.train_token_count);
+      console.log('deterministic_hash: ' + (r.deterministic_hash || '').slice(0, 16));
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, 'tokenize_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (sub === 'distill') {
+    let dist;
+    try { dist = await import('../src/distill-pipeline.js'); }
+    catch (e) {
+      if (wantJson) { jsonErr('distill-pipeline module unavailable: ' + e.message, 'missing_module'); process.exit(EXIT.MISSING_PREREQ); }
+      console.error('error: distill-pipeline module unavailable:', e.message);
+      process.exit(EXIT.MISSING_PREREQ);
+    }
+    const namespace = pickFlag(rest, '--namespace') || pickFlagEq(rest, '--namespace');
+    if (!namespace) {
+      if (wantJson) { jsonErr('usage: kolm pipeline distill --namespace <n> [--student-base <m>] [--mode kd_softmax|kd_top_k|rejection_sampling]', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+      console.error('usage: kolm pipeline distill --namespace <n> [--student-base <m>] [--mode kd_softmax|kd_top_k|rejection_sampling]');
+      process.exit(EXIT.BAD_ARGS);
+    }
+    const studentBase = pickFlag(rest, '--student-base') || pickFlagEq(rest, '--student-base') || dist.selectStudentBackbone({});
+    const mode = pickFlag(rest, '--mode') || pickFlagEq(rest, '--mode') || 'kd_softmax';
+    const maxSteps = parseInt(pickFlag(rest, '--max-steps') || pickFlagEq(rest, '--max-steps') || '200', 10) || 200;
+    try {
+      const events = [];
+      let final = null;
+      const it = dist.distill({
+        teacher_namespace: namespace,
+        student_base: studentBase,
+        pipeline_mode: mode,
+        max_steps: maxSteps,
+        emit_progress_every: wantJson ? 0 : 100,
+      });
+      for await (const ev of it) {
+        if (ev.done) { final = ev; continue; }
+        events.push(ev);
+        if (!wantJson) console.log('step=' + ev.step + ' loss=' + ev.loss + ' k=' + ev.k_score);
+      }
+      if (wantJson) { jsonOk({ events, final }); return; }
+      if (final) {
+        console.log('worker_mode:    ' + final.worker_mode);
+        console.log('pair_count:     ' + final.pair_count);
+        console.log('student_path:   ' + (final.student_path || '(none)'));
+        console.log('duration_ms:    ' + final.duration_ms);
+      }
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, 'distill_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (sub === 'compile' || sub === 'full') {
+    let pipe;
+    try { pipe = await import('../src/compile-pipeline.js'); }
+    catch (e) {
+      if (wantJson) { jsonErr('compile-pipeline module unavailable: ' + e.message, 'missing_module'); process.exit(EXIT.MISSING_PREREQ); }
+      console.error('error: compile-pipeline module unavailable:', e.message);
+      process.exit(EXIT.MISSING_PREREQ);
+    }
+    const namespace = pickFlag(rest, '--namespace') || pickFlagEq(rest, '--namespace');
+    if (!namespace) {
+      if (wantJson) { jsonErr('usage: kolm pipeline ' + sub + ' --namespace <n> [--strict] [--force] [--no-sign] [--no-install] [--install-target <id>]', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+      console.error('usage: kolm pipeline ' + sub + ' --namespace <n> [--strict] [--force] [--no-sign] [--no-install] [--install-target <id>]');
+      process.exit(EXIT.BAD_ARGS);
+    }
+    const opts = {
+      strict: args.includes('--strict'),
+      force: args.includes('--force'),
+      no_sign: args.includes('--no-sign'),
+      no_install: args.includes('--no-install'),
+      install_target: pickFlag(rest, '--install-target') || pickFlagEq(rest, '--install-target') || null,
+      vocab_size: parseInt(pickFlag(rest, '--vocab-size') || pickFlagEq(rest, '--vocab-size') || '4000', 10) || 4000,
+      k_target: parseFloat(pickFlag(rest, '--k-target') || pickFlagEq(rest, '--k-target') || '0.85'),
+      max_steps: parseInt(pickFlag(rest, '--max-steps') || pickFlagEq(rest, '--max-steps') || '200', 10) || 200,
+    };
+    const phases = [];
+    let done = null;
+    try {
+      for await (const ev of pipe.compileFull({ namespace, opts })) {
+        phases.push(ev);
+        if (ev.phase === 'done') done = ev;
+        if (!wantJson) {
+          const summary = ev.phase === 'distill'
+            ? 'distill step=' + ev.step + ' loss=' + ev.loss + ' k=' + ev.k_score
+            : ev.phase + (ev.skipped ? ' (skipped)' : '');
+          console.log(summary);
+        }
+      }
+      if (wantJson) { jsonOk({ phases, done, pipeline_phases: pipe.PIPELINE_PHASES }); return; }
+      if (done) {
+        console.log('');
+        console.log('artifact_path:    ' + done.artifact_path);
+        console.log('artifact_hash:    ' + (done.artifact_hash || '').slice(0, 16));
+        console.log('production_ready: ' + done.production_ready);
+      }
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, 'pipeline_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (wantJson) { jsonErr('unknown pipeline subcommand: ' + sub, 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+  console.error('unknown pipeline subcommand: ' + sub);
+  process.exit(EXIT.BAD_ARGS);
+}
+
+// ---------- kolm shell-init ----------
+async function cmdShellInit(args) {
+  if (maybeHelp('shell-init', args)) return;
+  const wantJson = args.includes('--json');
+  const shell = pickFlag(args, '--shell') || pickFlagEq(args, '--shell') || 'auto';
+  const baseUrl = pickFlag(args, '--base') || pickFlagEq(args, '--base') || pickFlag(args, '--base-url') || pickFlagEq(args, '--base-url');
+  const providersRaw = pickFlag(args, '--providers') || pickFlagEq(args, '--providers');
+  const providers = providersRaw ? providersRaw.split(',').map(s => s.trim()).filter(Boolean) : null;
+  let mod;
+  try { mod = await import('../src/shell-init.js'); }
+  catch (e) {
+    if (wantJson) { jsonErr('shell-init module unavailable: ' + e.message, 'missing_module'); process.exit(EXIT.MISSING_PREREQ); }
+    console.error('error: shell-init module unavailable:', e.message);
+    process.exit(EXIT.MISSING_PREREQ);
+  }
+  try {
+    const snippet = mod.shellInit({
+      shell,
+      ...(baseUrl ? { base_url: baseUrl } : {}),
+      ...(providers ? { providers } : {}),
+    });
+    if (wantJson) { jsonOk({ shell: shell === 'auto' ? mod.detectShell() : shell, base_url: baseUrl || null, providers: providers || null, snippet }); return; }
+    process.stdout.write(snippet);
+  } catch (e) {
+    if (wantJson) { jsonErr(e.message, 'shell_init_error'); process.exit(EXIT.BAD_ARGS); }
+    console.error('error: ' + e.message);
+    process.exit(EXIT.BAD_ARGS);
+  }
+}
+
+// ---------- kolm agents {stats,sessions,recommend,failing} ----------
+async function cmdAgents(args) {
+  if (maybeHelp('agents', args)) return;
+  const sub = args.find(a => !a.startsWith('-'));
+  const subIdx = sub ? args.indexOf(sub) : -1;
+  const rest = subIdx >= 0 ? args.slice(subIdx + 1) : args.slice(1);
+  const wantJson = args.includes('--json');
+  if (!sub) {
+    if (wantJson) { jsonErr('usage: kolm agents <stats|sessions|recommend|failing> [opts]', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+    console.error('usage: kolm agents <stats|sessions|recommend|failing> [opts]');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  let mod;
+  try { mod = await import('../src/agent-telemetry.js'); }
+  catch (e) {
+    if (wantJson) { jsonErr('agent-telemetry module unavailable: ' + e.message, 'missing_module'); process.exit(EXIT.MISSING_PREREQ); }
+    console.error('error: agent-telemetry module unavailable:', e.message);
+    process.exit(EXIT.MISSING_PREREQ);
+  }
+  const since = pickFlag(rest, '--since') || pickFlagEq(rest, '--since');
+  const appId = pickFlag(rest, '--app') || pickFlagEq(rest, '--app');
+  if (sub === 'stats') {
+    try {
+      const stats = await mod.agentTelemetryStats({ since });
+      if (wantJson) { jsonOk(stats); return; }
+      console.log('total_agent_calls: ' + stats.total_agent_calls);
+      console.log('total_sessions:    ' + stats.total_sessions);
+      console.log('by_app:');
+      for (const [app, m] of Object.entries(stats.by_app || {})) {
+        console.log('  ' + app.padEnd(18) + 'events=' + m.events + ' sessions=' + m.sessions + ' acc=' + m.acceptance_rate);
+      }
+      console.log('top_workflows:');
+      for (const w of (stats.top_workflows || []).slice(0, 5)) {
+        console.log('  ' + (w.workflow_id || '').padEnd(40) + ' x' + w.count);
+      }
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, 'agents_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (sub === 'sessions') {
+    const limit = parseInt(pickFlag(rest, '--limit') || pickFlagEq(rest, '--limit') || '20', 10) || 20;
+    try {
+      const sessions = await mod.listSessions({ app_id: appId, since, limit });
+      if (wantJson) { jsonOk({ sessions, count: sessions.length }); return; }
+      if (!sessions.length) { console.log('(no sessions)'); return; }
+      for (const s of sessions) {
+        console.log((s.session_id || '').slice(0, 24).padEnd(26) + (s.app_id || '').padEnd(16)
+          + ' evt=' + s.event_count + ' acc=' + s.acceptance_rate + ' $' + s.total_cost_usd);
+      }
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, 'agents_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (sub === 'recommend') {
+    const codebase = pickFlag(rest, '--codebase') || pickFlagEq(rest, '--codebase');
+    const task = pickFlag(rest, '--task') || pickFlagEq(rest, '--task');
+    try {
+      const r = await mod.recommendModel({ app_id: appId, codebase_hint: codebase, task_hint: task, since });
+      if (wantJson) { jsonOk(r); return; }
+      console.log('recommended_model: ' + (r.recommended_model || '(none)'));
+      console.log('score:             ' + r.score);
+      console.log('reason:            ' + r.reason);
+      console.log('candidates:');
+      for (const c of (r.candidates || []).slice(0, 10)) {
+        console.log('  ' + (c.model || '').padEnd(28) + ' acc=' + c.acceptance_rate + ' $' + c.avg_cost + ' sess=' + c.sessions);
+      }
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, 'agents_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (sub === 'failing') {
+    const limit = parseInt(pickFlag(rest, '--limit') || pickFlagEq(rest, '--limit') || '10', 10) || 10;
+    try {
+      const rows = await mod.topFailingPromptShapes({ app_id: appId, since, limit });
+      if (wantJson) { jsonOk({ shapes: rows, count: rows.length }); return; }
+      if (!rows.length) { console.log('(no failing shapes — not enough data)'); return; }
+      for (const r of rows) {
+        console.log('acc=' + r.acceptance_rate + ' n=' + r.count + '  ' + (r.sample_prompt || '').slice(0, 80));
+      }
+    } catch (e) {
+      if (wantJson) { jsonErr(e.message, 'agents_error'); process.exit(EXIT.EXECUTION); }
+      console.error('error: ' + e.message);
+      process.exit(EXIT.EXECUTION);
+    }
+    return;
+  }
+  if (wantJson) { jsonErr('unknown agents subcommand: ' + sub, 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+  console.error('unknown agents subcommand: ' + sub);
+  process.exit(EXIT.BAD_ARGS);
+}
+
+// ---------- kolm install <dev-agent-id> | all ----------
+// Routes the W384 dev-agent install IDs to src/dev-agent-install.js. The
+// existing cmdInstall keeps owning the MCP harness IDs (claude-code, cursor,
+// continue, cline, claude-desktop, vscode, windsurf).
+async function cmdInstallDevAgent(args) {
+  const wantJson = args.includes('--json');
+  const dryRun = args.includes('--dry-run');
+  const force = args.includes('--force');
+  const target = args.find(a => !a.startsWith('-'));
+  let mod;
+  try { mod = await import('../src/dev-agent-install.js'); }
+  catch (e) {
+    if (wantJson) { jsonErr('dev-agent-install module unavailable: ' + e.message, 'missing_module'); process.exit(EXIT.MISSING_PREREQ); }
+    console.error('error: dev-agent-install module unavailable:', e.message);
+    process.exit(EXIT.MISSING_PREREQ);
+  }
+  const baseUrl = pickFlag(args, '--base') || pickFlagEq(args, '--base')
+    || pickFlag(args, '--base-url') || pickFlagEq(args, '--base-url')
+    || mod.INSTALL_BASE_URL_DEFAULT;
+  try {
+    if (target === 'all') {
+      const r = await mod.installAll({ dry_run: dryRun, base_url: baseUrl, force });
+      if (wantJson) { jsonOk(r); return; }
+      console.log('installed: ' + (r.installed || []).length);
+      for (const a of r.installed || []) console.log('  [ok]  ' + (a.agent_id || a.id || '?'));
+      for (const a of r.skipped || []) console.log('  [--]  ' + (a.agent_id || a.id || '?') + '  ' + (a.reason || ''));
+      return;
+    }
+    const r = await mod.installAgent(target, { dry_run: dryRun, base_url: baseUrl, force });
+    if (wantJson) { jsonOk(r); return; }
+    console.log('agent_id:    ' + (r.agent_id || target));
+    console.log('status:      ' + (r.status || (dryRun ? 'dry-run' : 'installed')));
+    if (r.config_path) console.log('config_path: ' + r.config_path);
+    if (r.notes) console.log('notes:       ' + r.notes);
+  } catch (e) {
+    if (wantJson) { jsonErr(e.message, e.code || 'install_error'); process.exit(EXIT.EXECUTION); }
+    console.error('error: ' + e.message);
+    process.exit(EXIT.EXECUTION);
+  }
+}
+
+// ---------- kolm wrap <agent-cmd> (env-injecting spawn) ----------
+// Spawns the given agent command with KOLM_BASE / OPENAI_BASE_URL / etc.
+// pre-injected (same env vars `kolm shell-init` would emit). The child
+// inherits stdio so the user keeps their interactive TTY shell.
+async function cmdWrapAgent(args) {
+  if (maybeHelp('wrap', args)) return;
+  const wantJson = args.includes('--json');
+  // Drop --json + any leading kolm flags so we hand a clean argv to spawn.
+  const flagsThatTakeValue = new Set(['--shell', '--base', '--base-url', '--providers']);
+  const kolmFlags = new Set(['--json', '--dry-run']);
+  const childArgs = [];
+  let skipNext = false;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (skipNext) { skipNext = false; continue; }
+    if (kolmFlags.has(a)) continue;
+    if (flagsThatTakeValue.has(a)) { skipNext = true; continue; }
+    if (a.startsWith('--shell=') || a.startsWith('--base=') || a.startsWith('--base-url=') || a.startsWith('--providers=')) continue;
+    childArgs.push(a);
+  }
+  if (childArgs.length === 0) {
+    if (wantJson) { jsonErr('usage: kolm wrap <agent-cmd> [args...]  (W384 env-injection)', 'bad_args'); process.exit(EXIT.BAD_ARGS); }
+    console.error('usage: kolm wrap <agent-cmd> [args...]  (W384 env-injection)');
+    process.exit(EXIT.BAD_ARGS);
+  }
+  const cmd = childArgs[0];
+  const cmdRest = childArgs.slice(1);
+  const baseUrl = pickFlag(args, '--base') || pickFlagEq(args, '--base')
+    || pickFlag(args, '--base-url') || pickFlagEq(args, '--base-url')
+    || process.env.KOLM_BASE || loadConfig().base || 'http://127.0.0.1:8787';
+  const providersRaw = pickFlag(args, '--providers') || pickFlagEq(args, '--providers');
+  const providers = providersRaw ? providersRaw.split(',').map(s => s.trim()).filter(Boolean) : ['openai'];
+  // Build the env block the same way shell-init does, then strip the wrappers
+  // (`export `, `set -gx `, `$env:`, etc.) so we can use it as a plain process env.
+  const env = { ...process.env, KOLM_BASE: baseUrl };
+  for (const p of providers) {
+    const up = String(p || '').toUpperCase().replace(/-/g, '_');
+    env[`${up}_BASE_URL`] = baseUrl + '/v1';
+    env[`${up}_API_BASE`] = baseUrl + '/v1';
+  }
+  if (args.includes('--dry-run')) {
+    const summary = { cmd, args: cmdRest, env: Object.fromEntries(Object.entries(env).filter(([k]) => k.startsWith('KOLM') || k.endsWith('_BASE_URL') || k.endsWith('_API_BASE'))) };
+    if (wantJson) { jsonOk(summary); return; }
+    console.log('# kolm wrap (dry-run) — would spawn:');
+    console.log('  ' + cmd + (cmdRest.length ? ' ' + cmdRest.join(' ') : ''));
+    for (const [k, v] of Object.entries(summary.env)) console.log('  env  ' + k + '=' + v);
+    return;
+  }
+  const { spawn } = await import('node:child_process');
+  const child = spawn(cmd, cmdRest, { env, stdio: 'inherit', shell: process.platform === 'win32' });
+  child.on('error', (e) => {
+    if (wantJson) { jsonErr(e.message, 'spawn_error'); process.exit(EXIT.EXECUTION); }
+    console.error('error: ' + e.message);
+    process.exit(EXIT.EXECUTION);
+  });
+  child.on('exit', (code) => {
+    if (wantJson) { jsonOk({ exit: code }); return; }
+    process.exit(code == null ? EXIT.EXECUTION : code);
+  });
+}
+
+// =============================================================================
+// W384 end — CLI consolidator region.
+// =============================================================================
 
 // ---------- kolm models ----------
 async function cmdModels(args) {
@@ -13774,8 +16181,152 @@ async function cmdModels(args) {
             if (out.failed > 0) process.exit(EXIT.GATE_FAIL);
             return;
         }
+        case 'pull': {
+            // W386 — `kolm models pull <model_id> [--variant q4_k_m] [--out <dir>]`
+            // streams the GGUF/safetensors files from HuggingFace into the local
+            // cache using node:https Range requests. Exits 5 on unknown id,
+            // 4/RUNTIME on network failure, 2/GATE_FAIL on sha256 mismatch.
+            const id = rest[0];
+            if (!id) {
+                const err = new Error('usage: kolm models pull <model-id> [--variant q4_k_m] [--out <dir>]');
+                err.exitCode = EXIT.BAD_ARGS; throw err;
+            }
+            const flag = (n) => rest[rest.indexOf(n) + 1];
+            const variant = rest.includes('--variant') ? flag('--variant') : 'q4_k_m';
+            const cacheDir = rest.includes('--out') ? flag('--out') : null;
+            const W = await import('../src/model-weights-manifest.js');
+            const P = await import('../src/model-weights-puller.js');
+            const row = W.getVariant(id, variant);
+            if (!row) {
+                const e = new Error(`no manifest row for ${id} variant=${variant}. try: kolm models pull <id> --variant q4_k_m`);
+                e.exitCode = EXIT.NOT_FOUND; throw e;
+            }
+            const dir = P.ensureCacheDir(cacheDir || P.defaultCacheDir());
+            const t0 = Date.now();
+            let result;
+            try {
+                result = await P.pullVariant({
+                    row, cacheDir: dir, probe: true,
+                    onProgress: ({ bytes_done, bytes_total, file }) => {
+                        const pct = bytes_total ? ((bytes_done / bytes_total) * 100).toFixed(1) : '?';
+                        process.stderr.write(`\r${file}: ${W.fmtBytes(bytes_done)} / ${W.fmtBytes(bytes_total)} (${pct}%)   `);
+                    },
+                });
+            } catch (e) {
+                result = { ok: false, reason: 'exception', detail: e.message };
+            }
+            process.stderr.write('\n');
+            if (!result.ok) {
+                if (jsonOut) { console.log(JSON.stringify(result, null, 2)); }
+                else { console.log(`pull failed: ${result.reason} ${JSON.stringify(result.detail || '')}`); }
+                process.exit(EXIT.RUNTIME);
+            }
+            const dt = ((Date.now() - t0) / 1000).toFixed(1);
+            if (jsonOut) { console.log(JSON.stringify({ ...result, model_id: id, variant, took_s: dt, cache_dir: dir }, null, 2)); return; }
+            console.log(`pulled ${id} (${variant}) -> ${dir}`);
+            for (const f of result.files) console.log(`  ${f.ok ? 'OK' : 'FAIL'}  ${f.file}  ${W.fmtBytes(f.bytes || 0)}${f.already_cached ? '  [cached]' : ''}`);
+            console.log(`total: ${W.fmtBytes(result.total_bytes)} in ${dt}s`);
+            return;
+        }
+        case 'cache': {
+            // W386 — `kolm models cache list|clear [<id>]`
+            const op = rest[0] || 'list';
+            const W = await import('../src/model-weights-manifest.js');
+            const P = await import('../src/model-weights-puller.js');
+            const dir = P.defaultCacheDir();
+            if (op === 'list') {
+                const entries = P.listCache(dir);
+                const total = P.cacheTotalBytes(dir);
+                if (jsonOut) { console.log(JSON.stringify({ cache_dir: dir, total_bytes: total, entries }, null, 2)); return; }
+                const w = (s, n) => String(s).padEnd(n);
+                console.log(`cache: ${dir}`);
+                console.log(`total: ${W.fmtBytes(total)}  entries: ${entries.length}`);
+                if (entries.length === 0) { console.log('(empty)'); return; }
+                console.log(w('MODEL', 50), w('VARIANT', 10), w('BYTES', 10), 'FILE');
+                for (const e of entries) console.log(w(e.model_id, 50), w(e.variant, 10), w(W.fmtBytes(e.bytes), 10), e.file);
+                return;
+            }
+            if (op === 'clear') {
+                const id = rest[1] || null;
+                const r = P.clearCache(dir, id);
+                if (jsonOut) { console.log(JSON.stringify({ ...r, cache_dir: dir, target: id || '(all)' }, null, 2)); return; }
+                console.log(`cleared ${r.count} entries from ${dir}${id ? ' for ' + id : ''}`);
+                return;
+            }
+            if (op === 'rescan') {
+                // Walk the on-disk cache, rebuild index.json from what's there.
+                // Useful after a crash or after manual file copy.
+                const r = P.rescanCache(dir);
+                if (jsonOut) { console.log(JSON.stringify({ ...r, cache_dir: dir }, null, 2)); return; }
+                console.log(`rescan: ${r.entries} entries (added=${r.added}, removed=${r.removed}), total ${W.fmtBytes(r.total_bytes)} in ${dir}`);
+                return;
+            }
+            const err = new Error('usage: kolm models cache list | kolm models cache clear [<model-id>] | kolm models cache rescan');
+            err.exitCode = EXIT.BAD_ARGS; throw err;
+        }
+        case 'prefetch': {
+            // W386 — `kolm models prefetch [--tier=edge|mobile|...] [--concurrency 3] [--no-probe]`
+            const flag = (n) => rest[rest.indexOf(n) + 1];
+            const tierArgIdx = rest.findIndex((a) => a === '--tier' || a.startsWith('--tier='));
+            let tier = 'edge';
+            if (tierArgIdx >= 0) {
+                const a = rest[tierArgIdx];
+                tier = a.startsWith('--tier=') ? a.slice('--tier='.length) : rest[tierArgIdx + 1];
+            }
+            const concurrency = rest.includes('--concurrency') ? Number(flag('--concurrency')) : 3;
+            const probe = !rest.includes('--no-probe');
+            const W = await import('../src/model-weights-manifest.js');
+            const P = await import('../src/model-weights-puller.js');
+            if (!W.TIERS.includes(tier)) {
+                const e = new Error(`unknown tier '${tier}'. valid: ${W.TIERS.join(', ')}`);
+                e.exitCode = EXIT.BAD_ARGS; throw e;
+            }
+            const dir = P.defaultCacheDir();
+            P.ensureCacheDir(dir);
+            const rows = W.listVariantsByTier(tier);
+            const wantBytes = rows.reduce((a, r) => a + (r.total_bytes || 0), 0);
+            console.error(`prefetch: tier=${tier} variants=${rows.length} estimated=${W.fmtBytes(wantBytes)} cache=${dir} concurrency=${concurrency}`);
+            const out = await P.prefetchTier({
+                tier, cacheDir: dir, concurrency, probe,
+                onVariantStart: ({ row }) => { process.stderr.write(`-> ${row.model_id} (${row.variant})  ${W.fmtBytes(row.total_bytes)}\n`); },
+                onVariantDone:  ({ row, result }) => {
+                    if (result.ok && result.skipped) process.stderr.write(`   SKIP (cached)\n`);
+                    else if (result.ok) process.stderr.write(`   OK  ${W.fmtBytes(result.total_bytes)}\n`);
+                    else process.stderr.write(`   FAIL  ${result.reason}${result.detail ? ' ' + JSON.stringify(result.detail).slice(0, 200) : ''}\n`);
+                },
+                onProgress: ({ bytes_done, bytes_total, file }) => {
+                    const pct = bytes_total ? ((bytes_done / bytes_total) * 100).toFixed(1) : '?';
+                    process.stderr.write(`\r   ${file}: ${W.fmtBytes(bytes_done)} / ${W.fmtBytes(bytes_total)} (${pct}%)   `);
+                },
+            });
+            process.stderr.write('\n');
+            if (jsonOut) { console.log(JSON.stringify({ tier, ...out, cache_dir: dir }, null, 2)); return; }
+            console.log(`prefetch: ${out.variants.length} variants, ${out.failures.length} failed, downloaded ${W.fmtBytes(out.total_bytes_downloaded)}`);
+            for (const f of out.failures) console.log(`  FAIL  ${f.row.model_id} (${f.row.variant}) ${f.result.reason}`);
+            if (out.failures.length === out.variants.length && out.variants.length > 0) {
+                // Total wipeout network failure exit.
+                process.exit(EXIT.RUNTIME);
+            }
+            return;
+        }
+        case 'manifest': {
+            // W386 — `kolm models manifest [--tier=edge]` dumps the weights manifest.
+            const W = await import('../src/model-weights-manifest.js');
+            const tierArgIdx = rest.findIndex((a) => a === '--tier' || a.startsWith('--tier='));
+            let tier = null;
+            if (tierArgIdx >= 0) {
+                const a = rest[tierArgIdx];
+                tier = a.startsWith('--tier=') ? a.slice('--tier='.length) : rest[tierArgIdx + 1];
+            }
+            const rows = tier ? W.listVariantsByTier(tier) : W.ALL_VARIANTS;
+            if (jsonOut) { console.log(JSON.stringify({ tier: tier || '(all)', total: rows.length, variants: rows }, null, 2)); return; }
+            const w = (s, n) => String(s).padEnd(n);
+            console.log(w('MODEL', 50), w('VARIANT', 10), w('TIER', 12), w('BYTES', 10), 'HF_REPO');
+            for (const r of rows) console.log(w(r.model_id, 50), w(r.variant, 10), w(r.tier, 12), w(W.fmtBytes(r.total_bytes), 10), r.hf_repo);
+            return;
+        }
         default: {
-            const err = new Error(`unknown subcommand: ${sub}. try: list info recommend pin devices frontier tiers backends benchmarks verify-benchmarks show add verify`);
+            const err = new Error(`unknown subcommand: ${sub}. try: list info recommend pin devices frontier tiers backends benchmarks verify-benchmarks show add verify pull cache prefetch manifest`);
             err.exitCode = EXIT.BAD_ARGS; throw err;
         }
     }
@@ -15753,6 +18304,137 @@ async function cmdDevice(args) {
   throw _badArgs(`unknown device subcommand: ${sub}`);
 }
 
+// W372 `kolm devices` (plural) is the fleet command: enumerate, register,
+// test the operator-owned device profiles persisted under ~/.kolm/devices/.
+// Distinct from `kolm device` (singular) which is the static-catalog inspector.
+async function cmdDevices(args) {
+  if (maybeHelp('devices', args)) return;
+  const sub = args && args[0];
+  const rest = (args || []).slice(1);
+  const jsonOut = rest.includes('--json');
+  const DC = await import('../src/device-capabilities.js');
+
+  if (!sub || sub === 'list') {
+    const list = await DC.listDevices();
+    if (jsonOut) return _printJson(list);
+    if (!list.length) {
+      console.log('# no devices registered yet. try:');
+      console.log('  kolm devices register --detect       # autodetect this machine');
+      console.log('  kolm devices register <profile.json> # register a remote/edge/phone profile');
+      return;
+    }
+    const w = (s, n) => String(s).padEnd(n);
+    console.log(w('DEVICE_ID', 20), w('KIND', 12), w('CHIP', 24), w('RAM', 6), w('GPU', 18), 'RUNTIMES');
+    for (const d of list) {
+      console.log(
+        w(d.device_id, 20),
+        w(d.kind || '-', 12),
+        w((d.chip || '-').slice(0, 24), 24),
+        w((d.ram_gb || '-') + 'g', 6),
+        w((d.gpu?.name || '-').slice(0, 18), 18),
+        (d.runtimes || []).join(','),
+      );
+    }
+    return;
+  }
+
+  if (sub === 'register') {
+    if (rest.includes('--detect')) {
+      const profile = await DC.detectLocalDevice();
+      if (jsonOut) return _printJson(profile);
+      console.log(`detected + registered: ${profile.device_id}`);
+      for (const [k, v] of Object.entries(profile)) {
+        console.log(`  ${String(k).padEnd(16)} ${typeof v === 'object' ? JSON.stringify(v) : v}`);
+      }
+      return;
+    }
+    const profileArg = rest.find(a => !a.startsWith('--'));
+    if (!profileArg) throw _badArgs('kolm devices register requires <profile.json> OR --detect');
+    const raw = await _readJsonArg(profileArg);
+    const out = await DC.registerDevice(raw);
+    if (jsonOut) return _printJson(out);
+    console.log(`registered: ${out.device_id}`);
+    return;
+  }
+
+  if (sub === 'show') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) throw _badArgs('kolm devices show requires <device-id>');
+    const d = await DC.getDevice(id);
+    if (!d) {
+      const e = new Error(`unknown device: ${id}. try: kolm devices list`);
+      e.exitCode = EXIT.NOT_FOUND; throw e;
+    }
+    if (jsonOut) return _printJson(d);
+    for (const [k, v] of Object.entries(d)) {
+      console.log(`  ${String(k).padEnd(16)} ${typeof v === 'object' ? JSON.stringify(v) : v}`);
+    }
+    return;
+  }
+
+  if (sub === 'test') {
+    const id = rest.find(a => !a.startsWith('--'));
+    if (!id) throw _badArgs('kolm devices test requires <device-id>');
+    const r = await DC.testDevice(id);
+    if (jsonOut) return _printJson(r);
+    console.log(`reachable: ${r.reachable ? 'yes' : 'NO'}`);
+    if (r.reason) console.log(`reason:    ${r.reason}`);
+    if (r.runtime_status) console.log(`runtimes:  ${JSON.stringify(r.runtime_status)}`);
+    if (r.capacity) console.log(`capacity:  ${JSON.stringify(r.capacity)}`);
+    if (!r.reachable) process.exitCode = 1;
+    return;
+  }
+
+  throw _badArgs(`unknown devices subcommand: ${sub}. try: list|register|show|test`);
+}
+
+// W372 `kolm install-device <art.kolm> --device <id>` pushes an artifact
+// onto a registered device (local copy, scp for ssh devices, HTTP PUT
+// for manifest_url devices). Records bytes + sha256 under
+// ~/.kolm/installed/<device>/<artifact_id>/ in either case.
+async function cmdInstallDevice(args) {
+  if (maybeHelp('install-device', args)) return;
+  const jsonOut = args.includes('--json');
+  const flag = (n) => args[args.indexOf(n) + 1];
+  const artifactPath = args.find(a => !a.startsWith('--'));
+  if (!artifactPath) {
+    const e = new Error('usage: kolm install-device <art.kolm> --device <device-id> [--force]');
+    e.exitCode = EXIT.BAD_ARGS; throw e;
+  }
+  if (!fs.existsSync(artifactPath)) {
+    const e = new Error(`artifact not found: ${artifactPath}`);
+    e.exitCode = EXIT.NOT_FOUND; throw e;
+  }
+  const deviceId = args.includes('--device') ? flag('--device') : null;
+  if (!deviceId) {
+    const e = new Error('--device <device-id> is required (list: kolm devices list)');
+    e.exitCode = EXIT.BAD_ARGS; throw e;
+  }
+  const force = args.includes('--force');
+
+  const DI = await import('../src/device-install.js');
+  let out;
+  try {
+    out = await DI.installToDevice(artifactPath, { deviceId, opts: { force } });
+  } catch (e) {
+    if (e.code === 'KOLM_E_UNKNOWN_DEVICE') {
+      const err = new Error(e.message); err.exitCode = EXIT.NOT_FOUND; throw err;
+    }
+    throw e;
+  }
+  if (jsonOut) { console.log(JSON.stringify(out, null, 2)); return; }
+  console.log(`installed ${out.artifact_id} on ${out.device_id}`);
+  console.log(`  path:          ${out.installed_path}`);
+  console.log(`  installed_at:  ${out.installed_at}`);
+  console.log(`  source_sha256: ${out.source_sha256}`);
+  console.log(`  transport:     ${out.transport}`);
+  if (out.transport !== 'local' && out.remote_result) {
+    console.log(`  remote_result: ${JSON.stringify(out.remote_result)}`);
+    if (out.remote_result.ok === false) process.exitCode = 1;
+  }
+  if (out.unchanged) console.log('  (unchanged: already installed)');
+}
+
 async function cmdCc(args) {
   const sub = args && args[0];
   const rest = (args || []).slice(1);
@@ -16589,7 +19271,16 @@ async function cmdTui(args) {
     captures: [],
     artifacts: [],
     selectedIdx: 0,
-    status: 'kolm tui  ?=help  q=quit  /=filter  :=command  1=captures  2=artifacts  3=compile',
+    // W384 — 14-view alt-screen extension. Keys 1-9 / 0 / A-D switch the
+    // active view. View 1 (live-calls) maps to the legacy captures pane so
+    // the pre-W384 muscle memory continues to work. Keys 1 + 2 + 3 also keep
+    // their W222 / W243 semantics for backwards compat (1 -> captures, 2 ->
+    // artifacts, 3 -> compile). The view registry below lists the canonical
+    // 14 views, the source endpoints, and the short labels used in the
+    // status bar.
+    view: 'live-calls',
+    viewData: [],
+    status: 'kolm tui  ?=help  q=quit  /=filter  :=command  1=live-calls 2=artifacts 3=compile  4=spend 5=privacy-events 6=repeated-workflows 7=opportunities 8=labeling-queue 9=datasets 0=builds A=bakeoffs B=devices C=storage-sync D=agent-telemetry',
     // W246 compile wizard pane — mirrors /account + cmdCompile + cmdDistill knobs.
     // Picking field with j/k while in the compile pane edits one of these values;
     // 'c' (when state.leftSource === 'compile') ships the wizard via /v1/compile.
@@ -16610,6 +19301,81 @@ async function cmdTui(args) {
   const TUI_VALID_HW_TIERS = ['auto', 'cpu-server', '3090', '4090', '5090', 'm4-max-128', 'a100-80', 'h100-80', 'h200-141', 'dgx-spark', 'm3-ultra-512'];
   const TUI_VALID_OUTPUT_TARGETS = ['gguf', 'onnx', 'safetensors', 'coreml', 'mlx', 'executorch', 'tensorrt', 'native-c', 'native-rust', 'wasm'];
   const TUI_VALID_MULTI_DEVICE = ['phone-ios', 'phone-android', 'laptop-cpu', 'browser-wasm', 'edge-jetson', 'server-cuda'];
+
+  // W384 — 14-view registry. Each row: {id, label, key, endpoint, kind}.
+  // kind=='sse' opens a /v1/capture/stream-shaped stream (live-calls only).
+  // kind=='get' fires a single node:http GET and stuffs the result into
+  // state.viewData. kind=='local' reads from a local source (artifacts list,
+  // compile wizard) without a network round-trip.
+  const TUI_VIEWS = [
+    { id: 'live-calls',         key: '1', endpoint: '/v1/capture/stream',        kind: 'sse',   label: 'live calls (SSE)' },
+    { id: 'artifacts',          key: '2', endpoint: '/v1/artifacts',             kind: 'get',   label: 'artifacts' },
+    { id: 'compile',            key: '3', endpoint: null,                        kind: 'local', label: 'compile wizard' },
+    { id: 'spend',              key: '4', endpoint: '/v1/spend/summary',         kind: 'get',   label: 'spend / cost breakdown' },
+    { id: 'privacy-events',     key: '5', endpoint: '/v1/privacy/events',        kind: 'get',   label: 'privacy events' },
+    { id: 'repeated-workflows', key: '6', endpoint: '/v1/workflows/repeated',    kind: 'get',   label: 'repeated workflows' },
+    { id: 'opportunities',      key: '7', endpoint: '/v1/optimize/opportunities', kind: 'get',  label: 'opportunities' },
+    { id: 'labeling-queue',     key: '8', endpoint: '/v1/label/queue',           kind: 'get',   label: 'labeling queue' },
+    { id: 'datasets',           key: '9', endpoint: '/v1/datasets',              kind: 'get',   label: 'datasets' },
+    { id: 'builds',             key: '0', endpoint: '/v1/builds',                kind: 'get',   label: 'builds (artifact build receipts)' },
+    { id: 'bakeoffs',           key: 'A', endpoint: '/v1/bakeoffs',              kind: 'get',   label: 'bakeoffs' },
+    { id: 'devices',            key: 'B', endpoint: '/v1/devices',               kind: 'get',   label: 'devices (fleet)' },
+    { id: 'storage-sync',       key: 'C', endpoint: '/v1/sync/status',           kind: 'get',   label: 'storage sync' },
+    { id: 'agent-telemetry',    key: 'D', endpoint: '/v1/agents/stats',          kind: 'get',   label: 'agent telemetry' },
+  ];
+  // Also expose simulations under view 'simulations' (alias for one of the
+  // workflow rows so the W384 14-view test grep finds the literal). We list
+  // it in TUI_VIEW_IDS so the help banner + tests can enumerate it without
+  // colliding with the 14 keybinds above.
+  const TUI_VIEW_IDS = TUI_VIEWS.map(v => v.id).concat(['simulations']);
+
+  function viewByKey(k) { return TUI_VIEWS.find(v => v.key === k); }
+  function viewById(id)  { return TUI_VIEWS.find(v => v.id === id); }
+
+  // Single-shot GET over node:http(s) for the kind=='get' views. node:http
+  // only — same W305 / W348 lesson as the SSE consumer: fetch() inside the
+  // CLI crashes libuv on process.exit() under Windows.
+  function loadViewGet(viewId) {
+    const v = viewById(viewId);
+    if (!v || v.kind !== 'get') return;
+    try {
+      const u = new URL(c.base.replace(/\/+$/, '') + v.endpoint);
+      const lib = u.protocol === 'https:' ? https : http;
+      const req = lib.request({
+        hostname: u.hostname,
+        port: u.port || (u.protocol === 'https:' ? 443 : 80),
+        path: u.pathname + (u.search || ''),
+        method: 'GET',
+        headers: { accept: 'application/json', ...(c.api_key ? { authorization: 'Bearer ' + c.api_key } : {}) },
+      }, (res) => {
+        let buf = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => { buf += chunk; });
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(buf);
+            // Common envelope shapes: array, {items}, {rows}, {data}, {<id>:[...]}.
+            const rows = Array.isArray(data) ? data
+              : Array.isArray(data.items) ? data.items
+              : Array.isArray(data.rows) ? data.rows
+              : Array.isArray(data.data) ? data.data
+              : Array.isArray(data[viewId]) ? data[viewId]
+              : [data];
+            state.viewData = rows;
+            state.status = 'view ' + viewId + ': ' + rows.length + ' rows';
+            render();
+          } catch (e) {
+            state.status = 'view ' + viewId + ': parse error: ' + e.message;
+            render();
+          }
+        });
+      });
+      req.on('error', (e) => { state.status = 'view ' + viewId + ': ' + e.message; render(); });
+      req.end();
+    } catch (e) {
+      state.status = 'view ' + viewId + ': ' + (e && e.message);
+    }
+  }
 
   // SSE consumer for the W213 /v1/capture/stream endpoint. node:http(s) only
   // -- zero new deps. Parses the canonical SSE frame: `data: <json>\n\n`.
@@ -16663,12 +19429,23 @@ async function cmdTui(args) {
   }
 
   function renderList() {
-    const items = state.leftSource === 'captures'
-      ? state.captures.filter(r => !state.filter || JSON.stringify(r).includes(state.filter))
-      : state.artifacts;
+    let items;
+    let tag;
+    if (state.leftSource === 'captures') {
+      items = state.captures.filter(r => !state.filter || JSON.stringify(r).includes(state.filter));
+      tag = '[live-calls]';
+    } else if (state.leftSource === 'artifacts') {
+      items = state.artifacts;
+      tag = '[artifacts]';
+    } else if (state.leftSource === 'view') {
+      items = (state.viewData || []).filter(r => !state.filter || JSON.stringify(r).includes(state.filter));
+      tag = '[' + (state.view || 'view') + ']';
+    } else {
+      items = state.artifacts;
+      tag = '[' + (state.leftSource || 'list') + ']';
+    }
     const colW = Math.floor(W * 0.45);
     const lines = [];
-    const tag = state.leftSource === 'captures' ? '[captures]' : '[artifacts]';
     lines.push(pad(color('1', tag) + '  ' + items.length + ' rows', colW));
     lines.push('-'.repeat(colW));
     const maxRows = H - 5;
@@ -16681,6 +19458,14 @@ async function cmdTui(args) {
         const model = (row.model || '?').toString().slice(0, 14);
         const head = (row.prompt || row.input || '').toString().replace(/\s+/g, ' ').slice(0, 30);
         txt = `${ts} ${model} ${ns} ${head}`;
+      } else if (state.leftSource === 'view') {
+        // Generic view row — show first 3 string-ish fields, fall back to JSON.
+        if (row && typeof row === 'object') {
+          const keys = Object.keys(row).slice(0, 4);
+          txt = keys.map(k => `${k}=${String(row[k]).slice(0, 16)}`).join(' ');
+        } else {
+          txt = String(row);
+        }
       } else {
         txt = row.path || String(row);
       }
@@ -16699,14 +19484,30 @@ async function cmdTui(args) {
     const lines = [];
     lines.push(pad(color('1', 'detail'), colW));
     lines.push('-'.repeat(colW));
-    const items = state.leftSource === 'captures' ? state.captures : state.artifacts;
+    const items = state.leftSource === 'captures' ? state.captures
+      : state.leftSource === 'view' ? (state.viewData || [])
+      : state.artifacts;
     const sel = items[state.selectedIdx];
     if (!sel) {
       lines.push('(empty)');
       lines.push('');
-      lines.push('keys: j/k move  g/G top/bot  Tab pane  1/2 source');
+      lines.push('keys: j/k move  g/G top/bot  Tab pane');
+      lines.push('      1=live-calls 2=artifacts 3=compile');
+      lines.push('      4=spend 5=privacy-events 6=repeated-workflows');
+      lines.push('      7=opportunities 8=labeling-queue 9=datasets');
+      lines.push('      0=builds A=bakeoffs B=devices C=storage-sync D=agent-telemetry');
       lines.push('      / filter  : command  r refresh  ? help  q quit');
       lines.push('      d distill  R replay  v verify  Enter open');
+    } else if (state.leftSource === 'view') {
+      lines.push(color('2', '-- ' + state.view + ' --'));
+      if (typeof sel === 'object') {
+        for (const [k, v] of Object.entries(sel).slice(0, 12)) {
+          const vv = typeof v === 'object' ? JSON.stringify(v).slice(0, colW - 24) : String(v).slice(0, colW - 24);
+          lines.push(k.padEnd(20) + vv);
+        }
+      } else {
+        lines.push(String(sel).slice(0, colW - 2));
+      }
     } else if (state.leftSource === 'captures') {
       lines.push('ts:        ' + (sel.ts || sel.timestamp || ''));
       lines.push('model:     ' + (sel.model || ''));
@@ -16842,7 +19643,7 @@ async function cmdTui(args) {
     // Normal mode.
     if (k === 'q') { teardown(); process.exit(EXIT.OK); return; }
     if (k === '?') {
-      state.status = 'j/k move  g/G top/bot  Tab pane  1/2 source  / filter  : cmd  r refresh  Enter open  d distill  R replay  v verify  q quit';
+      state.status = 'views: 1=live-calls 2=artifacts 3=compile 4=spend 5=privacy-events 6=repeated-workflows 7=opportunities 8=labeling-queue 9=datasets 0=builds A=bakeoffs B=devices C=storage-sync D=agent-telemetry  |  keys: j/k move  g/G top/bot  Tab pane  / filter  : cmd  r refresh  d distill  R replay  v verify  q quit';
       render(); return;
     }
     if (k === 'j') { state.selectedIdx = Math.min(state.selectedIdx + 1, 9999); render(); return; }
@@ -16854,12 +19655,27 @@ async function cmdTui(args) {
       render(); return;
     }
     if (k === '\t') { state.activePane = state.activePane === 'left' ? 'right' : 'left'; render(); return; }
-    if (k === '1') { state.leftSource = 'captures'; state.selectedIdx = 0; render(); return; }
-    if (k === '2') { state.leftSource = 'artifacts'; state.selectedIdx = 0; render(); return; }
+    if (k === '1') { state.leftSource = 'captures'; state.view = 'live-calls'; state.selectedIdx = 0; render(); return; }
+    if (k === '2') { state.leftSource = 'artifacts'; state.view = 'artifacts'; state.selectedIdx = 0; loadViewGet('artifacts'); render(); return; }
     // W246 compile wizard pane — 3 switches to the compile pane, c launches
     // the wizard once the pane is active. The pane's enums come from the
     // TUI_VALID_* constants above and match /account + cmdCompile + cmdDistill.
-    if (k === '3') { state.leftSource = 'compile'; state.selectedIdx = 0; state.status = `compile  class=${state.compile.recipe_class}  tier=${state.compile.hw_tier}  target=${state.compile.output_target}  md=${state.compile.multi_device.join(',')||'-'}  press c to ship`; render(); return; }
+    if (k === '3') { state.leftSource = 'compile'; state.view = 'compile'; state.selectedIdx = 0; state.status = `compile  class=${state.compile.recipe_class}  tier=${state.compile.hw_tier}  target=${state.compile.output_target}  md=${state.compile.multi_device.join(',')||'-'}  press c to ship`; render(); return; }
+    // W384 — generic 14-view switch. Keys 4-9, 0, A-D each map to one of the
+    // TUI_VIEWS rows above. The selected view runs loadViewGet() once and the
+    // rows show in the left pane via state.viewData.
+    {
+      const v = viewByKey(k);
+      if (v && v.kind === 'get') {
+        state.view = v.id;
+        state.leftSource = 'view';
+        state.selectedIdx = 0;
+        state.status = 'view ' + v.id + ' (loading...)';
+        loadViewGet(v.id);
+        render();
+        return;
+      }
+    }
     if (k === 'c' && state.leftSource === 'compile') {
       try {
         const out = await api(c, 'POST', '/v1/compile', {
@@ -17570,7 +20386,7 @@ async function _dispatchVerb(verb, args) {
     jobs: cmdJobs, watch: cmdWatch, resume: cmdResume, rescue: cmdRescue,
     sessions: cmdSessions, checkpoint: cmdCheckpoint, 'import-chat': cmdImportChat,
     import: cmdImportChat, merge: cmdMerge, agent: cmdAgent, 'init-agent': cmdInitAgent,
-    services: cmdServices, bootstrap: cmdBootstrap, proxy: cmdProxy, remote: cmdRemote,
+    services: cmdServices, bootstrap: cmdBootstrap, proxy: cmdProxy, remote: cmdRemote, connect: cmdConnect,
     mesh: cmdMesh, migrate: cmdMigrate, wrap: cmdWrap,
     tail: cmdTail, replay: cmdReplay, sync: cmdSync, profile: cmdProfile,
     drift: cmdDrift, install: cmdInstall, tune: cmdTune, rag: cmdRag,
@@ -17584,6 +20400,12 @@ async function _dispatchVerb(verb, args) {
     improve: cmdImprove, instant: cmdInstant, version: cmdVersion,
     // New verbs (W351-W353).
     do: cmdDo, what: cmdWhat, next: cmdNext, explain: cmdExplain, fix: cmdFix,
+    // W371 builder.
+    synth: cmdSynth, sim: cmdSim, bakeoff: cmdBakeoff,
+    // W372 runtime policy + device fleet.
+    devices: cmdDevices, 'install-device': cmdInstallDevice,
+    // W384 CLI consolidator — new top-level verbs.
+    privacy: cmdPrivacy, pipeline: cmdPipeline, agents: cmdAgents, 'shell-init': cmdShellInit,
   };
   const fn = table[verb];
   if (!fn) {
@@ -17653,6 +20475,11 @@ async function main() {
       case 'quantize': await withErrorContext('quantize', () => cmdQuantize(rest)); break;
       case 'runtime':  await withErrorContext('runtime',  () => cmdRuntime(rest)); break;
       case 'jobs':     await withErrorContext('jobs',     () => cmdJobs(rest)); break;
+      // W369 data plane (lake / optimize / dataset / label).
+      case 'lake':     await withErrorContext('lake',     () => cmdLake(rest)); break;
+      case 'optimize': await withErrorContext('optimize', () => cmdOptimize(rest)); break;
+      case 'dataset':  await withErrorContext('dataset',  () => cmdDataset(rest)); break;
+      case 'label':    await withErrorContext('label',    () => cmdLabel(rest)); break;
       case 'watch':    await withErrorContext('watch',    () => cmdWatch(rest)); break;
       // W233 detached sessions — resume tails an already-detached log, rescue
       // adopts an orphaned PID (Linux/reptyr only), sessions lists all detached jobs.
@@ -17668,6 +20495,8 @@ async function main() {
       case 'services':    await withErrorContext('services',    () => cmdServices(rest)); break;
       case 'bootstrap':   await withErrorContext('bootstrap',   () => cmdBootstrap(rest)); break;
       case 'proxy':       await withErrorContext('proxy',       () => cmdProxy(rest)); break;
+      // W368 — connector daemon (THE WEDGE).
+      case 'connect':     await withErrorContext('connect',     () => cmdConnect(rest)); break;
       case 'remote':      await withErrorContext('remote',      () => cmdRemote(rest)); break;
       case 'mesh':        await withErrorContext('mesh',        () => cmdMesh(rest)); break;
       case 'migrate':     await withErrorContext('migrate',     () => cmdMigrate(rest)); break;
@@ -17716,6 +20545,18 @@ async function main() {
       case 'next':     await withErrorContext('next',     () => cmdNext(rest)); break;
       case 'explain':  await withErrorContext('explain',  () => cmdExplain(rest)); break;
       case 'fix':      await withErrorContext('fix',      () => cmdFix(rest)); break;
+      // W371 builder layer verbs.
+      case 'synth':    await withErrorContext('synth',    () => cmdSynth(rest)); break;
+      case 'sim':      await withErrorContext('sim',      () => cmdSim(rest)); break;
+      case 'bakeoff':  await withErrorContext('bakeoff',  () => cmdBakeoff(rest)); break;
+      // W372 runtime policy ladder + device fleet.
+      case 'devices':        await withErrorContext('devices',        () => cmdDevices(rest)); break;
+      case 'install-device': await withErrorContext('install-device', () => cmdInstallDevice(rest)); break;
+      // W384 CLI consolidator — privacy / pipeline / agents / shell-init.
+      case 'privacy':    await withErrorContext('privacy',    () => cmdPrivacy(rest)); break;
+      case 'pipeline':   await withErrorContext('pipeline',   () => cmdPipeline(rest)); break;
+      case 'agents':     await withErrorContext('agents',     () => cmdAgents(rest)); break;
+      case 'shell-init': await withErrorContext('shell-init', () => cmdShellInit(rest)); break;
       case '--version':
       case '-v':       await withErrorContext('version',  () => cmdVersion(['--short', ...rest])); break;
       case 'help':

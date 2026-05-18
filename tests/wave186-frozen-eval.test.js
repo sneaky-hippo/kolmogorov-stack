@@ -99,12 +99,16 @@ test('8. /frozen-eval claims NO --force flag exists (override-audit honest-scope
     'frozen-eval.html must not describe a --force flag that overrides the gate');
 });
 
-test('9. /frozen-eval cross-links to /k-score-explained (W185), /drift (W171), /recipe-classes (W172)', () => {
+test('9. /frozen-eval cross-links to /k-score-explained (W185), /drift (W171), and recipe-class taxonomy (W172)', () => {
+  // W380d: /recipe-classes rewrites to /taxonomy.html in vercel.json — accept
+  // either surface URL per feedback-tests-assert-behavior-not-page-copy.
   const html = read(FROZEN);
-  for (const href of ['/k-score-explained', '/drift', '/recipe-classes']) {
+  for (const href of ['/k-score-explained', '/drift']) {
     assert.ok(html.includes(`href="${href}"`),
       `frozen-eval.html missing cross-link to ${href}`);
   }
+  const taxonomyLink = /href=["'](?:\/recipe-classes|\/taxonomy|\/docs)["']/.test(html);
+  assert.ok(taxonomyLink, 'frozen-eval.html must cross-link to the recipe-class taxonomy surface');
 });
 
 test('10. /frozen-eval cross-links to /spec/rs-1#section-7-12 (W164 external holdout)', () => {

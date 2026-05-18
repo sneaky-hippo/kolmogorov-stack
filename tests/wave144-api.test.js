@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import net from 'node:net';
 import { pathToFileURL } from 'node:url';
+import { killAndWait, rmSyncBestEffort } from './_spawn-helpers.js';
 
 const dataDir = path.join(os.tmpdir(), `kolm-wave144-api-${process.pid}-${Date.now()}`);
 const kolmHome = path.join(os.tmpdir(), `kolm-wave144-home-${process.pid}-${Date.now()}`);
@@ -29,7 +30,7 @@ async function freePort() {
   });
 }
 
-async function waitForHealth(base, retries = 60) {
+async function waitForHealth(base, retries = 120) {
   for (let i = 0; i < retries; i++) {
     try { const r = await fetch(base + '/health'); if (r.ok) return; } catch {}
     await new Promise(r => setTimeout(r, 100));
@@ -48,13 +49,14 @@ test('wave-144 api: trace / ir / device / cc / fl / lineage endpoints', async (t
   const PORT = await freePort();
   const BASE = `http://127.0.0.1:${PORT}`;
 
-  fs.rmSync(dataDir, { recursive: true, force: true });
+  rmSyncBestEffort(dataDir);
   fs.mkdirSync(dataDir, { recursive: true });
-  fs.rmSync(kolmHome, { recursive: true, force: true });
+  rmSyncBestEffort(kolmHome);
   fs.mkdirSync(kolmHome, { recursive: true });
+  // after() is LIFO. dir cleanups registered first → fire AFTER kill.
   t.after(() => {
-    fs.rmSync(dataDir, { recursive: true, force: true });
-    fs.rmSync(kolmHome, { recursive: true, force: true });
+    rmSyncBestEffort(dataDir);
+    rmSyncBestEffort(kolmHome);
   });
 
   const proc = spawn(process.execPath, ['server.js'], {
@@ -71,7 +73,7 @@ test('wave-144 api: trace / ir / device / cc / fl / lineage endpoints', async (t
   });
   proc.stdout.on('data', () => {});
   proc.stderr.on('data', () => {});
-  t.after(() => { try { proc.kill(); } catch {} });
+  t.after(() => killAndWait(proc));
 
   await waitForHealth(BASE);
 

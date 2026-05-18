@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>DPO &middot; Direct Preference Optimization &middot; kolm.ai</title>
+<meta name="description" content="Direct Preference Optimization (DPO) reframes RLHF as a single classification loss over pairs of responses, removing the need for an explicit reward model and online sampling. How kolm uses it.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="DPO &middot; Direct Preference Optimization &middot; kolm.ai">
+<meta property="og:description" content="A reward-free, sampling-free reformulation of RLHF.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/dpo">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="DPO &middot; Direct Preference Optimization &middot; kolm.ai">
+<meta name="twitter:description" content="A reward-free, sampling-free reformulation of RLHF.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/dpo">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"ScholarlyArticle","headline":"Direct Preference Optimization (DPO)","description":"DPO is a reward-free, sampling-free reformulation of RLHF that trains a policy directly on pairwise preference data via a closed-form classification loss.","url":"https://kolm.ai/research/dpo","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / dpo</div>
+<h1>Direct Preference Optimization (DPO)</h1>
+<p class="lede">DPO reformulates the standard RLHF pipeline (reward model + PPO) as a single classification loss on pairs of preferred and rejected responses. No reward network. No online sampling. The closed-form loss makes the implicit reward of any language model the log-ratio of its probabilities under the trained and reference policies.</p>
+
+<h2 id="what">What it is</h2>
+<p>Rafailov et al. (2023) showed that under the Bradley-Terry preference model, the optimal RLHF policy has a closed-form relationship with the reward function and a fixed KL-regularized reference policy. Inverting that relationship gives a loss that depends only on the log-probabilities of paired chosen and rejected responses under the policy and the reference. The loss is <code>-log sigmoid(beta * (log pi(yw|x) / pi_ref(yw|x) - log pi(yl|x) / pi_ref(yl|x)))</code>, where <code>yw</code> is the preferred response, <code>yl</code> the rejected, and <code>beta</code> controls how aggressively the policy departs from the reference. The training loop is plain supervised: two forward passes per pair (policy and frozen reference), no rollouts, no on-policy sampling, no separate reward model. This makes DPO cheap to run, stable on small data, and easy to integrate into existing fine-tuning infrastructure.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>DPO is not implemented in kolm v0.2.6. The current preference path uses SFT on response-distillation outputs (<a href="/research/response-distill">/research/response-distill</a>) only. DPO is planned for v0.3 as the default preference-optimization stage when the buyer's spec includes paired-comparison labels (from the holdout judges or from human-labeled marketplace examples). The implementation will follow the TRL reference; the receipt block will record <code>beta</code>, the reference checkpoint hash, the pair count, and the implicit-reward margin distribution on the holdout. Tasks without paired preferences will continue to use SFT plus distillation as the only loss.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Rafailov, R., Sharma, A., Mitchell, E., Ermon, S., Manning, C. D., Finn, C. <em>Direct Preference Optimization: Your Language Model is Secretly a Reward Model.</em> NeurIPS 2023. arXiv:2305.18290.</p>
+<p>Bradley, R. A., Terry, M. E. <em>Rank Analysis of Incomplete Block Designs.</em> Biometrika, 1952.</p>
+<p>Ouyang, L. et al. <em>Training Language Models to Follow Instructions with Human Feedback.</em> NeurIPS 2022. arXiv:2203.02155.</p>
+<p>von Werra, L. et al. <em>TRL: Transformer Reinforcement Learning.</em> Hugging Face, 2024.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

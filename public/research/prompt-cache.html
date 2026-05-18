@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Prompt caching &middot; semantic and KV-prefix caches &middot; kolm.ai</title>
+<meta name="description" content="Prompt caching at two levels: KV-prefix cache reuse (the read costs 10 percent of a write on Anthropic, OpenAI, and DeepSeek) and semantic caches that match equivalent prompts before they hit the model.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Prompt caching &middot; kolm.ai">
+<meta property="og:description" content="KV-prefix and semantic caches in the kolm capture and runtime path.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/prompt-cache">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Prompt caching &middot; kolm.ai">
+<meta name="twitter:description" content="KV-prefix and semantic caches.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/prompt-cache">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Prompt caching","description":"KV-prefix caching and semantic prompt caches, how they save cost during distillation and inference.","url":"https://kolm.ai/research/prompt-cache","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / prompt-cache</div>
+<h1>Prompt caching</h1>
+<p class="lede">Two unrelated ideas share the name "prompt cache". One reuses the model's KV state when consecutive requests share a prefix; the provider charges roughly ten percent of the normal input rate for cached tokens. The other matches semantically equivalent prompts in a vector index so the model never runs at all. Both matter to a capture pipeline that hits the same teacher many times.</p>
+
+<h2 id="what">What it is</h2>
+<p>KV-cache prefix sharing is a server-side optimization. When two requests start with the same tokens (a system prompt, a long document, a few-shot block), the attention key-value tensors for that prefix can be computed once and reused. vLLM's PagedAttention (Kwon et al. 2023) and SGLang's RadixAttention (Zheng et al. 2024) generalized the idea across requests at the engine level. Anthropic, OpenAI, and DeepSeek expose it as a per-message <code>cache_control</code> hint with a published discount (cached input is ~10 percent of full input). Semantic prompt caching is a client-side optimization: embed the prompt, look it up in a vector index of past prompts, and if the cosine distance to the nearest is below a threshold, return the cached response. GPTCache (Bang 2023) is the reference open-source implementation. Semantic caches trade exactness for hit rate; on production traces with repeated questions, hit rates of 20 to 60 percent are common, but every false positive returns the wrong answer.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>KV-prefix caching is wired into the distillation stage. The synthesis pipeline batches teacher calls by stable prompt prefix (system prompt + recipe-fixed few-shot block) and emits the cache-control hint, so the typical distillation run pays the ten-percent rate for the prefix on every call after the first. The receipt records <code>cache_hit_rate</code> and <code>cache_savings_usd</code> so the buyer can verify the bill. Semantic prompt caching is not implemented in kolm v0.2.6; it conflicts with the capture-loop's job of recording every request as a training example. Buyers who want semantic caching for runtime cost reduction can layer GPTCache or LiteLLM in front of the kolm runtime; the recipe is documented in <a href="/docs/optimizer">/docs/optimizer</a>. A first-party semantic cache that respects per-tenant isolation and emits cache-hit events to the capture log is planned for v0.3.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Kwon, W. et al. <em>Efficient Memory Management for Large Language Model Serving with PagedAttention.</em> SOSP 2023. arXiv:2309.06180.</p>
+<p>Zheng, L. et al. <em>SGLang: Efficient Execution of Structured Language Model Programs.</em> 2024. arXiv:2312.07104.</p>
+<p>Bang, F. <em>GPTCache: An Open-Source Semantic Cache for LLM Applications.</em> 2023.</p>
+<p>Pope, R. et al. <em>Efficiently Scaling Transformer Inference.</em> MLSys 2023. arXiv:2211.05102.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

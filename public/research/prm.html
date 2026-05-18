@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>PRM &middot; Process Reward Models &middot; kolm.ai</title>
+<meta name="description" content="Process Reward Models score each step of a multi-step solution, not just the final answer. Lightman et al. 2023 (Let's Verify Step by Step) showed PRMs beat outcome-only rewards on hard math problems.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="PRM &middot; Process Reward Models &middot; kolm.ai">
+<meta property="og:description" content="Per-step rewards for multi-step reasoning, following Lightman et al. 2023.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/prm">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PRM &middot; kolm.ai">
+<meta name="twitter:description" content="Per-step rewards for multi-step reasoning.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/prm">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"ScholarlyArticle","headline":"Process Reward Models (PRMs)","description":"Per-step rewards for multi-step reasoning, following Lightman et al. 2023 (Let's Verify Step by Step).","url":"https://kolm.ai/research/prm","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / prm</div>
+<h1>Process Reward Models (PRMs)</h1>
+<p class="lede">A process reward model scores each step of a chain-of-thought, not just the final answer. The signal is denser, which lets you select better solutions at inference time and train better policies with RL. The cost is the dense step-level supervision the PRM needs to learn from.</p>
+
+<h2 id="what">What it is</h2>
+<p>The standard reward model in RLHF emits a single scalar over the entire response. For tasks where the final answer follows from many intermediate steps (mathematics, multi-hop reasoning, code synthesis with tools) this aggregates information loosely; a wrong step compensated by a lucky guess at the end reads the same as a fully correct trajectory. Lightman et al. (2023) introduced the term <em>process reward model</em> in <em>Let's Verify Step by Step</em>: train a model to score the correctness of each step in a math solution, using the PRM800K dataset of step-level human labels on GSM8K and MATH solutions. They show step-level reward beats outcome-only reward on MATH by 11 points when used to re-rank candidate solutions at test time. Follow-up work (Wang et al. 2024, Math-Shepherd) replaces the expensive human labels with automatic step labels derived from Monte Carlo rollouts: a step is "good" if continuing from it eventually reaches the correct answer with high probability. The trade-off is noise; automatic labels are cheaper but noisier than human ones.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>PRMs are not implemented in kolm v0.2.6. The gate currently scores the final response only. PRM integration is on the v0.3 roadmap and is the natural pairing with GRPO (<a href="/research/grpo">/research/grpo</a>) for multi-step recipes. The planned implementation will start with the Math-Shepherd automatic-labeling pipeline because manual step labels do not scale to the typical kolm tenant. The PRM will be trained alongside the student, with the per-step scores feeding both the inference-time best-of-N selector and the RL stage's reward. The receipt will record the PRM checkpoint hash, the labelling method, and the per-step score distribution on the holdout.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Lightman, H. et al. <em>Let's Verify Step by Step.</em> ICLR 2024. arXiv:2305.20050.</p>
+<p>Wang, P. et al. <em>Math-Shepherd: Verify and Reinforce LLMs Step-by-step without Human Annotations.</em> ACL 2024. arXiv:2312.08935.</p>
+<p>Uesato, J. et al. <em>Solving math word problems with process- and outcome-based feedback.</em> 2022. arXiv:2211.14275.</p>
+<p>Cobbe, K. et al. <em>Training Verifiers to Solve Math Word Problems.</em> 2021. arXiv:2110.14168.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

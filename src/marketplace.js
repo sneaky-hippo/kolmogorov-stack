@@ -20,6 +20,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+import { productionReadySync } from './production-ready.js';
+
+// adm-zip is CommonJS; pull it through createRequire so hydrate() can stay
+// synchronous (W342 callers — getCatalogManifest, listArtifacts, getArtifact —
+// are all sync and feed the marketplace UI/CLI in a tight loop).
+const __require = createRequire(import.meta.url);
+let __AdmZip = null;
+function loadAdmZip() {
+  if (__AdmZip !== null) return __AdmZip;
+  try { __AdmZip = __require('adm-zip'); } catch { __AdmZip = false; }
+  return __AdmZip;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -237,13 +250,43 @@ function hydrate(seed) {
     }
   }
   const badges = Array.isArray(seed.badges) ? [...seed.badges] : [];
-  const verified = k_score != null && badges.includes('Verified');
-  // If we could not load a K-score, demote the Verified badge so the UI
-  // never advertises an unverified artifact.
-  let finalBadges = badges;
-  if (k_score == null) {
-    finalBadges = badges.filter((b) => b !== 'Verified');
+  // W339/W342 unification: `verified` is the unified productionReady() verdict,
+  // not a derivation of `k_score != null && badges.includes('Verified')`.
+  // Read the manifest synchronously via adm-zip (already a root dep) and feed
+  // it through productionReadySync(). If the .kolm has no manifest or fails to
+  // parse, treat as unverified — same outcome as a failed gate.
+  let verdict = { ok: false, gates: {}, reasons: ['manifest_unreadable'] };
+  const AdmZip = loadAdmZip();
+  if (!AdmZip) {
+    verdict = { ok: false, gates: {}, reasons: ['adm-zip_unavailable'] };
+  } else {
+    try {
+      const zip = new AdmZip(resolveAbsolute(seed.source_path));
+      const entry = zip.getEntry('manifest.json');
+      if (entry) {
+        const manifest = JSON.parse(entry.getData().toString('utf8'));
+        verdict = productionReadySync(manifest);
+      } else {
+        verdict = { ok: false, gates: {}, reasons: ['manifest_missing'] };
+      }
+    } catch (e) {
+      verdict = { ok: false, gates: {}, reasons: [`verdict_failed: ${e.message}`] };
+    }
   }
+  const verified = verdict.ok === true;
+  // W380d k_score fallback: when neither registry-pack nor bench-report.json
+  // surfaced a k_score, fall back to the gates.k_score.value computed by
+  // productionReadySync() above. This is the same number the verified pill
+  // uses, so the marketplace card stays internally consistent.
+  if (k_score == null && typeof verdict?.gates?.k_score?.value === 'number') {
+    k_score = verdict.gates.k_score.value;
+    k_score_source = 'production-ready-gate';
+  }
+  // Honest badges: paint Verified only when the unified verdict passes; strip
+  // it otherwise so the UI never advertises an unverified artifact.
+  const finalBadges = verified
+    ? (badges.includes('Verified') ? badges : [...badges, 'Verified'])
+    : badges.filter((b) => b !== 'Verified');
   return {
     slug: seed.slug,
     name: seed.name,
@@ -252,6 +295,8 @@ function hydrate(seed) {
     license: seed.license,
     badges: finalBadges,
     verified,
+    gates: verdict.gates || {},
+    gate_reasons: verdict.reasons || [],
     sha256: hash.sha256,
     bytes: hash.bytes,
     k_score,

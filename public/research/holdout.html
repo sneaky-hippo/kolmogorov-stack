@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Holdout set disjointness &middot; kolm.ai</title>
+<meta name="description" content="Why a held-out split is only useful if it stays disjoint from training data, and how kolm enforces disjointness via hash, n-gram, and embedding-distance checks at every compile.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Holdout set disjointness &middot; kolm.ai">
+<meta property="og:description" content="Hash, n-gram, and embedding-distance disjointness checks at every compile.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/holdout">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Holdout set disjointness &middot; kolm.ai">
+<meta name="twitter:description" content="Hash, n-gram, and embedding-distance disjointness checks.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/holdout">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Holdout set disjointness","description":"Why a held-out split is only useful if it stays disjoint from training data, and how kolm enforces disjointness.","url":"https://kolm.ai/research/holdout","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / holdout</div>
+<h1>Holdout set disjointness</h1>
+<p class="lede">A holdout is a fraction of labelled examples that the trainer never sees and the gate uses to grade. The grade is only meaningful if the holdout stays disjoint from the training corpus at every level the model can memorize: exact byte, near-duplicate, n-gram overlap, and semantic neighborhood. Kolm checks all four every time it grades.</p>
+
+<h2 id="what">What it is</h2>
+<p>The textbook definition of generalization error requires train and test draws to be independent. In practice every contemporary dataset suffers from some leakage: web crawls inherit duplicates, synthetic-data pipelines memorize their seeds, judge models echo their training set. The literature on benchmark contamination (Sainz et al., 2023; Zhou et al., 2023) finds measurable inflation on most public benchmarks once contamination is corrected for. The standard mitigation stack is byte-equality (the cheapest), MinHash-LSH near-duplicate detection (Broder, 1997), n-gram containment (the OpenAI evals heuristic uses 13-grams), and embedding cosine-distance thresholds in a frontier encoder space. Each check catches a different leakage mode; running only the cheapest understates contamination.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>The gate stage in v0.2.6 runs three disjointness checks before emitting a K-score: SHA-256 byte-equality (rejects identical rows), MinHash with Jaccard threshold 0.85 (rejects near-duplicates), and 13-gram containment with a 50% threshold (matches the OpenAI evals contamination heuristic). Embedding-space disjointness is on the v0.3 roadmap; the current implementation uses the cheaper KL surrogate described in <a href="/research/eval-drift">/research/eval-drift</a>. The holdout itself is regenerated at every compile from the latest seed prompts, never recycled across builds, and its hash is recorded in the receipt so an auditor can re-verify the disjointness check offline. Rows that fail any check are quarantined and reported, not silently dropped.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Sainz, O. et al. <em>NLP Evaluation in Trouble: On the Need to Measure LLM Data Contamination for each Benchmark.</em> EMNLP Findings 2023. arXiv:2310.18018.</p>
+<p>Zhou, K. et al. <em>Don't Make Your LLM an Evaluation Benchmark Cheater.</em> 2023. arXiv:2311.01964.</p>
+<p>Broder, A. Z. <em>On the Resemblance and Containment of Documents.</em> Compression and Complexity of Sequences, 1997.</p>
+<p>Lee, K. et al. <em>Deduplicating Training Data Makes Language Models Better.</em> ACL 2022. arXiv:2107.06499.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

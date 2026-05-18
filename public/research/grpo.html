@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>GRPO &middot; Group Relative Policy Optimization &middot; kolm.ai</title>
+<meta name="description" content="GRPO is the on-policy RL recipe that powered DeepSeek-Math and the DeepSeek-R1 reasoning training. Sample a group of completions per prompt, normalize advantages within the group, drop the value network.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="GRPO &middot; Group Relative Policy Optimization &middot; kolm.ai">
+<meta property="og:description" content="On-policy RL with per-group advantage normalization and no value network.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/grpo">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GRPO &middot; Group Relative Policy Optimization &middot; kolm.ai">
+<meta name="twitter:description" content="The DeepSeek-Math/R1 RL recipe.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/grpo">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"ScholarlyArticle","headline":"Group Relative Policy Optimization (GRPO)","description":"On-policy reinforcement learning with per-group advantage normalization, no value network, and KL regularization to a reference policy.","url":"https://kolm.ai/research/grpo","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / grpo</div>
+<h1>Group Relative Policy Optimization (GRPO)</h1>
+<p class="lede">GRPO is an on-policy RL recipe that replaces PPO's learned value baseline with a within-group sample baseline. For each prompt, sample G completions, score them with a reward (verifiable or learned), normalize advantages relative to the group mean and standard deviation, then take a clipped policy-gradient step with KL regularization to a frozen reference. No value network, no critic, fewer hyperparameters than PPO.</p>
+
+<h2 id="what">What it is</h2>
+<p>GRPO was introduced in Shao et al. (DeepSeek-Math, 2024) and applied at scale in DeepSeek-R1 (DeepSeek-AI, 2025) to train mathematical reasoning. The objective is similar to PPO's clipped surrogate, but the advantage <code>A_i</code> for completion <code>i</code> in a group of <code>G</code> completions is computed as <code>(r_i - mean(r_1..r_G)) / std(r_1..r_G)</code>, which removes the need for a separately trained value function. A KL penalty against a frozen reference policy controls drift; in the standard DeepSeek recipe this is the SFT-warmed checkpoint. The reward can be verifiable (math correctness, code unit tests, JSON-schema conformance) or learned (a process reward model or an LLM judge). Group sizes of 8 to 64 are typical. The recipe is cheaper than PPO at equivalent reasoning gains because the value network usually costs as much memory as the policy.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>GRPO is not implemented in kolm v0.2.6. The shipped trainer covers SFT and response-level distillation only. GRPO is on the v0.3 roadmap as the optional post-distillation stage for buyers whose K-score has a verifiable component (regex match, JSON-schema conformance, unit-test pass). The integration will sample <code>G=16</code> completions per prompt with the post-SFT student, score with the same K-score scorer the gate uses, and step with a small KL coefficient (typical: 0.04) to the SFT checkpoint. The receipt block will name the reward function, the group size, the clip range, the KL coefficient, and the post-RL holdout K-score. The /research/grpo-reasoning page covers a deeper dive into the verifiable-reward case; this stub covers the algorithm itself.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Shao, Z. et al. <em>DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.</em> 2024. arXiv:2402.03300.</p>
+<p>DeepSeek-AI. <em>DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning.</em> 2025. arXiv:2501.12948.</p>
+<p>Schulman, J. et al. <em>Proximal Policy Optimization Algorithms.</em> 2017. arXiv:1707.06347.</p>
+<p>Ouyang, L. et al. <em>Training Language Models to Follow Instructions with Human Feedback.</em> NeurIPS 2022. arXiv:2203.02155.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

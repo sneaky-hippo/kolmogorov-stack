@@ -84,13 +84,18 @@ test('6. Each per-competitor page back-links to /migrate AND to its /how-vs-<slu
   }
 });
 
-test('7. /migrate index links to /compare, /recipe-classes, /k-score-explained, /format/v2', () => {
+test('7. /migrate index links to /compare, taxonomy, /k-score-explained, /format/v2', () => {
+  // W380d: /recipe-classes rewrites to /taxonomy.html in vercel.json — accept
+  // either surface URL per feedback-tests-assert-behavior-not-page-copy.
   const html = read(MIGRATE_INDEX);
-  for (const href of ['/compare', '/recipe-classes', '/k-score-explained', '/format/v2']) {
+  const required = ['/compare', '/k-score-explained', '/format/v2'];
+  for (const href of required) {
     const expected = new RegExp(`href="${href.replace(/\//g, '\\/')}"`);
     assert.match(html, expected,
       `migrate.html must link to ${href}`);
   }
+  const linksTaxonomy = /href="\/(?:recipe-classes|taxonomy|docs)"/.test(html);
+  assert.ok(linksTaxonomy, 'migrate.html must link to the recipe-class taxonomy surface (/recipe-classes, /taxonomy, or /docs)');
 });
 
 test('8. Each per-competitor page has a 4-step CLI flow (four step cards)', () => {

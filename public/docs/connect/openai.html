@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Connect OpenAI &middot; kolm.ai</title>
+<meta name="description" content="Wire the OpenAI SDK, LangChain, and raw fetch through the kolm.ai local proxy. One env var. Streaming preserved. Captures land in your local lake.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Connect OpenAI &middot; kolm.ai">
+<meta property="og:description" content="Wire the OpenAI SDK, LangChain, and raw fetch through the kolm.ai local proxy.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/docs/connect/openai">
+<meta property="og:image" content="https://kolm.ai/og/docs-connect-openai.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Connect OpenAI &middot; kolm.ai">
+<meta name="twitter:description" content="Wire the OpenAI SDK, LangChain, and raw fetch through the kolm.ai local proxy.">
+<meta name="twitter:image" content="https://kolm.ai/og/docs-connect-openai.svg">
+<link rel="canonical" href="https://kolm.ai/docs/connect/openai">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Connect OpenAI","description":"Wire OpenAI SDK, LangChain, and raw fetch through the kolm.ai local proxy.","url":"https://kolm.ai/docs/connect/openai","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+h3{font-size:16px;font-weight:500;letter-spacing:-0.01em;margin:28px 0 8px;max-width:780px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+pre{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:14px 0 18px}
+pre code{background:none;border:none;padding:0;color:inherit;font:inherit}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+ul,ol{color:var(--ink-mute);font-size:15px;line-height:1.7;max-width:780px}
+li{margin:4px 0}
+table{border-collapse:collapse;width:100%;max-width:840px;margin:14px 0;font-size:13.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink);font-weight:500}
+td code{font-size:12px}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+@media(max-width:820px){.related{grid-template-columns:1fr}}
+.related a{padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:4px}
+.related a:hover{border-color:var(--accent-soft)}
+.related b{font-size:14px;color:var(--ink);font-weight:500}
+.related span{font-size:12.5px;color:var(--ink-mute);line-height:1.5}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/docs">docs</a> / connect / openai</div>
+<h1>Connect OpenAI</h1>
+<p class="lede">The kolm.ai local proxy speaks the OpenAI wire format natively. Point your existing OpenAI SDK, LangChain, or raw fetch at <code>http://127.0.0.1:8787/v1</code> and every <code>chat.completions</code>, <code>responses</code>, and <code>embeddings</code> call gets mirrored into the local lake before forwarding upstream. No SDK rewrite, no proxy changes, no streaming break.</p>
+
+<h2 id="env">One env var</h2>
+<p>The OpenAI SDK reads <code>OPENAI_BASE_URL</code> for the API endpoint and <code>OPENAI_API_KEY</code> for the upstream key. The proxy forwards the key unchanged.</p>
+<pre><code>export OPENAI_BASE_URL=http://127.0.0.1:8787/v1
+export OPENAI_API_KEY=sk-your-upstream-key
+kolm connect start</code></pre>
+
+<h2 id="sdk-py">Python SDK</h2>
+<pre><code>from openai import OpenAI
+client = OpenAI(base_url="http://127.0.0.1:8787/v1")
+
+r = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Summarize this PR diff..."}],
+)
+print(r.choices[0].message.content)</code></pre>
+
+<h2 id="sdk-ts">TypeScript SDK</h2>
+<pre><code>import OpenAI from "openai";
+const client = new OpenAI({ baseURL: "http://127.0.0.1:8787/v1" });
+
+const r = await client.chat.completions.create({
+  model: "gpt-4o-mini",
+  messages: [{ role: "user", content: "Summarize this PR diff..." }],
+});
+console.log(r.choices[0].message.content);</code></pre>
+
+<h2 id="streaming">Streaming</h2>
+<p>Streaming is preserved end-to-end. The proxy reads the upstream SSE stream, forwards each <code>data:</code> frame to the client unchanged, and writes the assembled completion to the lake on stream close.</p>
+<pre><code>const stream = await client.chat.completions.create({
+  model: "gpt-4o-mini",
+  stream: true,
+  messages: [{ role: "user", content: "Write a haiku about disk I/O." }],
+});
+for await (const chunk of stream) process.stdout.write(chunk.choices[0]?.delta?.content || "");</code></pre>
+
+<h2 id="langchain">LangChain</h2>
+<p>LangChain wraps the OpenAI SDK so setting <code>OPENAI_BASE_URL</code> is enough for <code>ChatOpenAI</code>, <code>OpenAIEmbeddings</code>, and the rest. No code changes.</p>
+<pre><code>from langchain_openai import ChatOpenAI
+llm = ChatOpenAI(model="gpt-4o-mini", openai_api_base="http://127.0.0.1:8787/v1")
+print(llm.invoke("List three database indexing strategies.").content)</code></pre>
+
+<h2 id="fetch">Raw fetch</h2>
+<p>If you do not use a vendor SDK, the proxy speaks raw HTTP. Identical request body, identical response body.</p>
+<pre><code>curl http://127.0.0.1:8787/v1/chat/completions \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hello"}]}'</code></pre>
+
+<h2 id="namespaces">Namespaces</h2>
+<p>Tag each call with a namespace by adding the <code>x-kolm-namespace</code> header. The lake groups by namespace, the optimizer rolls up costs by namespace, the distiller compiles namespace-scoped artifacts.</p>
+<pre><code>curl http://127.0.0.1:8787/v1/chat/completions \
+  -H "x-kolm-namespace: summarizer-v2" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -d '...'</code></pre>
+
+<h2 id="verify">Verify it works</h2>
+<p>One round trip and one <code>kolm tail captures</code>. You should see the call land within a second.</p>
+<pre><code>kolm tail captures --namespace summarizer-v2 --limit 5</code></pre>
+
+<h2 id="next">Next steps</h2>
+<p>Now that captures are landing, read the <a href="/docs/lake">lake schema</a> to know what fields you can query, the <a href="/docs/privacy">privacy</a> page to wire detectors, and the <a href="/docs/optimizer">optimizer</a> to find waste. Start from <a href="/docs/quickstart">/docs/quickstart</a> if you skipped the install step.</p>
+
+<div class="related">
+  <a href="/docs/connect/anthropic"><b>Anthropic &rarr;</b><span>Same proxy, /v1/messages surface, claude-* models.</span></a>
+  <a href="/docs/connect/openrouter"><b>OpenRouter &rarr;</b><span>One key, 100+ upstream models, OpenAI-compatible.</span></a>
+  <a href="/docs/connect/gemini"><b>Gemini &rarr;</b><span>Google AI Studio, OpenAI-compat endpoint.</span></a>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  kolm.ai &middot; the AI compiler &middot; <a href="/articles/kolm-ai-vs-kolm-therapeutics">not the band, not the therapeutics company</a>
+</div></footer>
+
+</body>
+</html>

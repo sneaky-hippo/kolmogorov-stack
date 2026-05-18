@@ -3,513 +3,219 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
 <script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
-<title>kolm HTTP API reference | kolm docs</title>
-<meta name="description" content="Engineer-to-engineer reference for the kolm /v1 API. Same contract self-hosted or on kolm.ai. Auth, compile, run, verify, registry, usage, health. Curl examples + sample response JSON.">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>API · kolm.ai</title>
+<meta name="description" content="The kolm.ai REST surface. /v1/chat/completions, /v1/messages, /v1/capture, /v1/lake, /v1/optimize, /v1/datasets, /v1/sim, /v1/bakeoff, /v1/training, /v1/runtime, /v1/devices, /v1/sync.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
-<meta name="robots" content="index,follow">
-<meta property="og:title" content="kolm HTTP API reference">
-<meta property="og:description" content="Same /v1 contract self-hosted or on kolm.ai. Auth, compile, run, verify, registry, usage, health. Curl examples + sample response JSON.">
-<meta property="og:type" content="website">
+<meta property="og:title" content="API &middot; kolm.ai">
+<meta property="og:description" content="The kolm.ai REST surface. /v1/chat/completions, /v1/messages, /v1/capture, /v1/lake, /v1/optimize, /v1/datasets, /v1/sim, /v1/bakeoff, /v1/training, /v1/runtime, /v1/devices, /v1/sync.">
+<meta property="og:type" content="article">
 <meta property="og:url" content="https://kolm.ai/docs/api">
-<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta property="og:image" content="https://kolm.ai/og/docs-api.svg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="kolm HTTP API reference">
-<meta name="twitter:description" content="Same /v1 contract self-hosted or on kolm.ai.">
-<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:title" content="API &middot; kolm.ai">
+<meta name="twitter:description" content="The kolm.ai REST surface. /v1/chat/completions, /v1/messages, /v1/capture, /v1/lake, /v1/optimize, /v1/datasets, /v1/sim, /v1/bakeoff, /v1/training, /v1/runtime, /v1/devices, /v1/sync.">
+<meta name="twitter:image" content="https://kolm.ai/og/docs-api.svg">
 <link rel="canonical" href="https://kolm.ai/docs/api">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="/styles.css">
-<link rel="stylesheet" href="/brand-refresh.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"API","description":"The kolm.ai REST surface. /v1/chat/completions, /v1/messages, /v1/capture, /v1/lake, /v1/optimize, /v1/datasets, /v1/sim, /v1/bakeoff, /v1/training, /v1/runtime, /v1/devices, /v1/sync.","url":"https://kolm.ai/docs/api","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
 <style>
-  .api-wrap{max-width:1080px;margin:0 auto;padding:0 32px}
-  .api-hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
-  .api-hero .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint,#737c73);margin:0 0 16px}
-  .api-hero .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
-  .api-hero h1{font-size:clamp(40px,5.4vw,72px);line-height:1.04;margin:0 0 16px;letter-spacing:-0.03em;font-weight:500;max-width:18ch;color:var(--fg,#faf2e1)}
-  .api-hero .lede{font-size:17px;line-height:1.6;color:var(--ink-mute,#b5bdb1);max-width:64ch;margin:0 0 22px}
-  .api-hero .meta{display:flex;gap:18px;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint,#737c73);letter-spacing:0.04em;flex-wrap:wrap}
-  .api-hero .meta span b{color:var(--accent,#10b981);font-weight:500}
-
-  .api-section{padding:48px 0;border-bottom:1px solid var(--line)}
-  .api-section h2{margin:0 0 12px;font-size:24px;font-weight:500;letter-spacing:-0.012em;color:var(--fg,#faf2e1)}
-  .api-section .seclede{color:var(--ink-mute,#b5bdb1);font-size:14.5px;line-height:1.6;max-width:70ch;margin:0 0 24px}
-
-  .auth-block{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 0 18px}
-  @media (max-width:720px){.auth-block{grid-template-columns:1fr}}
-  .auth-card{padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2,#11151b)}
-  .auth-card .lab{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--accent,#10b981);margin:0 0 6px}
-  .auth-card h3{margin:0 0 6px;font-size:15px;font-weight:500;color:var(--fg,#faf2e1)}
-  .auth-card p{margin:0;color:var(--ink-mute,#b5bdb1);font-size:13px;line-height:1.55}
-
-  .ep{border:1px solid var(--line);border-radius:12px;background:var(--bg-2,#11151b);margin:0 0 18px;overflow:hidden}
-  .ep .ep-head{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line);background:rgba(0,0,0,0.18);flex-wrap:wrap}
-  .ep .method{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.04em}
-  .ep .method.get{background:rgba(126,189,240,0.16);color:#7ebdf0}
-  .ep .method.post{background:rgba(126,240,210,0.16);color:#7ef0d2}
-  .ep .path{font-family:var(--mono);font-size:13.5px;color:var(--fg,#faf2e1)}
-  .ep .summary{margin-left:auto;font-size:12.5px;color:var(--ink-mute,#b5bdb1)}
-  .ep .ep-body{padding:18px}
-  .ep .ep-body p{margin:0 0 12px;font-size:13.5px;color:var(--ink-mute,#b5bdb1);line-height:1.55}
-  .ep h5{margin:14px 0 6px;font-size:10.5px;text-transform:uppercase;color:var(--ink-faint,#737c73);letter-spacing:0.05em;font-weight:500;font-family:var(--mono)}
-  .ep pre{margin:0;padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:rgba(0,0,0,0.32);font-family:var(--mono);font-size:12px;color:var(--fg,#faf2e1);line-height:1.65;overflow-x:auto;white-space:pre}
-  .ep pre.req{border-color:rgba(236,231,220,0.18)}
-  .ep pre.res{border-color:rgba(126,240,210,0.20)}
-
-  .api-cta{display:flex;gap:14px;margin:28px 0 0;flex-wrap:wrap}
-  .api-cta a{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--fg,#faf2e1)}
-  .api-cta a.primary{background:var(--accent,#10b981);color:#0b0d10;border-color:var(--accent,#10b981)}
-  .api-cta a:hover{transform:translateY(-1px)}
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+h3{font-size:16px;font-weight:500;letter-spacing:-0.01em;margin:28px 0 8px;max-width:780px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+pre{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:14px 0 18px}
+pre code{background:none;border:none;padding:0;color:inherit;font:inherit}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+ul,ol{color:var(--ink-mute);font-size:15px;line-height:1.7;max-width:780px}
+li{margin:4px 0}
+table{border-collapse:collapse;width:100%;max-width:840px;margin:14px 0;font-size:13.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink);font-weight:500}
+td code{font-size:12px}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+@media(max-width:820px){.related{grid-template-columns:1fr}}
+.related a{padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:4px}
+.related a:hover{border-color:var(--accent-soft)}
+.related b{font-size:14px;color:var(--ink);font-weight:500}
+.related span{font-size:12.5px;color:var(--ink-mute);line-height:1.5}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
 </style>
 </head>
 <body>
-<header class="site-header">
-  <div class="wrap">
-    <a class="logo" href="/">k o l m</a>
-    <nav class="primary">
-      <a href="/quickstart">quickstart</a>
-      <a href="/docs">docs</a>
-      <a href="/api">api</a>
-      <a href="/sdks">sdks</a>
-      <a href="/pricing">pricing</a>
-    </nav>
-  </div>
-</header>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
 
-<main>
-<section class="api-hero">
-  <div class="api-wrap">
-    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/docs">docs</a> &nbsp;/&nbsp; api</p>
-    <h1>kolm HTTP API.</h1>
-    <p class="lede">Same /v1 contract whether you point at api.kolm.ai or a kolm server you ran with <code>kolm serve --port 8080</code>. JSON in, JSON out. Bearer or API-key auth. Every successful run produces an HMAC-signed receipt.</p>
-    <div class="meta">
-      <span>Version <b>1.0.0</b></span>
-      <span>Source <b><a href="/openapi.json" style="color:inherit;border-bottom:1px dashed var(--line)">openapi.json</a></b></span>
-      <span>License <b>Apache-2.0</b></span>
-      <span>Reviewed <b>2026-05-15</b></span>
-    </div>
-  </div>
-</section>
+<main id="main" tabindex="-1"><div class="wrap">
 
-<section class="api-section" id="auth">
-  <div class="api-wrap">
-    <h2>Authentication.</h2>
-    <p class="seclede">Two interchangeable schemes. Bearer tokens are short-lived (~24h) and issued by <code>/v1/auth/login</code>. API keys are long-lived and read from <code>/v1/account</code>. Use the bearer for interactive sessions and the API key for CI.</p>
-    <div class="auth-block">
-      <div class="auth-card">
-        <p class="lab">Scheme 01 . bearer</p>
-        <h3>Authorization: Bearer &lt;token&gt;</h3>
-        <p>HTTP Bearer (RFC 6750). JWT. ~24h lifetime. Issued by /v1/auth/login or /v1/auth/signup.</p>
-      </div>
-      <div class="auth-card">
-        <p class="lab">Scheme 02 . api key</p>
-        <h3>X-Kolm-Key: &lt;key&gt;</h3>
-        <p>Long-lived. Rotates on demand from /account. Use this from CI runners and from server-to-server calls.</p>
-      </div>
-    </div>
-    <pre style="margin:0;padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:rgba(0,0,0,0.32);font-family:var(--mono);font-size:12px;color:var(--fg,#faf2e1);line-height:1.65;overflow-x:auto"># curl with bearer
-curl https://api.kolm.ai/v1/account \
-  -H "Authorization: Bearer $KOLM_TOKEN"
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/docs">docs</a> / api</div>
+<h1>API</h1>
+<p class="lede">The kolm.ai REST surface is the same whether you are talking to the local proxy on <code>127.0.0.1:8787</code> or the hosted control plane on <code>kolm.ai</code>. Every endpoint is JSON in, JSON out, bearer-auth on protected routes, and rate-limited per tenant. Every endpoint has a stable response envelope.</p>
 
-# curl with API key
-curl https://api.kolm.ai/v1/account \
-  -H "X-Kolm-Key: $KOLM_API_KEY"</pre>
-  </div>
-</section>
+<h2 id="base">Base URL</h2>
+<p>Local proxy: <code>http://127.0.0.1:8787</code>. Hosted: <code>https://kolm.ai</code>. Self-hosted enterprise: your domain.</p>
+<pre><code>export KOLM_BASE=http://127.0.0.1:8787
+curl -s $KOLM_BASE/v1/health | jq .</code></pre>
 
-<section class="api-section" id="auth-endpoints">
-  <div class="api-wrap">
-    <h2>auth.</h2>
-    <p class="seclede">Sign up, sign in, get a bearer token. No auth required on these two endpoints.</p>
+<h2 id="auth">Auth</h2>
+<p>All <code>/v1/*</code> routes except <code>/v1/health</code> require a bearer key. Local proxy uses the fingerprint of <code>~/.kolm/keys/signing.pub</code>; hosted uses the issued tenant key.</p>
+<pre><code>curl -s $KOLM_BASE/v1/lake/stats \
+  -H "Authorization: Bearer $(kolm key fingerprint --raw)"</code></pre>
 
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method post">POST</span><span class="path">/v1/auth/login</span><span class="summary">Exchange email + password for a bearer.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl -X POST https://api.kolm.ai/v1/auth/login \
+<h2 id="chat">/v1/chat/completions</h2>
+<p>OpenAI-compatible chat. Captures every call to the lake before forwarding.</p>
+<pre><code>curl $KOLM_BASE/v1/chat/completions \
+  -H "Authorization: Bearer $KEY" \
   -H "Content-Type: application/json" \
-  -d '{"email":"you@org.com","password":"********"}'</pre>
-        <h5>example response</h5>
-<pre class="res">{
-  "token": "eyJhbGc...&lt;jwt&gt;",
-  "user_id": "usr_01HW..."
-}</pre>
-      </div>
-    </div>
+  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"hi"}]}'</code></pre>
 
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method post">POST</span><span class="path">/v1/auth/signup</span><span class="summary">Create an account, get a bearer.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl -X POST https://api.kolm.ai/v1/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"email":"you@org.com","password":"********","org_name":"Acme Health"}'</pre>
-        <h5>example response</h5>
-<pre class="res">{
-  "token": "eyJhbGc...&lt;jwt&gt;",
-  "user_id": "usr_01HW..."
-}</pre>
-      </div>
-    </div>
-  </div>
-</section>
+<h2 id="messages">/v1/messages</h2>
+<p>Anthropic-compatible messages. Captures every call.</p>
+<pre><code>curl $KOLM_BASE/v1/messages \
+  -H "x-api-key: $ANTHROPIC_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -d '{"model":"claude-haiku-4-5","max_tokens":256,"messages":[{"role":"user","content":"hi"}]}'</code></pre>
 
-<section class="api-section" id="account-endpoints">
-  <div class="api-wrap">
-    <h2>account.</h2>
-    <p class="seclede">Read your plan, quota, and API key. Most users hit this once on first login and cache the key.</p>
+<h2 id="capture">/v1/capture/*</h2>
+<table>
+<thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>GET</td><td><code>/v1/capture/stream</code></td><td>SSE live tail of captures, filterable by namespace</td></tr>
+<tr><td>GET</td><td><code>/v1/capture/health</code></td><td>Durability probe; returns <code>x-kolm-capture-durable</code></td></tr>
+<tr><td>POST</td><td><code>/v1/capture/promote</code></td><td>Promote in-memory captures to durable storage</td></tr>
+</tbody>
+</table>
+<pre><code>curl -N $KOLM_BASE/v1/capture/stream?namespace=summarizer \
+  -H "Authorization: Bearer $KEY"</code></pre>
 
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method get">GET</span><span class="path">/v1/account</span><span class="summary">Plan, quota, API key.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl https://api.kolm.ai/v1/account \
-  -H "Authorization: Bearer $KOLM_TOKEN"</pre>
-        <h5>example response</h5>
-<pre class="res">{
-  "user_id": "usr_01HW...",
-  "email": "you@org.com",
-  "plan": "pro",
-  "compiles_count": 7,
-  "compiles_remaining": 43,
-  "api_key": "kolm_live_01HW..."
-}</pre>
-      </div>
-    </div>
-  </div>
-</section>
+<h2 id="lake">/v1/lake/*</h2>
+<table>
+<thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>GET</td><td><code>/v1/lake/stats</code></td><td>Cost, latency, error rollups</td></tr>
+<tr><td>GET</td><td><code>/v1/lake/events</code></td><td>List events with filters</td></tr>
+<tr><td>GET</td><td><code>/v1/lake/events/:id</code></td><td>Single event</td></tr>
+</tbody>
+</table>
+<pre><code>curl "$KOLM_BASE/v1/lake/stats?window=24h&by=namespace" -H "Authorization: Bearer $KEY"</code></pre>
 
-<section class="api-section" id="compile-endpoints">
-  <div class="api-wrap">
-    <h2>compile.</h2>
-    <p class="seclede">Submit a recipe, poll for a signed .kolm. The compile job is async. Poll <code>GET /v1/compile/{id}</code> until <code>status</code> is <code>done</code> or <code>failed</code>.</p>
+<h2 id="optimize">/v1/optimize/*</h2>
+<pre><code>curl "$KOLM_BASE/v1/optimize?window=7d&min_confidence=0.8" -H "Authorization: Bearer $KEY"</code></pre>
 
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method post">POST</span><span class="path">/v1/compile</span><span class="summary">Submit a compile job.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl -X POST https://api.kolm.ai/v1/compile \
-  -H "Authorization: Bearer $KOLM_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "recipe": {
-      "task": "redact PHI from clinical notes",
-      "objective": "f1",
-      "adapter": "lora",
-      "evaluator": "hipaa-redact-v1"
-    },
-    "examples": [],
-    "base_model": "qwen2.5-7b-instruct",
-    "k_min": 0.90,
-    "compliance_pack": "hipaa-redact-v1"
-  }'</pre>
-        <h5>example response (202)</h5>
-<pre class="res">{
-  "compile_id": "cmp_01HW...",
-  "status": "pending",
-  "eta_seconds": 540
-}</pre>
-      </div>
-    </div>
+<h2 id="datasets">/v1/datasets/*</h2>
+<table>
+<thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>POST</td><td><code>/v1/datasets</code></td><td>Build a new dataset from a selector</td></tr>
+<tr><td>GET</td><td><code>/v1/datasets</code></td><td>List datasets</td></tr>
+<tr><td>GET</td><td><code>/v1/datasets/:id</code></td><td>Dataset manifest</td></tr>
+<tr><td>POST</td><td><code>/v1/datasets/:id/freeze</code></td><td>Freeze the dataset for reproducibility</td></tr>
+</tbody>
+</table>
+<pre><code>curl -X POST $KOLM_BASE/v1/datasets \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d '{"name":"summarizer-v1","namespace":"summarizer","window":"30d","split":[0.8,0.1,0.1]}'</code></pre>
 
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method get">GET</span><span class="path">/v1/compile/{id}</span><span class="summary">Poll job status.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl https://api.kolm.ai/v1/compile/cmp_01HW... \
-  -H "Authorization: Bearer $KOLM_TOKEN"</pre>
-        <h5>example response (done)</h5>
-<pre class="res">{
-  "compile_id": "cmp_01HW...",
-  "status": "done",
-  "logs": [
-    "[1/6] synthesizing pairs ... 1,840",
-    "[5/6] K-score gate ... K=0.982 > 0.92",
-    "[6/6] sign + package ... 9.4 KB"
-  ],
-  "k_score": 0.982,
-  "artifact_url": "https://api.kolm.ai/dl/cmp_01HW.../phi-redactor.kolm",
-  "cid": "cidv1:sha256:1bcf2323...",
-  "error": null
-}</pre>
-      </div>
-    </div>
-  </div>
-</section>
+<h2 id="labels">/v1/labels/*</h2>
+<pre><code>curl $KOLM_BASE/v1/labels?dataset=ds_018e -H "Authorization: Bearer $KEY"
+curl -X POST $KOLM_BASE/v1/labels -H "Authorization: Bearer $KEY" \
+  -d '{"row_id":"r_18a","label":"urgent"}'</code></pre>
 
-<section class="api-section" id="run-endpoints">
-  <div class="api-wrap">
-    <h2>run.</h2>
-    <p class="seclede">Run a compiled artifact against an input. Receipt is HMAC-signed over <code>(cid, input_hash, output_hash, ts)</code>. Replay months later with the same input + receipt to prove the output.</p>
+<h2 id="synth">/v1/synth/*</h2>
+<p>Generate synthetic seed examples for cold-start tasks.</p>
+<pre><code>curl -X POST $KOLM_BASE/v1/synth \
+  -H "Authorization: Bearer $KEY" \
+  -d '{"kind":"classification","classes":["urgent","normal","low"],"n":120}'</code></pre>
 
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method post">POST</span><span class="path">/v1/run</span><span class="summary">Run a .kolm; get output + receipt.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl -X POST https://api.kolm.ai/v1/run \
-  -H "Authorization: Bearer $KOLM_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "artifact_cid": "cidv1:sha256:1bcf2323...",
-    "input": "Mrs. Jane Doe (DOB 1962-03-04) presented with chest pain."
-  }'</pre>
-        <h5>example response</h5>
-<pre class="res">{
-  "output": {
-    "redacted": "Mrs. [NAME] (DOB [DATE]) presented with chest pain.",
-    "spans": [
-      {"type": "NAME", "start": 4, "end": 12},
-      {"type": "DATE", "start": 19, "end": 29}
-    ]
-  },
-  "receipt": {
-    "cid": "cidv1:sha256:1bcf2323...",
-    "hmac": "hmac-sha256:9af28e...",
-    "ts": "2026-05-15T12:34:56Z",
-    "k_score": 0.982
+<h2 id="sim">/v1/sim/*</h2>
+<p>Simulate a candidate policy against captured traffic, no live mutation.</p>
+<pre><code>curl -X POST $KOLM_BASE/v1/sim \
+  -H "Authorization: Bearer $KEY" \
+  -d '{"policy":"local_first","window":"7d","artifact":"summarizer-v1"}'</code></pre>
+
+<h2 id="bakeoff">/v1/bakeoff/*</h2>
+<pre><code>curl -X POST $KOLM_BASE/v1/bakeoff \
+  -H "Authorization: Bearer $KEY" \
+  -d '{"dataset":"ds_018e","contestants":["cache","rule","prompt_only","gemma-3n-e2b","qwen-0.5b","phi-mini","claude-haiku-4-5","gpt-4o-mini"]}'</code></pre>
+
+<h2 id="training">/v1/training/plan</h2>
+<pre><code>curl -X POST $KOLM_BASE/v1/training/plan \
+  -H "Authorization: Bearer $KEY" -d '{"dataset":"ds_018e","tier":"3090"}'</code></pre>
+
+<h2 id="runtime">/v1/runtime/*</h2>
+<table>
+<thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>POST</td><td><code>/v1/runtime/register</code></td><td>Register an artifact for a namespace</td></tr>
+<tr><td>POST</td><td><code>/v1/runtime/policy</code></td><td>Set the policy (per-namespace optional)</td></tr>
+<tr><td>GET</td><td><code>/v1/runtime/stats</code></td><td>Replacement stats by stage</td></tr>
+</tbody>
+</table>
+<pre><code>curl -X POST $KOLM_BASE/v1/runtime/policy -H "Authorization: Bearer $KEY" \
+  -d '{"policy":"local_first","namespace":"summarizer"}'</code></pre>
+
+<h2 id="devices">/v1/devices/*</h2>
+<pre><code>curl $KOLM_BASE/v1/devices -H "Authorization: Bearer $KEY"
+curl -X POST $KOLM_BASE/v1/devices/install -H "Authorization: Bearer $KEY" \
+  -d '{"artifact":"summarizer-v1","transport":"scp","target":"user@host:/srv/kolm"}'</code></pre>
+
+<h2 id="sync">/v1/sync/*</h2>
+<pre><code>curl -X POST $KOLM_BASE/v1/sync/state -H "Authorization: Bearer $KEY" \
+  -d '{"state":"redacted_only"}'
+curl $KOLM_BASE/v1/sync/audit?window=7d -H "Authorization: Bearer $KEY"</code></pre>
+
+<h2 id="team">/v1/team/*</h2>
+<pre><code>curl -X POST $KOLM_BASE/v1/team/invite -H "Authorization: Bearer $KEY" \
+  -d '{"email":"alice@example.com","role":"contributor"}'
+curl $KOLM_BASE/v1/team/approvals -H "Authorization: Bearer $KEY"</code></pre>
+
+<h2 id="errors">Error envelope</h2>
+<p>Every 4xx and 5xx response carries the same shape.</p>
+<pre><code>{
+  "error": {
+    "code": "privacy_blocked",
+    "message": "ssn class set to block in policy.json",
+    "request_id": "req_018k",
+    "details": { "class": "ssn", "namespace": "billing" }
   }
-}</pre>
-      </div>
-    </div>
-  </div>
-</section>
+}</code></pre>
 
-<section class="api-section" id="verify-endpoints">
-  <div class="api-wrap">
-    <h2>verify.</h2>
-    <p class="seclede">Re-verify an artifact by CID against the manifest and the publisher's signature. The CLI verb <code> kolm inspect</code> runs the same check offline; this endpoint is for one-off web checks or third-party auditors.</p>
+<h2 id="next">Next steps</h2>
+<p>Read <a href="/docs/lake">the lake schema</a> for the field reference behind <code>/v1/lake/*</code> and <a href="/docs/runtime">runtime</a> for the policy model behind <code>/v1/runtime/*</code>. Start from <a href="/docs/quickstart">/docs/quickstart</a> if you have not installed the CLI yet.</p>
 
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method get">GET</span><span class="path">/v1/verify/{cid}</span><span class="summary">Verify an artifact CID.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl https://api.kolm.ai/v1/verify/cidv1:sha256:1bcf2323...</pre>
-        <h5>example response</h5>
-<pre class="res">{
-  "cid": "cidv1:sha256:1bcf2323...",
-  "verified": true,
-  "manifest": {
-    "version": "0.1",
-    "task": "redact PHI from clinical notes",
-    "base_model": "qwen2.5-7b-instruct",
-    "k_score": 0.982,
-    "compliance_pack": "hipaa-redact-v1"
-  },
-  "k_score": 0.982,
-  "signed_by": "kolm.ai",
-  "signed_at": "2026-05-15T10:12:30Z"
-}</pre>
-      </div>
-    </div>
-  </div>
-</section>
+<div class="related">
+  <a href="/docs/lake"><b>Lake &rarr;</b><span>Field reference for /v1/lake responses.</span></a>
+  <a href="/docs/runtime"><b>Runtime &rarr;</b><span>Policy model behind /v1/runtime.</span></a>
+  <a href="/docs/quickstart"><b>Quickstart &rarr;</b><span>Install the CLI first.</span></a>
+</div>
 
-<section class="api-section" id="registry-endpoints">
-  <div class="api-wrap">
-    <h2>registry.</h2>
-    <p class="seclede">Public artifact registry. Anyone can search and fetch metadata. Signed-in publishers can submit hosted .kolm URLs for inclusion.</p>
+</div></main>
 
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method get">GET</span><span class="path">/v1/registry/search</span><span class="summary">Search by task, size, hardware, license.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl "https://api.kolm.ai/v1/registry/search?task=redact+PHI&size_max=20000&hardware=cpu&license=Apache-2.0"</pre>
-        <h5>example response</h5>
-<pre class="res">{
-  "artifacts": [
-    {
-      "cid": "cidv1:sha256:1bcf2323...",
-      "name": "phi-redactor",
-      "task": "redact PHI from clinical notes",
-      "base_model": "qwen2.5-7b-instruct",
-      "size_bytes": 9420,
-      "k_score": 0.982,
-      "license": "Apache-2.0",
-      "hardware": ["cpu", "cuda", "mps"],
-      "downloads": 1284
-    }
-  ],
-  "total": 1
-}</pre>
-      </div>
-    </div>
+<footer><div class="wrap">
+  kolm.ai &middot; the AI compiler &middot; <a href="/articles/kolm-ai-vs-kolm-therapeutics">not the band, not the therapeutics company</a>
+</div></footer>
 
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method get">GET</span><span class="path">/v1/registry/get/{cid}</span><span class="summary">Fetch one artifact.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl https://api.kolm.ai/v1/registry/get/cidv1:sha256:1bcf2323...</pre>
-        <h5>example response</h5>
-<pre class="res">{
-  "cid": "cidv1:sha256:1bcf2323...",
-  "name": "phi-redactor",
-  "task": "redact PHI from clinical notes",
-  "base_model": "qwen2.5-7b-instruct",
-  "size_bytes": 9420,
-  "k_score": 0.982,
-  "license": "Apache-2.0",
-  "hardware": ["cpu", "cuda", "mps"],
-  "downloads": 1284,
-  "submitted_at": "2026-05-10T09:14:22Z"
-}</pre>
-      </div>
-    </div>
-
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method post">POST</span><span class="path">/v1/registry/submit</span><span class="summary">Submit a hosted .kolm.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl -X POST https://api.kolm.ai/v1/registry/submit \
-  -H "Authorization: Bearer $KOLM_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "artifact_url": "https://cdn.acme.com/phi-redactor.kolm",
-    "name": "phi-redactor",
-    "task": "redact PHI from clinical notes"
-  }'</pre>
-        <h5>example response (202)</h5>
-<pre class="res">{
-  "submission_id": "sub_01HW...",
-  "status": "verifying"
-}</pre>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="api-section" id="usage-endpoints">
-  <div class="api-wrap">
-    <h2>usage.</h2>
-    <p class="seclede">Per-billing-period counters. Defaults to the current month. Use this to build a dashboard or to set a hard CI budget.</p>
-
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method get">GET</span><span class="path">/v1/usage</span><span class="summary">Current-period counters.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl "https://api.kolm.ai/v1/usage?period=2026-05" \
-  -H "Authorization: Bearer $KOLM_TOKEN"</pre>
-        <h5>example response</h5>
-<pre class="res">{
-  "period": "2026-05",
-  "compiles": 7,
-  "runs": 142903,
-  "tokens": 18402113,
-  "dollars": 24.62
-}</pre>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="api-section" id="health-endpoints">
-  <div class="api-wrap">
-    <h2>health.</h2>
-    <p class="seclede">Cheap liveness probe. No auth. Same shape self-hosted and on api.kolm.ai.</p>
-
-    <div class="ep">
-      <div class="ep-head">
-        <span class="method get">GET</span><span class="path">/v1/healthz</span><span class="summary">Liveness probe.</span>
-      </div>
-      <div class="ep-body">
-        <h5>example request</h5>
-<pre class="req">curl https://api.kolm.ai/v1/healthz</pre>
-        <h5>example response</h5>
-<pre class="res">{ "status": "ok" }</pre>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="api-section" id="next">
-  <div class="api-wrap">
-    <h2>Next.</h2>
-    <p class="seclede">The OpenAPI 3.0 source is at <a href="/openapi.json" style="color:inherit;border-bottom:1px dashed var(--line)">/openapi.json</a>. Paste it into any OpenAPI tool (Stoplight, Insomnia, Postman, Speakeasy, oapi-codegen) to generate a client. Or use one of our SDKs.</p>
-    <div class="api-cta">
-      <a class="primary" href="/sdks">SDKs &rarr;</a>
-      <a href="/openapi.json">openapi.json &rarr;</a>
-      <a href="/quickstart">quickstart &rarr;</a>
-    </div>
-  </div>
-</section>
-</main>
-
-<footer class="site">
-  <div class="wrap" style="max-width: 1180px;">
-    <div class="footer-grid">
-      <div>
-        <h4>Build</h4>
-        <a href="/quickstart">Quickstart</a>
-        <a href="/docs">Docs</a>
-        <a href="/spec/rs-1">RS-1 spec</a>
-        <a href="/openapi.json">OpenAPI</a>
-        <a href="/cli">CLI</a>
-      </div>
-      <div>
-        <h4>Deploy</h4>
-        <a href="/compute">Backends</a>
-        <a href="/airgap">Air-gap</a>
-        <a href="/integrations/cloudflare">Cloudflare</a>
-        <a href="/integrations/github-actions">GitHub Actions</a>
-        <a href="/integrations/gitlab-ci">GitLab CI</a>
-      </div>
-      <div>
-        <h4>Proof</h4>
-        <a href="/verify-prod">Verify a .kolm</a>
-        <a href="/badge">Embed badge</a>
-        <a href="/benchmarks">Benchmarks</a>
-        <a href="/compare">Compare</a>
-        <a href="/registry">Registry</a>
-        <a href="/case-studies">Case studies</a>
-      </div>
-      <div>
-        <h4>Industries</h4>
-        <a href="/healthcare">Healthcare</a>
-        <a href="/finance">Finance</a>
-        <a href="/legal">Legal</a>
-        <a href="/compliance">Compliance</a>
-        <a href="/insure">Insurance</a>
-      </div>
-      <div>
-        <h4>Company</h4>
-        <a href="/pricing">Pricing</a>
-        <a href="/changelog">Changelog</a>
-        <a href="/security">Security</a>
-        <a href="/community">Community</a>
-        <a href="/contact">Contact</a>
-      </div>
-    </div>
-    <div class="footer-tag">
-      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
-      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
-    </div>
-  </div>
-</footer>
 </body>
 </html>

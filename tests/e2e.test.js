@@ -8,6 +8,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import net from 'node:net';
 
+import { killAndWait, rmSyncBestEffort } from './_spawn-helpers.js';
+
 let PORT;
 let BASE;
 let proc, demoKey, adminKey = 'ks_admin_change_me';
@@ -38,7 +40,7 @@ async function authedFetch(p, opts = {}, key = adminKey) {
   });
 }
 
-async function waitForHealth(base = BASE, retries = 50) {
+async function waitForHealth(base = BASE, retries = 120) {
   for (let i = 0; i < retries; i++) {
     try {
       const r = await fetch(base + '/health');
@@ -55,9 +57,12 @@ test('e2e: synthesize → register → run → search → compose', async (t) =>
   demoKey = null;
 
   // Keep the real ./data directory untouched; the server reads KOLM_DATA_DIR.
-  fs.rmSync(testDataDir, { recursive: true, force: true });
+  rmSyncBestEffort(testDataDir);
   fs.mkdirSync(testDataDir, { recursive: true });
-  t.after(() => fs.rmSync(testDataDir, { recursive: true, force: true }));
+  // Drop the child BEFORE the tmp dir so the OS releases SQLite/log handles
+  // and rmSync doesn't trip EPERM on the next line. after() runs LIFO so
+  // the kill registers last and fires first.
+  t.after(() => rmSyncBestEffort(testDataDir));
 
   // boot server
   proc = spawn(process.execPath, ['server.js'], {
@@ -68,7 +73,7 @@ test('e2e: synthesize → register → run → search → compose', async (t) =>
   });
   proc.stdout.on('data', () => {});
   proc.stderr.on('data', d => process.stderr.write(d));
-  t.after(() => { try { proc.kill(); } catch {} });
+  t.after(() => killAndWait(proc));
 
   await waitForHealth();
   const signup = await fetchJson('/v1/signup', {
@@ -194,9 +199,9 @@ test('hosted runtime rejects the development admin fallback key', async (t) => {
   const base = `http://127.0.0.1:${port}`;
   const dataDir = path.join(os.tmpdir(), `kolm-hosted-auth-${process.pid}-${Date.now()}`);
 
-  fs.rmSync(dataDir, { recursive: true, force: true });
+  rmSyncBestEffort(dataDir);
   fs.mkdirSync(dataDir, { recursive: true });
-  t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
+  t.after(() => rmSyncBestEffort(dataDir));
 
   const env = {
     ...process.env,
@@ -217,7 +222,7 @@ test('hosted runtime rejects the development admin fallback key', async (t) => {
   });
   child.stdout.on('data', () => {});
   child.stderr.on('data', d => process.stderr.write(d));
-  t.after(() => { try { child.kill(); } catch {} });
+  t.after(() => killAndWait(child));
 
   await waitForHealth(base);
   const readiness = await fetch(base + '/ready');

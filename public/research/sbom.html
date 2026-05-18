@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>SBOM &middot; Software Bill of Materials for .kolm artifacts &middot; kolm.ai</title>
+<meta name="description" content="Every .kolm artifact ships with a Software Bill of Materials enumerating the source corpus hashes, base-model id, library versions, and license posture. CycloneDX and SPDX formats both supported.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="SBOM &middot; kolm.ai">
+<meta property="og:description" content="Software Bill of Materials for .kolm artifacts, in CycloneDX and SPDX.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/sbom">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SBOM &middot; kolm.ai">
+<meta name="twitter:description" content="Software Bill of Materials for .kolm artifacts.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/sbom">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"SBOM for .kolm artifacts","description":"Software Bill of Materials enumerating source corpus, base model, library versions, and license posture.","url":"https://kolm.ai/research/sbom","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / sbom</div>
+<h1>SBOM for .kolm artifacts</h1>
+<p class="lede">A Software Bill of Materials enumerates the dependencies and inputs that produced a build. Originally a supply-chain control for compiled software, the same idea is increasingly required for ML artifacts: source corpus hashes, base-model id, library versions, license posture. Every signed .kolm ships with a machine-readable SBOM that downstream consumers can validate.</p>
+
+<h2 id="what">What it is</h2>
+<p>SBOMs entered the public-policy mainstream with the 2021 US Executive Order 14028, which required all federal software vendors to provide a Bill of Materials. The two dominant formats are CycloneDX (OWASP, 2017) and SPDX (Linux Foundation, 2011, ISO/IEC 5962:2021). Both enumerate components by identifier, version, supplier, and license; both support attestation linkage to in-toto and SLSA provenance documents. The CycloneDX 1.5 spec added explicit ML-BOM support: enumeration of training datasets, model lineage, evaluation results, and considerations. The SPDX 3.0 AI/ML profile covers similar ground. For ML artifacts the items a buyer wants to enumerate are the source corpus, the teacher model used during distillation, the base student model, the optimizer and trainer versions, and any third-party adapters merged in.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>Every .kolm artifact ships with both a CycloneDX 1.5 and an SPDX 3.0 SBOM next to the manifest. The SBOM enumerates: the corpus content-address and row count, the teacher model id and provider, the base student model id and weights hash, the trainer git revision and config hash, the python-package lockfile hash, and the per-component license string. CycloneDX's ML extensions are used to attach the holdout K-score and the receipt-chain root. The CLI <code>kolm sbom &lt;artifact&gt;</code> prints both formats; the runtime exposes them at <code>/v1/artifacts/&lt;id&gt;/sbom</code>. Per-component license posture is computed from the recipe-declared license of each input plus the trainer's transitive package licenses; conflicts (a GPL package on an Apache base model with an MIT distribution) are flagged at compile and block signing unless the recipe explicitly resolves them. Continuous vulnerability scanning of the SBOM against the OSV database is planned for v0.3.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>The White House. <em>Executive Order 14028 on Improving the Nation's Cybersecurity.</em> 2021.</p>
+<p>OWASP CycloneDX. <em>CycloneDX 1.5 Specification with ML-BOM Extensions.</em> 2023.</p>
+<p>Linux Foundation. <em>SPDX 3.0 Specification with AI/ML Profile.</em> ISO/IEC 5962:2021, 2024.</p>
+<p>NIST. <em>Secure Software Development Framework (SSDF) v1.1.</em> SP 800-218, 2022.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

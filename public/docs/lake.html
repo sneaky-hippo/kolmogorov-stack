@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Lake · kolm.ai</title>
+<meta name="description" content="The canonical 35-field event schema and the local SQLite layout backing it. Query directly with kolm lake or with sqlite3 against ~/.kolm/events/events.sqlite.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Lake &middot; kolm.ai">
+<meta property="og:description" content="The canonical 35-field event schema and the local SQLite layout backing it. Query directly with kolm lake or with sqlite3 against ~/.kolm/events/events.sqlite.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/docs/lake">
+<meta property="og:image" content="https://kolm.ai/og/docs-lake.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Lake &middot; kolm.ai">
+<meta name="twitter:description" content="The canonical 35-field event schema and the local SQLite layout backing it. Query directly with kolm lake or with sqlite3 against ~/.kolm/events/events.sqlite.">
+<meta name="twitter:image" content="https://kolm.ai/og/docs-lake.svg">
+<link rel="canonical" href="https://kolm.ai/docs/lake">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Lake","description":"The canonical 35-field event schema and the local SQLite layout backing it. Query directly with kolm lake or with sqlite3 against ~/.kolm/events/events.sqlite.","url":"https://kolm.ai/docs/lake","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+h3{font-size:16px;font-weight:500;letter-spacing:-0.01em;margin:28px 0 8px;max-width:780px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+pre{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:14px 0 18px}
+pre code{background:none;border:none;padding:0;color:inherit;font:inherit}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+ul,ol{color:var(--ink-mute);font-size:15px;line-height:1.7;max-width:780px}
+li{margin:4px 0}
+table{border-collapse:collapse;width:100%;max-width:840px;margin:14px 0;font-size:13.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink);font-weight:500}
+td code{font-size:12px}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+@media(max-width:820px){.related{grid-template-columns:1fr}}
+.related a{padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:4px}
+.related a:hover{border-color:var(--accent-soft)}
+.related b{font-size:14px;color:var(--ink);font-weight:500}
+.related span{font-size:12.5px;color:var(--ink-mute);line-height:1.5}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/docs">docs</a> / lake</div>
+<h1>Lake</h1>
+<p class="lede">Everything that goes through the kolm.ai proxy lands in a local event lake. One row per request, 35 fields, indexed for time-range, namespace, and model queries. The lake is plain SQLite at <code>~/.kolm/events/events.sqlite</code> and is the single source of truth for cost, latency, drift, and dataset building.</p>
+
+<h2 id="layout">Storage layout</h2>
+<p>Per-tenant, per-machine. The SQLite file uses WAL mode and is safe for concurrent readers + one writer (the proxy).</p>
+<pre><code>~/.kolm/
+  events/
+    events.sqlite       # main row store
+    events.sqlite-wal   # write-ahead log
+    events.sqlite-shm   # shared memory index
+  runtime/
+    policy.json
+    audit.log
+  artifacts/            # compiled .kolm files
+  datasets/             # train/val/holdout exports</code></pre>
+
+<h2 id="schema">The 35-field event row</h2>
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>TEXT PK</td><td>ULID, monotonic</td></tr>
+<tr><td><code>ts_ms</code></td><td>INTEGER</td><td>Unix ms at proxy receive</td></tr>
+<tr><td><code>namespace</code></td><td>TEXT</td><td>Tag from <code>x-kolm-namespace</code> header</td></tr>
+<tr><td><code>tenant_id</code></td><td>TEXT</td><td>Local tenant (single-tenant by default)</td></tr>
+<tr><td><code>upstream_provider</code></td><td>TEXT</td><td>openai, anthropic, gemini, openrouter, local</td></tr>
+<tr><td><code>upstream_model</code></td><td>TEXT</td><td>Final resolved model id</td></tr>
+<tr><td><code>requested_model</code></td><td>TEXT</td><td>Model the caller asked for</td></tr>
+<tr><td><code>surface</code></td><td>TEXT</td><td>chat, messages, embeddings, completions</td></tr>
+<tr><td><code>modality</code></td><td>TEXT</td><td>text, multimodal, audio, tool</td></tr>
+<tr><td><code>messages_json</code></td><td>BLOB</td><td>Full request body (after redaction)</td></tr>
+<tr><td><code>response_json</code></td><td>BLOB</td><td>Full upstream response (after redaction)</td></tr>
+<tr><td><code>messages_raw_json</code></td><td>BLOB</td><td>Pre-redaction body, gated by privacy mode</td></tr>
+<tr><td><code>response_raw_json</code></td><td>BLOB</td><td>Pre-redaction response, gated by privacy mode</td></tr>
+<tr><td><code>template_hash</code></td><td>TEXT</td><td>Structural hash for clustering</td></tr>
+<tr><td><code>prompt_sha</code></td><td>TEXT</td><td>sha256 of canonical prompt</td></tr>
+<tr><td><code>response_sha</code></td><td>TEXT</td><td>sha256 of canonical response</td></tr>
+<tr><td><code>in_tokens</code></td><td>INTEGER</td><td>Reported input tokens</td></tr>
+<tr><td><code>out_tokens</code></td><td>INTEGER</td><td>Reported output tokens</td></tr>
+<tr><td><code>cached_tokens</code></td><td>INTEGER</td><td>Provider-reported cache hits</td></tr>
+<tr><td><code>cost_usd</code></td><td>REAL</td><td>Per-call USD spend</td></tr>
+<tr><td><code>cost_source</code></td><td>TEXT</td><td>header, table, estimate</td></tr>
+<tr><td><code>latency_ms</code></td><td>INTEGER</td><td>End-to-end at the proxy</td></tr>
+<tr><td><code>ttft_ms</code></td><td>INTEGER</td><td>Time-to-first-token, streaming only</td></tr>
+<tr><td><code>status</code></td><td>INTEGER</td><td>HTTP status returned to client</td></tr>
+<tr><td><code>error_class</code></td><td>TEXT</td><td>upstream_timeout, upstream_4xx, etc</td></tr>
+<tr><td><code>finish_reason</code></td><td>TEXT</td><td>stop, length, tool_calls</td></tr>
+<tr><td><code>tools_json</code></td><td>BLOB</td><td>Tool definitions if any</td></tr>
+<tr><td><code>tool_calls_json</code></td><td>BLOB</td><td>Tool invocations if any</td></tr>
+<tr><td><code>privacy_actions_json</code></td><td>BLOB</td><td>Per-class actions taken</td></tr>
+<tr><td><code>privacy_classes</code></td><td>TEXT</td><td>Comma list of detected classes</td></tr>
+<tr><td><code>privacy_var_map</code></td><td>BLOB</td><td>VAR_* to original mapping, local-only</td></tr>
+<tr><td><code>client_ip</code></td><td>TEXT</td><td>Caller IP (loopback by default)</td></tr>
+<tr><td><code>client_user_agent</code></td><td>TEXT</td><td>SDK + version</td></tr>
+<tr><td><code>request_id</code></td><td>TEXT</td><td>Upstream request id for tracing</td></tr>
+<tr><td><code>artifact_id</code></td><td>TEXT</td><td>Set when served by a local .kolm</td></tr>
+</tbody>
+</table>
+
+<h2 id="query">Querying</h2>
+<p>The CLI wraps the most common rollups. For anything else, talk to SQLite directly.</p>
+<pre><code>kolm lake stats --window 24h --by namespace
+kolm lake stats --window 7d --by upstream_model
+kolm lake list --namespace summarizer --limit 10 --json
+sqlite3 ~/.kolm/events/events.sqlite "SELECT upstream_model, AVG(latency_ms) FROM events WHERE ts_ms > strftime('%s','now','-1 day')*1000 GROUP BY 1;"</code></pre>
+
+<h2 id="retention">Retention</h2>
+<p>By default the lake keeps everything forever. Set <code>retention_days</code> in <code>~/.kolm/config.json</code> to vacuum older rows on proxy start.</p>
+<pre><code>{
+  "retention_days": 90,
+  "retention_keep_artifact_rows": true
+}</code></pre>
+
+<h2 id="next">Next steps</h2>
+<p>Read <a href="/docs/optimizer">optimizer</a> to see what kolm.ai does with the lake automatically, <a href="/docs/datasets">datasets</a> to turn rows into training data, and <a href="/docs/storage">storage</a> for the local-first guarantees. Start from <a href="/docs/quickstart">/docs/quickstart</a> if you have not yet captured any traffic.</p>
+
+<div class="related">
+  <a href="/docs/optimizer"><b>Optimizer &rarr;</b><span>The 11 opportunity types kolm.ai finds in your lake.</span></a>
+  <a href="/docs/datasets"><b>Datasets &rarr;</b><span>Split the lake into train/val/holdout disjointly.</span></a>
+  <a href="/docs/storage"><b>Storage &rarr;</b><span>Which modes keep raw rows local vs sync to cloud.</span></a>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  kolm.ai &middot; the AI compiler &middot; <a href="/articles/kolm-ai-vs-kolm-therapeutics">not the band, not the therapeutics company</a>
+</div></footer>
+
+</body>
+</html>

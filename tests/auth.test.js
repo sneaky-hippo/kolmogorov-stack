@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { rmSyncBestEffort } from './_spawn-helpers.js';
 
 test('admin fallback key is disabled in production-like hosts', async (t) => {
   const savedEnv = {
@@ -42,8 +43,11 @@ test('admin fallback key is disabled in production-like hosts', async (t) => {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
-    fs.rmSync(testDataDir, { recursive: true, force: true });
-    fs.rmSync(testArtifactDir, { recursive: true, force: true });
+    // Best-effort: in-process sqlite handle from src/store.js can hold
+    // testDataDir for a beat after the test ends. Don't fail the test on
+    // Windows EPERM — let the OS reap the tmp dir on next reboot.
+    rmSyncBestEffort(testDataDir);
+    rmSyncBestEffort(testArtifactDir);
   });
 
   const { adminApiKey, isProductionRuntime } = await import('../src/auth.js');

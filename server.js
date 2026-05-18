@@ -122,6 +122,30 @@ app.get('/device-transfer', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'device-transfer.html'));
 });
 
+// Same dir-collision pattern for the rest of the top-level surfaces whose
+// names also exist as directories under public/ (marketplace/, foundations/,
+// benchmarks/, healthcare/, finance/, legal/, enterprise/, migrate/,
+// research/, security/, compare/, training/, quickstart/). Without an
+// explicit pre-static handler, express.static 301-redirects /<name> to
+// /<name>/ and then 404s because no <name>/index.html exists. Vercel handles
+// this in prod via vercel.json rewrites; this loop keeps Railway-direct and
+// local self-host serving the same set of routes.
+const DIR_COLLISION_PAGES = [
+  'marketplace', 'foundations', 'benchmarks', 'healthcare', 'finance', 'legal',
+  'enterprise', 'migrate', 'research', 'security', 'compare', 'training',
+  'quickstart',
+];
+for (const name of DIR_COLLISION_PAGES) {
+  app.get('/' + name, (_req, res) => {
+    const f = path.join(__dirname, 'public', name + '.html');
+    if (fs.existsSync(f)) {
+      res.set('Cache-Control', 'public, max-age=60, must-revalidate');
+      return res.sendFile(f);
+    }
+    res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+  });
+}
+
 // /docs/:lang i18n alias — vercel.json:152-157 rewrites /docs/{ja,zh,es,fr,de,ko}
 // to /docs/i18n/{lang}.html. Mirror that here so Railway-direct and self-host
 // serve the same set of translated docs. Whitelist the 6 shipped locales so an

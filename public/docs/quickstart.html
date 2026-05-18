@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Quickstart &middot; kolm.ai</title>
+<meta name="description" content="Five minute kolm.ai onboarding. Install the CLI, point OPENAI_BASE_URL at the local proxy, start kolm connect, watch captures land in the lake, run kolm lake stats.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Quickstart &middot; kolm.ai">
+<meta property="og:description" content="Install the CLI, set OPENAI_BASE_URL, run kolm connect, watch captures land, run kolm lake stats. Five minutes.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/docs/quickstart">
+<meta property="og:image" content="https://kolm.ai/og/docs-quickstart.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Quickstart &middot; kolm.ai">
+<meta name="twitter:description" content="Install the CLI, set OPENAI_BASE_URL, run kolm connect, watch captures land, run kolm lake stats.">
+<meta name="twitter:image" content="https://kolm.ai/og/docs-quickstart.svg">
+<link rel="canonical" href="https://kolm.ai/docs/quickstart">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Quickstart","description":"Five minute kolm.ai onboarding: install CLI, set OPENAI_BASE_URL, run kolm connect, watch captures land, run kolm lake stats.","url":"https://kolm.ai/docs/quickstart","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+h3{font-size:16px;font-weight:500;letter-spacing:-0.01em;margin:28px 0 8px;max-width:780px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+pre{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:14px 0 18px}
+pre code{background:none;border:none;padding:0;color:inherit;font:inherit}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+ul,ol{color:var(--ink-mute);font-size:15px;line-height:1.7;max-width:780px}
+li{margin:4px 0}
+table{border-collapse:collapse;width:100%;max-width:840px;margin:14px 0;font-size:13.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink);font-weight:500}
+td code{font-size:12px}
+.step{padding:18px 22px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);margin:14px 0}
+.step .num{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:3px 8px;border-radius:4px;border:1px solid rgba(16,185,129,0.30);display:inline-block;margin-bottom:8px}
+.step h3{margin:0 0 6px}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+@media(max-width:820px){.related{grid-template-columns:1fr}}
+.related a{padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:4px}
+.related a:hover{border-color:var(--accent-soft)}
+.related b{font-size:14px;color:var(--ink);font-weight:500}
+.related span{font-size:12.5px;color:var(--ink-mute);line-height:1.5}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/docs">docs</a> / quickstart</div>
+<h1>Quickstart</h1>
+<p class="lede">Five minutes from <code>npm install</code> to your first artifact. You install the CLI, you point your existing OpenAI-compatible client at the local kolm proxy, you watch the lake fill, and you run <code>kolm lake stats</code> to see what you have. Everything is local. Nothing leaves your machine unless you turn cloud sync on.</p>
+
+<h2 id="install">1. Install the CLI</h2>
+<p>Node 18 or newer. The CLI ships as a scoped npm package. The same binary backs <code>kolm</code>, <code>kolm connect</code>, <code>kolm lake</code>, <code>kolm distill</code>, and <code>kolm run</code>.</p>
+<pre><code>npm i -g @kolm/cli
+kolm version
+# kolm 7.x.y (node 20.x, darwin-arm64)</code></pre>
+
+<h2 id="proxy">2. Start the local proxy</h2>
+<p>The connect proxy is an OpenAI-compatible HTTP server on <code>127.0.0.1:8787</code>. Every <code>/v1/chat/completions</code>, <code>/v1/messages</code>, and <code>/v1/embeddings</code> call you route through it is captured into the local lake before it is forwarded to the real upstream provider.</p>
+<pre><code>kolm connect start
+# proxy listening on http://127.0.0.1:8787/v1
+# captures landing in ~/.kolm/events/events.sqlite</code></pre>
+
+<h2 id="env">3. Point your client at the proxy</h2>
+<p>The proxy is wire-compatible with OpenAI, Anthropic, OpenRouter, and Google AI Studio. Set one env var and your existing SDK keeps working.</p>
+<pre><code>export OPENAI_BASE_URL=http://127.0.0.1:8787/v1
+export OPENAI_API_KEY=sk-your-upstream-key  # forwarded unchanged
+# now your existing app sends through kolm</code></pre>
+<p>Per-provider setup is broken out in detail: see <a href="/docs/connect/openai">OpenAI</a>, <a href="/docs/connect/anthropic">Anthropic</a>, <a href="/docs/connect/openrouter">OpenRouter</a>, <a href="/docs/connect/gemini">Gemini</a>.</p>
+
+<h2 id="capture">4. Watch captures land</h2>
+<p>Send a request through your app the way you normally would. The proxy mirrors the response back to your client and writes a 35-field event to the local lake. Use <code>kolm tail captures</code> to see them stream live.</p>
+<pre><code>kolm tail captures --namespace default
+# [live] cap_018a3e... default  gpt-4o-mini  234ms  $0.0008  in=412 out=88</code></pre>
+
+<h2 id="lake-stats">5. Run lake stats</h2>
+<p><code>kolm lake stats</code> aggregates the local event store and prints what you would otherwise be paying observability vendors for. By namespace, by model, by hour, by cost.</p>
+<pre><code>kolm lake stats --window 24h
+# events:    1842
+# spend:     $4.21
+# top model: gpt-4o-mini (61% of calls)
+# duplicate-pair rate: 27% (eligible for cache or local replacement)</code></pre>
+
+<h2 id="next">Where to go next</h2>
+<p>Once you have a few hundred captures in the lake, the rest of kolm.ai opens up.</p>
+<ul>
+  <li><a href="/docs/privacy">Privacy</a> wires the 17 detector classes so no PHI/PII leaves your laptop.</li>
+  <li><a href="/docs/optimizer">Optimizer</a> reads the lake and prints the 11 cost-cut opportunity types it finds.</li>
+  <li><a href="/docs/datasets">Datasets</a> turn raw captures into train/val/holdout splits with sha256-mod disjointness.</li>
+  <li><a href="/docs/training">Training</a> auto-detects the task and picks a path profile + backbone.</li>
+  <li><a href="/docs/distillation">Distillation</a> ships the result as a portable <code>.kolm</code> artifact.</li>
+  <li><a href="/docs/runtime">Runtime</a> swaps your live calls onto the local artifact when it wins.</li>
+</ul>
+
+<div class="related">
+  <a href="/docs/privacy"><b>Privacy &rarr;</b><span>17 detector classes, VAR_ placeholders, allow/redact/block/override actions.</span></a>
+  <a href="/docs/lake"><b>Lake schema &rarr;</b><span>The canonical 35-field event row and the SQLite layout backing it.</span></a>
+  <a href="/docs/optimizer"><b>Optimizer &rarr;</b><span>The 11 opportunity types kolm.ai finds in your traffic.</span></a>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  kolm.ai &middot; the AI compiler &middot; <a href="/articles/kolm-ai-vs-kolm-therapeutics">not the band, not the therapeutics company</a>
+</div></footer>
+
+</body>
+</html>

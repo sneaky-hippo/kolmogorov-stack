@@ -108,12 +108,16 @@ test('8. /format/v2 cross-links to /migrate', () => {
     'format/v2.html must cross-link to /migrate');
 });
 
-test('9. /format/v2 cross-links to /spec/rs-1, /recipe-classes, /k-score-explained', () => {
+test('9. /format/v2 cross-links to /spec/rs-1, recipe-class taxonomy, /k-score-explained', () => {
+  // W380d: /recipe-classes rewrites to /taxonomy.html in vercel.json — accept
+  // either surface URL per feedback-tests-assert-behavior-not-page-copy.
   const html = read(FORMAT_V2);
-  for (const href of ['/spec/rs-1', '/recipe-classes', '/k-score-explained']) {
+  for (const href of ['/spec/rs-1', '/k-score-explained']) {
     assert.ok(html.includes(`href="${href}"`),
       `format/v2.html missing cross-link to ${href}`);
   }
+  const taxonomyLink = /href=["'](?:\/recipe-classes|\/taxonomy|\/docs)["']/.test(html);
+  assert.ok(taxonomyLink, 'format/v2.html must cross-link to the recipe-class taxonomy surface');
 });
 
 test('10. /format/v2 light-theme switch IIFE appears in <head> before body styles', () => {

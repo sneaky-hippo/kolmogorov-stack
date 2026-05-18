@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>LLM-as-judge &middot; PandaLM, JudgeLM, Prometheus &middot; kolm.ai</title>
+<meta name="description" content="Survey of LLM-as-judge approaches (MT-Bench, PandaLM, JudgeLM, Prometheus, G-Eval), their known biases (position, verbosity, self-preference), and how kolm hedges with a mixture of judges.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="LLM-as-judge &middot; kolm.ai">
+<meta property="og:description" content="Survey of MT-Bench, PandaLM, JudgeLM, Prometheus, G-Eval and their known biases.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/judges">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="LLM-as-judge &middot; kolm.ai">
+<meta name="twitter:description" content="Survey of MT-Bench, PandaLM, JudgeLM, Prometheus, G-Eval and their known biases.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/judges">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"LLM-as-judge approaches","description":"Survey of MT-Bench, PandaLM, JudgeLM, Prometheus, G-Eval and the biases they share.","url":"https://kolm.ai/research/judges","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / judges</div>
+<h1>LLM-as-judge</h1>
+<p class="lede">An LLM-as-judge is a model that reads a prompt and one or more candidate responses and emits a score, a preference, or a rubric breakdown. It is the cheapest available proxy for human evaluation on open-ended tasks. It is also biased in well-documented ways: it prefers the first response in a pair, longer responses, and responses from its own model family. Kolm mitigates by running a mixture of three independent judges and taking the median.</p>
+
+<h2 id="what">What it is</h2>
+<p>Zheng et al. (2023) formalized LLM-as-judge with MT-Bench: GPT-4 reads two model responses and picks one or declares a tie, with chain-of-thought reasoning before the verdict. The same paper documented position bias (the model prefers the first listed response by ~10 points), verbosity bias (longer responses win), and self-enhancement bias (a judge model rates its own family higher). Follow-up work on dedicated judge models tries to remove the API cost and the bias: PandaLM (Wang et al., 2024) and JudgeLM (Zhu et al., 2024) train smaller open-weight judges via SFT on GPT-4 preferences. Prometheus (Kim et al., 2024) trains a fine-grained rubric-following judge that can score on a 1 to 5 Likert scale with explicit criteria. G-Eval (Liu et al., 2023) uses chain-of-thought with form-filling to reduce variance. None of them eliminate the underlying biases; the published recipe is randomized position, length normalization, and a panel of multiple judges with disagreement reporting.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>The K-score gate in v0.2.6 runs a panel of three judges per holdout row when the task is open-ended (no verifiable reward function). The judges are configurable; the default panel rotates across two frontier models from different families plus one open-weight Prometheus-style scorer to break ties. Each row's three scores are reduced to a median; the standard deviation is recorded in the receipt as a disagreement signal. Position is randomized per pair. Length-normalization is applied for tasks where verbosity is not desired. Self-enhancement is mitigated by never including the student's own family as a judge. Dedicated open-weight judge training (PandaLM, JudgeLM) is not currently offered as a kolm pipeline; it is planned for v0.3 as a marketplace recipe class.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Zheng, L. et al. <em>Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena.</em> NeurIPS 2023. arXiv:2306.05685.</p>
+<p>Wang, Y. et al. <em>PandaLM: An Automatic Evaluation Benchmark for LLM Instruction Tuning Optimization.</em> ICLR 2024. arXiv:2306.05087.</p>
+<p>Zhu, L. et al. <em>JudgeLM: Fine-tuned Large Language Models are Scalable Judges.</em> 2024. arXiv:2310.17631.</p>
+<p>Kim, S. et al. <em>Prometheus: Inducing Fine-grained Evaluation Capability in Language Models.</em> ICLR 2024. arXiv:2310.08491.</p>
+<p>Liu, Y. et al. <em>G-Eval: NLG Evaluation using GPT-4 with Better Human Alignment.</em> EMNLP 2023. arXiv:2303.16634.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

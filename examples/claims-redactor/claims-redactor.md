@@ -19,4 +19,4 @@ Frontier agents call this skill via MCP after `kolm serve --mcp`:
 
 ## Guarantees
 
-K-score: 0.985 (composite). Runtime egress is patched at the process boundary — the artifact cannot reach the network during execution. The .kolm bundle is signed; signatures are verified before each call.
+K-score: 0.983 (composite). Runtime egress is patched at the process boundary — the artifact cannot reach the network during execution. The .kolm bundle is signed; signatures are verified before each call.

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>KTO &middot; Kahneman-Tversky Optimization &middot; kolm.ai</title>
+<meta name="description" content="KTO trains language models on unpaired good/bad labels instead of pairwise preferences, using a loss derived from prospect theory. Useful when collecting pairs is expensive.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="KTO &middot; Kahneman-Tversky Optimization &middot; kolm.ai">
+<meta property="og:description" content="A preference-optimization loss derived from prospect theory; uses unpaired binary labels.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/kto">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="KTO &middot; Kahneman-Tversky Optimization &middot; kolm.ai">
+<meta name="twitter:description" content="A preference-optimization loss derived from prospect theory.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/kto">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"ScholarlyArticle","headline":"Kahneman-Tversky Optimization (KTO)","description":"Preference optimization on unpaired good/bad labels via a prospect-theory loss.","url":"https://kolm.ai/research/kto","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / kto</div>
+<h1>Kahneman-Tversky Optimization (KTO)</h1>
+<p class="lede">KTO trains a policy on single labelled responses (this one is desirable, that one is not) rather than on pairwise comparisons. The loss is a prospect-theoretic value function: gains are weighted by a concave utility, losses by a steeper convex one, with the implicit reward defined the same way as in DPO. The result is a preference-optimization recipe that works on the kind of labels real-world ops teams actually collect.</p>
+
+<h2 id="what">What it is</h2>
+<p>Ethayarajh et al. (2024) start from the observation that human preference data is almost never collected as clean pairs. Operators flag bad customer-service replies, ML platforms log thumbs-up on individual generations, RLHF teams keep large piles of single examples annotated with a binary label. DPO and PPO both need pairs. KTO sidesteps the requirement by deriving a loss from Kahneman and Tversky's prospect theory: the implicit reward is the log-likelihood ratio between the policy and a reference (same as DPO), but the loss applies a kinked utility function around a reference point. Desirable examples push the reward above the reference; undesirable examples push it below; the asymmetry of the utility encodes loss-aversion. Empirically the paper shows KTO matches or slightly outperforms DPO on standard benchmarks even when paired data is available, and is the only viable option when only unpaired labels exist.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>KTO is not implemented in kolm v0.2.6. Preference-optimization recipes (DPO, KTO, ORPO) are all on the v0.3 roadmap. The reason KTO is a likely first integration is the shape of typical capture data: a tenant's captured prompts include thumbs-up/thumbs-down signals from the dev-agent telemetry layer (accept-or-reject heuristics on code completions, sentiment tags on customer service drafts) far more often than clean pairs. When v0.3 ships, the trainer will accept a captured-rows manifest with per-row binary labels and run KTO with the standard <code>beta=0.1</code>, <code>lambda_D=1.0</code> for desirable and <code>lambda_U=1.0</code> for undesirable defaults from the paper. The receipt will record beta, the lambda values, the desirable-to-undesirable ratio, and the post-KTO holdout K-score.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Ethayarajh, K., Xu, W., Muennighoff, N., Jurafsky, D., Kiela, D. <em>KTO: Model Alignment as Prospect Theoretic Optimization.</em> ICML 2024. arXiv:2402.01306.</p>
+<p>Kahneman, D., Tversky, A. <em>Prospect Theory: An Analysis of Decision under Risk.</em> Econometrica, 1979.</p>
+<p>Rafailov, R. et al. <em>Direct Preference Optimization.</em> NeurIPS 2023. arXiv:2305.18290.</p>
+<p>Hong, J., Lee, N., Thorne, J. <em>ORPO: Monolithic Preference Optimization without Reference Model.</em> EMNLP 2024. arXiv:2403.07691.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

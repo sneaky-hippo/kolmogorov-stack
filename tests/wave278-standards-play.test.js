@@ -47,9 +47,16 @@ test('W278 /spec/rs-1 banner links to /verify-cli and GitHub', () => {
   assert.match(html, /github\.com\/sneaky-hippo\/kolmogorov-stack/, 'banner links to GitHub source');
 });
 
-test('W278 /verify-cli has curl-install snippet', () => {
+test('W278 /verify-cli has at least one install command', () => {
+  // W380d: relaxed from exact curl-pipe snippet to behavior — the canonical
+  // install is `npm i -g github:sneaky-hippo/kolmogorov-stack`. The page is
+  // free to surface npm, curl, brew, or docker — but at least one install
+  // command must be present.
   const html = readPublic('verify-cli.html');
-  assert.match(html, /curl -fsSL https:\/\/kolm\.ai\/install\/verify \| sh/, 'curl install snippet required');
+  const hasNpm = /npm i (?:-g )?(?:github:|@?kolm)/i.test(html);
+  const hasCurl = /curl -fsSL [^\s|<]+ \| sh/.test(html);
+  const hasDocker = /docker run /.test(html);
+  assert.ok(hasNpm || hasCurl || hasDocker, 'at least one install command required');
 });
 
 test('W278 /verify-cli has docker-run snippet', () => {

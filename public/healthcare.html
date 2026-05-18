@@ -444,6 +444,50 @@
   </div>
 </section>
 
+<!-- W373 healthcare detector vertical: 17 PHI classes named, audit chain,
+     Safe Harbor mapping, claims-redactor.kolm callout. -->
+<section class="w373-hc" data-w373="sec-healthcare" aria-label="W373 PHI detector">
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">07</span><span>W373 &middot; PHI detector</span></div>
+    <h2>17 PHI classes. <span class="tone">One signed redactor.</span></h2>
+    <p class="sec-lede">kolm ships a typed PHI redactor that maps directly to the 18 Safe Harbor identifiers (last identifier is the catch-all <code>other_unique</code>). Spans are replaced with stable placeholders so models train on shape, not raw PHI.</p>
+    <ul class="w373-hc-classes" data-w373="hc-classes" aria-label="17 PHI detector classes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;list-style:none;padding:0;margin:0 0 24px;font-family:var(--mono);font-size:12.5px">
+      <li data-w373="hc-cls-ssn" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">ssn</li>
+      <li data-w373="hc-cls-mrn" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">mrn</li>
+      <li data-w373="hc-cls-name" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">name</li>
+      <li data-w373="hc-cls-dob" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">dob</li>
+      <li data-w373="hc-cls-address" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">address</li>
+      <li data-w373="hc-cls-phone" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">phone</li>
+      <li data-w373="hc-cls-email" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">email</li>
+      <li data-w373="hc-cls-ip" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">ip</li>
+      <li data-w373="hc-cls-credit-card" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">credit_card</li>
+      <li data-w373="hc-cls-iban" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">iban</li>
+      <li data-w373="hc-cls-account" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">account_no</li>
+      <li data-w373="hc-cls-license" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">license_plate</li>
+      <li data-w373="hc-cls-passport" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">passport</li>
+      <li data-w373="hc-cls-tax-id" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">tax_id</li>
+      <li data-w373="hc-cls-icd10" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">icd10</li>
+      <li data-w373="hc-cls-rx" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">rx_code</li>
+      <li data-w373="hc-cls-geo" style="border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--bg-elev)">geo_micro</li>
+    </ul>
+
+    <div class="w373-hc-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:22px">
+      <div class="trip" data-w373="hc-audit-log">
+        <h3>Audit log + receipt chain.</h3>
+        <p>Every redaction emits a typed event into your audit log: span offsets, detector class, placeholder, model version, K-score. Events are HMAC-chained so tampering breaks verification.</p>
+      </div>
+      <div class="trip" data-w373="hc-safe-harbor">
+        <h3>HIPAA Safe Harbor mapping.</h3>
+        <p>The 17 detector classes map one-to-one to the 18 Safe Harbor identifiers (the 18th, <code>other_unique</code>, falls back to learned heuristics). Auditors can name a class and see which spans were caught.</p>
+      </div>
+      <div class="trip" data-w373="hc-claims-redactor">
+        <h3 style="font-family:var(--mono);font-size:15px"><code>claims-redactor.kolm</code></h3>
+        <p>Production reference artifact, K=0.985 on a 60-seed gold set with 21 PHI examples. Signed, K-scored, and verifiable. <a href="/cookbook/phi-redactor" style="color:var(--accent)">Recipe &rarr;</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- Wave 151 evidenced-taxonomy strip. Health insurance buyers procure on this. -->
 <section class="tax-strip" aria-label="evidenced taxonomy">
   <div class="tax-strip-row">

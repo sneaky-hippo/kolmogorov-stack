@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm nl &middot; kolm.ai</title>
+<meta name="description" content="kolm nl is the natural-language recipe scaffolder. Describe what you want in plain English, get a deterministic spec.json plus seeds stub you can compile.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="kolm nl &middot; kolm.ai">
+<meta property="og:description" content="Natural-language recipe scaffolder. Plain English in, spec.json plus seeds stub out.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/docs/cli/nl">
+<meta property="og:image" content="https://kolm.ai/og/docs-cli-nl.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="kolm nl &middot; kolm.ai">
+<meta name="twitter:description" content="Natural-language recipe scaffolder.">
+<meta name="twitter:image" content="https://kolm.ai/og/docs-cli-nl.svg">
+<link rel="canonical" href="https://kolm.ai/docs/cli/nl">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"kolm nl","description":"Natural-language recipe scaffolder. Plain English in, spec.json plus seeds stub out. Deterministic air-gap path by default; opt-in networked drafter via --network.","url":"https://kolm.ai/docs/cli/nl","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+h3{font-size:16px;font-weight:500;letter-spacing:-0.01em;margin:28px 0 8px;max-width:780px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+pre{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:14px 0 18px}
+pre code{background:none;border:none;padding:0;color:inherit;font:inherit}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+ul,ol{color:var(--ink-mute);font-size:15px;line-height:1.7;max-width:780px}
+li{margin:4px 0}
+table{border-collapse:collapse;width:100%;max-width:840px;margin:14px 0;font-size:13.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink);font-weight:500}
+td code{font-size:12px}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+@media(max-width:820px){.related{grid-template-columns:1fr}}
+.related a{padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:4px}
+.related a:hover{border-color:var(--accent-soft)}
+.related b{font-size:14px;color:var(--ink);font-weight:500}
+.related span{font-size:12.5px;color:var(--ink-mute);line-height:1.5}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, not the Kolm band, not Petter Kolm.</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/docs">docs</a> / <a href="/docs/cli">cli</a> / nl</div>
+<h1>kolm nl</h1>
+<p class="lede">Natural-language recipe scaffolder. Describe what you want in plain English, get a deterministic <code>spec.json</code> plus seed stub ready to drop into <code>kolm compile</code>. The default path is air-gapped and keyword-based, so the same brief always produces the same scaffold.</p>
+
+<h2 id="usage">Usage</h2>
+<pre><code>kolm nl "&lt;free text request&gt;" [--class &lt;c&gt;] [--out &lt;path&gt;] [--json] [--network|--no-network]</code></pre>
+
+<h2 id="flags">Flags</h2>
+<table>
+  <thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td><code>--class &lt;c&gt;</code></td><td>Force the recipe class. One of <code>rule</code>, <code>synthesized_rule</code>, <code>compiled_rule</code>, <code>distilled_model</code>. Default is keyword-inferred.</td></tr>
+    <tr><td><code>--out &lt;path&gt;</code></td><td>Write the scaffold to a file. Default is stdout.</td></tr>
+    <tr><td><code>--json</code></td><td>Machine-readable JSON output. Default is human-readable.</td></tr>
+    <tr><td><code>--no-network</code></td><td>Force the air-gap path. Same as <code>KOLM_AIRGAP=1</code>. This is the default.</td></tr>
+    <tr><td><code>--network</code></td><td>Opt into the hosted-LLM drafter. The CLI POSTs to <code>/v1/nl/scaffold</code>; the response carries <code>x-kolm-nl-source</code> so the caller can confirm which branch served.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="examples">Examples</h2>
+<pre><code>kolm nl "parse EDI 837 claims and emit JSON rows"
+kolm nl "draft an appeal letter for an 835 denial with code CO-97"
+kolm nl "compute HEDIS HBD measure for a diabetic cohort"
+kolm nl "redact PHI from clinical notes" --class rule --out scaffolds/phi.json</code></pre>
+
+<h2 id="schema">Output schema</h2>
+<pre><code>{
+  "ok": true,
+  "suggested_slug":              "&lt;kebab-case slug&gt;",
+  "suggested_task_description":  "&lt;the request, verbatim&gt;",
+  "recipe_class":                "rule | synthesized_rule | compiled_rule | distilled_model",
+  "suggested_k_score_gate":      0.88,
+  "suggested_seed_examples":     [{ "prompt": "...", "completion": "..." }, ...],
+  "next_steps":                  [ "kolm compile --spec ...", "kolm verify ..." ],
+  "class_inference_basis":       "keyword:edi | class_hint | default",
+  "network_status":              "air_gap | wired",
+  "note":                        "scaffolds are starting points. refine + verify before compile."
+}</code></pre>
+
+<h2 id="inference">How class inference works (air-gap path)</h2>
+<p>A keyword match over the request text picks the class in priority order:</p>
+<ol>
+  <li>Generative requests (<code>draft</code>, <code>write a</code>, <code>summarize</code>, <code>translate</code>, <code>appeal letter</code>) map to <code>distilled_model</code> (real model bytes required).</li>
+  <li>Native, wasm, C, or Rust mentions map to <code>compiled_rule</code>.</li>
+  <li>Known measures with a spec (<code>HEDIS</code>, <code>compute measure</code>, <code>apply spec</code>) map to <code>synthesized_rule</code> (teacher emits rule code, AST-validated).</li>
+  <li>Deterministic parsing or redacting or validating (<code>parse</code>, <code>redact</code>, <code>extract</code>, <code>EDI</code>, <code>FHIR</code>, <code>classify</code>) maps to <code>rule</code>.</li>
+  <li>No keyword match falls back to <code>rule</code> (honest floor; upgrade with <code>--class</code>).</li>
+</ol>
+
+<h2 id="honest">Honest scope</h2>
+<p>The air-gap path is deterministic and ships today. Same input always produces the same scaffold. The networked drafter is opt-in via <code>--network</code> and replaces placeholder fields (seed examples, task description refinement) with model-generated suggestions, while class inference, slug, and gate stay intact.</p>
+<p>Scaffolds are starting points, not finished recipes. Edit the seeds, refine the task description, then run <code>kolm compile --spec &lt;file&gt;</code> and <code>kolm verify &lt;artifact&gt;.kolm</code> before you ship anything to production.</p>
+
+<h2 id="see">Related</h2>
+<div class="related">
+  <a href="/docs/cli"><b>/docs/cli</b><span>Full CLI reference index. Every verb the local kolm CLI ships.</span></a>
+  <a href="/docs/cli/seeds"><b>/docs/cli/seeds</b><span>Scaffold seeds.jsonl from a template or a brief.</span></a>
+  <a href="/docs/distill"><b>/docs/distill</b><span>Auto-distill a captured namespace into a local LoRA.</span></a>
+  <a href="/quickstart"><b>/quickstart</b><span>Five minute onboarding from npm install to first signed artifact.</span></a>
+  <a href="/spec"><b>/spec</b><span>RS-1 v2.1 spec for the full manifest plus receipt-chain schema.</span></a>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/pricing">Pricing</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

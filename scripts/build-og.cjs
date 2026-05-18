@@ -110,7 +110,7 @@ function walkHtmlTop(dir) {
 // W227 — also generate OG cards for selected subdirectories so that
 // /articles/*.html pages get their per-page card (referenced as
 // /og/articles-<slug>.svg from each article's og:image meta).
-const NESTED_DIRS = ['articles', 'docs', 'how-vs-lorax', 'how-vs-predibase', 'foundations', 'quickstart'];
+const NESTED_DIRS = ['articles', 'docs', 'how-vs-lorax', 'how-vs-predibase', 'foundations', 'quickstart', 'docs/connect'];
 
 function walkNested(dir, prefix) {
   if (!fs.existsSync(dir)) return [];
@@ -118,7 +118,7 @@ function walkNested(dir, prefix) {
     .filter((e) => e.isFile() && e.name.endsWith('.html') && e.name !== 'index.html')
     .map((e) => ({
       full: path.join(dir, e.name),
-      slug: `${prefix}-${e.name.replace(/\.html$/, '')}`,
+      slug: `${prefix.replace(/[\\\/]/g, '-')}-${e.name.replace(/\.html$/, '')}`,
     }));
 }
 

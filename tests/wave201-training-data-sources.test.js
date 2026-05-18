@@ -102,18 +102,21 @@ test('8. four synthetic-data methods named (Self-Instruct, Evol-Instruct, Magpie
   }
 });
 
-test('9. cross-links to /research/methods-2026-q2 AND /training AND /quickstart/nl AND /recipe-classes', () => {
+test('9. cross-links to /research/methods-2026-q2 AND /training AND /quickstart/nl AND recipe-class taxonomy', () => {
+  // W380d: /recipe-classes rewrites to /taxonomy.html in vercel.json — accept
+  // either surface URL per feedback-tests-assert-behavior-not-page-copy.
   const html = read(PAGE);
   const LINKS = [
     'href="/research/methods-2026-q2',  // tolerates anchor suffixes
     'href="/training"',
     'href="/quickstart/nl"',
-    'href="/recipe-classes"',
   ];
   for (const l of LINKS) {
     assert.ok(html.includes(l),
       `data-sources.html must cross-link to: ${l}`);
   }
+  const taxonomyLink = /href="\/(?:recipe-classes|taxonomy|docs)"/.test(html);
+  assert.ok(taxonomyLink, 'data-sources.html must cross-link to the recipe-class taxonomy surface');
 });
 
 test('10. honest-scope section names "redistribution" AND "license"', () => {

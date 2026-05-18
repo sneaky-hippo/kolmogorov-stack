@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Response distillation &middot; kolm.ai</title>
+<meta name="description" content="Response-only knowledge distillation: the student is trained to reproduce the teacher's final response on each prompt, with no access to the teacher's logits or intermediate reasoning.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Response distillation &middot; kolm.ai">
+<meta property="og:description" content="Hard-label distillation on teacher responses only.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/research/response-distill">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Response distillation &middot; kolm.ai">
+<meta name="twitter:description" content="Hard-label distillation on teacher responses only.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/research/response-distill">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"ScholarlyArticle","headline":"Response distillation","description":"Train the student on the teacher's final response only, no logit access required.","url":"https://kolm.ai/research/response-distill","datePublished":"2026-05-18","dateModified":"2026-05-18","author":{"@type":"Organization","name":"kolm.ai"},"publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip-link{position:absolute;left:-9999px}
+.skip-link:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+main{padding:48px 0 96px}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0 0 36px}
+h2{font-size:24px;font-weight:500;letter-spacing:-0.018em;margin:48px 0 12px;max-width:780px;scroll-margin-top:80px}
+p{color:var(--ink-mute);font-size:15px;line-height:1.65;max-width:780px}
+code{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg-elev);padding:1px 6px;border-radius:4px;border:1px solid var(--line)}
+.refs{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-faint);max-width:780px}
+.refs p{font-size:13.5px;color:var(--ink-faint);margin:6px 0}
+footer{padding:32px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px;border-top:1px solid var(--line)}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+.brand-anchor{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span class="brand-anchor" aria-hidden="true">kolm.ai</span>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <nav aria-label="Primary"><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav>
+</div></header>
+
+<main id="main" tabindex="-1"><div class="wrap">
+
+<div class="crumbs"><a href="/">kolm.ai</a> / <a href="/research">research</a> / response-distill</div>
+<h1>Response distillation</h1>
+<p class="lede">Response distillation, sometimes called hard-label distillation or sequence-level KD, trains the student on the teacher's sampled responses with plain cross-entropy. No logit access required, works across tokenizer families, runs on cheap APIs. The trade-off is the dark-knowledge signal you lose by collapsing the teacher's full distribution to a single token at each step.</p>
+
+<h2 id="what">What it is</h2>
+<p>Kim and Rush (2016) formalized sequence-level knowledge distillation: the teacher samples (or beam-searches) a response, and the student is trained on it with standard cross-entropy. This is the special case of soft-label distillation where the temperature has effectively gone to zero and only the argmax token at each position remains. The advantages are operational: no logit-level API access is needed, so the teacher can be any closed-source API; the student and teacher tokenizers do not need to align; the training loop is identical to SFT on any other labelled corpus. The disadvantage, named by Hinton et al. (2015) as the loss of "dark knowledge", is that the student sees the second and third-most-likely tokens nowhere; the teacher's confidence calibration is not transferred. For the typical kolm gap (a 14B teacher to a 3B student on a narrow task) the loss is small; for cross-family transfer with a large capacity gap (70B to 3B across families) the loss is more material and on-policy or rationale variants help.</p>
+
+<h2 id="how">How kolm uses it</h2>
+<p>Response distillation is the default training mode in kolm v0.2.6. The synthesis pipeline samples teacher responses for each row in the corpus (with the cache-control hint enabled for cost; see <a href="/research/prompt-cache">/research/prompt-cache</a>), records them in the capture log with the prompt and the teacher id, and the trainer runs cross-entropy on the response tokens against the student's logits. The full token-level KD path (forward-KL, reverse-KL, JSD) is documented separately at <a href="/research/response-distillation">/research/response-distillation</a> and is enabled when the teacher exposes logits and shares the student's tokenizer; otherwise the trainer falls back to response distillation. The receipt records the teacher id, the sampled-response hash, the corpus row count, and the post-train holdout K-score.</p>
+
+<h2 id="refs">References</h2>
+<div class="refs">
+<p>Hinton, G., Vinyals, O., Dean, J. <em>Distilling the Knowledge in a Neural Network.</em> 2015. arXiv:1503.02531.</p>
+<p>Kim, Y., Rush, A. M. <em>Sequence-Level Knowledge Distillation.</em> EMNLP 2016. arXiv:1606.07947.</p>
+<p>Gu, Y. et al. <em>MiniLLM: Knowledge Distillation of Large Language Models.</em> ICLR 2024. arXiv:2306.08543.</p>
+<p>Agarwal, R. et al. <em>On-Policy Distillation of Language Models.</em> ICLR 2024. arXiv:2306.13649.</p>
+</div>
+
+</div></main>
+
+<footer><div class="wrap">
+  <span>&copy; 2026 kolm.ai</span>
+  &middot;
+  <a href="/security">Security</a>
+  &middot;
+  <a href="/research">Research</a>
+  &middot;
+  <a href="/docs">Docs</a>
+</div></footer>
+
+</body>
+</html>

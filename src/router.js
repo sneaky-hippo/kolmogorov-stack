@@ -99,6 +99,123 @@ import {
   publicConfig as notifPublicConfig,
 } from './notifications.js';
 
+// W368 connector daemon — direct passthrough routes for OpenAI/Anthropic/
+// OpenRouter/Gemini SDKs that point their BASE_URL at the daemon. Mounted
+// BEFORE authMiddleware (line ~1571) so SDK calls don't need a kolm.ai
+// tenant key. Upstream creds come from the user's env / config / header.
+import { PROVIDERS as CONNECTOR_PROVIDERS, summarizeProviders as connectorSummarizeProviders } from './provider-registry.js';
+import { estimateCost as connectorEstimateCost, extractUsage as connectorExtractUsage } from './cost-estimator.js';
+import { newEvent as connectorNewEvent, hashContent as connectorHashContent } from './event-schema.js';
+import { scan as connectorPrivacyScan } from './privacy-membrane.js';
+
+// =====================================================================
+// W384 — backend wiring imports for /v1/* routes that expose the W369–
+// W383 modules over HTTP. Kept in a single block so the dependency
+// inventory is grep-able by CI. All imports are static (resolved at
+// boot) so the route handlers do not pay a dynamic-import tax per call.
+// =====================================================================
+import {
+  scan as privacyScan,
+  redactWithPolicy as privacyRedactWithPolicy,
+  getFullPolicy as privacyGetFullPolicy,
+  setPolicy as privacySetPolicy,
+  DETECTOR_VERSION as PRIVACY_DETECTOR_VERSION,
+  ALL_CLASSES as PRIVACY_ALL_CLASSES,
+  PolicyBlockError,
+} from './privacy-membrane.js';
+import {
+  getSyncState as syncGetState,
+  setSyncState as syncSetState,
+  pushEvents as syncPushEvents,
+  pullEvents as syncPullEvents,
+  auditLog as syncAuditLog,
+  STATES as SYNC_STATES,
+  PRIVACY_CLASSES as SYNC_PRIVACY_CLASSES,
+  CloudSyncError,
+} from './cloud-sync.js';
+import {
+  getWorkspace as teamGetWorkspace,
+  listMembers as teamListMembers,
+  invite as teamInvite,
+  acceptInvite as teamAcceptInvite,
+  setRole as teamSetRole,
+  removeMember as teamRemoveMember,
+  permits as teamPermits,
+  submitApproval as teamSubmitApproval,
+  decideApproval as teamDecideApproval,
+  listApprovals as teamListApprovals,
+  addSharedNamespace as teamAddSharedNamespace,
+  removeSharedNamespace as teamRemoveSharedNamespace,
+  canSee as teamCanSee,
+  ROLES as TEAM_ROLES,
+  TeamError,
+} from './team.js';
+import {
+  listAgents as agentListAgents,
+  listSessions as agentListSessions,
+  getSession as agentGetSession,
+  recommendModel as agentRecommendModel,
+  topFailingPromptShapes as agentTopFailing,
+  agentTelemetryStats as agentStats,
+} from './agent-telemetry.js';
+import {
+  compileFull as pipelineCompileFull,
+  PIPELINE_PHASES,
+} from './compile-pipeline.js';
+import { trainTokenizer as pipelineTrainTokenizer } from './tokenizer-train.js';
+import { lakeStats as lakeStatsFn, clusterRepeatedPrompts as lakeClusterRepeated } from './lake.js';
+import {
+  findOpportunities as oppFindOpportunities,
+  acceptOpportunity as oppAcceptOpportunity,
+  ignoreOpportunity as oppIgnoreOpportunity,
+  loadOpportunitiesState as oppLoadState,
+} from './opportunity-engine.js';
+import {
+  createDataset as dsCreateDataset,
+  splitDataset as dsSplitDataset,
+  listDatasets as dsListDatasets,
+  inspectDataset as dsInspectDataset,
+} from './dataset-workbench.js';
+import {
+  nextToLabel as lblNextToLabel,
+  submitLabel as lblSubmitLabel,
+  labelStats as lblStats,
+  getLabel as lblGetLabel,
+} from './label-queue.js';
+import {
+  SIM_TYPES,
+  createSim as simCreateSim,
+  runSim as simRunSim,
+  listSims as simListSims,
+  _readSimRaw as simReadRaw,
+} from './simulation.js';
+import { bakeoff as bakeoffRun, DEFAULT_CONTESTANTS as BAKEOFF_DEFAULTS } from './bakeoff.js';
+import { plan as trainingPlanFn } from './training-planner.js';
+import {
+  POLICIES as RUNTIME_POLICIES,
+  getPolicy as runtimeGetPolicy,
+  setPolicy as runtimeSetPolicy,
+  decide as runtimeDecide,
+  recentDecisions as runtimeRecentDecisions,
+  replacementStats as runtimeReplacementStats,
+} from './runtime-policy.js';
+import {
+  detectLocalDevice as devDetectLocal,
+  listDevices as devListDevices,
+  registerDevice as devRegisterDevice,
+  testDevice as devTestDevice,
+  getDevice as devGetDevice,
+} from './device-capabilities.js';
+import {
+  installToDevice as devInstallToDevice,
+  listInstalled as devListInstalled,
+  uninstall as devUninstall,
+  testInstall as devTestInstall,
+} from './device-install.js';
+import { storeBlob as mediaStoreBlob, mimeToExt as mediaMimeToExt } from './media-store.js';
+import { appendEvent as eventAppend, listEvents as eventList, countEvents as eventCount, purgeEvents as eventPurge, storeInfo as eventStoreInfo } from './event-store.js';
+import { MEDIA_KINDS as EVENT_MEDIA_KINDS } from './event-schema.js';
+
 // Per-IP rate limiters (S5, S10). Express trust-proxy is set to 2 in
 // server.js so X-Forwarded-For resolves through the Vercel→Railway chain.
 // Vercel rotates client egress IPs within a /24 subnet on each request, so
@@ -1565,6 +1682,222 @@ export function buildRouter() {
         return res.status(501).json({ error: 'nl_seeds_requires_backend', hint: 'set KOLM_LLM_PROVIDER and KOLM_LLM_KEY' });
       }
       return res.status(502).json({ error: 'nl_seeds_failed', detail: msg });
+    }
+  });
+
+  // W368 — connector daemon passthrough routes. Mounted BEFORE authMiddleware
+  // so SDKs that point OPENAI_BASE_URL / ANTHROPIC_BASE_URL / OPENROUTER_BASE_URL
+  // at this server work with just the user's own upstream key (no kolm.ai
+  // tenant key required). Upstream credentials resolve in this order:
+  //   1. Authorization: Bearer <upstream-key>     (e.g. sk-... for OpenAI)
+  //   2. x-upstream-api-key: <upstream-key>       (legacy)
+  //   3. process.env[<PROVIDER>_API_KEY]          (server-side env)
+  // If none, returns 401 with a hint pointing to env setup.
+  async function __connectorProxy(provider, upstreamPath, req, res) {
+    const pcfg = CONNECTOR_PROVIDERS[provider];
+    if (!pcfg) return res.status(400).json({ error: { type: 'unknown_provider', message: provider } });
+    // Resolve upstream key.
+    let upstreamKey = '';
+    const authH = String(req.headers.authorization || '');
+    const m = authH.match(/^Bearer\s+(\S+)$/i);
+    if (m) upstreamKey = m[1];
+    if (!upstreamKey && req.headers['x-upstream-api-key']) upstreamKey = String(req.headers['x-upstream-api-key']);
+    if (!upstreamKey && pcfg.env_key && process.env[pcfg.env_key]) upstreamKey = process.env[pcfg.env_key];
+    if (!upstreamKey) {
+      return res.status(401).json({
+        error: {
+          type: 'missing_upstream_credentials',
+          message: `no upstream credentials for ${provider}; set ${pcfg.env_key} in env or run: kolm connect config --set ${provider.toLowerCase()}_api_key=<key>`,
+        },
+      });
+    }
+    const body = (req.body && typeof req.body === 'object') ? req.body : {};
+    const model = String(body.model || '').slice(0, 128);
+    // Extract a prompt string for hashing + scan.
+    let promptText = '';
+    if (Array.isArray(body.messages)) {
+      promptText = body.messages.map(mm => {
+        const role = mm && mm.role || 'user';
+        const c = typeof mm.content === 'string' ? mm.content
+          : Array.isArray(mm.content) ? mm.content.map(x => (x && (x.text || x.content)) || '').join('\n')
+          : '';
+        return role + ': ' + c;
+      }).join('\n\n');
+    } else if (typeof body.input === 'string') {
+      promptText = body.input;
+    } else if (typeof body.prompt === 'string') {
+      promptText = body.prompt;
+    }
+    if (provider === 'anthropic' && typeof body.system === 'string') {
+      promptText = 'system: ' + body.system + '\n\n' + promptText;
+    }
+    const scan = connectorPrivacyScan(promptText);
+    const upstreamUrl = pcfg.upstream.replace(/\/+$/, '') + upstreamPath;
+    // Forward via node:http(s) directly (avoids global fetch dispatcher pinning sockets).
+    const headers = { 'content-type': 'application/json' };
+    if (pcfg.auth === 'bearer') headers['authorization'] = `Bearer ${upstreamKey}`;
+    else if (pcfg.auth === 'x-api-key') {
+      headers['x-api-key'] = upstreamKey;
+      headers['anthropic-version'] = req.headers['anthropic-version'] || '2023-06-01';
+    }
+    if (provider === 'openrouter') {
+      headers['http-referer'] = req.headers['http-referer'] || 'https://kolm.ai';
+      headers['x-title'] = req.headers['x-title'] || 'kolm.ai';
+    }
+    let upstreamResp;
+    const t0 = Date.now();
+    try {
+      const httpMod = await import('node:http');
+      const httpsMod = await import('node:https');
+      upstreamResp = await new Promise((resolve, reject) => {
+        const u = new URL(upstreamUrl);
+        const lib = u.protocol === 'https:' ? httpsMod.default : httpMod.default;
+        const payload = JSON.stringify(body);
+        headers['content-length'] = Buffer.byteLength(payload).toString();
+        const rq = lib.request({
+          protocol: u.protocol, hostname: u.hostname,
+          port: u.port || (u.protocol === 'https:' ? 443 : 80),
+          path: u.pathname + (u.search || ''),
+          method: 'POST', headers,
+        }, (resp) => {
+          let buf = ''; resp.setEncoding('utf8');
+          resp.on('data', d => { buf += d; });
+          resp.on('end', () => {
+            let json; try { json = JSON.parse(buf); } catch (_) { json = { _raw: buf }; }
+            resolve({ status: resp.statusCode, body: json });
+          });
+        });
+        rq.setTimeout(120000, () => { try { rq.destroy(new Error('upstream_timeout')); } catch (_) {} });
+        rq.on('error', reject);
+        rq.write(payload); rq.end();
+      });
+    } catch (e) {
+      return res.status(502).json({ error: { type: 'upstream_error', message: String(e.message || e) } });
+    }
+    const latencyMs = Date.now() - t0;
+    const usage = connectorExtractUsage(upstreamResp.body, provider);
+    const cost = connectorEstimateCost({ provider, model, prompt_tokens: usage.prompt_tokens, completion_tokens: usage.completion_tokens });
+    const httpStatus = upstreamResp.status;
+    let canonStatus = 'ok';
+    if (httpStatus === 429) canonStatus = 'rate_limited';
+    else if (httpStatus === 408 || httpStatus === 504) canonStatus = 'timeout';
+    else if (httpStatus >= 400) canonStatus = 'error';
+    const ev = connectorNewEvent({
+      tenant_id: 'local',
+      namespace: 'default',
+      provider,
+      model,
+      upstream_url: upstreamUrl,
+      request_hash: connectorHashContent(promptText + '|' + model),
+      response_hash: connectorHashContent(JSON.stringify(upstreamResp.body || {})),
+      prompt_tokens: usage.prompt_tokens,
+      completion_tokens: usage.completion_tokens,
+      estimated_cost_usd: cost,
+      latency_ms: latencyMs,
+      status: canonStatus,
+      error_type: httpStatus >= 400 ? 'upstream_status_' + httpStatus : null,
+      sensitive_data_detected: scan.sensitive,
+      sensitive_classes: scan.classes,
+      redaction_policy: 'allow',
+      source_type: 'real',
+    });
+    // Best-effort capture-store insert. Failure does not block the upstream
+    // response to the SDK; we surface via x-kolm-event-durable header.
+    let durable = true;
+    try {
+      await insertCapture({
+        id: ev.event_id,
+        tenant: 'local',
+        template_hash: ev.request_hash,
+        template_preview: String(promptText || '').slice(0, 200),
+        model: ev.model,
+        prompt: String(promptText || '').slice(0, 8000),
+        variable_input: null,
+        response: typeof upstreamResp.body === 'object' ? JSON.stringify(upstreamResp.body).slice(0, 16000) : String(upstreamResp.body).slice(0, 16000),
+        latency_ms: ev.latency_ms,
+        latency_us: ev.latency_ms * 1000,
+        cost_usd: ev.estimated_cost_usd,
+        provider: ev.provider,
+        corpus_namespace: 'default',
+        status: httpStatus,
+        created_at: ev.created_at,
+      });
+    } catch (_) { durable = false; }
+    res.set('x-kolm-event-id', ev.event_id);
+    res.set('x-kolm-provider', provider);
+    res.set('x-kolm-model', model);
+    res.set('x-kolm-event-durable', String(durable));
+    if (scan.sensitive) res.set('x-kolm-sensitive-classes', scan.classes.join(','));
+    res.status(httpStatus).json(upstreamResp.body);
+  }
+
+  // OpenAI-compatible direct routes.
+  for (const p of ['/v1/chat/completions', '/v1/responses', '/v1/embeddings', '/v1/moderations']) {
+    r.post(p, (req, res) => __connectorProxy('openai', p, req, res));
+  }
+  // Anthropic direct + alias.
+  r.post('/v1/messages', (req, res) => __connectorProxy('anthropic', '/v1/messages', req, res));
+  r.post('/anthropic/v1/messages', (req, res) => __connectorProxy('anthropic', '/v1/messages', req, res));
+  // OpenRouter explicit capture endpoint + alias for SDKs whose base URL ends in /v1.
+  r.post('/v1/capture/openrouter', (req, res) => __connectorProxy('openrouter', '/v1/chat/completions', req, res));
+  r.post('/v1/capture/openrouter/v1/chat/completions', (req, res) => __connectorProxy('openrouter', '/v1/chat/completions', req, res));
+
+  // ====================================================================
+  // W386 — model weights manifest + pull redirect + cache inspector.
+  // Mounted BEFORE authMiddleware: the manifest indexes public HF URLs
+  // (the same data huggingface.co serves anonymously), and pull is just
+  // a 302 to that public location. /cache reads the local index on the
+  // API host itself, which is a public/static read.
+  //
+  // GET /v1/models/manifest          full manifest JSON
+  // GET /v1/models/manifest?tier=X   filtered by tier
+  // GET /v1/models/pull?id=&variant= 302 to the HF resolve URL
+  // GET /v1/models/cache             local cache index on the API host
+  // ====================================================================
+
+  r.get('/v1/models/manifest', async (req, res) => {
+    try {
+      const W = await import('./model-weights-manifest.js');
+      const tier = req.query.tier;
+      if (tier && !W.TIERS.includes(String(tier))) {
+        return res.status(400).json({ error: 'bad_tier', valid: W.TIERS });
+      }
+      const rows = tier ? W.listVariantsByTier(String(tier)) : W.ALL_VARIANTS;
+      res.set('Cache-Control', 'public, max-age=300');
+      res.json({ tier: tier || '(all)', total: rows.length, variants: rows });
+    } catch (e) {
+      res.status(500).json({ error: 'manifest_error', detail: String(e.message || e) });
+    }
+  });
+
+  r.get('/v1/models/pull', async (req, res) => {
+    try {
+      const id = String(req.query.id || '');
+      const variant = String(req.query.variant || 'q4_k_m');
+      if (!id) return res.status(400).json({ error: 'missing_id' });
+      const W = await import('./model-weights-manifest.js');
+      const row = W.getVariant(id, variant);
+      if (!row) return res.status(404).json({ error: 'unknown_variant', id, variant });
+      if (row.unavailable) return res.status(410).json({ error: 'variant_unavailable', id, variant });
+      const file = row.files[0];
+      if (!file) return res.status(500).json({ error: 'no_files_in_row' });
+      const url = W.hfResolveUrl(row.hf_repo, row.hf_revision, file.path);
+      res.set('Cache-Control', 'no-store');
+      res.redirect(302, url);
+    } catch (e) {
+      res.status(500).json({ error: 'pull_error', detail: String(e.message || e) });
+    }
+  });
+
+  r.get('/v1/models/cache', async (_req, res) => {
+    try {
+      const P = await import('./model-weights-puller.js');
+      const dir = P.defaultCacheDir();
+      const entries = P.listCache(dir);
+      const total_bytes = P.cacheTotalBytes(dir);
+      res.json({ cache_dir: dir, total_bytes, entries });
+    } catch (e) {
+      res.status(500).json({ error: 'cache_error', detail: String(e.message || e) });
     }
   });
 
@@ -6197,6 +6530,1092 @@ export function buildRouter() {
     } catch (e) {
       return res.status(500).json({ error: 'marketplace_publish_error', detail: String(e.message || e) });
     }
+  });
+
+  // ====================================================================
+  // W384 — HTTP wiring for W369–W383 backend modules.
+  //
+  // Every route in this block is mounted AFTER r.use(authMiddleware) at
+  // line ~1845, so req.tenant + req.tenant_record + req.is_admin are
+  // populated for the handler. The two public routes that must NOT be
+  // gated (/v1/sync/inbox, /v1/team/accept-invite) are whitelisted in
+  // auth.js PUBLIC_API.
+  //
+  // Modules are imported statically at the top of the file (W384 import
+  // block, lines ~111–217) so handlers never pay a per-request dynamic
+  // import tax. All routes are pure I/O over the existing in-process
+  // modules — no fetch back to localhost.
+  // ====================================================================
+
+  // Small util used by several W384 routes — turn a thrown Error into a
+  // typed JSON envelope. Modules use named errors (CloudSyncError,
+  // TeamError, PolicyBlockError) plus generic Error with .code.
+  function _w384Err(e, fallback = 'internal') {
+    if (!e) return { error: fallback };
+    const code = e.code || (e.name && e.name !== 'Error' ? e.name : null) || fallback;
+    return { error: String(code), detail: String(e.message || e) };
+  }
+
+  // Resolve an actor member id for team routes. Tries req.body.actor_member_id
+  // first, then falls back to the first admin in the workspace (acceptable
+  // for single-tenant CLI flows; multi-tenant deployments override via body).
+  function _w384ResolveActor(req) {
+    const bodyId = req && req.body && req.body.actor_member_id;
+    if (bodyId && typeof bodyId === 'string') return bodyId;
+    try {
+      const ws = teamGetWorkspace();
+      const admin = (ws.members || []).find(m => m.role === 'admin');
+      return admin ? admin.member_id : null;
+    } catch { return null; }
+  }
+
+  // ============== W384: privacy ==============
+  // POST /v1/privacy/scan — pure detector pass over { text } body. Returns
+  // findings array + sensitive boolean + class counts. No state change.
+  r.post('/v1/privacy/scan', (req, res) => {
+    try {
+      const text = String((req.body && req.body.text) || '');
+      const result = privacyScan(text);
+      res.json({ ok: true, ...result, detector_version: PRIVACY_DETECTOR_VERSION });
+    } catch (e) { res.status(500).json(_w384Err(e, 'privacy_scan_error')); }
+  });
+
+  // POST /v1/privacy/test — apply the current policy to body.text and
+  // return { redacted, findings, policy_actions }. May 403 if policy
+  // says block on a class present.
+  r.post('/v1/privacy/test', (req, res) => {
+    try {
+      const text = String((req.body && req.body.text) || '');
+      const out = privacyRedactWithPolicy(text);
+      res.json({ ok: true, ...out, detector_version: PRIVACY_DETECTOR_VERSION });
+    } catch (e) {
+      if (e instanceof PolicyBlockError) {
+        return res.status(403).json({ error: 'policy_block', classes: e.classes, detail: e.message });
+      }
+      res.status(500).json(_w384Err(e, 'privacy_test_error'));
+    }
+  });
+
+  // GET /v1/privacy/policy — return the policy dictionary.
+  r.get('/v1/privacy/policy', (req, res) => {
+    try { res.json({ ok: true, policy: privacyGetFullPolicy(), classes: PRIVACY_ALL_CLASSES }); }
+    catch (e) { res.status(500).json(_w384Err(e, 'privacy_policy_read_error')); }
+  });
+
+  // PUT /v1/privacy/policy/:class — set { action } for a class. Admin-only.
+  r.put('/v1/privacy/policy/:class', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin_only' });
+    try {
+      // Privacy classes are lowercase in policy storage (email/ssn/phone/...);
+      // accept either case from the URL but normalize before set.
+      const cls = String(req.params.class || '').toLowerCase();
+      const action = String((req.body && req.body.action) || '');
+      if (!PRIVACY_ALL_CLASSES.includes(cls)) {
+        return res.status(400).json({ error: 'unknown_class', class: cls, valid: PRIVACY_ALL_CLASSES });
+      }
+      privacySetPolicy({ class: cls, action });
+      res.json({ ok: true, class: cls, action, policy: privacyGetFullPolicy() });
+    } catch (e) { res.status(400).json(_w384Err(e, 'privacy_policy_set_error')); }
+  });
+
+  // GET /v1/privacy/report — aggregate redaction counts over the event lake.
+  r.get('/v1/privacy/report', async (req, res) => {
+    try {
+      const evs = await eventList({ limit: 0, order: 'asc' });
+      const byClass = {};
+      let totalSensitive = 0;
+      for (const ev of evs) {
+        if (ev.sensitive_data_detected) totalSensitive++;
+        if (Array.isArray(ev.sensitive_classes)) {
+          for (const c of ev.sensitive_classes) byClass[c] = (byClass[c] || 0) + 1;
+        }
+      }
+      res.json({
+        ok: true,
+        total_events: evs.length,
+        sensitive_events: totalSensitive,
+        sensitive_classes: byClass,
+        detector_version: PRIVACY_DETECTOR_VERSION,
+      });
+    } catch (e) { res.status(500).json(_w384Err(e, 'privacy_report_error')); }
+  });
+
+  // GET /v1/privacy/events — recent events that tripped the detector.
+  r.get('/v1/privacy/events', async (req, res) => {
+    try {
+      const limit = Math.min(500, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50));
+      const evs = await eventList({ limit: 0, order: 'desc' });
+      const flagged = evs.filter(e => e.sensitive_data_detected || (Array.isArray(e.sensitive_classes) && e.sensitive_classes.length))
+        .slice(0, limit);
+      res.json({ ok: true, total: flagged.length, events: flagged });
+    } catch (e) { res.status(500).json(_w384Err(e, 'privacy_events_error')); }
+  });
+
+  // ============== W384: sync (cloud-sync state matrix) ==============
+  // GET /v1/sync/status — return current state + classes_blocked + counts.
+  r.get('/v1/sync/status', (req, res) => {
+    try {
+      const state = syncGetState();
+      res.json({ ok: true, state, valid_states: SYNC_STATES, privacy_classes: SYNC_PRIVACY_CLASSES });
+    } catch (e) { res.status(500).json(_w384Err(e, 'sync_status_error')); }
+  });
+
+  // PUT /v1/sync/state — set sync state. Admin-only because it changes
+  // what data leaves the device.
+  r.put('/v1/sync/state', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin_only', hint: 'sync state controls what leaves the device — admin role required' });
+    try {
+      const patch = req.body || {};
+      const next = syncSetState(patch);
+      res.json({ ok: true, state: next });
+    } catch (e) {
+      if (e instanceof CloudSyncError) return res.status(400).json({ error: e.code || 'cloud_sync_error', detail: e.message });
+      res.status(500).json(_w384Err(e, 'sync_state_set_error'));
+    }
+  });
+
+  // POST /v1/sync/push — push events to the configured cloud_base. Returns
+  // {pushed, skipped, blocked, audit_id, reasons}.
+  r.post('/v1/sync/push', async (req, res) => {
+    try {
+      const result = await syncPushEvents({
+        since: req.body && req.body.since,
+        limit: req.body && Number(req.body.limit),
+        dryRun: !!(req.body && req.body.dry_run),
+      });
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      if (e instanceof CloudSyncError) return res.status(400).json({ error: e.code || 'cloud_sync_error', detail: e.message });
+      res.status(500).json(_w384Err(e, 'sync_push_error'));
+    }
+  });
+
+  // POST /v1/sync/pull — pull events from cloud and append locally.
+  r.post('/v1/sync/pull', async (req, res) => {
+    try {
+      const result = await syncPullEvents({
+        since: req.body && req.body.since,
+        limit: req.body && Number(req.body.limit),
+      });
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      if (e instanceof CloudSyncError) return res.status(400).json({ error: e.code || 'cloud_sync_error', detail: e.message });
+      res.status(500).json(_w384Err(e, 'sync_pull_error'));
+    }
+  });
+
+  // GET /v1/sync/audit — tail the audit.jsonl ring.
+  r.get('/v1/sync/audit', (req, res) => {
+    try {
+      const limit = Math.min(500, Math.max(1, parseInt(String(req.query.limit || '50'), 10) || 50));
+      const rows = syncAuditLog({ limit });
+      res.json({ ok: true, total: rows.length, audit: rows });
+    } catch (e) { res.status(500).json(_w384Err(e, 'sync_audit_error')); }
+  });
+
+  // POST /v1/sync/inbox — PUBLIC receive endpoint for peer daemons. The
+  // sender supplies their own Bearer auth in headers; we treat the body's
+  // {events, namespace, source_device_id, state} envelope as the contract.
+  // The receiver writes incoming events into the local event store.
+  r.post('/v1/sync/inbox', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const events = Array.isArray(body.events) ? body.events : [];
+      if (events.length === 0) return res.json({ ok: true, received: 0, note: 'no_events_in_envelope' });
+      let received = 0;
+      for (const ev of events) {
+        try {
+          await eventAppend({ ...ev, source_device_id: body.source_device_id || ev.source_device_id || 'unknown' });
+          received++;
+        } catch { /* per-row failures are silent — return aggregate count */ }
+      }
+      res.json({ ok: true, received, namespace: body.namespace || null, state: body.state || null });
+    } catch (e) { res.status(500).json(_w384Err(e, 'sync_inbox_error')); }
+  });
+
+  // ============== W384: team (single-tenant local workspace) ==============
+  // GET /v1/team/workspace — return the workspace record + members.
+  r.get('/v1/team/workspace', (req, res) => {
+    try { res.json({ ok: true, workspace: teamGetWorkspace(), roles: TEAM_ROLES }); }
+    catch (e) { res.status(500).json(_w384Err(e, 'team_workspace_error')); }
+  });
+
+  // GET /v1/team/members — list members.
+  r.get('/v1/team/members', (req, res) => {
+    try { res.json({ ok: true, members: teamListMembers() }); }
+    catch (e) { res.status(500).json(_w384Err(e, 'team_members_error')); }
+  });
+
+  // POST /v1/team/invite — admin-only, returns the invite token + URL.
+  r.post('/v1/team/invite', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin_only' });
+    try {
+      const body = req.body || {};
+      const invited_by = _w384ResolveActor(req);
+      if (!invited_by) return res.status(400).json({ error: 'no_admin_actor', hint: 'workspace has no admin member; pass actor_member_id in the body' });
+      const result = teamInvite({
+        email: body.email,
+        role: body.role,
+        invited_by,
+        ttl_ms: body.ttl_ms,
+      });
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      if (e instanceof TeamError) return res.status(400).json({ error: e.code, detail: e.message });
+      res.status(500).json(_w384Err(e, 'team_invite_error'));
+    }
+  });
+
+  // POST /v1/team/accept-invite — PUBLIC. The invite_token IS the credential.
+  r.post('/v1/team/accept-invite', (req, res) => {
+    try {
+      const body = req.body || {};
+      const result = teamAcceptInvite({
+        invite_token: body.invite_token,
+        member_email: body.member_email,
+      });
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      if (e instanceof TeamError) return res.status(400).json({ error: e.code, detail: e.message });
+      res.status(500).json(_w384Err(e, 'team_accept_invite_error'));
+    }
+  });
+
+  // PUT /v1/team/role — admin-only role update for a member.
+  r.put('/v1/team/role', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin_only' });
+    try {
+      const body = req.body || {};
+      const actor_member_id = _w384ResolveActor(req);
+      const result = teamSetRole({ member_id: body.member_id, role: body.role, actor_member_id });
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      if (e instanceof TeamError) return res.status(400).json({ error: e.code, detail: e.message });
+      res.status(500).json(_w384Err(e, 'team_role_error'));
+    }
+  });
+
+  // DELETE /v1/team/member/:id — admin-only removal.
+  r.delete('/v1/team/member/:id', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin_only' });
+    try {
+      const actor_member_id = _w384ResolveActor(req);
+      const result = teamRemoveMember({ member_id: req.params.id, actor_member_id });
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      if (e instanceof TeamError) return res.status(400).json({ error: e.code, detail: e.message });
+      res.status(500).json(_w384Err(e, 'team_remove_error'));
+    }
+  });
+
+  // GET /v1/team/approvals — list pending/decided approvals.
+  r.get('/v1/team/approvals', (req, res) => {
+    try {
+      const rows = teamListApprovals({
+        status: req.query.status ? String(req.query.status) : undefined,
+        kind: req.query.kind ? String(req.query.kind) : undefined,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
+      });
+      res.json({ ok: true, total: rows.length, approvals: rows });
+    } catch (e) {
+      if (e instanceof TeamError) return res.status(400).json({ error: e.code, detail: e.message });
+      res.status(500).json(_w384Err(e, 'team_approvals_error'));
+    }
+  });
+
+  // POST /v1/team/approvals — submit a new approval request.
+  r.post('/v1/team/approvals', (req, res) => {
+    try {
+      const body = req.body || {};
+      const submitter_id = body.submitter_id || _w384ResolveActor(req);
+      const result = teamSubmitApproval({ kind: body.kind, payload: body.payload, submitter_id });
+      res.json({ ok: true, approval: result });
+    } catch (e) {
+      if (e instanceof TeamError) return res.status(400).json({ error: e.code, detail: e.message });
+      res.status(500).json(_w384Err(e, 'team_submit_error'));
+    }
+  });
+
+  // POST /v1/team/approvals/:id/decide — approve or reject. 403 on self-review.
+  r.post('/v1/team/approvals/:id/decide', (req, res) => {
+    try {
+      const body = req.body || {};
+      const result = teamDecideApproval({
+        approval_id: req.params.id,
+        decision: body.decision,
+        reviewer_id: body.reviewer_id,
+        comment: body.comment,
+      });
+      res.json({ ok: true, approval: result });
+    } catch (e) {
+      if (e instanceof TeamError) {
+        // self_review is a permission contract — return 403 not 400.
+        if (e.code === 'self_review') return res.status(403).json({ error: e.code, detail: e.message });
+        return res.status(400).json({ error: e.code, detail: e.message });
+      }
+      res.status(500).json(_w384Err(e, 'team_decide_error'));
+    }
+  });
+
+  // POST /v1/team/namespaces — admin-only register a (possibly shared) namespace.
+  r.post('/v1/team/namespaces', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin_only' });
+    try {
+      const body = req.body || {};
+      const actor_member_id = _w384ResolveActor(req);
+      const result = teamAddSharedNamespace({
+        namespace: body.namespace,
+        namespace_owner_id: body.namespace_owner_id,
+        actor_member_id,
+        shared: body.shared,
+      });
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      if (e instanceof TeamError) return res.status(400).json({ error: e.code, detail: e.message });
+      res.status(500).json(_w384Err(e, 'team_namespace_error'));
+    }
+  });
+
+  // ============== W384: pipeline (tokenizer + distill + compile + full) ==============
+  // POST /v1/pipeline/tokenize — train a tokenizer over corpus body.
+  r.post('/v1/pipeline/tokenize', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const result = await pipelineTrainTokenizer({
+        corpus: body.corpus,
+        vocab_size: body.vocab_size,
+        algorithm: body.algorithm,
+        model_prefix: body.model_prefix,
+        special_tokens: body.special_tokens,
+        seed: body.seed,
+      });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(400).json(_w384Err(e, 'tokenize_error')); }
+  });
+
+  // In-memory pipeline-job registry. Jobs hold the phase events from
+  // compileFull() so the matching GET /v1/pipeline/jobs/:id/stream SSE
+  // can replay them. Jobs are tenant-scoped via _ownedBy.
+  const _W384_PIPELINE_JOBS = new Map();
+  function _newPipelineJob(req, kind, namespace) {
+    const id = 'job_' + crypto.randomBytes(8).toString('hex');
+    const job = {
+      id, kind, namespace, status: 'queued',
+      _ownedBy: req.tenant,
+      created_at: new Date().toISOString(),
+      phases: [],
+      subscribers: new Set(),
+      final: null,
+    };
+    _W384_PIPELINE_JOBS.set(id, job);
+    return job;
+  }
+  function _emitPhase(job, ev) {
+    job.phases.push(ev);
+    for (const sub of job.subscribers) {
+      try { sub(ev); } catch { /* sub crashed; ignore */ }
+    }
+  }
+
+  // POST /v1/pipeline/distill — kick off distill-from-captures with mode=specialist.
+  // Returns 202 + {job_id}. The actual distill work is delegated to the
+  // existing /v1/distill/from-captures path (in-process module call).
+  r.post('/v1/pipeline/distill', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const job = _newPipelineJob(req, 'distill', body.namespace || 'default');
+      job.status = 'running';
+      // We do the synth in-process; this is a thin wrapper that records
+      // a phase event with the result and marks the job done.
+      (async () => {
+        try {
+          _emitPhase(job, { phase: 'distill', status: 'started', namespace: body.namespace });
+          const dist = await import('./distill-bridge.js').catch(() => null);
+          if (dist && typeof dist.synthesizeFromCaptures === 'function') {
+            const r2 = await dist.synthesizeFromCaptures({ namespace: body.namespace, tenant: req.tenant, mode: body.mode || 'specialist', min_pairs: body.min_pairs || 4 });
+            _emitPhase(job, { phase: 'distill', status: 'ok', result: r2 });
+            job.final = r2;
+          } else {
+            _emitPhase(job, { phase: 'distill', status: 'ok', note: 'distill-bridge unavailable in this build' });
+          }
+          job.status = 'done';
+        } catch (e) {
+          _emitPhase(job, { phase: 'distill', status: 'error', error: String(e.message || e) });
+          job.status = 'error';
+        }
+      })();
+      res.status(202).json({ ok: true, job_id: job.id, status: job.status });
+    } catch (e) { res.status(500).json(_w384Err(e, 'pipeline_distill_error')); }
+  });
+
+  // POST /v1/pipeline/compile — alias for /v1/pipeline/full (kept as a
+  // distinct verb so future divergence is easy).
+  r.post('/v1/pipeline/compile', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const job = _newPipelineJob(req, 'compile', body.namespace || 'default');
+      job.status = 'running';
+      (async () => {
+        try {
+          for await (const ev of pipelineCompileFull({ namespace: body.namespace, opts: body.opts || {} })) {
+            _emitPhase(job, ev);
+            if (ev.phase === 'done') job.final = ev;
+          }
+          job.status = 'done';
+        } catch (e) {
+          _emitPhase(job, { phase: 'error', status: 'error', error: String(e.message || e) });
+          job.status = 'error';
+        }
+      })();
+      res.status(202).json({ ok: true, job_id: job.id, status: job.status, phases: PIPELINE_PHASES });
+    } catch (e) { res.status(500).json(_w384Err(e, 'pipeline_compile_error')); }
+  });
+
+  // POST /v1/pipeline/full — 11-phase compileFull pipeline. Returns 202 +
+  // job_id. Phases are streamed via /v1/pipeline/jobs/:id/stream (SSE).
+  r.post('/v1/pipeline/full', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const job = _newPipelineJob(req, 'full', body.namespace || 'default');
+      job.status = 'running';
+      (async () => {
+        try {
+          for await (const ev of pipelineCompileFull({ namespace: body.namespace, opts: body.opts || {} })) {
+            _emitPhase(job, ev);
+            if (ev.phase === 'done') job.final = ev;
+          }
+          job.status = 'done';
+        } catch (e) {
+          _emitPhase(job, { phase: 'error', status: 'error', error: String(e.message || e) });
+          job.status = 'error';
+        }
+      })();
+      res.status(202).json({ ok: true, job_id: job.id, status: job.status, phases: PIPELINE_PHASES });
+    } catch (e) { res.status(500).json(_w384Err(e, 'pipeline_full_error')); }
+  });
+
+  // GET /v1/pipeline/jobs/:id — poll for current status + collected phases.
+  r.get('/v1/pipeline/jobs/:id', (req, res) => {
+    const job = _W384_PIPELINE_JOBS.get(req.params.id);
+    if (!job) return res.status(404).json({ error: 'job_not_found' });
+    if (job._ownedBy && job._ownedBy !== req.tenant && !req.is_admin) {
+      return res.status(403).json({ error: 'cross_tenant_job_access' });
+    }
+    res.json({
+      ok: true,
+      job_id: job.id, kind: job.kind, status: job.status,
+      namespace: job.namespace,
+      created_at: job.created_at,
+      phases: job.phases.slice(),
+      final: job.final,
+    });
+  });
+
+  // GET /v1/pipeline/jobs/:id/stream — SSE that replays past phases then
+  // streams new ones until the job terminates.
+  r.get('/v1/pipeline/jobs/:id/stream', (req, res) => {
+    const job = _W384_PIPELINE_JOBS.get(req.params.id);
+    if (!job) return res.status(404).json({ error: 'job_not_found' });
+    if (job._ownedBy && job._ownedBy !== req.tenant && !req.is_admin) {
+      return res.status(403).json({ error: 'cross_tenant_job_access' });
+    }
+    res.set('content-type', 'text/event-stream');
+    res.set('cache-control', 'no-cache, no-transform');
+    res.set('x-kolm-job-id', job.id);
+    res.flushHeaders?.();
+    // Replay past phases.
+    for (const ev of job.phases) {
+      res.write('event: phase\n');
+      res.write('data: ' + JSON.stringify(ev) + '\n\n');
+    }
+    if (job.status === 'done' || job.status === 'error') {
+      res.write('event: terminal\n');
+      res.write('data: ' + JSON.stringify({ status: job.status, final: job.final }) + '\n\n');
+      return res.end();
+    }
+    const sub = (ev) => {
+      try {
+        res.write('event: phase\n');
+        res.write('data: ' + JSON.stringify(ev) + '\n\n');
+        if (ev.phase === 'done' || ev.status === 'error') {
+          res.write('event: terminal\n');
+          res.write('data: ' + JSON.stringify({ status: job.status }) + '\n\n');
+          job.subscribers.delete(sub);
+          res.end();
+        }
+      } catch { /* socket closed */ }
+    };
+    job.subscribers.add(sub);
+    req.on('close', () => { job.subscribers.delete(sub); });
+  });
+
+  // ============== W384: agent telemetry ==============
+  r.get('/v1/agents', async (req, res) => {
+    try {
+      const rows = await agentListAgents({ since: req.query.since, limit: req.query.limit ? Number(req.query.limit) : undefined });
+      res.json({ ok: true, total: Array.isArray(rows) ? rows.length : 0, agents: rows });
+    } catch (e) { res.status(500).json(_w384Err(e, 'agents_list_error')); }
+  });
+
+  r.get('/v1/agents/sessions', async (req, res) => {
+    try {
+      const rows = await agentListSessions({
+        app_id: req.query.app_id ? String(req.query.app_id) : undefined,
+        since: req.query.since,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
+      });
+      res.json({ ok: true, total: Array.isArray(rows) ? rows.length : 0, sessions: rows });
+    } catch (e) { res.status(500).json(_w384Err(e, 'agents_sessions_error')); }
+  });
+
+  r.get('/v1/agents/sessions/:id', async (req, res) => {
+    try {
+      const result = await agentGetSession({ session_id: req.params.id });
+      if (!result || (Array.isArray(result.events) && result.events.length === 0 && !result.session_id)) {
+        return res.status(404).json({ error: 'session_not_found', session_id: req.params.id });
+      }
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'agent_session_error')); }
+  });
+
+  r.get('/v1/agents/recommend', async (req, res) => {
+    try {
+      const result = await agentRecommendModel({
+        app_id: req.query.app_id ? String(req.query.app_id) : undefined,
+        task_hint: req.query.task_hint ? String(req.query.task_hint) : undefined,
+        codebase_hint: req.query.codebase_hint ? String(req.query.codebase_hint) : undefined,
+        since: req.query.since,
+      });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'agents_recommend_error')); }
+  });
+
+  r.get('/v1/agents/failing', async (req, res) => {
+    try {
+      const result = await agentTopFailing({
+        app_id: req.query.app_id ? String(req.query.app_id) : undefined,
+        since: req.query.since,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
+      });
+      res.json({ ok: true, top_failing: result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'agents_failing_error')); }
+  });
+
+  r.get('/v1/agents/stats', async (req, res) => {
+    try {
+      const result = await agentStats({ since: req.query.since });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'agents_stats_error')); }
+  });
+
+  // ============== W384: lake ==============
+  r.get('/v1/lake/stats', async (req, res) => {
+    try {
+      const stats = await lakeStatsFn({
+        namespace: req.query.namespace ? String(req.query.namespace) : undefined,
+        since: req.query.since,
+      });
+      res.json({ ok: true, ...stats });
+    } catch (e) { res.status(500).json(_w384Err(e, 'lake_stats_error')); }
+  });
+
+  r.get('/v1/lake/repeated', async (req, res) => {
+    try {
+      const evs = await eventList({
+        namespace: req.query.namespace ? String(req.query.namespace) : undefined,
+        limit: 0,
+        order: 'asc',
+      });
+      const clusters = await lakeClusterRepeated(evs);
+      const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || '20'), 10) || 20));
+      res.json({ ok: true, total: clusters.length, clusters: clusters.slice(0, limit) });
+    } catch (e) { res.status(500).json(_w384Err(e, 'lake_repeated_error')); }
+  });
+
+  // ============== W384: opportunities ==============
+  r.get('/v1/opportunities', async (req, res) => {
+    try {
+      const rows = await oppFindOpportunities({
+        namespace: req.query.namespace ? String(req.query.namespace) : undefined,
+        since: req.query.since,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
+      });
+      const state = oppLoadState();
+      const merged = (rows || []).map(o => ({
+        ...o,
+        status: (state.byId[o.id] && state.byId[o.id].status) || 'pending',
+      }));
+      res.json({ ok: true, total: merged.length, opportunities: merged });
+    } catch (e) { res.status(500).json(_w384Err(e, 'opportunities_error')); }
+  });
+
+  r.post('/v1/opportunities/:id/accept', async (req, res) => {
+    try {
+      const result = await oppAcceptOpportunity(req.params.id, { reason: req.body && req.body.reason });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'opportunity_accept_error')); }
+  });
+
+  // Accept either /dismiss or /ignore — both map to ignoreOpportunity.
+  r.post('/v1/opportunities/:id/dismiss', async (req, res) => {
+    try {
+      const result = await oppIgnoreOpportunity(req.params.id, { reason: req.body && req.body.reason });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'opportunity_dismiss_error')); }
+  });
+
+  r.post('/v1/opportunities/:id/ignore', async (req, res) => {
+    try {
+      const result = await oppIgnoreOpportunity(req.params.id, { reason: req.body && req.body.reason });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'opportunity_ignore_error')); }
+  });
+
+  // ============== W384: datasets ==============
+  r.get('/v1/datasets', async (req, res) => {
+    try {
+      const rows = await dsListDatasets();
+      res.json({ ok: true, total: rows.length, datasets: rows });
+    } catch (e) { res.status(500).json(_w384Err(e, 'datasets_list_error')); }
+  });
+
+  r.post('/v1/datasets', async (req, res) => {
+    try {
+      const body = req.body || {};
+      if (!body.namespace) return res.status(400).json({ error: 'namespace_required' });
+      const result = await dsCreateDataset(body.namespace, body);
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(400).json(_w384Err(e, 'dataset_create_error')); }
+  });
+
+  r.get('/v1/datasets/:id', async (req, res) => {
+    try {
+      const result = await dsInspectDataset(req.params.id);
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(404).json(_w384Err(e, 'dataset_not_found')); }
+  });
+
+  r.post('/v1/datasets/:id/split', async (req, res) => {
+    try {
+      const ratio = req.body && req.body.train_ratio != null ? Number(req.body.train_ratio) : 0.8;
+      const result = await dsSplitDataset(req.params.id, ratio);
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(400).json(_w384Err(e, 'dataset_split_error')); }
+  });
+
+  // ============== W384: label queue ==============
+  r.get('/v1/labels/next', async (req, res) => {
+    try {
+      const events = await lblNextToLabel({
+        namespace: req.query.namespace ? String(req.query.namespace) : undefined,
+        workflowId: req.query.workflow_id ? String(req.query.workflow_id) : undefined,
+        n: req.query.n ? Number(req.query.n) : undefined,
+      });
+      res.json({ ok: true, total: events.length, events });
+    } catch (e) { res.status(500).json(_w384Err(e, 'labels_next_error')); }
+  });
+
+  r.post('/v1/labels', async (req, res) => {
+    try {
+      const body = req.body || {};
+      if (!body.event_id) return res.status(400).json({ error: 'event_id_required' });
+      const result = await lblSubmitLabel(body.event_id, {
+        verdict: body.verdict,
+        fixedOutput: body.fixed_output,
+        sensitive: body.sensitive,
+        holdoutOnly: body.holdout_only,
+        workflow: body.workflow,
+        reviewer: body.reviewer,
+        reason: body.reason,
+      });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(400).json(_w384Err(e, 'labels_submit_error')); }
+  });
+
+  r.get('/v1/labels/stats', async (req, res) => {
+    try {
+      const result = await lblStats();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'labels_stats_error')); }
+  });
+
+  r.get('/v1/labels/:event_id', (req, res) => {
+    try {
+      const result = lblGetLabel(req.params.event_id);
+      if (!result) return res.status(404).json({ error: 'label_not_found' });
+      res.json({ ok: true, label: result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'label_get_error')); }
+  });
+
+  // ============== W384: simulation ==============
+  r.post('/v1/sim/run', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const sim = await simCreateSim(body.workflow_id || 'default', {
+        type: body.type,
+        n: body.n,
+        personas: body.personas,
+        opts: body.opts || {},
+      });
+      const result = await simRunSim(sim.sim_id, { n: body.n, opts: { ...body.opts, toLake: body.toLake !== false } });
+      res.json({ ok: true, sim_id: sim.sim_id, type: sim.type, ...result });
+    } catch (e) { res.status(400).json(_w384Err(e, 'sim_run_error')); }
+  });
+
+  r.get('/v1/sim', (req, res) => {
+    try {
+      const rows = simListSims();
+      res.json({ ok: true, total: rows.length, sims: rows, types: SIM_TYPES });
+    } catch (e) { res.status(500).json(_w384Err(e, 'sim_list_error')); }
+  });
+
+  r.get('/v1/sim/:id', (req, res) => {
+    try {
+      const sim = simReadRaw(req.params.id);
+      if (!sim) return res.status(404).json({ error: 'sim_not_found' });
+      res.json({ ok: true, sim });
+    } catch (e) { res.status(500).json(_w384Err(e, 'sim_get_error')); }
+  });
+
+  // ============== W384: bakeoff ==============
+  r.post('/v1/bakeoff/run', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const datasetId = body.dataset_id;
+      if (!datasetId) return res.status(400).json({ error: 'dataset_id_required' });
+      const result = await bakeoffRun(datasetId, {
+        contestants: body.contestants,
+        opts: body.opts || {},
+      });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(400).json(_w384Err(e, 'bakeoff_error')); }
+  });
+
+  // ============== W384: training planner ==============
+  r.post('/v1/training/plan', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const datasetId = body.dataset_id;
+      if (!datasetId) return res.status(400).json({ error: 'dataset_id_required' });
+      const result = await trainingPlanFn(datasetId, body);
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(400).json(_w384Err(e, 'training_plan_error')); }
+  });
+
+  // ============== W384: runtime policy ==============
+  r.get('/v1/runtime/policy', (req, res) => {
+    try {
+      const pol = runtimeGetPolicy();
+      res.json({ ok: true, policy: pol, policies: Object.keys(RUNTIME_POLICIES) });
+    } catch (e) { res.status(500).json(_w384Err(e, 'runtime_policy_read_error')); }
+  });
+
+  r.put('/v1/runtime/policy', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin_only' });
+    try {
+      const next = runtimeSetPolicy(req.body || {});
+      res.json({ ok: true, policy: next });
+    } catch (e) { res.status(400).json(_w384Err(e, 'runtime_policy_set_error')); }
+  });
+
+  r.post('/v1/runtime/decide', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const result = await runtimeDecide(body.request || {}, body.context || {});
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'runtime_decide_error')); }
+  });
+
+  r.get('/v1/runtime/decisions', (req, res) => {
+    try {
+      const n = req.query.n ? Number(req.query.n) : 50;
+      const rows = runtimeRecentDecisions({ n });
+      res.json({ ok: true, total: rows.length, decisions: rows });
+    } catch (e) { res.status(500).json(_w384Err(e, 'runtime_decisions_error')); }
+  });
+
+  r.get('/v1/runtime/replacement-stats', (req, res) => {
+    try {
+      const stats = runtimeReplacementStats({ since: req.query.since });
+      res.json({ ok: true, ...stats });
+    } catch (e) { res.status(500).json(_w384Err(e, 'runtime_replacement_stats_error')); }
+  });
+
+  // ============== W384: devices ==============
+  r.get('/v1/devices', async (req, res) => {
+    try {
+      const rows = await devListDevices();
+      res.json({ ok: true, total: rows.length, devices: rows });
+    } catch (e) { res.status(500).json(_w384Err(e, 'devices_list_error')); }
+  });
+
+  r.get('/v1/devices/detect', async (req, res) => {
+    try {
+      const result = await devDetectLocal();
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'devices_detect_error')); }
+  });
+
+  r.post('/v1/devices/:id/register', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const result = await devRegisterDevice({ ...body, device_id: body.device_id || req.params.id });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(400).json(_w384Err(e, 'device_register_error')); }
+  });
+
+  r.post('/v1/devices/:id/test', async (req, res) => {
+    try {
+      const result = await devTestDevice(req.params.id);
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(400).json(_w384Err(e, 'device_test_error')); }
+  });
+
+  r.get('/v1/devices/installed', async (req, res) => {
+    try {
+      const rows = await devListInstalled({
+        deviceId: req.query.device_id ? String(req.query.device_id) : undefined,
+      });
+      res.json({ ok: true, total: rows.length, installed: rows });
+    } catch (e) { res.status(500).json(_w384Err(e, 'devices_installed_error')); }
+  });
+
+  r.post('/v1/devices/:id/install', async (req, res) => {
+    try {
+      const body = req.body || {};
+      // Accept either artifact_path or artifact_hash. For artifact_hash, we
+      // resolve via media-store (~/.kolm/events/raw/<hash>.<ext>).
+      let artifactPath = body.artifact_path;
+      if (!artifactPath && body.artifact_hash) {
+        // Locate the blob by hash from the media-store root.
+        const blobs = await import('./media-store.js').then(m => m.listBlobs());
+        const match = blobs.find(b => b.hash === body.artifact_hash);
+        if (!match) return res.status(404).json({ error: 'artifact_hash_not_found', hash: body.artifact_hash });
+        artifactPath = match.path;
+      }
+      if (!artifactPath) return res.status(400).json({ error: 'artifact_path_or_hash_required' });
+      const result = await devInstallToDevice(artifactPath, { deviceId: req.params.id, opts: body.opts || {} });
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      const code = e && e.code ? String(e.code).toLowerCase().replace(/^kolm_e_/, '') : 'device_install_error';
+      res.status(400).json({ error: code, detail: String(e.message || e) });
+    }
+  });
+
+  r.delete('/v1/devices/:id/install/:artifact_id', async (req, res) => {
+    try {
+      const result = await devUninstall(req.params.id, req.params.artifact_id);
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(400).json(_w384Err(e, 'device_uninstall_error')); }
+  });
+
+  // ============== W384: capture/media (multipart/form-data) ==============
+  // Hand-rolled minimal multipart/form-data parser. No npm dep allowed,
+  // and this is the only multipart endpoint we ship, so we keep the
+  // implementation right next to its only caller. Supports:
+  //   - Content-Type: multipart/form-data; boundary=...
+  //   - Parts with Content-Disposition: form-data; name="..."; filename="..."
+  //   - Parts with Content-Type: image/png, video/webm, application/octet-stream
+  //   - Multiple text + 1 file part per request
+  // Limits: 16 MiB max body, 8 parts max.
+  function _parseMultipart(buffer, contentType) {
+    const m = /boundary=(?:"([^"]+)"|([^;\s]+))/i.exec(contentType || '');
+    if (!m) throw new Error('no_boundary_in_content_type');
+    const boundary = '--' + (m[1] || m[2]);
+    const boundaryBuf = Buffer.from(boundary, 'binary');
+    const parts = [];
+    let i = buffer.indexOf(boundaryBuf);
+    if (i < 0) throw new Error('boundary_not_found');
+    while (true) {
+      const next = buffer.indexOf(boundaryBuf, i + boundaryBuf.length);
+      if (next < 0) break;
+      // Each part is between i + boundary + CRLF and next - CRLF.
+      const start = i + boundaryBuf.length + 2; // skip CRLF after boundary
+      const end = next - 2; // strip CRLF before next boundary
+      if (end <= start) { i = next; continue; }
+      const part = buffer.slice(start, end);
+      // Header / body split is the first \r\n\r\n.
+      const headerEnd = part.indexOf(Buffer.from('\r\n\r\n', 'binary'));
+      if (headerEnd < 0) { i = next; continue; }
+      const headersRaw = part.slice(0, headerEnd).toString('utf8');
+      const body = part.slice(headerEnd + 4);
+      const headers = {};
+      for (const ln of headersRaw.split(/\r?\n/)) {
+        const idx = ln.indexOf(':');
+        if (idx > 0) headers[ln.slice(0, idx).trim().toLowerCase()] = ln.slice(idx + 1).trim();
+      }
+      const disp = headers['content-disposition'] || '';
+      const nameMatch = /name="([^"]+)"/i.exec(disp);
+      const fileMatch = /filename="([^"]*)"/i.exec(disp);
+      parts.push({
+        name: nameMatch ? nameMatch[1] : null,
+        filename: fileMatch ? fileMatch[1] : null,
+        contentType: headers['content-type'] || null,
+        body,
+      });
+      i = next;
+      if (parts.length >= 8) break;
+    }
+    return parts;
+  }
+
+  // Buffer the raw request stream up to a limit. We mount this BEFORE
+  // express.json() can run (which we can't do globally) — but express.json()
+  // only parses application/json content-type, so multipart bodies pass
+  // through to req as the still-readable stream.
+  function _readRawBody(req, limit = 16 * 1024 * 1024) {
+    return new Promise((resolve, reject) => {
+      const chunks = [];
+      let total = 0;
+      let done = false;
+      req.on('data', (chunk) => {
+        if (done) return;
+        total += chunk.length;
+        if (total > limit) {
+          done = true;
+          reject(new Error('payload_too_large'));
+          req.destroy?.();
+          return;
+        }
+        chunks.push(chunk);
+      });
+      req.on('end', () => { if (!done) resolve(Buffer.concat(chunks)); });
+      req.on('error', (e) => { if (!done) reject(e); });
+    });
+  }
+
+  r.post('/v1/capture/media', async (req, res) => {
+    try {
+      const ct = String(req.headers['content-type'] || '');
+      if (!/^multipart\/form-data/i.test(ct)) {
+        return res.status(400).json({ error: 'multipart_required', hint: 'Content-Type must be multipart/form-data' });
+      }
+      // If express.json() already consumed the body, fall back to whatever
+      // shape req.body has (it would be empty for multipart since json
+      // matcher skips non-application/json). The stream is still readable.
+      const raw = await _readRawBody(req);
+      if (!raw.length) return res.status(400).json({ error: 'empty_body' });
+      const parts = _parseMultipart(raw, ct);
+      const fields = {};
+      const blobs = [];
+      for (const p of parts) {
+        if (!p.name) continue;
+        if (p.filename != null) {
+          // It's a file part.
+          const mime = p.contentType || 'application/octet-stream';
+          const kind = (mime.split('/')[0] === 'image' ? 'image' :
+                        mime.split('/')[0] === 'video' ? 'video' :
+                        mime.split('/')[0] === 'audio' ? 'audio' : 'blob');
+          const stored = await mediaStoreBlob(p.body, { mime, kind });
+          blobs.push({ ...stored, name: p.name, filename: p.filename });
+        } else {
+          fields[p.name] = p.body.toString('utf8');
+        }
+      }
+      if (!blobs.length) return res.status(400).json({ error: 'no_file_parts' });
+      // Append an event for each blob so the lake reflects the capture.
+      const eventIds = [];
+      for (const b of blobs) {
+        try {
+          const ev = await eventAppend({
+            namespace: fields.namespace || 'media',
+            tenant: req.tenant,
+            input: fields.input || '',
+            output: '',
+            media_uri: b.uri,
+            media_kind: b.kind,
+            media_mime: b.mime,
+            media_bytes: b.bytes,
+            media_hash: b.hash,
+          });
+          eventIds.push(ev.event_id);
+        } catch (innerErr) {
+          // Surface the first failure but keep the blob — operator can
+          // re-pair manually.
+          eventIds.push({ error: innerErr.message });
+        }
+      }
+      res.set('x-kolm-capture-media-kinds', Array.from(EVENT_MEDIA_KINDS).join(','));
+      res.json({ ok: true, count: blobs.length, blobs, event_ids: eventIds, fields });
+    } catch (e) {
+      const code = String(e.message || 'media_capture_error');
+      if (code === 'payload_too_large') return res.status(413).json({ error: 'payload_too_large' });
+      if (code === 'no_boundary_in_content_type' || code === 'boundary_not_found') return res.status(400).json({ error: 'invalid_multipart', detail: code });
+      res.status(500).json(_w384Err(e, 'media_capture_error'));
+    }
+  });
+
+  // ============== W384: billing meters ==============
+  // Returns a static catalog of the 12 meters that ship with the runtime.
+  // Live counter aggregation is delegated to the existing /v1/billing/*
+  // routes; this endpoint is the schema source-of-truth.
+  r.get('/v1/billing/meters', (req, res) => {
+    const meters = [
+      { id: 'capture_count', label: 'captured pairs', unit: 'count', billable: false, category: 'lake' },
+      { id: 'distill_synth_count', label: 'distill syntheses', unit: 'count', billable: true, category: 'pipeline' },
+      { id: 'compile_jobs', label: 'compile jobs', unit: 'count', billable: true, category: 'pipeline' },
+      { id: 'replay_runs', label: 'replay runs', unit: 'count', billable: true, category: 'pipeline' },
+      { id: 'bakeoff_runs', label: 'bakeoff runs', unit: 'count', billable: true, category: 'evaluate' },
+      { id: 'sim_events', label: 'simulator events', unit: 'count', billable: false, category: 'evaluate' },
+      { id: 'tokens_in', label: 'tokens in', unit: 'tokens', billable: true, category: 'inference' },
+      { id: 'tokens_out', label: 'tokens out', unit: 'tokens', billable: true, category: 'inference' },
+      { id: 'spend_usd', label: 'aggregate spend', unit: 'usd', billable: true, category: 'inference' },
+      { id: 'storage_bytes', label: 'storage bytes', unit: 'bytes', billable: true, category: 'storage' },
+      { id: 'sync_push_count', label: 'sync push ops', unit: 'count', billable: false, category: 'sync' },
+      { id: 'privacy_redactions', label: 'privacy redactions', unit: 'count', billable: false, category: 'privacy' },
+    ];
+    res.json({ ok: true, total: meters.length, meters });
+  });
+
+  // ============== W384: connectors ==============
+  r.get('/v1/connectors', (req, res) => {
+    try {
+      const summary = connectorSummarizeProviders();
+      res.json({ ok: true, providers: CONNECTOR_PROVIDERS, summary });
+    } catch (e) { res.status(500).json(_w384Err(e, 'connectors_error')); }
+  });
+
+  // ============== W384: storage ==============
+  r.get('/v1/storage/config', (req, res) => {
+    try {
+      const info = eventStoreInfo();
+      const blobBase = process.env.KOLM_MEDIA_DIR || process.env.KOLM_DATA_DIR || path.join(os.homedir(), '.kolm');
+      res.json({
+        ok: true,
+        event_store: info,
+        media: { base: blobBase, kinds: Array.from(EVENT_MEDIA_KINDS) },
+      });
+    } catch (e) { res.status(500).json(_w384Err(e, 'storage_config_error')); }
+  });
+
+  r.put('/v1/storage/config', (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin_only' });
+    // We treat this as a hint/echo — actual config lives in env vars; we
+    // do NOT mutate them at runtime. The endpoint exists so the dashboard
+    // can show what we'd switch to + the env vars to set.
+    const proposed = req.body || {};
+    res.json({
+      ok: true,
+      proposed,
+      note: 'storage config is set via env vars at boot (KOLM_DATA_DIR, KOLM_MEDIA_DIR, KOLM_EVENT_STORE_DRIVER). Restart the daemon for changes to take effect.',
+      env_vars: ['KOLM_DATA_DIR', 'KOLM_MEDIA_DIR', 'KOLM_EVENT_STORE_DRIVER'],
+    });
+  });
+
+  r.post('/v1/storage/purge', async (req, res) => {
+    if (!req.is_admin) return res.status(403).json({ error: 'admin_only' });
+    const body = req.body || {};
+    if (body.confirm !== true) {
+      return res.status(400).json({ error: 'confirm_required', hint: 'send {"confirm": true} in body — this is destructive' });
+    }
+    try {
+      const result = await eventPurge({
+        before: body.before,
+        namespace: body.namespace,
+        dryRun: !!body.dry_run,
+      });
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json(_w384Err(e, 'storage_purge_error')); }
   });
 
   return r;

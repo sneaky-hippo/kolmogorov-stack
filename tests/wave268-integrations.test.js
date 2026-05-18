@@ -116,11 +116,14 @@ test('W268 /integrations.html exists with all 4 adapter cards + Zapier + Make.co
   // Zapier and Make.com cards.
   assert.match(html, /id="zapier"/, 'integrations.html missing #zapier card');
   assert.match(html, /id="make"/, 'integrations.html missing #make card');
-  // 3-line snippets present per language.
+  // 3-line snippets present per language. Python adapter may be referenced by
+  // either pip-package name (kolm-langchain) or module-import name
+  // (kolm_langchain) — both unambiguously identify the adapter per W380d
+  // feedback-tests-assert-behavior-not-page-copy.
   assert.match(html, /@kolm\/langchain/, 'must mention @kolm/langchain');
   assert.match(html, /@kolm\/llamaindex/, 'must mention @kolm/llamaindex');
-  assert.match(html, /kolm-langchain/, 'must mention kolm-langchain (Python pip name)');
-  assert.match(html, /kolm-llamaindex/, 'must mention kolm-llamaindex (Python pip name)');
+  assert.match(html, /kolm[-_]langchain/, 'must mention kolm-langchain or kolm_langchain (Python adapter)');
+  assert.match(html, /kolm[-_]llamaindex/, 'must mention kolm-llamaindex or kolm_llamaindex (Python adapter)');
 });
 
 test('W268 /integrations.html marks Zapier + Make.com as coming Q3 2026', () => {

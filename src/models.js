@@ -631,7 +631,15 @@ export function recommend(reqs = {}) {
 }
 
 // Does a model fit on a given device at 4-bit (inference)?
-// Reserve 2GB for KV cache + activations.
+// Headroom for KV cache + activations is tier-dependent:
+//   - desktop / server / training: +2.0GB (paged-attention KV at full ctx)
+//   - mobile (iOS Metal, Android MediaPipe, MLC, llama.cpp arm64): +0.5GB
+//     mobile engines use sliding-window KV (typ. 2-4k window) — far smaller
+//     than the desktop assumption. An iPhone 15 Pro with 4GB usable VRAM
+//     can host Gemma 3n E2B (2.5GB) with this rule.
+//   - mobile + mobile_friendly:true: +0.25GB. These models are explicitly
+//     designed for tight envelopes (Per-Layer Embeddings, selective
+//     activation) and ship with quantized KV configs.
 export function fitsOn(modelId, device) {
   const m = info(modelId);
   if (!m || !device) return false;
@@ -641,7 +649,11 @@ export function fitsOn(modelId, device) {
     const need = 0.6 * m.params_b;
     return need <= (device.cpu_ram_gb_min || 8);
   }
-  return m.vram_gb_4bit + 2 <= device.vram_gb;
+  let headroom = 2;
+  if (device.class === 'mobile') {
+    headroom = m.mobile_friendly === true ? 0.25 : 0.5;
+  }
+  return m.vram_gb_4bit + headroom <= device.vram_gb;
 }
 
 // Can we TRAIN this model on the given device at QLoRA?

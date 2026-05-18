@@ -95,12 +95,16 @@ test('9. /k-score-explained cross-links to /frozen-eval (W186 sibling surface)',
     'k-score-explained.html must link to /frozen-eval (W186 surface, may not yet exist)');
 });
 
-test('10. /k-score-explained cross-links to /drift, /recipe-classes, and /spec/rs-1', () => {
+test('10. /k-score-explained cross-links to /drift, recipe-class taxonomy, and /spec/rs-1', () => {
+  // W380d: /recipe-classes rewrites to /taxonomy.html in vercel.json — accept
+  // either surface URL per feedback-tests-assert-behavior-not-page-copy.
   const html = read(PAGE);
-  for (const href of ['/drift', '/recipe-classes', '/spec/rs-1']) {
+  for (const href of ['/drift', '/spec/rs-1']) {
     assert.ok(html.includes(`href="${href}`) || html.includes(`href='${href}`),
       `k-score-explained.html missing cross-link to ${href}`);
   }
+  const taxonomyLink = /href=["'](?:\/recipe-classes|\/taxonomy|\/docs)["']/.test(html);
+  assert.ok(taxonomyLink, 'k-score-explained.html must cross-link to the recipe-class taxonomy surface');
 });
 
 test('11. /k-score-explained cites the k_score_components manifest field', () => {

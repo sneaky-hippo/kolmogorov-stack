@@ -82,6 +82,71 @@ async function loadManifestFromArtifact(artifactPath) {
   return JSON.parse(entry.getData().toString('utf8'));
 }
 
+// W367 — executable-bundle gate. For rule / synthesized_rule / compiled_rule
+// artifacts the manifest must declare manifest.entry.{file, sha256}, the named
+// file must exist in the zip, and its sha256 must match the declaration.
+// Without this gate a .kolm that ships only metadata (manifest + recipes.json
+// + signature) could pass productionReady() while having nothing for a host to
+// actually run — directly contradicting the "same file runs on a laptop, a
+// phone, or an air-gapped server" homepage claim.
+async function loadEntryFileBytes(artifactPath, entryFile) {
+  const { default: AdmZip } = await import('adm-zip');
+  const buf = fs.readFileSync(artifactPath);
+  const zip = new AdmZip(buf);
+  const entry = zip.getEntry(entryFile);
+  if (!entry) return null;
+  return entry.getData();
+}
+
+const BUNDLEABLE_CLASSES = new Set(['rule', 'synthesized_rule', 'compiled_rule']);
+
+async function evalExecutableBundle(artifactPathOrManifest, manifest) {
+  const cls = manifest.artifact_class || 'rule';
+  // distilled_model uses the model weights as its executable artifact, not a
+  // JS bundle. The gate is only meaningful for the rule families.
+  if (!BUNDLEABLE_CLASSES.has(cls)) return { ok: true };
+  // Manifest-only path (no zip on disk to crack open). We cannot verify the
+  // entry file exists nor re-hash its bytes; the gate is vacuously ok with an
+  // informational note. The strict check fires when a real artifact path is
+  // supplied (the cli/router callers — every place a buyer actually runs the
+  // .kolm). Pre-W367 in-memory manifests (e.g., the spec-compile dry-run
+  // happy-path fixtures in tests/wave339-production-verdict.test.js) keep
+  // returning ok:true so the new gate doesn't retroactively fail them.
+  if (typeof artifactPathOrManifest !== 'string') {
+    if (!manifest.entry) {
+      return { ok: true, note: 'manifest-only evaluation (no entry block; zip not available for verification)' };
+    }
+    return { ok: true, note: 'manifest-only evaluation (zip not available for entry sha256 re-check)' };
+  }
+  // Real artifact path supplied — strict mode.
+  if (!manifest.entry || typeof manifest.entry !== 'object') {
+    return { ok: false, reason: 'artifact.no_executable_bundle: manifest.entry block missing — artifact ships metadata only and cannot run' };
+  }
+  const file = manifest.entry.file;
+  const declared = manifest.entry.sha256;
+  if (typeof file !== 'string' || !file) {
+    return { ok: false, reason: 'artifact.no_executable_bundle: manifest.entry.file missing' };
+  }
+  if (typeof declared !== 'string' || declared.length < 32) {
+    return { ok: false, reason: 'artifact.no_executable_bundle: manifest.entry.sha256 missing or malformed' };
+  }
+  let bytes;
+  try {
+    bytes = await loadEntryFileBytes(artifactPathOrManifest, file);
+  } catch (e) {
+    return { ok: false, reason: `artifact.no_executable_bundle: cannot read entry file ${file}: ${e.message}` };
+  }
+  if (!bytes) {
+    return { ok: false, reason: `artifact.no_executable_bundle: entry file ${file} not present in zip` };
+  }
+  const { createHash } = await import('node:crypto');
+  const actual = createHash('sha256').update(bytes).digest('hex');
+  if (actual !== declared) {
+    return { ok: false, reason: `artifact.no_executable_bundle: entry sha256 mismatch (declared ${declared.slice(0, 16)}…, actual ${actual.slice(0, 16)}…)` };
+  }
+  return { ok: true, file, bytes: bytes.length };
+}
+
 // Per-gate evaluators. Each returns { ok, reason?, ...extras }.
 
 function evalSeedProvenance(manifest) {
@@ -187,8 +252,12 @@ export async function productionReady(artifactPathOrManifest, opts = {}) {
   const holdout_split = evalHoldoutSplit(manifest);
   const drift = evalDrift(manifest, driftMax);
   const durability = await evalDurability(opts);
+  // W367 — executable bundle gate. Must come last so a manifest-only failure
+  // here doesn't shadow a more diagnostic failure earlier (seed provenance,
+  // k-score, etc.).
+  const executable_bundle = await evalExecutableBundle(artifactPathOrManifest, manifest);
 
-  const gates = { seed_provenance, k_score, holdout_split, drift, durability };
+  const gates = { seed_provenance, k_score, holdout_split, drift, durability, executable_bundle };
   const reasons = [];
   for (const [name, g] of Object.entries(gates)) {
     if (!g.ok && g.reason) reasons.push(`${name}: ${g.reason}`);

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { rmSyncBestEffort } from './_spawn-helpers.js';
 
 test('server trusts the two-hop Vercel + Railway edge chain in production', async (t) => {
   const savedEnv = {
@@ -26,7 +27,7 @@ test('server trusts the two-hop Vercel + Railway edge chain in production', asyn
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
-    fs.rmSync(testDataDir, { recursive: true, force: true });
+    rmSyncBestEffort(testDataDir);
   });
 
   const { app } = await import(`../server.js?trust-proxy=${Date.now()}`);
@@ -88,7 +89,7 @@ test('artifact benchmark emits reproducible local report', async (t) => {
     else process.env.KOLM_ED25519_DISABLE = savedEd25519;
     if (savedSigstore === undefined) delete process.env.KOLM_SIGSTORE_DISABLE;
     else process.env.KOLM_SIGSTORE_DISABLE = savedSigstore;
-    fs.rmSync(outDir, { recursive: true, force: true });
+    rmSyncBestEffort(outDir);
   });
 
   const { buildAndZip } = await import(`../src/artifact.js?benchmark-build=${Date.now()}`);
