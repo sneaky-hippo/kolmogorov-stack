@@ -1,0 +1,46 @@
+# workers/compile-server/docker-compose.yml
+#
+# W264: one-command self-hosted compile server for development and small
+# tenant deployments. Persistent artifact volume at /data/artifacts so the
+# .kolm files survive container restarts.
+#
+# Usage:
+#   export KOLM_SHARED_SECRET=$(openssl rand -hex 32)
+#   docker compose -f workers/compile-server/docker-compose.yml up -d
+#   curl http://localhost:8080/v1/health
+#
+# Air-gap:
+#   add `network_mode: none` after the first compile completes and pin the
+#   image by digest. The server itself never initiates outbound traffic
+#   while KOLM_OFFLINE=1 is set.
+
+version: "3.8"
+
+services:
+  kolm-compile:
+    build:
+      context: ../..
+      dockerfile: workers/compile-server/Dockerfile
+    image: kolm-compile:w264
+    container_name: kolm-compile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      KOLM_SHARED_SECRET: "${KOLM_SHARED_SECRET:?KOLM_SHARED_SECRET must be set in the environment}"
+      KOLM_OFFLINE: "1"
+      KOLM_ARTIFACT_DIR: "/data/artifacts"
+      KOLM_TENANT_ID: "self-hosted"
+      NODE_ENV: "production"
+    volumes:
+      - kolm-artifacts:/data/artifacts
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  kolm-artifacts:
+    driver: local

@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app.kubernetes.io/name: kolm-compile
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kolm-compile
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kolm-compile
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: kolm-compile
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: KOLM_SHARED_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.sharedSecret.existingSecret }}
+                  key: {{ .Values.sharedSecret.key }}
+            - name: KOLM_OFFLINE
+              value: "{{ if .Values.offline }}1{{ else }}0{{ end }}"
+            - name: KOLM_ARTIFACT_DIR
+              value: "{{ .Values.artifacts.dir }}"
+            - name: NODE_ENV
+              value: "production"
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: artifacts
+              mountPath: {{ .Values.artifacts.dir }}
+      volumes:
+        - name: artifacts
+          {{- if .Values.artifacts.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-artifacts
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- if .Values.artifacts.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-artifacts
+  labels:
+    app.kubernetes.io/name: kolm-compile
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  accessModes:
+    - {{ .Values.artifacts.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.artifacts.persistence.size }}
+  {{- if .Values.artifacts.persistence.storageClass }}
+  storageClassName: {{ .Values.artifacts.persistence.storageClass | quote }}
+  {{- end }}
+{{- end }}

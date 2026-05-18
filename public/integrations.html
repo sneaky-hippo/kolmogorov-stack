@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>Integrations · kolm</title>
+<title>Integrations · kolm.ai</title>
 <meta name="description" content="kolm ships first-class integrations for Claude Desktop (MCP), Cursor, VS Code, GitHub Actions, Python, Node, brew, npm. One CLI, ten surfaces.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -112,6 +112,7 @@
 </script>
 </head>
 <body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
 
 <header class="site">
   <div class="wrap-wide row">
@@ -312,6 +313,78 @@ npm i -g github:sneaky-hippo/kolmogorov-stack</pre>
   "npm i -g github:sneaky-hippo/kolmogorov-stack \
    && kolm compile '...' --examples ./labels.jsonl"</pre>
           <div class="links"><a href="https://github.com/sneaky-hippo/kolmogorov-stack/blob/main/Dockerfile">Dockerfile</a></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group" id="frameworks">
+      <h2>Agent frameworks</h2>
+      <p class="kicker">First-class LangChain and LlamaIndex adapters. Same .kolm artifact, same receipt chain, just wired in the framework your agent already lives in. Every call returns the receipt alongside the text so audit, drift detection, and replay work the same as in the bare CLI.</p>
+      <div class="grid">
+        <div class="ig" id="langchain-js">
+          <div class="top"><h3>LangChain.js</h3><span class="stat shipped">shipped</span></div>
+          <p>Drop-in <code>KolmLLM</code> that satisfies the LangChain LLM interface. <code>invokeWithReceipt(prompt)</code> returns <code>{ text, receipt }</code> so chains keep the receipt chain intact. Subprocess mode for local .kolm files, HTTP mode for hosted artifacts.</p>
+          <pre>npm i @kolm/langchain
+import { KolmLLM } from '@kolm/langchain';
+const llm = new KolmLLM({ artifactPath: './ticket-classifier.kolm' });
+const { text, receipt } = await llm.invokeWithReceipt('refund #1234');</pre>
+          <div class="links"><a href="/docs/integrations/langchain-js">walkthrough</a><a href="/spec/rs-1#receipts">receipt schema</a></div>
+        </div>
+
+        <div class="ig" id="langchain-py">
+          <div class="top"><h3>LangChain (Python)</h3><span class="stat shipped">shipped</span></div>
+          <p>Same surface, Pythonic. <code>invoke_with_receipt(prompt)</code> returns a tuple. Works in LangGraph nodes, LangServe handlers, and plain scripts.</p>
+          <pre>pip install kolm-langchain
+from kolm_langchain import KolmLLM
+llm = KolmLLM(artifact_path='./ticket-classifier.kolm')
+text, receipt = llm.invoke_with_receipt('refund #1234')</pre>
+          <div class="links"><a href="/docs/integrations/langchain-py">walkthrough</a><a href="/spec/rs-1#receipts">receipt schema</a></div>
+        </div>
+
+        <div class="ig" id="llamaindex-js">
+          <div class="top"><h3>LlamaIndex.TS</h3><span class="stat shipped">shipped</span></div>
+          <p>Implements the LlamaIndex LLM protocol. <code>complete(prompt)</code> returns <code>{ text, raw }</code> where <code>raw.receipt</code> carries the kolm receipt chain. Ready to plug into a QueryEngine.</p>
+          <pre>npm i @kolm/llamaindex
+import { KolmLLM } from '@kolm/llamaindex';
+const llm = new KolmLLM({ baseUrl: 'https://kolm.example', apiKey: 'k_...' });
+const r = await llm.complete('summarize this ticket');</pre>
+          <div class="links"><a href="/docs/integrations/llamaindex-js">walkthrough</a></div>
+        </div>
+
+        <div class="ig" id="llamaindex-py">
+          <div class="top"><h3>LlamaIndex (Python)</h3><span class="stat shipped">shipped</span></div>
+          <p>Python LlamaIndex adapter exposing the same <code>invoke_with_receipt</code> surface as the LangChain one. Lets QueryEngines and SubQuestion agents speak to a compiled .kolm without losing the audit trail.</p>
+          <pre>pip install kolm-llamaindex
+from kolm_llamaindex import KolmLLM
+llm = KolmLLM(artifact_path='./classifier.kolm')
+r = llm.complete('summarize this ticket')  # r.raw.receipt is the kolm receipt</pre>
+          <div class="links"><a href="/docs/integrations/llamaindex-py">walkthrough</a></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group" id="workflow">
+      <h2>Workflow automation</h2>
+      <p class="kicker">No-code triggers and downstream wiring. The MCP-over-HTTP shim already covers webhooks; native Zapier and Make.com modules ship next quarter and will surface the same receipt chain that the CLI does.</p>
+      <div class="grid">
+        <div class="ig" id="zapier">
+          <div class="top"><h3>Zapier app</h3><span class="stat preview">coming Q3 2026</span></div>
+          <p>Native Zapier app with two actions: "Run a kolm artifact" and "Compile a new kolm from captured calls". Output payload includes <code>text</code>, <code>k_score</code>, and the full receipt chain so Zaps can branch on quality. Until then, the same flow works via the kolm HTTP API as a generic webhook in Zapier.</p>
+          <pre># Zapier webhook today (coming Q3 2026 as a native app):
+POST https://api.kolm.ai/v1/run
+authorization: Bearer $KOLM_API_KEY
+{ "artifact": "ticket-classifier", "input": "{{trigger.body}}" }</pre>
+          <div class="links"><a href="/docs/integrations/zapier">preview docs</a><a href="https://github.com/sneaky-hippo/kolmogorov-stack/discussions">request early access</a></div>
+        </div>
+
+        <div class="ig" id="make">
+          <div class="top"><h3>Make.com module</h3><span class="stat preview">coming Q3 2026</span></div>
+          <p>Native Make.com (formerly Integromat) module with run + compile actions. Same receipt chain. Until then, Make's generic HTTP module hits the kolm API directly; the body shape below is identical to what the native module will accept.</p>
+          <pre># Make.com HTTP module today (coming Q3 2026 as a native module):
+POST https://api.kolm.ai/v1/run
+authorization: Bearer $KOLM_API_KEY
+{ "artifact": "ticket-classifier", "input": "{{1.payload}}" }</pre>
+          <div class="links"><a href="/docs/integrations/make">preview docs</a><a href="https://github.com/sneaky-hippo/kolmogorov-stack/discussions">request early access</a></div>
         </div>
       </div>
     </div>

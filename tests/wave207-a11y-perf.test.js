@@ -117,13 +117,24 @@ function bodyOf(html) {
   return body;
 }
 
-test('1. every public/*.html declares <html lang="en">', () => {
+test('1. every public/*.html declares <html lang="en"> (or correct localized lang for /lang/<locale>/* pages)', () => {
+  // W277 shipped internationalization scaffolding under public/lang/<locale>/
+  // where each localized page declares <html lang="<locale>">. The a11y rule
+  // is "every page declares a lang", not "every page declares en" — so accept
+  // the localized variant on the locale-prefixed paths.
   const offenders = [];
   for (const f of ALL_HTML) {
     const html = read(f);
     const tag = html.match(/<html\b[^>]*>/i);
     if (!tag) { offenders.push(rel(f) + ' (no <html>)'); continue; }
-    if (!/\blang\s*=\s*["']en["']/i.test(tag[0])) offenders.push(rel(f));
+    const relPath = rel(f).replace(/\\/g, '/');
+    const localeMatch = relPath.match(/^lang\/([a-z]{2}(?:-[A-Z]{2})?)\//);
+    if (localeMatch) {
+      const allowed = new RegExp(`\\blang\\s*=\\s*["']${localeMatch[1]}["']`, 'i');
+      if (!allowed.test(tag[0])) offenders.push(rel(f) + ` (expected lang="${localeMatch[1]}")`);
+    } else if (!/\blang\s*=\s*["']en["']/i.test(tag[0])) {
+      offenders.push(rel(f));
+    }
   }
   assert.equal(offenders.length, 0,
     `pages missing <html lang="en">: ${offenders.slice(0, 8).join(', ')}`);

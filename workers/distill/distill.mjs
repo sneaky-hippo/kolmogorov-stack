@@ -78,6 +78,14 @@ import {
   STUDENT_BASES,
   formatCatalogSummary,
 } from './catalog.mjs';
+// Wave 253 ML#7: delegate splitting to the canonical src/seeds.js so the
+// distill worker and the build path agree on what holdout is. The legacy
+// in-worker `splitSeeds` used a divergent `% 5` bucket scheme that did not
+// match `src/seeds.js`'s 1000-bucket scheme, so a row that was "train" for the
+// build was sometimes "holdout" for the distill worker. The audit flagged
+// this as ML#7. The wrapper below preserves the (rows, splitSeed:number)
+// signature this file calls with while delegating the actual logic.
+import { splitSeeds as canonicalSplitSeeds } from '../../src/seeds.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -449,15 +457,11 @@ function readSeeds(p) {
 }
 
 function splitSeeds(rows, splitSeed) {
-  const train = [];
-  const holdout = [];
-  for (const r of rows) {
-    const key = sha256(`${splitSeed}\t${JSON.stringify(r.input)}`);
-    const bucket = parseInt(key.slice(0, 8), 16) % 5;
-    if (bucket === 0) holdout.push(r);
-    else train.push(r);
-  }
-  return { train, holdout };
+  // Wave 253 ML#7: delegate to the canonical implementation in src/seeds.js
+  // so train/holdout assignments are identical across the build path and the
+  // distill worker. The old divergent five-bucket scheme has been removed.
+  const out = canonicalSplitSeeds(rows, { split_seed: String(splitSeed) });
+  return { train: out.train, holdout: out.holdout };
 }
 
 function sha256(s) {

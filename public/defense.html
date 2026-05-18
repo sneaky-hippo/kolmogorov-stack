@@ -4,448 +4,138 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>Airgapped AI for classified and on-prem deployment | kolm</title>
-<meta name="description" content="Signed offline AI artifacts for airgapped and classified deployments. HMAC provenance, local runtime, customer-led compliance review.">
+<title>kolm.ai for Defense - IL5/IL6, ITAR, air-gap · kolm.ai</title>
+<meta name="description" content="Defense-grade AI compilation. IL5/IL6 enclaves, ITAR-bounded training data, air-gapped deployment. The .kolm artifact stays inside the SCIF; the cloud round-trip does not exist.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
-<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
-
-<meta property="og:title" content="kolm &middot; defense AI without the cloud">
-<meta property="og:description" content="Signed offline artifact provenance for regulated and disconnected environments.">
+<meta property="og:title" content="kolm.ai for Defense">
+<meta property="og:description" content="IL5/IL6, ITAR-bounded, air-gapped AI compilation. The artifact stays inside the SCIF.">
 <meta property="og:type" content="website">
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="kolm &middot; defense AI without the cloud" />
-<meta name="twitter:description" content="Signed offline artifact provenance for regulated and disconnected environments." />
-<meta name="twitter:image" content="https://kolm.ai/og-card.svg" />
 <meta property="og:url" content="https://kolm.ai/defense">
 <meta property="og:image" content="https://kolm.ai/og-card.svg">
 <link rel="canonical" href="https://kolm.ai/defense">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
 <style>
   :root {
     --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
     --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
     --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
-    --accent: #faf2e1; --accent-soft: rgba(236,231,220, 0.10); --accent-strong: #c9c2b2;
-    --good: #7ef0d2; --bad: #ff6b91;
+    --accent: #10b981; --accent-soft: rgba(16,185,129,0.10); --accent-strong: #34d399;
+    --good: #7ef0d2; --warn: #ffd07a;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; letter-spacing: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
   a { color: inherit; text-decoration: none; }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
-  @media (max-width: 720px) { .wrap { padding: 0 20px; } }
-
-  header.site { position: sticky; top: 0; z-index: 60; background: rgba(8,9,8,0.78); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--line); }
-  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 32px; }
-  header.site .left { display: flex; align-items: center; gap: 36px; }
-  header.site .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); }
-  header.site .brand img { height: 18px; width: 18px; }
-  header.site .brand span { font-weight: 500; font-size: 16px; letter-spacing: 0; }
-  header.site nav { display: flex; gap: 22px; }
-  header.site nav a { color: var(--ink-mute); font-size: 13.5px; transition: color 120ms; }
-  header.site nav a:hover { color: var(--ink); }
-  header.site .right { display: flex; align-items: center; gap: 14px; }
-  header.site .right .ghost { color: var(--ink-mute); font-size: 13.5px; }
-  header.site .right .ghost:hover { color: var(--ink); }
-  header.site .right .cta { color: var(--bg); background: var(--ink); border-radius: 6px; padding: 7px 14px; font-size: 13px; font-weight: 500; }
-  header.site .right .cta:hover { background: #fff; }
-  @media (max-width: 720px) { header.site nav { display: none; } }
-
-  section.hero { padding: 88px 0 56px; position: relative; overflow: hidden; }
-  section.hero::before {
-    content: ""; position: absolute; inset: 0; pointer-events: none;
-    background:
-      radial-gradient(ellipse 900px 460px at 22% 12%, rgba(236,231,220, 0.10), transparent 60%),
-      radial-gradient(ellipse 600px 360px at 88% 90%, rgba(236,231,220, 0.05), transparent 60%);
-  }
-  section.hero .wrap { position: relative; }
-
-  .pill { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 12px; background: var(--bg-elev); }
-  .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
-
-  h1 { margin: 24px 0 22px; font-size: clamp(38px, 5.6vw, 64px); line-height: 1.05; font-weight: 500; letter-spacing: 0; max-width: 19ch; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+  section.hero { padding: 88px 0 32px; }
+  h1 { margin: 22px 0 16px; font-size: clamp(36px, 5.4vw, 56px); line-height: 1.05; font-weight: 500; max-width: 22ch; }
   h1 .tone { color: var(--accent); }
-  p.lede { margin: 0 0 32px; font-size: clamp(16px, 1.3vw, 18.5px); line-height: 1.55; color: var(--ink-mute); max-width: 56ch; }
-  p.lede b { color: var(--ink); font-weight: 500; }
-  p.lede code { font-family: var(--mono); font-size: 0.9em; background: var(--bg-card); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--ink); }
-
-  .cta-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  a.btn-primary { display: inline-flex; align-items: center; gap: 8px; background: var(--ink); color: var(--bg); border-radius: 6px; padding: 11px 18px; font-size: 14px; font-weight: 500; transition: background 120ms; }
-  a.btn-primary:hover { background: #fff; }
-  a.btn-link { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); padding: 11px 14px; font-size: 14px; font-weight: 500; transition: color 120ms; }
-  a.btn-link:hover { color: var(--accent); }
-
-  section { padding: 80px 0; }
-  section + section { border-top: 1px solid var(--line); }
-  .eyebrow { display: inline-flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 18px; }
-  .eyebrow .num { color: var(--accent); }
-  h2 { margin: 0 0 18px; font-size: clamp(26px, 3.2vw, 38px); line-height: 1.1; font-weight: 500; letter-spacing: 0; max-width: 24ch; }
-  h2 .tone { color: var(--accent); }
-  p.sec-lede { margin: 0 0 40px; font-size: 16px; line-height: 1.55; color: var(--ink-mute); max-width: 60ch; }
-
-  .pain { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  @media (max-width: 880px) { .pain { grid-template-columns: 1fr; } }
-  .pain-card {
-    background: var(--bg-elev); border: 1px solid var(--line);
-    border-radius: 8px; padding: 22px;
-    display: flex; flex-direction: column; min-height: 184px;
-  }
-  .pain-card .lab { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
-  .pain-card .big { margin: 14px 0 10px; font-size: 36px; font-weight: 500; letter-spacing: 0; line-height: 1; color: var(--ink); }
-  .pain-card .big .u { font-size: 13px; font-weight: 400; color: var(--ink-mute); margin-left: 4px; letter-spacing: 0; }
-  .pain-card p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-mute); }
-  .pain-card p b { color: var(--accent); font-weight: 500; }
-
-  .triplets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  @media (max-width: 880px) { .triplets { grid-template-columns: 1fr; } }
-  .trip {
-    background: var(--bg-elev); border: 1px solid var(--line);
-    border-radius: 8px; padding: 24px;
-  }
-  .trip .icn {
-    display: inline-flex; width: 36px; height: 36px; align-items: center; justify-content: center;
-    border-radius: 6px; background: var(--accent-soft); color: var(--accent);
-    font-family: var(--mono); font-size: 14px; font-weight: 500;
-    margin-bottom: 16px;
-  }
-  .trip h3 { margin: 0 0 10px; font-size: 17px; font-weight: 500; letter-spacing: 0; line-height: 1.3; color: var(--ink); }
-  .trip p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-mute); }
-  .trip p b { color: var(--ink); font-weight: 500; }
-
-  .uc {
-    background: var(--bg-elev); border: 1px solid var(--line-strong);
-    border-radius: 10px; overflow: hidden;
-    box-shadow: 0 30px 80px -30px rgba(0,0,0,0.6);
-    max-width: 980px;
-  }
-  .uc .hd { padding: 14px 22px; border-bottom: 1px solid var(--line); background: rgba(0,0,0,0.25); display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; color: var(--ink-mute); }
-  .uc .hd .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
-  .uc .body { padding: 30px 30px 26px; }
-  .uc .body h3 { margin: 0 0 6px; font-size: 22px; letter-spacing: 0; font-weight: 500; color: var(--ink); }
-  .uc .body p.note { margin: 0 0 22px; color: var(--ink-mute); font-size: 14.5px; line-height: 1.55; }
-  .uc .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-top: 1px solid var(--line); }
-  @media (max-width: 720px) { .uc .steps { grid-template-columns: 1fr; } }
-  .uc .step { padding: 22px 22px; border-right: 1px solid var(--line); }
-  .uc .step:last-child { border-right: none; }
-  @media (max-width: 720px) { .uc .step { border-right: none; border-bottom: 1px solid var(--line); } .uc .step:last-child { border-bottom: none; } }
-  .uc .step .n { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0; color: var(--accent); }
-  .uc .step h4 { margin: 10px 0 8px; font-size: 14.5px; font-weight: 500; letter-spacing: 0; color: var(--ink); }
-  .uc .step p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-mute); }
-
-  .compl-row {
-    display: grid; grid-template-columns: repeat(4, 1fr);
-    border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
-  }
-  @media (max-width: 880px) { .compl-row { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 540px) { .compl-row { grid-template-columns: 1fr; } }
-  .compl-row .item {
-    padding: 22px 24px; border-right: 1px solid var(--line); background: var(--bg-elev);
-  }
-  .compl-row .item:last-child { border-right: none; }
-  @media (max-width: 880px) { .compl-row .item:nth-child(2) { border-right: none; } .compl-row .item:nth-child(1), .compl-row .item:nth-child(2) { border-bottom: 1px solid var(--line); } }
-  .compl-row .item .nm { font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: uppercase; color: var(--ink-faint); }
-  .compl-row .item .v { margin-top: 10px; font-size: 17px; font-weight: 500; letter-spacing: 0; color: var(--ink); }
-  .compl-row .item p { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--ink-mute); }
-  .compl-row .item .v.acc { color: var(--accent); }
-
-  .closing { padding: 100px 0; position: relative; }
-  .closing::before {
-    content: ""; position: absolute; inset: 0;
-    background:
-      radial-gradient(ellipse 700px 400px at 30% 50%, rgba(236,231,220, 0.08), transparent 60%),
-      radial-gradient(ellipse 600px 360px at 80% 60%, rgba(236,231,220, 0.04), transparent 60%);
-  }
-  .closing .wrap { position: relative; }
-  .closing h2 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.06; font-weight: 500; letter-spacing: 0; max-width: 22ch; margin: 0 0 28px; }
-
-  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--ink-faint); }
-  footer.site .row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  p.lede { margin: 0 0 24px; font-size: 17px; line-height: 1.55; color: var(--ink-mute); max-width: 64ch; }
+  .pillrow { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
+  .pill { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-mute); border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 11px; background: var(--bg-elev); }
+  section.body { padding: 28px 0 80px; }
+  .group { margin: 48px 0 0; padding-top: 28px; border-top: 1px solid var(--line); }
+  .group:first-of-type { margin-top: 8px; padding-top: 0; border-top: 0; }
+  .group h2 { margin: 0 0 8px; font-size: clamp(22px, 2.4vw, 26px); font-weight: 500; }
+  .group p.kicker { margin: 0 0 22px; color: var(--ink-mute); font-size: 14.5px; max-width: 64ch; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 22px; background: var(--bg-elev); }
+  .card h3 { margin: 0 0 8px; font-size: 16px; font-weight: 500; color: var(--ink); }
+  .card p { margin: 0; font-size: 14px; color: var(--ink-mute); line-height: 1.55; }
+  .cta-row { display: flex; gap: 12px; margin: 28px 0 0; flex-wrap: wrap; }
+  .cta { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; }
+  .cta.primary { background: var(--accent); color: #0a0d0f; }
+  .cta.ghost { color: var(--ink-mute); border: 1px solid var(--line-strong); }
+  footer.site { padding: 56px 0 40px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--ink-faint); text-align: center; }
 </style>
-<link rel="stylesheet" href="/styles.css">
-<link rel="stylesheet" href="/brand-refresh.css">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Service",
-      "name": "kolm for Defense · air-gapped specialists, signed every byte",
-      "description": "Compile mission-specific models that run with zero external dependencies and a verifiable supply chain.",
-      "provider": {
-        "@type": "Organization",
-        "name": "Kolmogorov",
-        "url": "https://kolm.ai"
-      },
-      "url": "https://kolm.ai/defense",
-      "areaServed": "Global"
-    },
-    {
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "kolm",
-          "item": "https://kolm.ai/"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Defense &amp; intel",
-          "item": "https://kolm.ai/defense"
-        }
-      ]
-    }
-  ]
+  "@type": "SoftwareApplication",
+  "name": "kolm",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS, Windows (WSL)",
+  "url": "https://kolm.ai/defense",
+  "description": "Defense-grade AI compilation. IL5/IL6 enclaves, ITAR-bounded training data, air-gapped deployment. The .kolm artifact stays inside the SCIF; the cloud round-trip does not exist.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "kolm.ai",
+    "@id": "https://kolm.ai/#org"
+  }
 }
 </script>
 </head>
 <body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
 
-<header class="site">
-  <div class="wrap row">
-    <div class="left">
-      <a href="/" class="brand" aria-label="kolm"><span>kolm</span>
-      </a>
-      <nav>
-        <a href="/use-cases">Use cases</a>
-        <a href="/docs">Docs</a>
-        <a href="/research">Research</a>
-        <a href="/enterprise">Enterprise</a>
-        <a href="/pricing">Pricing</a>
-      </nav>
-    </div>
-    <div class="right">
-      <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
-      <a href="/signin" class="ghost">sign in</a>
-      <a href="/signup" class="cta">Get API key &rarr;</a>
-    </div>
-  </div>
-</header>
+<header class="site"><div class="wrap"><a href="/" class="brand">kolm</a></div></header>
 
-<section class="hero frontier-bg">
+<section class="hero">
   <div class="wrap">
-    <div class="hero-eyebrow"><span class="he-dot"></span>Defense &middot; disconnected AI &middot; signed artifacts</div>
-    <h1>Design for disconnected AI.<br><span class="tone">Prove every artifact.</span></h1>
-    <p class="lede"><b>kolm</b> packages a task into a signed artifact with manifest hashes, evals, and HMAC-bound receipts. The current product can support architecture pilots for disconnected environments, but FedRAMP, CMMC, ITAR, and cross-domain deployment decisions remain customer-led compliance work, not public product certifications.</p>
+    <h1>Defense AI that <span class="tone">never leaves the SCIF.</span></h1>
+    <p class="lede">Compile your tasks into signed local artifacts inside an IL5 or IL6 enclave. ITAR-bounded training data, air-gapped deployment, byte-exact reproducibility on the air-gap side of the diode. The cloud round-trip you were trying to avoid does not exist in this build.</p>
+    <div class="pillrow">
+      <span class="pill">IL5 / IL6</span>
+      <span class="pill">ITAR-bounded</span>
+      <span class="pill">Air-gapped</span>
+      <span class="pill">SCIF-ready</span>
+      <span class="pill">Signed artifacts</span>
+    </div>
     <div class="cta-row">
-      <a href="mailto:founders@kolm.ai?subject=kolm%20classified%20deployment%20brief" class="btn-primary">Request a classified deployment brief</a>
-      <a href="/security" class="btn-link">Security &amp; provenance posture <span aria-hidden="true">&rarr;</span></a>
-    </div>
-    <div style="margin-top:14px"><a href="/signup?plan=enterprise" style="color:var(--ink-faint);font-family:var(--mono);font-size:12px;text-decoration:none;letter-spacing:0.02em">or start an Enterprise trial &rarr;</a></div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <div class="eyebrow"><span class="num">01</span><span>Why this matters</span></div>
-    <h2>Cloud AI on classified work is<br><span class="tone">a non-starter.</span></h2>
-    <p class="sec-lede">Disconnected teams need local inference, deterministic evidence, and a transfer story that can be reviewed by security. Cloud APIs alone do not solve classification, data-flow, or authorization questions.</p>
-
-    <div class="pain">
-      <div class="pain-card">
-        <div class="lab">Cross-domain</div>
-        <div class="big">Zero<span class="u"> egress</span></div>
-        <p>often permitted from sensitive networks. <b>kolm's signed artifact format gives reviewers a concrete object to inspect before transfer.</b></p>
-      </div>
-      <div class="pain-card">
-        <div class="lab">Tactical edge</div>
-        <div class="big">No<span class="u"> link</span></div>
-        <p>guaranteed at the forward node. <b>kolm's target architecture is local execution with no cloud dependency; every deployment still needs hardware proof.</b></p>
-      </div>
-      <div class="pain-card">
-        <div class="lab">Provenance</div>
-        <div class="big">Every<span class="u"> byte</span></div>
-        <p>requires attestation. <b>HMAC-chained manifest covers base model hash, adapter delta, recipe pack, recall index, evals.</b></p>
-      </div>
+      <a href="/enterprise#demo" class="cta primary">Talk to defense team &rarr;</a>
+      <a href="/defense-v2" class="cta ghost">Defense v2 (full microsite)</a>
+      <a href="/enterprise/self-hosted" class="cta ghost">Self-hosted compile server</a>
     </div>
   </div>
 </section>
 
-<section>
+<section class="body">
   <div class="wrap">
-    <div class="eyebrow"><span class="num">02</span><span>How it works</span></div>
-    <h2>Compile on the low side.<br><span class="tone">Run on the high side.</span></h2>
-    <p class="sec-lede">A customer-led pilot can compile from approved low-side examples, emit a signed artifact, and verify that artifact before any transfer. High-side corpus handling, cross-domain movement, and authorization remain under the customer's controls.</p>
-
-    <div class="triplets">
-      <div class="trip">
-        <div class="icn">-</div>
-        <h3>Open-weight base policy.</h3>
-        <p>Regulated deployments should review every model license, export classification, and weight source before packaging an artifact.</p>
-      </div>
-      <div class="trip">
-        <div class="icn">-</div>
-        <h3>Signed transfer object.</h3>
-        <p>Artifact is one file. Manifest hash, recipe hash, eval hash, and receipt hash are bound by HMAC today; model and adapter hashes harden further as the specialization bridge matures.</p>
-      </div>
-      <div class="trip">
-        <div class="icn">-</div>
-        <h3>Edge target requirements.</h3>
-        <p>Each hardware path needs named-device benchmarks for latency, memory, thermal behavior, and fallback before it is represented as production-ready.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <div class="eyebrow"><span class="num">03</span><span>Use case</span></div>
-    <h2>Reference deployment:<br><span class="tone">analyst assistant in an enclave.</span></h2>
-    <p class="sec-lede">A 2.1 GB artifact, base model plus 84 MB adapter, on a workstation inside an enclave. Indexes the analyst's own document set locally, drafts in the institution's voice, defers anything the verifier rejects. No external link, no cloud, no telemetry.</p>
-
-    <div class="uc" aria-label="Compile pipeline">
-      <div class="hd"><span class="dot"></span><span>compile pilot &middot; customer-controlled network &middot; signed artifact</span></div>
-      <div class="body">
-        <h3>From an unclassified gold set to a signed binary on the workstation.</h3>
-        <p class="note">Compile can happen from an approved gold set. The artifact is signed, K-scored, written to media, and verified by the customer before deployment. The signature chain detects modification; it does not replace an authorization package.</p>
-        <div class="steps">
-          <div class="step">
-            <div class="n">01 - gather</div>
-            <h4>Unclassified gold set</h4>
-            <p>Scrubbed example pairs and held-out evals on the low side. Frontier teacher reachable through your egress proxy.</p>
-          </div>
-          <div class="step">
-            <div class="n">02 - compile</div>
-            <h4>kolm compile</h4>
-            <p>Synthesize a verifier from examples. Specialize an open-weight base on your data. Index your private context. Sign.</p>
-          </div>
-          <div class="step">
-            <div class="n">03 - transfer</div>
-            <h4>Signed sneakernet</h4>
-            <p>Artifact written to write-once media. Hash chain printed for cross-domain ATO. Verified on arrival, signature matches, deploy.</p>
-          </div>
-          <div class="step">
-            <div class="n">04 - run</div>
-            <h4>Detached operation</h4>
-            <p>Workstation runs offline. Receipts log to local audit. Evidence packets exportable on demand for inspection.</p>
-          </div>
+    <div class="group">
+      <h2>What the air-gap actually gets you</h2>
+      <p class="kicker">No cloud round-trip, no shared GPUs, no token telemetry. The compile server runs inside your enclave; the .kolm artifact lives in your repo; the receipt chain is verifiable offline.</p>
+      <div class="grid">
+        <div class="card">
+          <h3>IL5/IL6 enclaves</h3>
+          <p>The self-hosted compile server kit ships as a Docker image and Helm chart. Deploy into your IL5 or IL6 enclave, point your build pipeline at it, and never reach back across the diode.</p>
+        </div>
+        <div class="card">
+          <h3>ITAR-bounded data</h3>
+          <p>Training corpus, captured prompts, and the resulting weights all stay inside the export-control boundary you already maintain. No third-party API calls in the build path.</p>
+        </div>
+        <div class="card">
+          <h3>Signed, reproducible artifacts</h3>
+          <p>Every .kolm carries a receipt chain (spec, seeds, split, train, evals, signatures) that re-verifies offline. A different machine on the air-gap side computes the same artifact_hash bit-for-bit.</p>
         </div>
       </div>
     </div>
-  </div>
-</section>
 
-<section>
-  <div class="wrap">
-    <div class="eyebrow"><span class="num">04</span><span>Reference artifacts</span></div>
-    <h2>Three signed <span class="tone">.kolm</span> starting points.</h2>
-    <p class="sec-lede">Pre-built artifacts you can fork inside the enclave, recompile against your own gold set, and ship to the edge. Each is a single signed file with a public K-score.</p>
-    <div class="compl-row">
-      <div class="item">
-        <div class="nm" style="font-family:var(--mono)">tactical-edge-intel.kolm</div>
-        <div class="v acc">K-score 0.81 &middot; 112&thinsp;MB</div>
-        <p>Summarizes ISR feeds into single-paragraph briefs. Compiled against held-out analyst-graded notes. Runs offline on a ruggedized laptop. <a href="/cookbook/tactical-edge-intel" style="color:var(--accent)">Recipe &rarr;</a></p>
+    <div class="group">
+      <h2>What to read next</h2>
+      <p class="kicker">The longer defense microsite (with the ROI calculator, architecture diagram, and recipe library) is at /defense-v2. The self-hosted compile server kit and air-gap install docs are at /enterprise/self-hosted.</p>
+      <div class="cta-row">
+        <a href="/defense-v2" class="cta primary">/defense-v2 microsite &rarr;</a>
+        <a href="/enterprise/self-hosted" class="cta ghost">Self-hosted kit</a>
+        <a href="/security" class="cta ghost">Security posture</a>
+        <a href="/spec/rs-1" class="cta ghost">RS-1 spec</a>
       </div>
-      <div class="item">
-        <div class="nm" style="font-family:var(--mono)">embedded-sensor-classifier.kolm</div>
-        <div class="v acc">K-score 0.88 &middot; 28&thinsp;MB</div>
-        <p>Classifies sensor streams into known signature buckets. Built for unmanned platforms with intermittent uplinks. <a href="/cookbook/embedded-sensor-classifier" style="color:var(--accent)">Recipe &rarr;</a></p>
-      </div>
-      <div class="item">
-        <div class="nm" style="font-family:var(--mono)">on-call-page-classifier.kolm</div>
-        <div class="v acc">K-score 0.84 &middot; 41&thinsp;MB</div>
-        <p>Triages incoming pages by severity. Local-only, no external upstream. Ships with a verifier that enforces a strict severity grammar. <a href="/cookbook/on-call-page-classifier" style="color:var(--accent)">Recipe &rarr;</a></p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <div class="eyebrow"><span class="num">05</span><span>Compliance posture</span></div>
-    <h2>What's shipped.<br><span class="tone">What's tracking.</span></h2>
-    <p class="sec-lede">Same compliance posture as the rest of the product. Cross-referenced on <a href="/security" style="color:var(--accent);text-decoration:none;">/security</a>.</p>
-
-    <div class="compl-row">
-      <div class="item">
-        <div class="nm">CMMC 2.0</div>
-        <div class="v">No certification today</div>
-        <p>Controls mapping can be reviewed during an Enterprise pilot; no CMMC certification is claimed.</p>
-      </div>
-      <div class="item">
-        <div class="nm">FedRAMP</div>
-        <div class="v">No authorization today</div>
-        <p>FedRAMP authorization is not available. Government hosting options require a separate customer-led review.</p>
-      </div>
-      <div class="item">
-        <div class="nm">ITAR / EAR</div>
-        <div class="v acc">Legal review required</div>
-        <p>No public ITAR or EAR compliance attestation is claimed. Model weights and artifacts require customer classification review.</p>
-      </div>
-      <div class="item">
-        <div class="nm">Provenance</div>
-        <div class="v acc">HMAC chain end-to-end</div>
-        <p>Manifest and receipt fields are content-addressed. Tamper detection is useful evidence, not an ATO by itself.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="closing">
-  <div class="wrap">
-    <h2>Ship operator-side AI<br><span class="tone">that runs without a link.</span></h2>
-    <p class="lede" style="max-width:60ch">Provision the Enterprise tier, install the CLI, compile your first AI against your own examples, and verify the receipt offline. The full deployment is self-serve; the BAA and DPA live behind your dashboard the moment your tenant is created.</p>
-    <div class="cta-row">
-      <a href="/signup?plan=enterprise" class="btn-primary">Start Enterprise</a>
-      <a href="/security" class="btn-link">Read the security page <span aria-hidden="true">&rarr;</span></a>
     </div>
   </div>
 </section>
 
 <footer class="site">
-  <div class="wrap" style="max-width: 1180px;">
-    <div class="footer-grid">
-      <div>
-        <h4>Build</h4>
-        <a href="/quickstart">Quickstart</a>
-        <a href="/docs">Docs</a>
-        <a href="/spec/rs-1">RS-1 spec</a>
-        <a href="/openapi.json">OpenAPI</a>
-        <a href="/cli">CLI</a>
-      </div>
-      <div>
-        <h4>Deploy</h4>
-        <a href="/compute">Backends</a>
-        <a href="/airgap">Air-gap</a>
-        <a href="/integrations/cloudflare">Cloudflare</a>
-        <a href="/integrations/github-actions">GitHub Actions</a>
-        <a href="/integrations/gitlab-ci">GitLab CI</a>
-      </div>
-      <div>
-        <h4>Proof</h4>
-        <a href="/verify-prod">Verify a .kolm</a>
-        <a href="/badge">Embed badge</a>
-        <a href="/benchmarks">Benchmarks</a>
-        <a href="/compare">Compare</a>
-        <a href="/registry">Registry</a>
-        <a href="/case-studies">Case studies</a>
-      </div>
-      <div>
-        <h4>Industries</h4>
-        <a href="/healthcare">Healthcare</a>
-        <a href="/finance">Finance</a>
-        <a href="/legal">Legal</a>
-        <a href="/compliance">Compliance</a>
-        <a href="/insure">Insurance</a>
-      </div>
-      <div>
-        <h4>Company</h4>
-        <a href="/pricing">Pricing</a>
-        <a href="/changelog">Changelog</a>
-        <a href="/security">Security</a>
-        <a href="/community">Community</a>
-        <a href="/contact">Contact</a>
-      </div>
-    </div>
-    <div class="footer-tag">
-      <span>kolm.ai - Made with .kolm - Apache-2.0</span>
-      <span>Receipts signed in CI. Verify any artifact at /verify-prod.</span>
-    </div>
-  </div>
+  <div class="wrap">kolm.ai - the AI compiler. Apache-2.0. Receipts signed in CI.</div>
 </footer>
 
 <script src="/nav.js" defer></script>

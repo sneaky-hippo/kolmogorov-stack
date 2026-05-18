@@ -245,3 +245,493 @@ export function verifyTokenPreservation(redactedInput, teacherResponse) {
 function escapeRegExp(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+// ---------------------------------------------------------------------------
+// Wave 291 — Structured validation findings.
+//
+// The legacy redact()/reinject() pair above is a placement transform: it
+// rewrites the input so a downstream teacher API never sees raw PHI. Callers
+// also need a STRUCTURED view of what was found so they can make a
+// fail-closed decision (e.g., "this input contains a malformed SSN, do not
+// forward to the teacher at all"). The functions below add that view without
+// changing the legacy contract.
+//
+// Public surface added by this wave:
+//   redactPhi(text, opts)  -> { redacted_text, map, findings, safe_to_send }
+//   classifyPhi(text)      -> { findings, safe_to_send }   (no redaction)
+//   isValidNpi(s)          -> boolean   (NPI Luhn-mod-10 check)
+//   isValidSsn(s)          -> boolean   (SSA-issuance range check)
+//
+// Finding shape:
+//   {
+//     type, severity, span: [s, e], raw_hash, normalized_candidate?,
+//     reason, redacted, safe_to_send
+//   }
+// raw_hash is sha256 of the raw matched substring so we can audit without
+// logging the raw value. The top-level safe_to_send is the AND across
+// findings (every finding must individually be safe_to_send=true).
+// ---------------------------------------------------------------------------
+
+const PHI_DEFAULT_TOKEN = (cls, n) => `[PHI_${cls}_${n}]`;
+
+function sha256Hex(s) {
+  return 'sha256:' + crypto.createHash('sha256').update(String(s)).digest('hex');
+}
+
+// NPI Luhn-mod-10 with the NPI-spec 80840 prefix.
+// Per the NPI Final Rule, the 10th digit of a valid NPI is the Luhn check
+// computed over the string "80840" + first nine digits. Returns boolean.
+export function isValidNpi(s) {
+  const str = String(s == null ? '' : s).trim();
+  if (!/^\d{10}$/.test(str)) return false;
+  const composed = '80840' + str.slice(0, 9);
+  let sum = 0;
+  let alt = true; // rightmost digit of composed is doubled (per NPI Final Rule)
+  for (let i = composed.length - 1; i >= 0; i--) {
+    let n = composed.charCodeAt(i) - 48;
+    if (n < 0 || n > 9) return false;
+    if (alt) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    sum += n;
+    alt = !alt;
+  }
+  const check = (10 - (sum % 10)) % 10;
+  return check === (str.charCodeAt(9) - 48);
+}
+
+// SSN issuance ranges. SSA-published rules:
+//   area 000, 666, and 900-999 are invalid.
+//   group 00 is invalid.
+//   serial 0000 is invalid.
+// Accepts 9 digit run with optional separators (- . space).
+export function isValidSsn(s) {
+  const digits = String(s == null ? '' : s).replace(/[^\d]/g, '');
+  if (digits.length !== 9) return false;
+  const area = digits.slice(0, 3);
+  const group = digits.slice(3, 5);
+  const serial = digits.slice(5, 9);
+  if (area === '000' || area === '666') return false;
+  if (Number(area) >= 900) return false;
+  if (group === '00') return false;
+  if (serial === '0000') return false;
+  return true;
+}
+
+// Internal: normalize a 9-digit run to canonical 3-2-4 form.
+function normalizeSsn(digitsOnly) {
+  if (digitsOnly.length !== 9) return digitsOnly;
+  return `${digitsOnly.slice(0, 3)}-${digitsOnly.slice(3, 5)}-${digitsOnly.slice(5, 9)}`;
+}
+
+// Internal: validate an ISO date YYYY-MM-DD or US date M/D/YY[YY].
+// Returns { ok, reason } where reason is 'impossible date' when shape parses
+// but the calendar slot doesn't exist or year is out of plausible range.
+function validateDate(raw) {
+  const isoM = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  const usM = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(raw);
+  let y, mo, d;
+  if (isoM) {
+    y = Number(isoM[1]); mo = Number(isoM[2]); d = Number(isoM[3]);
+  } else if (usM) {
+    mo = Number(usM[1]); d = Number(usM[2]);
+    let yr = Number(usM[3]);
+    if (usM[3].length === 2) yr += yr < 50 ? 2000 : 1900;
+    y = yr;
+  } else {
+    return { ok: false, reason: 'impossible date' };
+  }
+  const nowYear = new Date().getUTCFullYear();
+  if (y < 1900 || y > nowYear + 5) return { ok: false, reason: 'impossible date' };
+  if (mo < 1 || mo > 12) return { ok: false, reason: 'impossible date' };
+  if (d < 1 || d > 31) return { ok: false, reason: 'impossible date' };
+  // Strict day-in-month check via Date round-trip.
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) {
+    return { ok: false, reason: 'impossible date' };
+  }
+  return { ok: true };
+}
+
+// Internal: a finding factory that defaults sensible flags.
+function makeFinding({
+  type, severity, span, raw, normalized_candidate, reason,
+  redacted, safe_to_send,
+}) {
+  const f = {
+    type,
+    severity,
+    span,
+    raw_hash: sha256Hex(raw),
+    reason: reason || '',
+    redacted: !!redacted,
+    safe_to_send: !!safe_to_send,
+  };
+  if (normalized_candidate != null) f.normalized_candidate = normalized_candidate;
+  return f;
+}
+
+// Internal: scan for findings + (optionally) build a replacement plan. The
+// plan is an array of { start, end, replacement } sorted in source order
+// without overlap; applyPlan() walks it to build the redacted_text.
+function scanFindings(text, opts = {}) {
+  const src = String(text == null ? '' : text);
+  const findings = [];
+  // Track [start,end) ranges already claimed so detectors don't double-fire.
+  const claimed = [];
+  function isClaimed(s, e) {
+    for (const [cs, ce] of claimed) {
+      if (s < ce && e > cs) return true;
+    }
+    return false;
+  }
+  function claim(s, e) { claimed.push([s, e]); }
+
+  // Plan entries created when redacted:true; applied later.
+  const plan = [];
+  // Per-class counters for token indices.
+  const counters = {};
+  function nextTok(cls) {
+    counters[cls] = (counters[cls] || 0) + 1;
+    return PHI_DEFAULT_TOKEN(cls, counters[cls]);
+  }
+  function pushPlan(start, end, replacement) {
+    plan.push({ start, end, replacement });
+  }
+
+  // ----- (a) SSN — separated 3-2-4 (well-formed) -----
+  {
+    const re = /\b(\d{3})-(\d{2})-(\d{4})\b/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const s = m.index; const e = s + m[0].length;
+      if (isClaimed(s, e)) continue;
+      const digits = m[1] + m[2] + m[3];
+      const valid = isValidSsn(digits);
+      const normalized = normalizeSsn(digits);
+      if (valid) {
+        findings.push(makeFinding({
+          type: 'ssn', severity: 'critical', span: [s, e], raw: m[0],
+          normalized_candidate: normalized, reason: 'well-formed SSN',
+          redacted: true, safe_to_send: true,
+        }));
+        pushPlan(s, e, nextTok('SSN'));
+      } else {
+        findings.push(makeFinding({
+          type: 'ssn_malformed', severity: 'medium', span: [s, e], raw: m[0],
+          normalized_candidate: normalized, reason: 'invalid SSN range',
+          redacted: true, safe_to_send: false,
+        }));
+        pushPlan(s, e, nextTok('SSN'));
+      }
+      claim(s, e);
+    }
+  }
+
+  // ----- (a) SSN — space-separated 3 2 4 -----
+  {
+    const re = /\b(\d{3}) (\d{2}) (\d{4})\b/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const s = m.index; const e = s + m[0].length;
+      if (isClaimed(s, e)) continue;
+      const digits = m[1] + m[2] + m[3];
+      const valid = isValidSsn(digits);
+      findings.push(makeFinding({
+        type: 'ssn_malformed', severity: valid ? 'high' : 'medium',
+        span: [s, e], raw: m[0],
+        normalized_candidate: normalizeSsn(digits),
+        reason: valid ? 'space-separated SSN' : 'invalid SSN range',
+        redacted: true, safe_to_send: !!valid,
+      }));
+      pushPlan(s, e, nextTok('SSN'));
+      claim(s, e);
+    }
+  }
+
+  // ----- (a) SSN — dot-separated 3.2.4 -----
+  {
+    const re = /\b(\d{3})\.(\d{2})\.(\d{4})\b/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const s = m.index; const e = s + m[0].length;
+      if (isClaimed(s, e)) continue;
+      const digits = m[1] + m[2] + m[3];
+      const valid = isValidSsn(digits);
+      findings.push(makeFinding({
+        type: 'ssn_malformed', severity: valid ? 'high' : 'medium',
+        span: [s, e], raw: m[0],
+        normalized_candidate: normalizeSsn(digits),
+        reason: valid ? 'dot-separated SSN' : 'invalid SSN range',
+        redacted: true, safe_to_send: !!valid,
+      }));
+      pushPlan(s, e, nextTok('SSN'));
+      claim(s, e);
+    }
+  }
+
+  // ----- (b) NPI — 10 digit runs validated against Luhn -----
+  // Walk every standalone 10-digit run (not adjacent to letters/digits) and
+  // classify Luhn-valid vs Luhn-invalid. Done BEFORE the unseparated SSN
+  // scan so a 10-digit run is not also reported as a 9-digit SSN.
+  {
+    const re = /(?<![A-Za-z0-9])(\d{10})(?![A-Za-z0-9])/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const s = m.index; const e = s + m[1].length;
+      if (isClaimed(s, e)) continue;
+      // Skip if it sits inside an obvious phone shape like (555) 123-4567,
+      // which won't actually look like 10 contiguous digits anyway, but
+      // be defensive: require non-digit on both sides (already enforced).
+      const digits = m[1];
+      const npiOk = isValidNpi(digits);
+      if (npiOk) {
+        findings.push(makeFinding({
+          type: 'npi', severity: 'high', span: [s, e], raw: digits,
+          normalized_candidate: digits, reason: 'NPI Luhn-mod-10 pass',
+          redacted: true, safe_to_send: true,
+        }));
+        pushPlan(s, e, nextTok('NPI'));
+        claim(s, e);
+      } else {
+        // 10-digit runs that fail NPI Luhn are not auto-redacted (could be a
+        // device serial or any other identifier), but they ARE flagged so the
+        // caller fails closed before sending to a teacher.
+        findings.push(makeFinding({
+          type: 'npi_invalid', severity: 'high', span: [s, e], raw: digits,
+          normalized_candidate: digits, reason: 'failed NPI Luhn check',
+          redacted: false, safe_to_send: false,
+        }));
+        claim(s, e);
+      }
+    }
+  }
+
+  // ----- (a) SSN — unseparated 9-digit run -----
+  {
+    const re = /(?<![A-Za-z0-9])(\d{9})(?![A-Za-z0-9])/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const s = m.index; const e = s + m[1].length;
+      if (isClaimed(s, e)) continue;
+      // Heuristic: only flag as suspicious if SSN ranges are plausible.
+      // Otherwise leave the run alone (lots of 9-digit numbers are not SSNs).
+      const digits = m[1];
+      // Skip if surrounded by phone-call syntax like "( " on the left or "-"
+      // on the immediate right (would have been picked up by phone detector
+      // upstream when wired). Here in classify we still want the finding.
+      if (!isValidSsn(digits)) {
+        // Still flag the obvious bad ones (000000000, 666...) as malformed.
+        findings.push(makeFinding({
+          type: 'ssn_malformed', severity: 'medium', span: [s, e], raw: digits,
+          normalized_candidate: normalizeSsn(digits),
+          reason: 'invalid SSN range',
+          redacted: true, safe_to_send: false,
+        }));
+        pushPlan(s, e, nextTok('SSN'));
+      } else {
+        findings.push(makeFinding({
+          type: 'ssn_malformed', severity: 'high', span: [s, e], raw: digits,
+          normalized_candidate: normalizeSsn(digits),
+          reason: 'unseparated 9-digit run resembling SSN',
+          redacted: true, safe_to_send: true,
+        }));
+        pushPlan(s, e, nextTok('SSN'));
+      }
+      claim(s, e);
+    }
+  }
+
+  // ----- (c) DOB — ISO -----
+  {
+    const re = /\b(\d{4}-\d{2}-\d{2})\b/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const s = m.index; const e = s + m[0].length;
+      if (isClaimed(s, e)) continue;
+      const v = validateDate(m[0]);
+      if (v.ok) {
+        findings.push(makeFinding({
+          type: 'dob', severity: 'medium', span: [s, e], raw: m[0],
+          normalized_candidate: m[0], reason: 'ISO date',
+          redacted: true, safe_to_send: true,
+        }));
+        pushPlan(s, e, nextTok('DATE'));
+      } else {
+        findings.push(makeFinding({
+          type: 'dob_malformed', severity: 'low', span: [s, e], raw: m[0],
+          normalized_candidate: m[0], reason: v.reason,
+          redacted: false, safe_to_send: true,
+        }));
+      }
+      claim(s, e);
+    }
+  }
+
+  // ----- (c) DOB — US M/D/YY or M/D/YYYY -----
+  {
+    const re = /\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const s = m.index; const e = s + m[0].length;
+      if (isClaimed(s, e)) continue;
+      const v = validateDate(m[0]);
+      if (v.ok) {
+        findings.push(makeFinding({
+          type: 'dob', severity: 'medium', span: [s, e], raw: m[0],
+          normalized_candidate: m[0], reason: 'US date',
+          redacted: true, safe_to_send: true,
+        }));
+        pushPlan(s, e, nextTok('DATE'));
+      } else {
+        findings.push(makeFinding({
+          type: 'dob_malformed', severity: 'low', span: [s, e], raw: m[0],
+          normalized_candidate: m[0], reason: v.reason,
+          redacted: false, safe_to_send: true,
+        }));
+      }
+      claim(s, e);
+    }
+  }
+
+  // ----- (d) MRN — context-labeled alphanumeric token -----
+  {
+    const re = /\b(MRN|MR#|MedRec)\s*[:#]?\s*([A-Z0-9-]{4,20})\b/gi;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const tokenStart = m.index + m[0].indexOf(m[2]);
+      const tokenEnd = tokenStart + m[2].length;
+      if (isClaimed(tokenStart, tokenEnd)) continue;
+      findings.push(makeFinding({
+        type: 'mrn', severity: 'high', span: [tokenStart, tokenEnd],
+        raw: m[2], normalized_candidate: m[2],
+        reason: 'context-labeled MRN', redacted: true, safe_to_send: true,
+      }));
+      pushPlan(tokenStart, tokenEnd, nextTok('MRN'));
+      claim(tokenStart, tokenEnd);
+    }
+  }
+
+  // ----- (e) Address fragments — ZIP+4 -----
+  {
+    const re = /\b(\d{5})-(\d{4})\b/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const s = m.index; const e = s + m[0].length;
+      if (isClaimed(s, e)) continue;
+      findings.push(makeFinding({
+        type: 'address_fragment', severity: 'low', span: [s, e],
+        raw: m[0], normalized_candidate: m[0], reason: 'ZIP+4',
+        redacted: true, safe_to_send: true,
+      }));
+      pushPlan(s, e, nextTok('GEO'));
+      claim(s, e);
+    }
+  }
+
+  // ----- (f) Account numbers — context-labeled 8-16 digit run -----
+  {
+    const re = /\b(Acct|Account|Member)\s*[:#]?\s*(\d{8,16})\b/gi;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const tokenStart = m.index + m[0].indexOf(m[2]);
+      const tokenEnd = tokenStart + m[2].length;
+      if (isClaimed(tokenStart, tokenEnd)) continue;
+      findings.push(makeFinding({
+        type: 'account_no', severity: 'high', span: [tokenStart, tokenEnd],
+        raw: m[2], normalized_candidate: m[2],
+        reason: 'context-labeled account number',
+        redacted: true, safe_to_send: true,
+      }));
+      pushPlan(tokenStart, tokenEnd, nextTok('ACCT'));
+      claim(tokenStart, tokenEnd);
+    }
+  }
+
+  // ----- Generic helpers (email + phone) folded into findings -----
+  // We surface emails + phones as findings even though the legacy redact()
+  // call also catches them; the structured view is what fail-closed callers
+  // read. They are auto-redacted and safe_to_send.
+  {
+    const re = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const s = m.index; const e = s + m[0].length;
+      if (isClaimed(s, e)) continue;
+      findings.push(makeFinding({
+        type: 'email', severity: 'medium', span: [s, e],
+        raw: m[0], normalized_candidate: m[0].toLowerCase(),
+        reason: 'email address',
+        redacted: true, safe_to_send: true,
+      }));
+      pushPlan(s, e, nextTok('EMAIL'));
+      claim(s, e);
+    }
+  }
+  {
+    // Conservative US/intl phone (require separator so we don't double-up
+    // with the 9/10 digit SSN/NPI scans above).
+    const re = /\b\+?1?[\s.-]?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const s = m.index; const e = s + m[0].length;
+      if (isClaimed(s, e)) continue;
+      findings.push(makeFinding({
+        type: 'phone', severity: 'medium', span: [s, e],
+        raw: m[0], normalized_candidate: m[0].replace(/[^\d+]/g, ''),
+        reason: 'phone number',
+        redacted: true, safe_to_send: true,
+      }));
+      pushPlan(s, e, nextTok('PHONE'));
+      claim(s, e);
+    }
+  }
+
+  // Plan sorted in source order, non-overlapping by construction (claim()).
+  plan.sort((a, b) => a.start - b.start);
+  // Findings sorted in source order so callers can rely on it.
+  findings.sort((a, b) => a.span[0] - b.span[0] || a.span[1] - b.span[1]);
+
+  return { findings, plan };
+}
+
+// Internal: apply a non-overlapping plan to source text, return the new text
+// plus a map of placeholder -> original raw substring (parallel to legacy
+// redact() map shape).
+function applyPlan(src, plan) {
+  if (!plan.length) return { text: src, map: {} };
+  const out = [];
+  const map = {};
+  let cursor = 0;
+  for (const { start, end, replacement } of plan) {
+    if (start < cursor) continue; // safety: overlap, skip
+    out.push(src.slice(cursor, start));
+    out.push(replacement);
+    map[replacement] = src.slice(start, end);
+    cursor = end;
+  }
+  out.push(src.slice(cursor));
+  return { text: out.join(''), map };
+}
+
+// Public: classify-only. Runs detectors WITHOUT redaction. Useful for
+// teacher-bridge fail-closed decisions before deciding whether to attempt
+// redaction at all.
+export function classifyPhi(text) {
+  const { findings } = scanFindings(text);
+  const safe_to_send = findings.every((f) => f.safe_to_send);
+  return { findings, safe_to_send };
+}
+
+// Public: full redact + structured findings. The redacted_text + map fields
+// are the legacy redact() output renamed; findings + safe_to_send are new.
+// Existing callers using the old redact() function continue to work; new
+// callers should prefer redactPhi() for the richer return shape.
+export function redactPhi(text, opts = {}) {
+  const src = String(text == null ? '' : text);
+  const { findings, plan } = scanFindings(src, opts);
+  const { text: redacted_text, map } = applyPlan(src, plan);
+  const safe_to_send = findings.every((f) => f.safe_to_send);
+  return { redacted_text, map, findings, safe_to_send };
+}

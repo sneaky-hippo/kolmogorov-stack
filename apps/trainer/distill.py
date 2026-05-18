@@ -68,10 +68,13 @@ the final KL value, and the student's perplexity on a held-out split.
 
 from __future__ import annotations
 
+import argparse
 import enum
 import json
 import math
 import os
+import random
+import sys
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Any, Iterable, Optional
@@ -282,6 +285,12 @@ class DistillSession:
     n_train: int
     n_eval: int
     _trainer: Any = None
+    # W258-ML-5: refs the trainer doesn't expose. We walk the eval set
+    # against both teacher and student post-train to emit holdout
+    # accuracies into the receipt block (anchoring T = student/teacher).
+    _teacher: Any = None
+    _tokenizer: Any = None
+    _eval_rows: Any = None
 
     def train(self) -> dict[str, Any]:
         if self._trainer is None:
@@ -296,7 +305,78 @@ class DistillSession:
             summary["ppl_eval"] = float(math.exp(metrics["eval_loss"])) if "eval_loss" in metrics else None
         except Exception:
             summary["ppl_eval"] = None
+        # W258-ML-5: token-level holdout accuracy. computeKScoreV2 needs both
+        # `holdout_accuracy` (the student's score on the held-out split,
+        # input to R = robustness) and `teacher_holdout_accuracy` (the
+        # teacher's score on the SAME split, input to T = teacher fidelity).
+        # Without these the K-score v2 R / T axes redistribute their weight
+        # away and the manifest never anchors the distillation honesty claim.
+        accs = self._evaluate_holdout_accuracies()
+        if accs is not None:
+            summary["student_token_accuracy"] = accs["student"]
+            summary["teacher_token_accuracy"] = accs["teacher"]
+            summary["holdout_token_count"] = accs["count"]
         return summary
+
+    def _evaluate_holdout_accuracies(self) -> Optional[dict[str, Any]]:
+        """Walk eval rows; for each, run teacher and student on prompt+response
+        and compute token-level top-1 accuracy on the RESPONSE positions only.
+
+        Returns {"teacher": float, "student": float, "count": int} or None
+        when eval set is empty / torch absent. The two ratios share the same
+        denominator so they're comparable as input to T = student/teacher.
+        """
+        if not _HAS_TORCH or not self._eval_rows or self._teacher is None or self._tokenizer is None:
+            return None
+        try:
+            student_model = self._trainer.model
+        except AttributeError:
+            return None
+        teacher = self._teacher
+        tokenizer = self._tokenizer
+        max_len = int(self.config.max_length)
+        device_t = next(teacher.parameters()).device
+        device_s = next(student_model.parameters()).device
+
+        student_correct = 0
+        teacher_correct = 0
+        total_response_tokens = 0
+        student_model.eval()
+        with torch.no_grad():
+            for row in self._eval_rows:
+                prompt = row.get("prompt", "")
+                response = row.get("response", "")
+                if not prompt or not response:
+                    continue
+                prompt_ids = tokenizer(
+                    prompt, return_tensors="pt", truncation=True, max_length=max_len,
+                ).input_ids
+                full_ids = tokenizer(
+                    prompt + response, return_tensors="pt", truncation=True, max_length=max_len,
+                ).input_ids
+                p_len = int(prompt_ids.shape[1])
+                f_len = int(full_ids.shape[1])
+                if f_len <= p_len:
+                    continue
+                response_tokens = full_ids[0, p_len:f_len]
+                # Teacher / student logits over the full sequence; the loss at
+                # position i predicts token i+1, so we slice logits[p_len-1:f_len-1]
+                # to align with the response tokens at positions p_len..f_len-1.
+                t_logits = teacher(input_ids=full_ids.to(device_t)).logits[0]
+                s_logits = student_model(input_ids=full_ids.to(device_s)).logits[0]
+                t_pred = t_logits[p_len - 1:f_len - 1].argmax(dim=-1).cpu()
+                s_pred = s_logits[p_len - 1:f_len - 1].argmax(dim=-1).cpu()
+                resp_cpu = response_tokens.cpu()
+                teacher_correct += int((t_pred == resp_cpu).sum().item())
+                student_correct += int((s_pred == resp_cpu).sum().item())
+                total_response_tokens += int(resp_cpu.numel())
+        if total_response_tokens == 0:
+            return None
+        return {
+            "teacher": teacher_correct / total_response_tokens,
+            "student": student_correct / total_response_tokens,
+            "count": total_response_tokens,
+        }
 
 
 def distill_trainer(
@@ -374,9 +454,17 @@ def distill_trainer(
     if eval_jsonl:
         eval_rows = _load_jsonl(eval_jsonl)
     elif cfg.eval_split > 0 and len(rows) >= 50:
+        # W252 Bug 2: shuffle before splitting so a sorted JSONL doesn't
+        # produce a class-imbalanced eval split. Seeded for reproducibility.
+        random.seed(cfg.seed)
+        random.shuffle(rows)
         cut = max(1, int(len(rows) * cfg.eval_split))
-        eval_rows = rows[-cut:]
-        rows = rows[:-cut]
+        rows, eval_rows = rows[:-cut], rows[-cut:]
+        if len(rows) == 0 or len(eval_rows) == 0:
+            raise ValueError(
+                "distill.py: train/eval split produced empty side. "
+                "Lower cfg.eval_split or supply more rows."
+            )
 
     # If response is missing, draw one from the teacher at sampling temperature 1.
     for r in (*rows, *eval_rows):
@@ -463,6 +551,11 @@ def distill_trainer(
         n_train=len(rows),
         n_eval=len(eval_rows),
         _trainer=trainer,
+        # W258-ML-5: hand teacher + tokenizer + raw eval_rows to the session
+        # so train() can compute holdout token accuracies for the receipt.
+        _teacher=teacher,
+        _tokenizer=tokenizer,
+        _eval_rows=eval_rows,
     )
     return session
 
@@ -491,19 +584,34 @@ def receipt_block(session: DistillSession, train_summary: dict) -> dict:
 
     `papers` cites the canonical KD references so a binder render can footnote
     them. The teacher_model and config land verbatim so a buyer's auditor can
-    reproduce the run."""
+    reproduce the run.
+
+    W258-ML-5: `holdout_accuracy` (student) and `teacher_holdout_accuracy`
+    (teacher) are surfaced at the top level so computeKScoreV2 has the inputs
+    for R (robustness) and T (teacher fidelity). Without them the K-score v2
+    axes redistribute weight and the cross-vendor distillation honesty claim
+    cannot be verified.
+    """
     cfg = asdict(session.config)
     # enum -> str for JSON
     cfg["objective"] = session.config.objective.value
+    student_acc = train_summary.get("student_token_accuracy")
+    teacher_acc = train_summary.get("teacher_token_accuracy")
     return {
         "method": "kd_response_distillation",
         "teacher_model": session.teacher_model,
         "student_model": session.student_model,
+        "seed": int(session.config.seed),
         "config": cfg,
         "n_train_rows": session.n_train,
         "n_eval_rows": session.n_eval,
         "loss_final": train_summary.get("loss_final"),
         "ppl_eval": train_summary.get("ppl_eval"),
+        # T-axis anchor: student / teacher token-level top-1 accuracy on the
+        # held-out split. None when no eval set or torch absent.
+        "holdout_accuracy": student_acc,
+        "teacher_holdout_accuracy": teacher_acc,
+        "holdout_token_count": train_summary.get("holdout_token_count"),
         "papers": [
             "arXiv:1503.02531",  # Hinton soft labels
             "arXiv:1606.07947",  # Kim & Rush seq-level
@@ -520,3 +628,97 @@ __all__ = [
     "distill_trainer",
     "receipt_block",
 ]
+
+
+def _build_argparser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="distill.py",
+        description=(
+            "Response distillation: train a small student to imitate a large "
+            "teacher by matching its next-token distribution."
+        ),
+    )
+    p.add_argument("--teacher-model", type=str, default=None,
+                   help="HF model id of the teacher (e.g. Qwen/Qwen2.5-14B-Instruct).")
+    p.add_argument("--student-model", type=str, default=None,
+                   help="HF model id of the student (e.g. Qwen/Qwen2.5-3B-Instruct).")
+    p.add_argument("--train-jsonl", type=str, default=None,
+                   help="Input JSONL of {prompt,response?} rows.")
+    p.add_argument("--eval-jsonl", type=str, default=None,
+                   help="Optional eval JSONL; if omitted, eval_split is taken from --train-jsonl.")
+    p.add_argument("--out-dir", type=str, default=None,
+                   help="Where the LoRA adapter + tokenizer are written.")
+    p.add_argument("--seed", type=int, default=DistillConfig.seed,
+                   help="PRNG seed for shuffle, torch, and HF Trainer.")
+    p.add_argument("--eval-split", type=float, default=DistillConfig.eval_split,
+                   help="Fraction of rows held out when --eval-jsonl is absent.")
+    p.add_argument("--temperature", type=float, default=DistillConfig.temperature,
+                   help="Softmax temperature for KD; Hinton recipe T=2.0.")
+    p.add_argument("--alpha", type=float, default=DistillConfig.alpha,
+                   help="Weight on the KD loss term (1-alpha goes to CE).")
+    p.add_argument("--objective", type=str, default=DistillConfig.objective.value,
+                   choices=[o.value for o in KDObjective],
+                   help="KD divergence to minimize.")
+    p.add_argument("--num-epochs", type=int, default=DistillConfig.num_epochs)
+    p.add_argument("--batch-size", type=int, default=DistillConfig.batch_size)
+    p.add_argument("--learning-rate", type=float, default=DistillConfig.learning_rate)
+    p.add_argument("--lora-r", type=int, default=DistillConfig.lora_r)
+    p.add_argument("--lora-alpha", type=int, default=DistillConfig.lora_alpha)
+    p.add_argument("--max-length", type=int, default=DistillConfig.max_length)
+    p.add_argument("--print-config", action="store_true",
+                   help="Print the resolved DistillConfig as JSON and exit; do not load any models.")
+    return p
+
+
+def _config_from_args(args: argparse.Namespace) -> DistillConfig:
+    return DistillConfig(
+        temperature=args.temperature,
+        alpha=args.alpha,
+        objective=KDObjective.from_str(args.objective),
+        learning_rate=args.learning_rate,
+        lora_r=args.lora_r,
+        lora_alpha=args.lora_alpha,
+        max_length=args.max_length,
+        batch_size=args.batch_size,
+        num_epochs=args.num_epochs,
+        seed=args.seed,
+        eval_split=args.eval_split,
+    )
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    args = _build_argparser().parse_args(argv)
+    cfg = _config_from_args(args)
+    if args.print_config:
+        cfg_dict = asdict(cfg)
+        cfg_dict["objective"] = cfg.objective.value
+        print(json.dumps(cfg_dict, indent=2))
+        return 0
+    missing = [k for k, v in (
+        ("--teacher-model", args.teacher_model),
+        ("--student-model", args.student_model),
+        ("--train-jsonl", args.train_jsonl),
+        ("--out-dir", args.out_dir),
+    ) if not v]
+    if missing:
+        print(
+            f"distill.py: missing required args: {', '.join(missing)}",
+            file=sys.stderr,
+        )
+        return 2
+    session = distill_trainer(
+        teacher_model=args.teacher_model,
+        student_model=args.student_model,
+        train_jsonl=args.train_jsonl,
+        out_dir=args.out_dir,
+        eval_jsonl=args.eval_jsonl,
+        config=cfg,
+    )
+    summary = session.train()
+    receipt = receipt_block(session, summary)
+    print(json.dumps(receipt, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

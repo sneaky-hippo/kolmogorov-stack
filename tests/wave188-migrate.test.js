@@ -230,24 +230,25 @@ test('19. Each page includes the kolm site header navigation', () => {
   }
 });
 
-test('20. Amber verbs ("kolm import"/"kolm wrap"/"kolm proxy") used as CLI carry "verify before ship" pill', () => {
-  // Verbs that do NOT ship and must carry "verify before ship" pill where used as CLI.
-  // Detection: match `<b>kolm <amber_verb></b>` or `kolm <amber_verb>` followed by
-  // whitespace + a CLI-style argument (--flag, identifier with dashes, or a path).
-  // This avoids false-positives from prose like "the kolm wrap is engineering cost".
-  const AMBER = ['import', 'wrap', 'proxy'];
+test('20. CLI verbs referenced from migrate pages ("kolm import"/"kolm wrap"/"kolm proxy") all ship in cli/kolm.js', () => {
+  // W242 (kolm proxy), W240 (kolm import as alias) and W296f (kolm wrap)
+  // landed these verbs. Previously these were amber-pilled; W256 stripped
+  // the pills, so the test now asserts the load-bearing behavior — that
+  // every verb a migrate page tells a tenant to run actually resolves in
+  // the CLI dispatch table.
+  const cli = fs.readFileSync(path.join(REPO, 'cli', 'kolm.js'), 'utf-8');
+  const VERBS = ['import', 'wrap', 'proxy'];
   for (const slug of SLUGS) {
     const html = read(COMPETITOR_PAGES[slug]);
-    for (const v of AMBER) {
-      // CLI-shape match: kolm <verb> inside a <b> tag (terminal/cli convention)
+    for (const v of VERBS) {
       const cliShape = new RegExp(
         `<b>\\s*kolm\\s+${v}\\b|kolm\\s+${v}\\s+(?:--|[a-z][a-z0-9_-]*\\s|<)`,
         'gi',
       );
-      const cliMatches = [...html.matchAll(cliShape)];
-      if (cliMatches.length > 0) {
-        assert.ok(/verify before ship/i.test(html),
-          `migrate/${slug}.html uses amber CLI verb "kolm ${v}" (${cliMatches.length} match(es)) but is missing the "verify before ship" pill`);
+      if ([...html.matchAll(cliShape)].length > 0) {
+        const hit = cli.includes(`case '${v}':`) || cli.includes(`cmd${v[0].toUpperCase()}${v.slice(1)}`);
+        assert.ok(hit,
+          `migrate/${slug}.html uses CLI verb "kolm ${v}" but cli/kolm.js has no case '${v}': / cmd${v[0].toUpperCase()}${v.slice(1)}`);
       }
     }
   }
@@ -272,13 +273,17 @@ test('21. Index page enumerates the 4-bullet "what gets preserved" and "what kol
   }
 });
 
-test('22. Index CLI reference table marks import/wrap/proxy as "verify before ship"', () => {
+test('22. Index CLI reference enumerates import/wrap/proxy and all three resolve in cli/kolm.js', () => {
   const html = read(MIGRATE_INDEX);
   for (const verb of ['kolm import', 'kolm wrap', 'kolm proxy']) {
     assert.ok(html.includes(verb),
       `migrate.html CLI reference must surface "${verb}" so the per-competitor guides line up`);
   }
-  // The amber-pill convention must be present
-  assert.match(html, /verify before ship/i,
-    'migrate.html CLI reference table must use the "verify before ship" amber-pill convention for unshipped verbs');
+  // W256 retired the amber-pill convention; verbs now ship. Assert behavior:
+  // every verb the index advertises must dispatch in cli/kolm.js.
+  const cli = fs.readFileSync(path.join(REPO, 'cli', 'kolm.js'), 'utf-8');
+  for (const v of ['import', 'wrap', 'proxy']) {
+    const hit = cli.includes(`case '${v}':`) || cli.includes(`cmd${v[0].toUpperCase()}${v.slice(1)}`);
+    assert.ok(hit, `migrate.html surfaces "kolm ${v}" but cli/kolm.js has no case '${v}':`);
+  }
 });

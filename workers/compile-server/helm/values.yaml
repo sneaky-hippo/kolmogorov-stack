@@ -1,0 +1,59 @@
+# workers/compile-server/helm/values.yaml
+#
+# Override these on `helm install` with --set or your own values file.
+# Sealed-secret integration is left to the operator; the chart consumes
+# whatever Secret the env vars below resolve to.
+
+image:
+  repository: kolm-compile
+  tag: w264
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# REQUIRED: name of the k8s Secret holding the shared secret used to auth
+# every request. Create it with:
+#   kubectl create secret generic kolm-compile-secret \
+#     --from-literal=shared-secret=$(openssl rand -hex 32)
+sharedSecret:
+  existingSecret: kolm-compile-secret
+  key: shared-secret
+
+# Air-gap mode. When true the server refuses any request whose handler path
+# would touch the network (e.g. deploy_hook fan-out). Strongly recommended
+# in regulated tenants; pair with a NetworkPolicy that denies egress.
+offline: true
+
+artifacts:
+  # Where compiled .kolm files land. Mounted from the PVC defined below.
+  dir: /data/artifacts
+  persistence:
+    enabled: true
+    storageClass: ""
+    size: 20Gi
+    accessMode: ReadWriteOnce
+
+resources:
+  limits:
+    cpu: 2
+    memory: 2Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+# Pod-level hardening. Override only if your cluster policies require it.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL

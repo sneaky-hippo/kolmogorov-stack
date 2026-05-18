@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The value loop: capture → bridges → distill → replay · kolm.ai</title>
+<meta name="description" content="The kolm value loop is five rungs: capture your real prompts, surface them indexed by namespace, distill them into a compiled recipe, and replay against your captures to prove the artifact beats upstream. Runnable end-to-end with `kolm loop`.">
+<meta name="keywords" content="kolm value loop, AI compiler loop, capture distill replay, kolm loop, kolm doctor loop, observe optimize compile">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta name="author" content="kolm.ai">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
+<meta property="og:site_name" content="kolm.ai">
+<meta property="og:title" content="The value loop: capture → bridges → distill → replay">
+<meta property="og:description" content="Five rungs that turn captured prompts into a compiled artifact. Runnable end-to-end with `kolm loop`.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/value-loop">
+<meta property="og:image" content="https://kolm.ai/og/value-loop.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The value loop · kolm.ai">
+<meta name="twitter:description" content="Capture → bridges → distill → replay, runnable end-to-end with `kolm loop`.">
+<meta name="twitter:image" content="https://kolm.ai/og/value-loop.svg">
+<link rel="canonical" href="https://kolm.ai/value-loop">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://kolm.ai/value-loop#article",
+      "headline": "The value loop: capture, bridges, distill, replay",
+      "description": "The five rungs of the kolm value loop and the single CLI verb that runs them end-to-end.",
+      "author": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "publisher": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "image": "https://kolm.ai/og/value-loop.svg",
+      "datePublished": "2026-05-18",
+      "dateModified": "2026-05-18",
+      "mainEntityOfPage": "https://kolm.ai/value-loop",
+      "articleSection": "AI Compiler"
+    },
+    {
+      "@type": "HowTo",
+      "name": "Run the kolm value loop",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Capture", "text": "POST /v1/capture/log to persist prompt/response pairs with durable receipts." },
+        { "@type": "HowToStep", "position": 2, "name": "Health", "text": "GET /v1/capture/health to verify the storage driver, durability, and thresholds." },
+        { "@type": "HowToStep", "position": 3, "name": "Bridges", "text": "GET /v1/bridges/observations to read your captures back, indexed by namespace and tenant." },
+        { "@type": "HowToStep", "position": 4, "name": "Distill", "text": "POST /v1/distill/from-captures to synthesize a recipe from the largest template cluster." },
+        { "@type": "HowToStep", "position": 5, "name": "Replay", "text": "POST /v1/replay to run captured prompts through the new artifact and diff against upstream." }
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm.ai", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "Value loop", "item": "https://kolm.ai/value-loop" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#a8b0bb;--ink-faint:#5a6471;--bg:#0b0d10;--bg-elev:#11151b;--accent:#10b981;--warn:#f0b86b;--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',system-ui,sans-serif}
+html[data-theme="light"]{--ink:#1a1d22;--ink-mute:#4b5260;--ink-faint:#7a818c;--bg:#f7f4ec;--bg-elev:#fff}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.65}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+header.site{position:sticky;top:0;background:var(--bg);border-bottom:1px solid rgba(255,255,255,.06);z-index:50}
+header.site .wrap{display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;padding:14px 24px}
+header.site .logo{font-family:var(--mono);font-weight:600;letter-spacing:1.2px;color:var(--ink);font-size:18px}
+header.site nav a{margin-left:24px;color:var(--ink-mute);font-size:14px}
+header.site nav a:hover{color:var(--ink)}
+main{max-width:980px;margin:0 auto;padding:56px 24px 96px}
+h1{font-size:48px;line-height:1.1;letter-spacing:-1.4px;font-weight:680;margin:0 0 14px}
+h2{font-size:26px;line-height:1.25;letter-spacing:-0.4px;font-weight:640;margin:48px 0 14px}
+h3{font-size:19px;line-height:1.35;font-weight:600;margin:24px 0 10px}
+p{margin:0 0 16px}.lede{font-size:20px;color:var(--ink-mute);margin:0 0 28px;max-width:760px}
+ul,ol{padding-left:22px;margin:0 0 16px}li{margin:6px 0}
+code{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:2px 6px;border-radius:4px}
+pre{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:16px 20px;border-radius:8px;overflow-x:auto;line-height:1.55}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin:24px 0 40px}
+@media (max-width:920px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.grid{grid-template-columns:1fr}}
+.card{background:var(--bg-elev);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:18px}
+.card h3{margin:0 0 6px;font-size:16px}.card p{font-size:13px;color:var(--ink-mute);margin:0 0 10px}
+.card a{font-size:13px;color:var(--accent)}
+.rung{font-family:var(--mono);color:var(--ink-faint);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.muted{color:var(--ink-faint);font-size:14px}
+.matrix{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px}
+.matrix th,.matrix td{text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
+.matrix th{color:var(--ink-mute);font-weight:600;background:var(--bg-elev)}
+.warn{background:rgba(240,184,107,.08);border-left:3px solid var(--warn);padding:14px 18px;border-radius:6px;font-size:14px;color:var(--ink-mute);margin:20px 0}
+.status-badge{display:inline-flex;align-items:center;gap:10px;padding:8px 14px;border-radius:999px;background:var(--bg-elev);border:1px solid rgba(255,255,255,.08);font-family:var(--mono);font-size:13px;color:var(--ink-mute);margin:0 0 22px}
+html[data-theme="light"] .status-badge{border:1px solid rgba(0,0,0,.08)}
+.status-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-faint);box-shadow:0 0 0 0 rgba(16,185,129,.4)}
+.status-badge[data-state="green"] .dot{background:var(--accent);animation:loop-pulse 2.4s ease-out infinite}
+.status-badge[data-state="amber"] .dot{background:var(--warn)}
+.status-badge[data-state="red"] .dot{background:#ff6b91}
+.status-badge[data-state="green"]{color:var(--ink)}
+.status-badge .label{font-weight:600;letter-spacing:0.4px;text-transform:uppercase;font-size:11px}
+.status-badge .meta{color:var(--ink-faint);font-size:12px}
+@keyframes loop-pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.6)}70%{box-shadow:0 0 0 10px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+.try-form{margin:18px 0 24px;padding:16px 18px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:var(--bg-elev,#13161b);display:flex;flex-direction:column;gap:10px}
+.try-form label{font-size:12px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.6px}
+.try-form textarea{width:100%;background:#0b0d10;color:var(--ink);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 12px;font:13px/1.45 var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);resize:vertical}
+.try-form textarea:focus{outline:1px solid var(--accent,#10b981);outline-offset:1px;border-color:var(--accent,#10b981)}
+.try-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.try-form button{background:var(--accent,#10b981);color:#0b0d10;border:0;padding:10px 18px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;letter-spacing:0.2px}
+.try-form button:disabled{opacity:0.5;cursor:not-allowed}
+.try-form button:hover:not(:disabled){filter:brightness(1.06)}
+.try-status{font-size:12px;color:var(--ink-faint)}
+.try-status[data-state="ok"]{color:var(--accent,#10b981)}
+.try-status[data-state="err"]{color:#ff6b91}
+#try-result{margin:0;padding:12px 14px;background:#0b0d10;border:1px solid rgba(255,255,255,.06);border-radius:8px;color:var(--ink);font:12px/1.5 var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);white-space:pre-wrap;word-break:break-word;max-height:280px;overflow:auto}
+footer{max-width:1080px;margin:0 auto;padding:32px 24px;color:var(--ink-faint);font-size:13px;border-top:1px solid rgba(255,255,255,.06)}
+@media (max-width:560px){main{padding:32px 18px 64px}h1{font-size:32px}h2{font-size:22px}.matrix{font-size:12px}.matrix th,.matrix td{padding:8px 6px}}
+</style>
+</head>
+<body>
+<a href="#main" style="position:absolute;left:-9999px" onfocus="this.style.cssText='position:fixed;top:8px;left:8px;background:#111;color:#fff;padding:8px 12px;border-radius:6px;z-index:100'">Skip to content</a>
+<header class="site"><div class="wrap"><a class="logo" href="/">kolm.ai</a><nav><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav></div></header>
+<main id="main">
+
+<h1>The value loop</h1>
+<div class="status-badge" id="loop-status" data-state="checking" role="status" aria-live="polite">
+  <span class="dot" aria-hidden="true"></span>
+  <span class="label" id="loop-status-label">checking</span>
+  <span class="meta" id="loop-status-meta">probing kolm.ai/health</span>
+</div>
+<p class="lede">kolm.ai turns your captured prompts into a compiled recipe in five rungs. Capture persists durably with a receipt. Health verifies the storage driver. Bridges reads your captures back, namespaced and tenant-scoped. Distill synthesizes a recipe from the largest template cluster. Replay runs the new artifact against your captured prompts and diffs against upstream. Run all five end-to-end with <code>kolm loop</code>.</p>
+
+<div class="grid">
+  <div class="card"><div class="rung">Rung 1</div><h3><a href="#capture">Capture</a></h3><p>Persist prompt/response pairs with a durable receipt header.</p><a href="#capture">Read &rarr;</a></div>
+  <div class="card"><div class="rung">Rung 2</div><h3><a href="#health">Health</a></h3><p>Probe the storage driver, durability flag, and thresholds.</p><a href="#health">Read &rarr;</a></div>
+  <div class="card"><div class="rung">Rung 3</div><h3><a href="#bridges">Bridges</a></h3><p>Read captures back, indexed by namespace and tenant.</p><a href="#bridges">Read &rarr;</a></div>
+  <div class="card"><div class="rung">Rung 4</div><h3><a href="#distill">Distill</a></h3><p>Synthesize a recipe from the largest template-hash cluster.</p><a href="#distill">Read &rarr;</a></div>
+  <div class="card"><div class="rung">Rung 5</div><h3><a href="#replay">Replay</a></h3><p>Run captured prompts through the new artifact, diff against upstream.</p><a href="#replay">Read &rarr;</a></div>
+</div>
+
+<h2>Run the whole loop</h2>
+<p>One CLI verb runs every rung in-process against an ephemeral anon tenant. New install? Start here.</p>
+<pre>$ kolm loop
+[PASS] boot router                  listening on http://127.0.0.1:54321
+[PASS] capture/log                  6 rows durable in doctor_loop_a1b2c3
+[PASS] capture/health               driver=sqlite durable=true
+[PASS] bridges/observations         6 rows in doctor_loop_a1b2c3
+[PASS] distill/from-captures        mode=recipe accepted=true
+[PASS] replay                       concept_id_or_version_id_required guard live
+
+value loop green (6 rungs).</pre>
+<p><code>kolm loop --json</code> emits a structured report keyed by rung name. Exit code is 0 on full green, 1 if any rung fails. Equivalent to <code>kolm doctor --loop</code>.</p>
+
+<h2 id="try-it">Try it now</h2>
+<p>Post a prompt + response to the public <code>/v1/loop/try</code> demo endpoint. No key. No write — the receipt body shows <code>demo:true</code> and the <code>x-kolm-capture-durable: false</code> header so it cannot lie about persistence. The shape matches what a real authenticated <code>POST /v1/bridges/observe</code> emits.</p>
+<form id="try-form" class="try-form" autocomplete="off">
+  <label for="try-prompt">prompt</label>
+  <textarea id="try-prompt" rows="2" maxlength="2000" placeholder="What model: gpt-4o-mini · summarise this support ticket in 1 sentence ...">summarise this support ticket in 1 sentence</textarea>
+  <label for="try-response">response</label>
+  <textarea id="try-response" rows="2" maxlength="2000" placeholder="Customer cannot reset their password ...">Customer cannot reset their password; reset email never arrives.</textarea>
+  <div class="try-row">
+    <button type="submit" id="try-submit">Send capture</button>
+    <span id="try-status" class="try-status"></span>
+  </div>
+  <pre id="try-result" aria-live="polite" hidden></pre>
+</form>
+
+<h2>Why a loop, not a pipeline</h2>
+<p>A pipeline is one-shot: input goes in, output comes out, you're done. A loop reads from the artifact you just shipped, captures the new prompts it sees in production, and feeds them back into the next compile. The version 2 of your recipe is informed by the failure modes of version 1. The version 3 by version 2. That is the difference between fine-tuning a model once and compiling a model over and over against your live workload.</p>
+
+<h2>The five rungs, axis by axis</h2>
+<table class="matrix">
+<thead><tr><th>Rung</th><th>HTTP</th><th>Receipt header</th><th>CLI</th></tr></thead>
+<tbody>
+<tr><td id="capture"><strong>1. Capture</strong></td><td><code>POST /v1/capture/log</code></td><td><code>x-kolm-capture-durable</code></td><td><code>kolm tail captures --namespace ns</code></td></tr>
+<tr><td id="health"><strong>2. Health</strong></td><td><code>GET /v1/capture/health</code></td><td><code>driver + durable + thresholds</code></td><td><code>kolm doctor --loop</code></td></tr>
+<tr><td id="bridges"><strong>3. Bridges</strong></td><td><code>GET /v1/bridges/observations?namespace=</code></td><td><code>tenant-scoped indexed read</code></td><td><code>kolm capture status</code></td></tr>
+<tr><td id="distill"><strong>4. Distill</strong></td><td><code>POST /v1/distill/from-captures</code></td><td><code>mode=recipe | specialist</code></td><td><code>kolm distill --from-captures ns</code></td></tr>
+<tr><td id="replay"><strong>5. Replay</strong></td><td><code>POST /v1/replay</code></td><td><code>k_score + latency_delta + cost_delta</code></td><td><code>kolm replay ns artifact</code></td></tr>
+</tbody>
+</table>
+
+<h2>Rung 1: capture</h2>
+<p>Every prompt/response pair from your production traffic posts to <code>/v1/capture/log</code> with a namespace, a model identifier, and an optional latency reading. The server persists the row and returns <code>201</code> with the <code>x-kolm-capture-durable: true</code> receipt header. If the storage driver is misconfigured or the row could not be written, the response is <code>503</code> with <code>error: 'capture_store_unavailable'</code> and the receipt header is absent. No silent swallow.</p>
+<pre>curl -X POST https://kolm.ai/v1/capture/log \
+  -H "authorization: Bearer $KOLM_API_KEY" \
+  -H "content-type: application/json" \
+  -d '{"namespace": "prod", "items": [{"input": "...", "output": "..."}], "model": "gpt-4o-mini"}'
+
+# Response (201):
+# x-kolm-capture-durable: true
+# x-kolm-namespace: prod
+# {"ok": true, "namespace": "prod", "count": 1, "ids": ["cap_..."]}
+</pre>
+
+<h2>Rung 2: health</h2>
+<p>Probe the storage subsystem before you bother sending captures. <code>/v1/capture/health</code> returns the driver name, whether durability is currently asserted, subscriber count for the SSE fan-out, and the threshold catalog (100 / 500 / 1000 pairs by default).</p>
+<pre>curl -H "authorization: Bearer $KOLM_API_KEY" https://kolm.ai/v1/capture/health
+# {"ok": true, "driver": "sqlite", "durable": true,
+#  "subscriber_count": 0, "thresholds": {"alert": [100, 500, 1000]}}</pre>
+
+<h2>Rung 3: bridges</h2>
+<p>Read your captures back without scanning the whole table. <code>/v1/bridges/observations</code> is a tenant-scoped, namespace-filterable, indexed SQL read that returns the most-recent rows for the namespace you ask for. The index is enforced by the <code>findByTenant</code> primitive in <code>src/store.js</code> so cross-tenant leakage is impossible.</p>
+<pre>curl -H "authorization: Bearer $KOLM_API_KEY" \
+  "https://kolm.ai/v1/bridges/observations?namespace=prod&amp;limit=50"
+# {"observations": [...], "total": 50, "namespaces": ["prod", "staging"], "ready": []}</pre>
+
+<h2>Rung 4: distill</h2>
+<p>Promote a namespace to a recipe with <code>/v1/distill/from-captures</code>. The server groups captures by template hash, picks the largest cluster (at least four rows by default), and synthesizes a recipe via the in-tree synthesizer. Recipes ship in 200 (accepted) or 422 (rejected); both are contract-valid. Above 1000 pairs the mode flips to <code>specialist</code> and forwards to a configured trainer bridge.</p>
+<pre>curl -X POST https://kolm.ai/v1/distill/from-captures \
+  -H "authorization: Bearer $KOLM_API_KEY" \
+  -H "content-type: application/json" \
+  -d '{"namespace": "prod", "mode": "recipe", "min_pairs": 4}'
+# 200: {"mode": "recipe", "namespace": "prod", "accepted": true, "job_id": "...", "synth": {...}}
+# 400 (too few rows):     {"error": "not_enough_captures", "count": 2, "min_pairs": 4}
+# 400 (no shared cluster): {"error": "no_cluster", "best_cluster_size": 1}
+# 503 (store down):        {"error": "capture_store_unavailable"}</pre>
+
+<h2>Rung 5: replay</h2>
+<p>Close the loop. <code>/v1/replay</code> picks N captures from a namespace, runs each prompt through the freshly compiled artifact (no cache), and emits a per-row diff: jaccard <code>k_score</code> against upstream, latency delta, cost delta. One screen, one click, the whole observe → optimize → compile ladder visible.</p>
+<pre>curl -X POST https://kolm.ai/v1/replay \
+  -H "authorization: Bearer $KOLM_API_KEY" \
+  -H "content-type: application/json" \
+  -d '{"namespace": "prod", "version_id": "v_abc123", "limit": 25}'
+# 200: {"rows": [...], "summary": {"avg_k_score": 0.87, "median_latency_delta_us": -240000}}
+# 400 (no concept/version): {"error": "concept_id_or_version_id_required"}
+# 404 (artifact missing):   {"error": "artifact_not_found", "concept_id": "..."}</pre>
+
+<div class="warn">Rungs 1 through 3 are tenant-isolated by primary key in <code>src/store.js</code>. Rungs 4 and 5 inherit that isolation through <code>findByTenant</code>. Cross-tenant leakage is asserted as a unit test in <code>tests/wave297-value-loop-happy-path.test.js</code> and as a CLI smoke in <code>tests/wave298-doctor-loop.test.js</code>.</div>
+
+<h2>Related</h2>
+<ul>
+<li><a href="/what-is-an-ai-compiler">What is an AI compiler? Definition and flow</a></li>
+<li><a href="/captures">Live capture dashboard with SSE tail</a></li>
+<li><a href="/docs/cli">CLI reference for the full kolm verb set</a></li>
+<li><a href="/spec/rs-1">RS-1 spec for the artifact format and receipt chain</a></li>
+<li><a href="/foundations">The 5 foundations: how kolm slots into the agentic stack</a></li>
+</ul>
+
+</main>
+<footer>kolm.ai &middot; the AI compiler &middot; <a href="/what-is-an-ai-compiler">what is an AI compiler?</a> &middot; <a href="/articles/kolm-ai-vs-kolm-therapeutics">brand disambiguation</a></footer>
+<script>
+// W312: live loop status badge. Probes /health (public), updates the pill in
+// place. Caches the last result in sessionStorage so repeat visits in the
+// same tab do not refetch immediately. Fails amber not red on network error
+// since "couldn't reach kolm.ai" is usually the visitor's network, not ours.
+(function(){
+  var el = document.getElementById('loop-status');
+  if (!el) return;
+  var labelEl = document.getElementById('loop-status-label');
+  var metaEl  = document.getElementById('loop-status-meta');
+  var setState = function(state, label, meta){
+    el.setAttribute('data-state', state);
+    if (labelEl) labelEl.textContent = label;
+    if (metaEl)  metaEl.textContent  = meta;
+  };
+  var fmtUptime = function(s){
+    if (typeof s !== 'number' || !isFinite(s) || s < 0) return '?';
+    if (s < 60)    return Math.round(s) + 's';
+    if (s < 3600)  return Math.round(s / 60) + 'm';
+    if (s < 86400) return Math.round(s / 3600) + 'h';
+    return Math.round(s / 86400) + 'd';
+  };
+  var probe = function(){
+    var t0 = Date.now();
+    var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+    var timer = setTimeout(function(){ if (ctl) ctl.abort(); }, 4000);
+    fetch('/health', { cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+      .then(function(r){
+        clearTimeout(timer);
+        if (!r.ok) throw new Error('http ' + r.status);
+        return r.json();
+      })
+      .then(function(j){
+        var rtt = Date.now() - t0;
+        var v = j && j.version ? j.version : '?';
+        var u = j && typeof j.uptime_s === 'number' ? fmtUptime(j.uptime_s) : '?';
+        setState('green', 'loop live', 'v' + v + ' · uptime ' + u + ' · ' + rtt + 'ms');
+        try { sessionStorage.setItem('kolm-loop-status', JSON.stringify({state:'green',label:'loop live',meta:'v'+v+' · uptime '+u,at:Date.now()})); } catch(e){}
+      })
+      .catch(function(err){
+        clearTimeout(timer);
+        var msg = (err && err.name === 'AbortError') ? 'timed out after 4s' : (err && err.message) || 'unreachable';
+        setState('amber', 'cannot reach', '/health ' + msg);
+      });
+  };
+  // Use sessionStorage to avoid flashing 'checking' on repeat tab navigations.
+  try {
+    var cached = sessionStorage.getItem('kolm-loop-status');
+    if (cached) {
+      var c = JSON.parse(cached);
+      if (c && c.at && (Date.now() - c.at) < 60000) {
+        setState(c.state, c.label, c.meta + ' (cached)');
+      }
+    }
+  } catch(e) {}
+  probe();
+})();
+// W313: anonymous "try it now" form posts to /v1/loop/try and shows the receipt.
+(function(){
+  var form = document.getElementById('try-form');
+  if (!form) return;
+  var promptEl = document.getElementById('try-prompt');
+  var responseEl = document.getElementById('try-response');
+  var submit = document.getElementById('try-submit');
+  var status = document.getElementById('try-status');
+  var result = document.getElementById('try-result');
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var prompt = (promptEl.value || '').trim();
+    var response = (responseEl.value || '').trim();
+    if (!prompt || !response) {
+      status.setAttribute('data-state','err');
+      status.textContent = 'prompt and response are both required';
+      return;
+    }
+    submit.disabled = true;
+    status.removeAttribute('data-state');
+    status.textContent = 'sending ...';
+    result.hidden = true;
+    var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+    var t = setTimeout(function(){ if(ctl) ctl.abort(); }, 5000);
+    var t0 = Date.now();
+    fetch('/v1/loop/try', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt, response: response, model: 'kolm-demo' }),
+      signal: ctl ? ctl.signal : undefined,
+      cache: 'no-store',
+    }).then(function(r){
+      clearTimeout(t);
+      var rtt = Date.now() - t0;
+      var durable = r.headers.get('x-kolm-capture-durable');
+      var demo = r.headers.get('x-kolm-capture-demo');
+      return r.json().then(function(body){
+        var summary = 'HTTP ' + r.status + '  ·  ' + rtt + 'ms  ·  x-kolm-capture-durable: ' + (durable||'-') + '  ·  x-kolm-capture-demo: ' + (demo||'-') + '\n\n' + JSON.stringify(body, null, 2);
+        result.textContent = summary;
+        result.hidden = false;
+        if (r.status === 200) {
+          status.setAttribute('data-state','ok');
+          status.textContent = 'receipt below · demo only · not written';
+        } else {
+          status.setAttribute('data-state','err');
+          status.textContent = 'HTTP ' + r.status;
+        }
+      });
+    }).catch(function(err){
+      clearTimeout(t);
+      status.setAttribute('data-state','err');
+      status.textContent = (err && err.name === 'AbortError') ? 'request timed out after 5s' : 'network error';
+    }).finally(function(){
+      submit.disabled = false;
+    });
+  });
+})();
+</script>
+</body>
+</html>

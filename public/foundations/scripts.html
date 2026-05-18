@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Script-everything recipe: kolmrc, profiles, doctor · kolm.ai</title>
+<meta name="description" content="A shell script is the most durable interface. kolm exposes profiles, a doctor, and a kolmrc convention so every machine's setup is reproducible from day one.">
+<meta name="keywords" content="kolm scripts, kolm profile, kolm doctor, kolmrc, AI ops scripts, reproducible AI environment">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta name="author" content="kolm.ai">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
+<meta property="og:site_name" content="kolm.ai">
+<meta property="og:title" content="Script-everything recipe: kolmrc, profiles, doctor">
+<meta property="og:description" content="Reproducible kolm environments from day one. Profiles, doctor, kolmrc convention.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/foundations/scripts">
+<meta property="og:image" content="https://kolm.ai/og/foundations-scripts.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Script-everything recipe · kolm.ai">
+<meta name="twitter:description" content="kolmrc + profiles + doctor.">
+<meta name="twitter:image" content="https://kolm.ai/og/foundations-scripts.svg">
+<link rel="canonical" href="https://kolm.ai/foundations/scripts">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://kolm.ai/foundations/scripts#article",
+      "headline": "Script-everything recipe: kolmrc, profiles, doctor",
+      "description": "A shell script is the most durable interface. kolm exposes profiles, a doctor, and a kolmrc convention so every machine's setup is reproducible from day one.",
+      "author": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "publisher": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "image": "https://kolm.ai/og/foundations-scripts.svg",
+      "datePublished": "2026-05-18",
+      "dateModified": "2026-05-18",
+      "mainEntityOfPage": "https://kolm.ai/foundations/scripts",
+      "articleSection": "Foundations"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm.ai", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "Foundations", "item": "https://kolm.ai/foundations" },
+        { "@type": "ListItem", "position": 3, "name": "Scripts", "item": "https://kolm.ai/foundations/scripts" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#a8b0bb;--ink-faint:#5a6471;--bg:#0b0d10;--bg-elev:#11151b;--accent:#10b981;--warn:#f0b86b;--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',system-ui,sans-serif}
+html[data-theme="light"]{--ink:#1a1d22;--ink-mute:#4b5260;--ink-faint:#7a818c;--bg:#f7f4ec;--bg-elev:#fff}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.65}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+header.site{position:sticky;top:0;background:var(--bg);border-bottom:1px solid rgba(255,255,255,.06);z-index:50}
+header.site .wrap{display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;padding:14px 24px}
+header.site .logo{font-family:var(--mono);font-weight:600;letter-spacing:1.2px;color:var(--ink);font-size:18px}
+header.site nav a{margin-left:24px;color:var(--ink-mute);font-size:14px}
+header.site nav a:hover{color:var(--ink)}
+main{max-width:760px;margin:0 auto;padding:56px 24px 96px}
+h1{font-size:42px;line-height:1.15;letter-spacing:-1.2px;font-weight:680;margin:0 0 12px}
+h2{font-size:26px;line-height:1.25;letter-spacing:-0.4px;font-weight:640;margin:48px 0 14px}
+h3{font-size:19px;line-height:1.35;font-weight:600;margin:24px 0 10px}
+p{margin:0 0 16px}.lede{font-size:19px;color:var(--ink-mute);margin:0 0 28px}
+ul,ol{padding-left:22px;margin:0 0 16px}li{margin:6px 0}
+code{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:2px 6px;border-radius:4px}
+pre{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:16px 20px;border-radius:8px;overflow-x:auto;line-height:1.55}
+.warn{background:rgba(240,184,107,.08);border-left:3px solid var(--warn);padding:14px 18px;border-radius:6px;font-size:14px;color:var(--ink-mute);margin:20px 0}
+.muted{color:var(--ink-faint);font-size:14px}
+footer{max-width:1080px;margin:0 auto;padding:32px 24px;color:var(--ink-faint);font-size:13px;border-top:1px solid rgba(255,255,255,.06)}
+@media (max-width:560px){main{padding:32px 18px 64px}h1{font-size:30px}h2{font-size:22px}}
+</style>
+</head>
+<body>
+<a href="#main" style="position:absolute;left:-9999px" onfocus="this.style.cssText='position:fixed;top:8px;left:8px;background:#111;color:#fff;padding:8px 12px;border-radius:6px;z-index:100'">Skip to content</a>
+<header class="site"><div class="wrap"><a class="logo" href="/">kolm.ai</a><nav><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav></div></header>
+<main id="main">
+
+<p class="muted"><a href="/foundations">&larr; The 5 foundations</a></p>
+<h1>Script-everything recipe</h1>
+<p class="lede">A shell script is the most durable interface a tool can ship. It runs on every Unix going back to 1971, it lives in source control, it survives every framework rewrite. kolm exposes profiles, a doctor, and a kolmrc convention so every machine you touch can be configured, validated, and reproduced from a script in your repo.</p>
+
+<h2>Why this matters</h2>
+<p>"Works on my machine" is the most expensive bug in any AI stack. The base model is on a path that does not exist on the other box. The GPU driver is the wrong version. The capture endpoint points at staging on one machine and prod on another. Solving this with documentation does not work; solving it with a Docker image is heavy and slow. Solving it with a 30-line shell script that <code>kolm doctor</code> validates is the right size of solution.</p>
+<p>kolm ships three primitives for this: <code>kolm profile</code> for env snapshots, <code>kolm doctor</code> for environment validation, and the <code>~/.kolmrc</code> convention for shell auto-source. Together they make "set up a fresh box for this fleet" a single sourced script.</p>
+
+<h2>One-time setup</h2>
+<ol>
+<li>On each box: run <code>kolm doctor</code> once. It reports missing env vars, wrong base-model paths, GPU driver mismatches, capture endpoint reachability. Fix what it flags before you save a profile.</li>
+<li>Save a per-environment profile: <code>kolm profile save prod</code> snapshots KOLM_BASE / KOLM_KEY (redacted) / KOLM_TENANT / KOLM_DATA_DIR / KOLM_STORE_DRIVER.</li>
+<li>Add a <code>~/.kolmrc</code> file with the env vars your shell should always have. Source it from <code>~/.bashrc</code> or <code>~/.zshrc</code>.</li>
+<li>Commit the kolmrc to your private dotfiles repo (NOT the per-machine profile, which may contain machine-specific paths). The shape is portable; the values are not.</li>
+</ol>
+
+<h2>The kolmrc convention</h2>
+<pre>
+# ~/.kolmrc
+# Sourced from .bashrc/.zshrc on every shell start.
+# Per-machine paths go in `kolm profile save`; this file is the shape.
+
+export KOLM_BASE="${KOLM_BASE:-https://kolm.ai}"
+export KOLM_DATA_DIR="${KOLM_DATA_DIR:-$HOME/.kolm/data}"
+export KOLM_PROFILE="${KOLM_PROFILE:-default}"
+
+# Aliases for the verbs you call most.
+alias kjobs="kolm jobs list"
+alias ktail="kolm tail captures"
+alias kdoc="kolm doctor"
+
+# Function: run the doctor at every login. Fails loud, not silent.
+kolm_check() {
+  if command -v kolm &gt;/dev/null 2&gt;&amp;1; then
+    kolm doctor --quiet || echo "warn: kolm doctor flagged issues; run 'kolm doctor' for details"
+  fi
+}
+</pre>
+
+<h2>The profile flow</h2>
+<pre>
+# save the current env as a named profile
+kolm profile save prod
+
+# list every saved profile (* marks the active one)
+kolm profile list
+#   default
+# * prod
+#   staging
+
+# switch active profile (records intent; you still apply via export)
+kolm profile use staging
+
+# show what a profile contains
+kolm profile show staging
+# {
+#   "created_at": "2026-05-18T14:33:12.881Z",
+#   "env": {
+#     "KOLM_BASE": "https://staging.kolm.ai",
+#     "KOLM_TENANT": "acme",
+#     "KOLM_DATA_DIR": "/srv/kolm/staging",
+#     ...
+#   }
+# }
+</pre>
+
+<h2>The doctor flow</h2>
+<pre>
+# verbose check (the default; suitable for fresh-box setup)
+kolm doctor
+
+# quiet, exit-code only (suitable for shell prompts or CI)
+kolm doctor --quiet || echo "kolm env broken"
+
+# detect hardware tier and recommend a base model
+kolm doctor --detect-hw
+</pre>
+
+<h2>What this gets you</h2>
+<ul>
+<li>Reproducible env in one file you can commit to dotfiles. No new tool to learn.</li>
+<li>Per-machine drift caught at login, not at compile time. A failed compile because of a wrong env var costs hours; a doctor warning at login costs seconds.</li>
+<li>Profile-per-environment makes context switching explicit. "Why is my eval reporting against staging" stops being a mystery.</li>
+<li>Scriptable from CI: cron a <code>kolm doctor --quiet</code> on every consumer box, alert on non-zero exit.</li>
+<li>No vendor abstraction: it is just env vars and a bash function. Every tool in your stack already speaks this.</li>
+</ul>
+
+<div class="warn">The W229 jobs registry stores its log files under <code>$KOLM_JOB_LOG_DIR</code> (default <code>~/.kolm/job-logs</code>). If you override <code>KOLM_DATA_DIR</code> in a profile, set <code>KOLM_JOB_LOG_DIR</code> with it; otherwise <code>kolm watch &lt;id&gt;</code> on a profile-switched shell will not find the log.</div>
+
+<h2>Failure modes worth knowing</h2>
+<p><b>Profile values fall out of date.</b> Profiles snapshot env at save time; they do not auto-refresh. Re-save when the underlying env changes (new tenant ID, rotated key, moved data dir). The doctor catches drift but does not fix it.</p>
+<p><b>Sourcing kolmrc twice.</b> If <code>~/.kolmrc</code> is sourced from both <code>~/.bashrc</code> and a parent shell, env exports stack but the aliases redefine cleanly. Verify with <code>type kjobs</code>.</p>
+<p><b>Quiet mode hides real failures.</b> <code>kolm doctor --quiet</code> suppresses output; if you wire it into a shell prompt or CI, also wire the non-zero exit to an alert.</p>
+
+<h2>Related recipes</h2>
+<ul>
+<li><a href="/foundations/git">Private git: commit your kolmrc to dotfiles</a></li>
+<li><a href="/foundations/tmux">tmux: scripts that auto-create the session and start the doctor</a></li>
+<li><a href="/foundations/tailscale">Tailscale: script-detect tailnet hostname for KOLM_BASE</a></li>
+<li><a href="/foundations/termius">Termius: profile snippet for mobile shells</a></li>
+<li><a href="/foundations">All 5 foundations (overview)</a></li>
+</ul>
+
+</main>
+<footer>kolm.ai &middot; the AI compiler &middot; <a href="/foundations">5 foundations</a> &middot; <a href="/what-is-an-ai-compiler">what is an AI compiler?</a></footer>
+</body>
+</html>

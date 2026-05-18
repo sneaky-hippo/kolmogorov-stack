@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#050607;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#050607;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Self-hosted compile server &middot; kolm.ai</title>
+<meta name="description" content="Run the full kolm compile pipeline inside your VPC, behind your firewall, or fully air-gapped. Same .kolm artifact, same signing chain, byte-identical to cloud. Docker, docker-compose, and Helm install paths.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:title" content="Self-hosted compile server &middot; kolm.ai">
+<meta property="og:description" content="Run kolm compile inside your VPC or fully air-gapped. Same .kolm artifact, byte-identical to cloud.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/enterprise/self-hosted">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:title" content="Self-hosted compile server &middot; kolm.ai">
+<meta name="twitter:description" content="Run kolm compile inside your VPC or fully air-gapped.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/enterprise/self-hosted">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.06); --line-strong: rgba(255,255,255,0.12);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #faf2e1; --accent-strong: #c9c2b2;
+    --good: #7ef0d2; --warn: #d6a65a; --stop: #d77;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  html[data-theme="light"] {
+    --bg: #f7f4ec; --bg-elev: #ffffff; --bg-card: #fbf8f0;
+    --line: rgba(0,0,0,0.08); --line-strong: rgba(0,0,0,0.14);
+    --ink: #1c1f1c; --ink-mute: #4a4f47; --ink-faint: #7a807a;
+    --accent: #1c1f1c; --accent-strong: #2e3329;
+    --good: #1a8568; --warn: #a67200; --stop: #b03434;
+  }
+  .sh-hero { padding:56px 0 28px; border-bottom:1px solid var(--line) }
+  .sh-eyebrow { font-family:var(--mono); font-size:11px; letter-spacing:0.10em; text-transform:uppercase; color:var(--ink-faint); margin-bottom:14px }
+  .sh-h1 { font-size:42px; line-height:1.1; letter-spacing:-0.02em; margin:0 0 16px; font-weight:600 }
+  .sh-lede { font-size:17px; line-height:1.55; color:var(--ink-mute); max-width:720px; margin:0 0 22px }
+  .sh-pills { display:flex; gap:10px; flex-wrap:wrap }
+  .sh-pill { font-family:var(--mono); font-size:11px; letter-spacing:0.04em; padding:6px 10px; border:1px solid var(--line); border-radius:5px; color:var(--ink-mute); background:var(--bg-card) }
+  .sh-section { padding:38px 0; border-bottom:1px solid var(--line) }
+  .sh-section h2 { font-size:24px; letter-spacing:-0.01em; margin:0 0 8px; font-weight:600 }
+  .sh-section .sub { color:var(--ink-mute); font-size:14px; max-width:680px; margin:0 0 22px; line-height:1.5 }
+  .sh-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px }
+  @media (max-width:900px){ .sh-grid{ grid-template-columns:1fr } }
+  .sh-card { background:var(--bg-elev); border:1px solid var(--line); border-radius:12px; padding:22px; display:flex; flex-direction:column; gap:14px }
+  .sh-card h3 { font-size:16px; margin:0; letter-spacing:-0.01em; font-weight:600 }
+  .sh-card .tag { font-family:var(--mono); font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-faint) }
+  .sh-card p { color:var(--ink-mute); font-size:13.5px; margin:0; line-height:1.55 }
+  .sh-code { background:var(--bg-card); border:1px solid var(--line); border-radius:8px; padding:14px; font-family:var(--mono); font-size:12.5px; line-height:1.55; color:var(--ink); overflow-x:auto; white-space:pre; -webkit-overflow-scrolling:touch }
+  .sh-twocol { display:grid; grid-template-columns:1fr 1fr; gap:20px }
+  @media (max-width:900px){ .sh-twocol{ grid-template-columns:1fr } }
+  .sh-note { background:var(--bg-elev); border:1px solid var(--line); border-left:3px solid var(--good); border-radius:8px; padding:16px 18px; font-size:13.5px; line-height:1.55; color:var(--ink-mute) }
+  .sh-note strong { color:var(--ink) }
+  .sh-table { width:100%; border-collapse:collapse; font-size:13px; font-family:var(--mono) }
+  .sh-table th, .sh-table td { padding:10px 12px; text-align:left; border-bottom:1px solid var(--line); overflow-wrap:anywhere }
+  .sh-table th { font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-mute); font-weight:500 }
+  .sh-cta-row { display:flex; gap:12px; flex-wrap:wrap; margin-top:22px }
+  .sh-cta { padding:11px 20px; border-radius:8px; font-size:14px; font-weight:500; text-decoration:none; border:1px solid var(--line-strong) }
+  .sh-cta.primary { background:var(--ink); color:var(--bg); border-color:var(--ink) }
+  .sh-cta.ghost { color:var(--ink); background:transparent }
+  .sh-cta:hover { filter:brightness(1.05) }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand" aria-label="kolm home">kolm</a>
+    <!-- KOLM_NAV_BEGIN (W221) -->
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/product">Product</a>
+      <a href="/models">Models</a>
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
+    </nav>
+    <!-- KOLM_NAV_END (W221) -->
+    <div class="site-actions">
+      <a href="/docs">Help</a>
+    </div>
+  </div>
+</header>
+
+<main class="page-main" id="main-content">
+
+<section class="sh-hero">
+  <div class="wrap" style="max-width:1180px">
+    <div class="sh-eyebrow">Enterprise &middot; self-hosted</div>
+    <h1 class="sh-h1">Run kolm compile inside your VPC.</h1>
+    <p class="sh-lede">Same compile pipeline as kolm.ai, packaged as a standalone Node server. Runs behind your firewall, on your hardware, or fully air-gapped. The .kolm artifact this server produces is byte-identical to the cloud version because both call the same orchestrator with the same signing chain.</p>
+    <div class="sh-pills">
+      <span class="sh-pill">Node 20+</span>
+      <span class="sh-pill">Zero new npm deps</span>
+      <span class="sh-pill">Shared-secret auth</span>
+      <span class="sh-pill">KOLM_OFFLINE=1 for air-gap</span>
+      <span class="sh-pill">Docker &middot; Helm &middot; bare metal</span>
+    </div>
+    <div class="sh-cta-row">
+      <a class="sh-cta primary" href="#install">Install paths</a>
+      <a class="sh-cta ghost" href="#verify">No-egress verification</a>
+      <a class="sh-cta ghost" href="/enterprise/inquiry">Talk to founder</a>
+    </div>
+  </div>
+</section>
+
+<section class="sh-section" id="install">
+  <div class="wrap" style="max-width:1180px">
+    <h2>Three install paths.</h2>
+    <p class="sub">Pick the one that matches your deployment posture. All three run the same workers/compile-server/server.mjs entrypoint and produce identical artifacts.</p>
+    <div class="sh-grid">
+
+      <div class="sh-card">
+        <div class="tag">Container</div>
+        <h3>Docker</h3>
+        <p>Single image, single port. Good for evaluation and isolated single-server tenants.</p>
+        <div class="sh-code">docker build -f workers/compile-server/Dockerfile \
+  -t kolm-compile:w264 .
+
+docker run --rm -p 8080:8080 \
+  -e KOLM_SHARED_SECRET=$(openssl rand -hex 32) \
+  -e KOLM_OFFLINE=1 \
+  -v $(pwd)/data/artifacts:/data/artifacts \
+  kolm-compile:w264</div>
+      </div>
+
+      <div class="sh-card">
+        <div class="tag">Compose</div>
+        <h3>docker-compose</h3>
+        <p>Adds a named volume so artifacts survive restarts. One command up, one command down.</p>
+        <div class="sh-code">export KOLM_SHARED_SECRET=$(openssl rand -hex 32)
+docker compose -f workers/compile-server/docker-compose.yml up -d
+curl http://localhost:8080/v1/health</div>
+      </div>
+
+      <div class="sh-card">
+        <div class="tag">Kubernetes</div>
+        <h3>Helm</h3>
+        <p>Minimal chart with a Deployment, Service, and PVC. Pin <code>image.repository</code> at your internal registry for air-gapped clusters.</p>
+        <div class="sh-code">kubectl create namespace kolm
+kubectl -n kolm create secret generic kolm-compile-secret \
+  --from-literal=shared-secret=$(openssl rand -hex 32)
+helm -n kolm install kolm-compile \
+  workers/compile-server/helm</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="sh-section">
+  <div class="wrap" style="max-width:1180px">
+    <h2>Shared-secret auth.</h2>
+    <p class="sub">No API keys, no OAuth, no tenant database. The server boots refusing every request until <code>KOLM_SHARED_SECRET</code> is set so you cannot accidentally leave it open. Every endpoint except <code>/v1/health</code> requires the header below. Comparison is constant time.</p>
+    <div class="sh-twocol">
+      <div class="sh-card">
+        <h3>Header</h3>
+        <div class="sh-code">x-kolm-shared-secret: $KOLM_SHARED_SECRET</div>
+        <p>Rotate by changing the env var and rolling the pod. The server reads it once at boot.</p>
+      </div>
+      <div class="sh-card">
+        <h3>Smoke test</h3>
+        <div class="sh-code">curl -X POST http://localhost:8080/v1/compile?sync=1 \
+  -H "x-kolm-shared-secret: $KOLM_SHARED_SECRET" \
+  -H "content-type: application/json" \
+  -d '{"task":"redact PII from text"}'</div>
+        <p>Returns <code>{job_id, status:"completed", poll}</code> on success. Drop <code>?sync=1</code> for fire and forget.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sh-section" id="verify">
+  <div class="wrap" style="max-width:1180px">
+    <h2>No-egress verification.</h2>
+    <p class="sub">With <code>KOLM_OFFLINE=1</code> the server refuses any request whose handler path would touch the network (e.g. the optional <code>deploy_hook</code> fan-out). To prove this end to end during an audit, run a packet capture across one compile job and grep for any non-loopback traffic.</p>
+    <div class="sh-twocol">
+      <div class="sh-card">
+        <div class="tag">Linux</div>
+        <h3>tcpdump</h3>
+        <div class="sh-code">sudo tcpdump -i any -nn -w /tmp/kolm.pcap \
+  not host 127.0.0.1 and not host ::1 &
+TCPDUMP_PID=$!
+curl -X POST http://localhost:8080/v1/compile?sync=1 \
+  -H "x-kolm-shared-secret: $KOLM_SHARED_SECRET" \
+  -H "content-type: application/json" \
+  -d '{"task":"redact PII from text"}'
+sudo kill $TCPDUMP_PID
+sudo tcpdump -nn -r /tmp/kolm.pcap | wc -l
+# Expected: 0</div>
+      </div>
+      <div class="sh-card">
+        <div class="tag">macOS</div>
+        <h3>pfctl + tcpdump</h3>
+        <div class="sh-code">sudo tcpdump -i any0 -nn -w /tmp/kolm.pcap \
+  not host 127.0.0.1 and not host ::1 &
+TCPDUMP_PID=$!
+curl -X POST http://localhost:8080/v1/compile?sync=1 \
+  -H "x-kolm-shared-secret: $KOLM_SHARED_SECRET" \
+  -H "content-type: application/json" \
+  -d '{"task":"summarize email"}'
+sudo kill $TCPDUMP_PID
+sudo tcpdump -nn -r /tmp/kolm.pcap | wc -l</div>
+      </div>
+    </div>
+    <div class="sh-note" style="margin-top:18px">
+      <strong>Belt and suspenders.</strong> For a regulated deployment, pair <code>KOLM_OFFLINE=1</code> with a Kubernetes <code>NetworkPolicy</code> that denies egress, or run the container with <code>--network none</code> after the first compile.
+    </div>
+  </div>
+</section>
+
+<section class="sh-section">
+  <div class="wrap" style="max-width:1180px">
+    <h2>Byte-identical to cloud.</h2>
+    <p class="sub">This server calls the same <code>createJob</code> and <code>runJob</code> exports from <code>src/compile.js</code> that kolm.ai calls. Same signing chain, same manifest fields, same K-score formula, same .kolm zip layout. To verify, compile the same input pair against both endpoints and compare the hash.</p>
+    <div class="sh-code">sha256sum cloud.kolm self-hosted.kolm
+# both hashes match when KOLM_RECEIPT_SECRET and base_model are the same.</div>
+  </div>
+</section>
+
+<section class="sh-section">
+  <div class="wrap" style="max-width:1180px">
+    <h2>HTTP surface.</h2>
+    <p class="sub">Mirrors the cloud /v1/compile endpoints. Anything that integrates with the cloud also integrates with the self-hosted server.</p>
+    <table class="sh-table">
+      <thead><tr><th>Verb</th><th>Path</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td>/v1/health</td><td>Liveness probe. No auth. Returns mode, version, offline flag.</td></tr>
+        <tr><td>POST</td><td>/v1/compile</td><td>Start a compile job. Returns 202 with job_id + poll URL.</td></tr>
+        <tr><td>GET</td><td>/v1/compile/:id</td><td>Job status. Includes manifest, k_score, artifact_url.</td></tr>
+        <tr><td>GET</td><td>/v1/compile/:id/.kolm</td><td>Stream the signed artifact bytes.</td></tr>
+      </tbody>
+    </table>
+    <div class="sh-cta-row">
+      <a class="sh-cta primary" href="/enterprise/inquiry">Talk to founder</a>
+      <a class="sh-cta ghost" href="/pricing">View plans</a>
+      <a class="sh-cta ghost" href="/airgap">Air-gap overview</a>
+      <a class="sh-cta ghost" href="/security">Security posture</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/openapi.json">OpenAPI</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Deploy</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-gap</a>
+        <a href="/enterprise/self-hosted">Self-hosted</a>
+        <a href="/integrations/cloudflare">Cloudflare</a>
+        <a href="/integrations/github-actions">GitHub Actions</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/badge">Embed badge</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Changelog</a>
+        <a href="/security">Security</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai &middot; Made with .kolm &middot; Apache-2.0</span>
+      <span>Self-hosted compile server shipped W264. Verify any artifact at /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

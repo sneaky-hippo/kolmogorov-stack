@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>SDK quickstart &middot; kolm.ai TypeScript + Python bindings &middot; kolm.ai</title>
+<meta name="description" content="Drop-in replacement for the OpenAI SDK in TypeScript and Python. Same call shape, plus capture metadata, compile triggers, and a verify() that replays the receipt chain offline.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="SDK quickstart &middot; kolm.ai TypeScript + Python bindings">
+<meta property="og:description" content="Drop-in replacement for the OpenAI SDK. Capture, compile, verify in two languages.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/quickstart/sdk">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SDK quickstart &middot; kolm.ai TypeScript + Python bindings">
+<meta name="twitter:description" content="Drop-in for the OpenAI SDK. Capture, compile, verify.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/quickstart/sdk">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"SDK quickstart · kolm.ai TypeScript + Python bindings","description":"Drop-in replacement for the OpenAI SDK in TypeScript and Python.","url":"https://kolm.ai/quickstart/sdk","publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+.hero{padding:72px 0 36px;border-bottom:1px solid var(--line)}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0}
+.stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+.section{padding:56px 0;border-bottom:1px solid var(--line)}
+.section h2{font-size:28px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:780px}
+.section p.lede{font-size:16px;max-width:780px;margin:0 0 28px}
+pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:18px 20px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:0}
+pre.terminal b{color:var(--accent);font-weight:400}
+pre.terminal .mute{color:var(--ink-faint)}
+pre.terminal .kw{color:#cd9bff}
+pre.terminal .str{color:#cdb997}
+pre.terminal .fn{color:#9bd1ff}
+.tabs{display:flex;gap:2px;margin:0 0 -1px;font-family:var(--mono);font-size:12px}
+.tab{padding:9px 18px;background:var(--bg-elev);border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;color:var(--ink-mute);cursor:pointer;user-select:none}
+.tab[aria-selected="true"]{background:#06080a;color:var(--accent);border-color:var(--line)}
+.tabpanel{display:none}
+.tabpanel[data-active="true"]{display:block}
+.step{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:14px;margin-bottom:18px}
+.step .step-head{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.step .step-num{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:4px 10px;border-radius:4px;border:1px solid rgba(16,185,129,0.30)}
+.step .step-name{font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+.step .step-cli{font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);background:var(--bg);padding:2px 8px;border-radius:3px;border:1px solid var(--line);letter-spacing:0.02em}
+.step p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
+@media(max-width:820px){.related{grid-template-columns:1fr}}
+.related a{padding:18px 20px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:6px}
+.related a:hover{border-color:var(--accent-soft)}
+.related b{font-size:14px;color:var(--ink);font-weight:500}
+.related span{font-size:13px;color:var(--ink-mute);line-height:1.5}
+footer{padding:36px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <!-- kolm-nav-start --><nav><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav><!-- kolm-nav-end -->
+</div></header>
+
+<main id="main">
+
+<section class="hero"><div class="wrap">
+  <div class="crumbs"><a href="/">kolm.ai</a> / <a href="/quickstart">quickstart</a> / sdk</div>
+  <h1>The SDK quickstart for kolm.ai &middot; the AI compiler in your language</h1>
+  <p class="lede">Drop-in replacement for the OpenAI SDK in TypeScript and Python. Same call shape, plus capture metadata, compile triggers, and a verify() that replays the receipt chain offline. Change the import, keep your code.</p>
+  <p class="stamp">target time: 3 minutes &middot; supported runtimes: node 18+, deno 1.40+, bun 1.0+, python 3.10+ &middot; one-line import swap</p>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <h2>Install</h2>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-tab="ts">TypeScript</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="py">Python</button>
+  </div>
+  <div class="tabpanel" data-tab="ts" data-active="true">
+    <pre class="terminal"><b>$</b> npm i @kolm/sdk
+<span class="mute">added 1 package in 1.2s</span></pre>
+  </div>
+  <div class="tabpanel" data-tab="py" data-active="false">
+    <pre class="terminal"><b>$</b> pip install kolm-sdk
+<span class="mute">Successfully installed kolm-sdk-7.2.4</span></pre>
+  </div>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <h2>Five-step flow</h2>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 1</span><span class="step-name">Swap the import</span><span class="step-cli">import Kolm from &apos;@kolm/sdk&apos;</span></div>
+    <p>The SDK ships an <code>OpenAI</code>-compatible client surface so the body of your existing handler does not change. Pass <code>captureNamespace</code> to start collecting prompt+response pairs into your tenant&apos;s capture store.</p>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="ts1">TypeScript</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="py1">Python</button>
+    </div>
+    <div class="tabpanel" data-tab="ts1" data-active="true">
+      <pre class="terminal"><span class="kw">import</span> Kolm <span class="kw">from</span> <span class="str">&apos;@kolm/sdk&apos;</span>;
+<span class="kw">const</span> kolm = <span class="kw">new</span> <span class="fn">Kolm</span>({ apiKey: process.env.KOLM_KEY, captureNamespace: <span class="str">&apos;summarizer&apos;</span> });
+<span class="kw">const</span> res = <span class="kw">await</span> kolm.chat.completions.<span class="fn">create</span>({
+  model: <span class="str">&apos;qwen-3.5-27b&apos;</span>,
+  messages: [{ role: <span class="str">&apos;user&apos;</span>, content: <span class="str">&apos;Summarize this PR&apos;</span> }],
+});
+<span class="mute">// res.kolm.capture_id   -&gt; cap_018a3e...
+// res.kolm.durable      -&gt; true
+// res.kolm.namespace    -&gt; &apos;summarizer&apos;</span></pre>
+    </div>
+    <div class="tabpanel" data-tab="py1" data-active="false">
+      <pre class="terminal"><span class="kw">from</span> kolm <span class="kw">import</span> Kolm
+kolm = <span class="fn">Kolm</span>(api_key=os.environ[<span class="str">&apos;KOLM_KEY&apos;</span>], capture_namespace=<span class="str">&apos;summarizer&apos;</span>)
+res = kolm.chat.completions.<span class="fn">create</span>(
+    model=<span class="str">&apos;qwen-3.5-27b&apos;</span>,
+    messages=[{<span class="str">&apos;role&apos;</span>: <span class="str">&apos;user&apos;</span>, <span class="str">&apos;content&apos;</span>: <span class="str">&apos;Summarize this PR&apos;</span>}],
+)
+<span class="mute"># res.kolm.capture_id   -&gt; cap_018a3e...
+# res.kolm.durable      -&gt; True
+# res.kolm.namespace    -&gt; &apos;summarizer&apos;</span></pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 2</span><span class="step-name">Stream the live capture tail</span><span class="step-cli">kolm.captures.stream()</span></div>
+    <p>Open an SSE stream on your namespace and inspect what is actually landing. Async iteration in TS, generator in Python.</p>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="ts2">TypeScript</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="py2">Python</button>
+    </div>
+    <div class="tabpanel" data-tab="ts2" data-active="true">
+      <pre class="terminal"><span class="kw">for await</span> (<span class="kw">const</span> cap <span class="kw">of</span> kolm.captures.<span class="fn">stream</span>({ namespace: <span class="str">&apos;summarizer&apos;</span> })) {
+  console.<span class="fn">log</span>(cap.id, cap.latency_us, cap.input.<span class="fn">slice</span>(<span class="str">0</span>, <span class="str">60</span>));
+}</pre>
+    </div>
+    <div class="tabpanel" data-tab="py2" data-active="false">
+      <pre class="terminal"><span class="kw">for</span> cap <span class="kw">in</span> kolm.captures.<span class="fn">stream</span>(namespace=<span class="str">&apos;summarizer&apos;</span>):
+    <span class="fn">print</span>(cap.id, cap.latency_us, cap.input[:<span class="str">60</span>])</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 3</span><span class="step-name">Promote to a compile job</span><span class="step-cli">kolm.distill.fromCaptures()</span></div>
+    <p>Triggers the same <code>/v1/distill/from-captures</code> route the CLI uses. Returns a job handle you can await.</p>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="ts3">TypeScript</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="py3">Python</button>
+    </div>
+    <div class="tabpanel" data-tab="ts3" data-active="true">
+      <pre class="terminal"><span class="kw">const</span> job = <span class="kw">await</span> kolm.distill.<span class="fn">fromCaptures</span>({ namespace: <span class="str">&apos;summarizer&apos;</span>, tier: <span class="str">&apos;3090&apos;</span>, recipeClass: <span class="str">&apos;specialist&apos;</span> });
+<span class="kw">const</span> artifact = <span class="kw">await</span> job.<span class="fn">wait</span>();
+console.<span class="fn">log</span>(artifact.id, artifact.k_score);</pre>
+    </div>
+    <div class="tabpanel" data-tab="py3" data-active="false">
+      <pre class="terminal">job = kolm.distill.<span class="fn">from_captures</span>(namespace=<span class="str">&apos;summarizer&apos;</span>, tier=<span class="str">&apos;3090&apos;</span>, recipe_class=<span class="str">&apos;specialist&apos;</span>)
+artifact = job.<span class="fn">wait</span>()
+<span class="fn">print</span>(artifact.id, artifact.k_score)</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 4</span><span class="step-name">Verify before run</span><span class="step-cli">kolm.artifacts.verify()</span></div>
+    <p>Replays the receipt chain offline against the artifact bytes. Throws on the first broken link. Never run an artifact you cannot verify.</p>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="ts4">TypeScript</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="py4">Python</button>
+    </div>
+    <div class="tabpanel" data-tab="ts4" data-active="true">
+      <pre class="terminal"><span class="kw">const</span> ok = <span class="kw">await</span> kolm.artifacts.<span class="fn">verify</span>(<span class="str">&apos;./summarizer.kolm&apos;</span>);
+console.<span class="fn">log</span>(ok.signatures_valid, ok.drift_within_tolerance);</pre>
+    </div>
+    <div class="tabpanel" data-tab="py4" data-active="false">
+      <pre class="terminal">ok = kolm.artifacts.<span class="fn">verify</span>(<span class="str">&apos;./summarizer.kolm&apos;</span>)
+<span class="fn">print</span>(ok.signatures_valid, ok.drift_within_tolerance)</pre>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 5</span><span class="step-name">Run offline</span><span class="step-cli">kolm.run()</span></div>
+    <p>Hand the SDK a verified <code>.kolm</code> and call <code>.run()</code> with no network. Dispatches to the runtime baked into the artifact &mdash; JS, WASM, native, GGUF, or ONNX.</p>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="ts5">TypeScript</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="py5">Python</button>
+    </div>
+    <div class="tabpanel" data-tab="ts5" data-active="true">
+      <pre class="terminal"><span class="kw">const</span> r = <span class="kw">await</span> kolm.<span class="fn">run</span>(<span class="str">&apos;./summarizer.kolm&apos;</span>, { prompt: <span class="str">&apos;Summarize this PR:...&apos;</span> });
+console.<span class="fn">log</span>(r.output);</pre>
+    </div>
+    <div class="tabpanel" data-tab="py5" data-active="false">
+      <pre class="terminal">r = kolm.<span class="fn">run</span>(<span class="str">&apos;./summarizer.kolm&apos;</span>, prompt=<span class="str">&apos;Summarize this PR:...&apos;</span>)
+<span class="fn">print</span>(r.output)</pre>
+    </div>
+  </div>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <h2>The other quickstarts</h2>
+  <p class="lede">Same five-step value loop, different surface.</p>
+  <div class="related">
+    <a href="/quickstart/cli"><b>CLI quickstart &rarr;</b><span>Five terminal commands. No editor switch.</span></a>
+    <a href="/quickstart/api"><b>HTTP API quickstart &rarr;</b><span>Same flow over REST. Five curl commands.</span></a>
+    <a href="/quickstart/embed"><b>Embed quickstart &rarr;</b><span>Ship a signed .kolm inside another product.</span></a>
+  </div>
+</div></section>
+
+</main>
+
+<footer><div class="wrap">
+  <span>kolm.ai &middot; the AI compiler &middot; <a href="/articles/kolm-ai-vs-kolm-therapeutics">not the band, not the therapeutics company</a></span>
+</div></footer>
+
+<script>
+// Lightweight tab handler: each tabgroup is a sibling pair of .tabs + .tabpanel rows.
+(function () {
+  document.querySelectorAll('.tabs').forEach(function (tabs) {
+    var buttons = tabs.querySelectorAll('button.tab');
+    var panels = tabs.parentElement.querySelectorAll(':scope > .tabpanel');
+    buttons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        buttons.forEach(function (b) { b.setAttribute('aria-selected', 'false'); });
+        btn.setAttribute('aria-selected', 'true');
+        var target = btn.getAttribute('data-tab');
+        panels.forEach(function (p) {
+          p.setAttribute('data-active', p.getAttribute('data-tab') === target ? 'true' : 'false');
+        });
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -293,6 +293,9 @@ export function buildDriftSnapshot(input = {}) {
     if (typeof input.k_score.composite === 'number') {
       out.k_score.composite = input.k_score.composite;
     }
+    if (typeof input.k_score.spec === 'string') {
+      out.k_score.spec = input.k_score.spec;
+    }
     if (input.k_score.axes && typeof input.k_score.axes === 'object') {
       out.k_score.axes = {};
       for (const [axis, val] of Object.entries(input.k_score.axes)) {
@@ -357,11 +360,25 @@ export function snapshotFromManifest(manifest, receipt = null, opts = {}) {
     const ks = manifest.k_score;
     input.k_score = {};
     if (typeof ks.composite === 'number') input.k_score.composite = ks.composite;
-    // collect every numeric top-level k_score field as an axis
+    if (typeof ks.spec === 'string') input.k_score.spec = ks.spec;
+    // W258-ML-2: whitelist normalized axes only. Non-normalized fields
+    // (size_bytes, p50_latency_us, gate, cost_usd_per_call) on a manifest's
+    // k_score block leak into drift comparison and trip the 0.05/0.10
+    // warn/fail bands which are calibrated for [0,1] axes. The whitelist
+    // mirrors the {A,S,L,C,V,R,T,F,E,Z} v1+v2 axes plus their score
+    // synonyms (size_score, latency_score, cost_score, robustness_score,
+    // teacher_fidelity_score, fairness_score, energy_score, drift_score).
+    const NORMALIZED_AXES = new Set([
+      'A', 'S', 'L', 'C', 'V', 'R', 'T', 'F', 'E', 'Z',
+      'accuracy', 'coverage',
+      'size_score', 'latency_score', 'cost_score', 'robustness_score',
+      'teacher_fidelity_score', 'fairness_score', 'energy_score', 'drift_score',
+      'holdout_accuracy', 'subgroup_min_accuracy', 'teacher_holdout_accuracy',
+    ]);
     const axes = {};
     for (const [k, v] of Object.entries(ks)) {
-      if (k === 'composite') continue;
-      if (typeof v === 'number') axes[k] = v;
+      if (k === 'composite' || k === 'spec' || k === 'weights' || k === 'weights_base') continue;
+      if (typeof v === 'number' && NORMALIZED_AXES.has(k)) axes[k] = v;
     }
     if (Object.keys(axes).length > 0) input.k_score.axes = axes;
   }
@@ -396,6 +413,18 @@ function classify(delta, warnTh, failTh) {
 export function detectDrift(baselineSnap, currentSnap, userTolerances = {}) {
   validateDriftSnapshot(baselineSnap);
   validateDriftSnapshot(currentSnap);
+  // W252 Bug 7: refuse cross-spec comparisons. The axis weights and the
+  // composite formula are not identical between k-score-1 and k-score-2, so
+  // comparing a v1 composite to a v2 composite is comparing apples to
+  // pears. The right move is for the tenant to re-baseline under the new
+  // spec before continuing drift detection.
+  const bSpec = baselineSnap.k_score && baselineSnap.k_score.spec;
+  const cSpec = currentSnap.k_score && currentSnap.k_score.spec;
+  if (bSpec && cSpec && bSpec !== cSpec) {
+    throw new Error(
+      `drift comparison invalid: baseline k_score.spec=${bSpec} does not match current k_score.spec=${cSpec}`
+    );
+  }
   const tol = { ...DEFAULT_TOLERANCES, ...userTolerances };
   const signals = [];
 

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Termius recipe: tail captures from your phone · kolm.ai</title>
+<meta name="description" content="Use Termius on iOS or Android to tail kolm captures, watch jobs, and trigger distills from the same shell you use on your laptop. The CLI runs on the remote box; Termius is the keyboard.">
+<meta name="keywords" content="Termius kolm, mobile SSH AI, kolm tail captures phone, iOS SSH agent, kolm on android">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta name="author" content="kolm.ai">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
+<meta property="og:site_name" content="kolm.ai">
+<meta property="og:title" content="Termius recipe: tail captures from your phone">
+<meta property="og:description" content="The CLI runs on the remote box. Termius is the keyboard.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/foundations/termius">
+<meta property="og:image" content="https://kolm.ai/og/foundations-termius.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Termius recipe · kolm.ai">
+<meta name="twitter:description" content="Tail captures from your phone.">
+<meta name="twitter:image" content="https://kolm.ai/og/foundations-termius.svg">
+<link rel="canonical" href="https://kolm.ai/foundations/termius">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://kolm.ai/foundations/termius#article",
+      "headline": "Termius recipe: tail captures from your phone",
+      "description": "Use Termius on iOS or Android to tail kolm captures, watch jobs, and trigger distills from the same shell you use on your laptop.",
+      "author": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "publisher": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "image": "https://kolm.ai/og/foundations-termius.svg",
+      "datePublished": "2026-05-18",
+      "dateModified": "2026-05-18",
+      "mainEntityOfPage": "https://kolm.ai/foundations/termius",
+      "articleSection": "Foundations"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm.ai", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "Foundations", "item": "https://kolm.ai/foundations" },
+        { "@type": "ListItem", "position": 3, "name": "Termius", "item": "https://kolm.ai/foundations/termius" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#a8b0bb;--ink-faint:#5a6471;--bg:#0b0d10;--bg-elev:#11151b;--accent:#10b981;--warn:#f0b86b;--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',system-ui,sans-serif}
+html[data-theme="light"]{--ink:#1a1d22;--ink-mute:#4b5260;--ink-faint:#7a818c;--bg:#f7f4ec;--bg-elev:#fff}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.65}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+header.site{position:sticky;top:0;background:var(--bg);border-bottom:1px solid rgba(255,255,255,.06);z-index:50}
+header.site .wrap{display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;padding:14px 24px}
+header.site .logo{font-family:var(--mono);font-weight:600;letter-spacing:1.2px;color:var(--ink);font-size:18px}
+header.site nav a{margin-left:24px;color:var(--ink-mute);font-size:14px}
+header.site nav a:hover{color:var(--ink)}
+main{max-width:760px;margin:0 auto;padding:56px 24px 96px}
+h1{font-size:42px;line-height:1.15;letter-spacing:-1.2px;font-weight:680;margin:0 0 12px}
+h2{font-size:26px;line-height:1.25;letter-spacing:-0.4px;font-weight:640;margin:48px 0 14px}
+h3{font-size:19px;line-height:1.35;font-weight:600;margin:24px 0 10px}
+p{margin:0 0 16px}.lede{font-size:19px;color:var(--ink-mute);margin:0 0 28px}
+ul,ol{padding-left:22px;margin:0 0 16px}li{margin:6px 0}
+code{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:2px 6px;border-radius:4px}
+pre{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:16px 20px;border-radius:8px;overflow-x:auto;line-height:1.55}
+.warn{background:rgba(240,184,107,.08);border-left:3px solid var(--warn);padding:14px 18px;border-radius:6px;font-size:14px;color:var(--ink-mute);margin:20px 0}
+.muted{color:var(--ink-faint);font-size:14px}
+footer{max-width:1080px;margin:0 auto;padding:32px 24px;color:var(--ink-faint);font-size:13px;border-top:1px solid rgba(255,255,255,.06)}
+@media (max-width:560px){main{padding:32px 18px 64px}h1{font-size:30px}h2{font-size:22px}}
+</style>
+</head>
+<body>
+<a href="#main" style="position:absolute;left:-9999px" onfocus="this.style.cssText='position:fixed;top:8px;left:8px;background:#111;color:#fff;padding:8px 12px;border-radius:6px;z-index:100'">Skip to content</a>
+<header class="site"><div class="wrap"><a class="logo" href="/">kolm.ai</a><nav><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav></div></header>
+<main id="main">
+
+<p class="muted"><a href="/foundations">&larr; The 5 foundations</a></p>
+<h1>Termius recipe</h1>
+<p class="lede">Termius is the SSH client that survives a phone restart, switches networks gracefully, and keeps your keys in the Secure Enclave. Pair it with kolm and you can tail a production capture stream from a coffee shop, kick off a distill from the train, or check why a compile stalled while you walk to lunch.</p>
+
+<h2>Why pair them</h2>
+<p>The kolm CLI is text in, text out, line-buffered. Every verb works under any TTY. That is the property a mobile shell needs. Termius takes your existing SSH key, keeps it in the Secure Enclave or Keystore, and gives you a real terminal on the phone. The combination removes "I am away from my desk" as a reason to wait on a compile or miss a capture spike.</p>
+<p>Nothing in kolm assumes a desktop terminal width. Tables truncate cleanly at 60 columns. <code>kolm tail captures</code> prints one row per line. <code>kolm jobs list</code> fits a narrow screen. <code>kolm watch &lt;id&gt;</code> follows a log file just like <code>tail -F</code> does.</p>
+
+<h2>One-time setup</h2>
+<ol>
+<li>Install Termius (<a href="https://termius.com">termius.com</a>) on your phone. Sign in or create an offline keychain.</li>
+<li>Generate an SSH key on the device (Settings &rarr; Keychain &rarr; New Key &rarr; Ed25519). Copy the public key.</li>
+<li>Authorize the public key on each box where you run kolm: <code>echo "&lt;key&gt;" &gt;&gt; ~/.ssh/authorized_keys</code>.</li>
+<li>Add each box as a Host in Termius. Set the alias to the same string you use on your laptop so muscle memory carries.</li>
+<li>In Termius Snippets, save the four verbs you will use most: <code>kolm jobs list</code>, <code>kolm tail captures</code>, <code>kolm watch</code>, <code>kolm distill --from-captures</code>. One-tap to send.</li>
+</ol>
+
+<h2>The daily flow</h2>
+<pre>
+# from your phone, after SSH-ing into the compile box
+
+# is anything running right now
+kolm jobs list
+
+# what just happened on the production namespace
+kolm tail captures --namespace prod --limit 20
+
+# follow a long compile while on the move
+kolm watch job-abc123def456
+
+# the capture stream said the namespace just crossed 1000 pairs
+# kick off a distill before you forget
+kolm distill --from-captures prod --min-pairs 1000
+</pre>
+
+<h2>What this gets you</h2>
+<ul>
+<li>Operational awareness without opening a laptop. You can answer "what is the GPU doing right now" in 6 seconds from anywhere with cell service.</li>
+<li>Capture-spike response time drops from "next time I am at my desk" to "right now from my phone."</li>
+<li>Termius Sync (optional, paid) keeps your hosts, keys, and snippets in sync across iOS, Android, and desktop. If you do not want the cloud sync, the offline keychain works.</li>
+<li>Tied to <a href="/foundations/tmux">tmux</a>: SSH into a tmux session from Termius, detach when you put the phone down, reattach from your laptop later. The session does not care which device drove it.</li>
+</ul>
+
+<div class="warn">Termius is not a kolm dependency. Any SSH client works: OpenSSH, PuTTY, iSH, ConnectBot, Blink. We name Termius because it is the one most fleet operators standardize on and the only one with a Snippets feature designed for this kind of one-tap recall.</div>
+
+<h2>Failure modes worth knowing</h2>
+<p><b>Cell network jitter.</b> A flaky cell connection drops the SSH socket. tmux handles this on the server side; without tmux you lose the foreground process. The fix is always <code>tmux new -s kolm</code> or <code>tmux attach</code> before you run anything you care about.</p>
+<p><b>Keyboard ergonomics.</b> Long flags hurt on a phone keyboard. Use Termius Snippets for the verbs you call most. <code>kolm profile use mobile</code> can also set an env profile that sets sensible mobile defaults (smaller <code>--limit</code>, less verbose output).</p>
+<p><b>Push notifications.</b> Termius does not show OS notifications when output arrives. For real alerting, wire the W215 push handler in <code>kolm</code> to your phone instead of trying to watch the screen.</p>
+
+<h2>Related recipes</h2>
+<ul>
+<li><a href="/foundations/tmux">tmux: keep the session alive while the phone sleeps</a></li>
+<li><a href="/foundations/tailscale">Tailscale: reach the compile box even off public Wi-Fi</a></li>
+<li><a href="/foundations/scripts">Script-everything: profiles for mobile vs desktop</a></li>
+<li><a href="/foundations/git">Private git: pull artifacts after a distill, from anywhere</a></li>
+<li><a href="/foundations">All 5 foundations (overview)</a></li>
+</ul>
+
+</main>
+<footer>kolm.ai &middot; the AI compiler &middot; <a href="/foundations">5 foundations</a> &middot; <a href="/what-is-an-ai-compiler">what is an AI compiler?</a></footer>
+</body>
+</html>

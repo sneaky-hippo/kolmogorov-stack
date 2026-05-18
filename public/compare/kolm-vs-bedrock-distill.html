@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm vs AWS Bedrock model distillation: portable signed file vs Bedrock-locked custom model</title>
+<meta name="description" content="AWS Bedrock model distillation creates a custom student model that only runs inside Bedrock. kolm emits a portable signed compiled file that runs anywhere. Honest matrix and AWS lock-in note.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="kolm vs AWS Bedrock model distillation">
+<meta property="og:description" content="Bedrock distillation ships a Bedrock-only custom model. kolm ships a portable signed artifact you take with you when you leave AWS.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/compare/kolm-vs-bedrock-distill">
+<link rel="canonical" href="https://kolm.ai/compare/kolm-vs-bedrock-distill">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://kolm.ai/compare/kolm-vs-bedrock-distill#article",
+      "headline": "kolm vs AWS Bedrock model distillation: portable artifact vs Bedrock-locked custom model",
+      "description": "Honest axis-by-axis comparison of kolm and AWS Bedrock model distillation. Notes AWS lock-in. Names where Bedrock is the right answer.",
+      "author": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "publisher": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "datePublished": "2026-05-18",
+      "dateModified": "2026-05-18",
+      "mainEntityOfPage": "https://kolm.ai/compare/kolm-vs-bedrock-distill",
+      "articleSection": "Compare",
+      "keywords": "kolm, AWS Bedrock, model distillation, custom model import, hyperscaler lock-in, signed artifact"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "compare", "item": "https://kolm.ai/compare" },
+        { "@type": "ListItem", "position": 3, "name": "kolm vs Bedrock distillation", "item": "https://kolm.ai/compare/kolm-vs-bedrock-distill" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--warn:#f0b86b;--warn-soft:rgba(240,184,107,0.08);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10);--warn:#a0660e;--warn-soft:rgba(160,102,14,0.08)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px}
+  .lede{font-size:17.5px;line-height:1.55;color:var(--ink-mute);max-width:720px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:56px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:26px;font-weight:500;letter-spacing:-0.018em;margin:0 0 14px}
+  .section h3{font-size:18px;font-weight:500;margin:24px 0 8px;color:var(--ink)}
+  .section p{color:var(--ink-mute);margin:0 0 14px;max-width:720px}
+  .section ul{color:var(--ink-mute);padding-left:18px;margin:0 0 14px}
+  .section ul li{margin-bottom:8px}
+  .section code{font-family:var(--mono);font-size:13px;background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  pre.cli{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:18px 20px;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink);overflow-x:auto;margin:14px 0}
+  pre.cli b{color:var(--accent);font-weight:500}
+  pre.cli .cm{color:var(--ink-faint)}
+  table.matrix{width:100%;border-collapse:collapse;margin:20px 0;font-size:13.5px}
+  table.matrix th{font-family:var(--mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400}
+  table.matrix td{padding:14px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5;color:var(--ink-mute)}
+  table.matrix td.axis{font-weight:500;color:var(--ink);min-width:160px}
+  table.matrix td.kolm{color:var(--ink);background:var(--accent-soft)}
+  table.matrix td.kolm b{color:var(--accent);font-weight:500;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase}
+  .callout{padding:18px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin:24px 0;font-size:14px;color:var(--ink-mute)}
+  .callout b{color:var(--ink)}
+  .lock-in{padding:18px 22px;border:1px solid var(--warn);border-radius:10px;background:var(--warn-soft);margin:24px 0;font-size:14px;color:var(--ink-mute)}
+  .lock-in b{color:var(--warn);font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase}
+  .right-answer-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:18px 0}
+  .right-answer-grid .card{padding:18px 20px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev)}
+  .right-answer-grid .card h4{margin:0 0 8px;font-size:14px;font-weight:500;color:var(--ink)}
+  .right-answer-grid .card p{margin:0;font-size:13.5px;color:var(--ink-mute)}
+  @media(max-width:680px){.right-answer-grid{grid-template-columns:1fr}}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-family:var(--mono);font-size:12.5px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:36px 0;color:var(--ink-faint);font-size:13px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ft-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
+
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/compare">compare</a><a href="/spec/rs-1">RS-1</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/compare">compare</a> &nbsp;/&nbsp; kolm vs AWS Bedrock model distillation</p>
+    <h1>Bedrock distillation makes a Bedrock-only model. kolm makes a file.</h1>
+    <p class="lede">AWS Bedrock model distillation lets you take a powerful teacher model in the Bedrock catalog (Claude, Llama, Nova, Titan) and distill its behavior into a smaller, cheaper Bedrock-served student. The result is a Custom Model that runs inside Bedrock. kolm distills against the same teacher families and emits a portable signed compiled artifact that runs anywhere. The architectural commitment is different and the AWS lock-in deserves to be named.</p>
+    <p class="stamp">Wave 274 &middot; reviewed 2026-05-18 &middot; AWS-resident custom model vs portable signed file</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What Bedrock model distillation ships in 2026.</h2>
+    <ul>
+      <li><b>Distillation job</b> in the AWS console: pick a Bedrock teacher (Claude, Nova, Llama, Titan), pick a Bedrock-supported student family, upload training prompts (or use latency-optimized inference logs as the synthetic dataset).</li>
+      <li><b>Custom Model on Bedrock</b>. The distilled student becomes a Bedrock Custom Model with a provisioned-throughput SKU. You call it via the Bedrock runtime API.</li>
+      <li><b>S3-native data pipeline</b>. Training data, validation data, and outputs flow through S3 buckets in your AWS account.</li>
+      <li><b>IAM + KMS + CloudTrail integration</b>. Access controls, encryption keys, and audit logs match the AWS posture your security team already approved.</li>
+      <li><b>Provisioned Throughput billing</b> for inference. You reserve compute units per hour and call the model through the Bedrock runtime.</li>
+    </ul>
+    <p>What Bedrock distillation does not ship: a file you can download and run outside AWS, a portable signed manifest with a third-party-verifiable receipt chain, a compile-time eval gate that blocks the build, or a deployment shape that runs air-gapped or on edge hardware.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The axis-by-axis split.</h2>
+    <table class="matrix">
+      <thead><tr><th>Axis</th><th>AWS Bedrock distillation</th><th>kolm</th></tr></thead>
+      <tbody>
+        <tr><td class="axis">What you receive</td><td>Bedrock Custom Model ARN, callable via Bedrock runtime API</td><td class="kolm"><b>signed .kolm file</b> &middot; LoRA weights + manifest + receipt chain + Ed25519 sig (W161) + Sigstore entry (W162)</td></tr>
+        <tr><td class="axis">Run location</td><td>AWS Bedrock only; cannot export the weights</td><td class="kolm"><b>laptop, phone, edge box, air-gapped VPC</b>, any inference runtime that loads LoRA</td></tr>
+        <tr><td class="axis">Teacher catalog</td><td><b>strong</b> &middot; Bedrock-hosted Claude, Nova, Llama, Titan with cross-region inference and no separate API key</td><td class="kolm"><b>cross-vendor</b> &middot; W158 <code>--teacher=&lt;vendor:model&gt;</code> across Anthropic, OpenAI, Google, xAI, AWS, local</td></tr>
+        <tr><td class="axis">Student base options</td><td>Bedrock-approved student families only (Nova, Titan, Llama variants)</td><td class="kolm">13 open student SKUs (Qwen, DeepSeek, Llama, Phi, Gemma, Mistral, SmolLM2, GLM, Yi)</td></tr>
+        <tr><td class="axis">Runs offline</td><td>no &middot; Bedrock runtime is the inference path</td><td class="kolm"><b>yes</b> &middot; .kolm file + local runtime ships in /airgap mode</td></tr>
+        <tr><td class="axis">Receipt chain</td><td>CloudTrail logs + training job metadata in the console</td><td class="kolm"><b>cryptographically verifiable</b> &middot; spec, seeds, split, train, recipes, evals, external_holdout, tenant_shadow, auditor, supersession, drift, signatures, rekor (W144-W167)</td></tr>
+        <tr><td class="axis">Eval gate</td><td>training metrics surfaced; non-blocking on deploy</td><td class="kolm"><b>K-score V2 gate</b> &middot; compile blocks if eval &lt; threshold; A/T/F/R/E/Z axes (W164, W275)</td></tr>
+        <tr><td class="axis">Third-party verifiability</td><td>AWS attests via SOC 2 / FedRAMP; no per-artifact verifier external to AWS</td><td class="kolm"><b>auditor attestation</b> &middot; W166 N+7 external auditor signs eval_result with own Ed25519 key</td></tr>
+        <tr><td class="axis">PHI redactor</td><td>BAA available across AWS; PHI flows through Bedrock during training</td><td class="kolm"><b>Wave 157</b> &middot; 18 HIPAA Safe Harbor + 3 kolm extensions; redact before teacher, reinject after; verifier check #14</td></tr>
+        <tr><td class="axis">Vendor exit</td><td>Custom Model is bound to Bedrock; weights typically not exportable</td><td class="kolm"><b>file on disk</b> &middot; RS-1 v2.1 Apache-2.0 open spec; artifact survives an AWS exit</td></tr>
+        <tr><td class="axis">Pricing model</td><td>Provisioned Throughput per hour for the custom model + training job cost</td><td class="kolm"><b>flat compile</b> + free local run; serve at any scale for $0 inference fee once the .kolm exists</td></tr>
+        <tr><td class="axis">Procurement story</td><td><b>strong</b> &middot; existing AWS EDP, IAM, KMS, CloudTrail, BAA already in place</td><td class="kolm">build-side complement; pair AWS for procurement, kolm for portable signed proof</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The AWS lock-in note.</h2>
+    <div class="lock-in">
+      <b>Lock-in caveat</b><br>
+      The output of a Bedrock distillation job is a Bedrock Custom Model. The weights are not exportable. The model is callable only through the Bedrock runtime API. The CloudTrail and S3 audit trail lives in your AWS account; it does not move with the model if you ever migrate off AWS. If your buyer requires a cryptographically verifiable, vendor-portable artifact, Bedrock distillation alone does not deliver it.
+    </div>
+    <p>This is not a criticism of Bedrock. It is the deliberate shape of a hyperscaler integration: deep integration with IAM, KMS, CloudTrail, S3, and Provisioned Throughput is the entire value proposition, and that integration is what makes the output non-portable. Kolm makes the opposite trade: the .kolm file is portable, signed, and verifiable, and you bring your own runtime infrastructure.</p>
+    <p>The cleanest combined deployment is to use kolm on the build side (signed artifact, receipt chain, eval gate, PHI redactor) and import the LoRA weights into Bedrock via Custom Model Import if your serving target is Bedrock. The signed .kolm file is the cryptographic contract that travels with the artifact; the Bedrock import handles serve-side AWS integration.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>kolm-built adapter imported into Bedrock.</h2>
+    <pre class="cli"><span class="cm"># 1. Build the signed adapter with kolm (teacher can be Bedrock Claude)</span>
+$ <b>kolm distill</b> claims-router \
+    --teacher=aws-bedrock:anthropic.claude-opus-4-7 \
+    --student-base=llama-3.1-8b \
+    --redact=phi --eval-gate=0.85
+
+  PASS  K-score 0.911 (A=0.93 T=0.90 F=0.95 R=0.88)
+  PASS  PHI redactor: 18 Safe Harbor + 3 kolm extensions, no leakage
+  PASS  Ed25519 signature, Rekor transparency log entry
+  WROTE claims-router.kolm
+
+<span class="cm"># 2. Extract the LoRA-merged weights for Bedrock import</span>
+$ <b>kolm extract</b> claims-router.kolm --target=merged-weights --out=s3://my-bucket/claims-router/
+
+<span class="cm"># 3. Import as a Bedrock Custom Model</span>
+$ aws bedrock create-model-import-job \
+    --job-name claims-router-import \
+    --model-name claims-router \
+    --imported-model-name claims-router \
+    --model-data-source s3DataSource={s3Uri=s3://my-bucket/claims-router/}
+
+<span class="cm"># 4. Verify the served model still matches what kolm signed</span>
+$ <b>kolm verify</b> claims-router.kolm
+  PASS  24/24 checks &middot; Ed25519 + Sigstore validated &middot; receipt chain intact</pre>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>When AWS Bedrock distillation is the right answer.</h2>
+    <div class="right-answer-grid">
+      <div class="card">
+        <h4>Your stack is entirely on AWS already</h4>
+        <p>Procurement signed the EDP; data lives in S3; IAM, KMS, and CloudTrail are the security primitives your buyer accepts. Staying inside Bedrock is the path of least resistance and the audit story is already built.</p>
+      </div>
+      <div class="card">
+        <h4>AWS-native compliance posture is enough</h4>
+        <p>Your auditor accepts FedRAMP High, SOC 2, HIPAA-via-BAA, and CloudTrail as sufficient evidence. You do not need a cryptographically signed build artifact external to AWS.</p>
+      </div>
+      <div class="card">
+        <h4>Bedrock teacher catalog matches your need</h4>
+        <p>Your distillation teacher is already in Bedrock (Claude, Nova, Llama, Titan) and your student family is on the Bedrock-approved list. No cross-vendor distillation is required.</p>
+      </div>
+      <div class="card">
+        <h4>Provisioned Throughput is the serving model you want</h4>
+        <p>You want hourly committed capacity for a custom model with no separate serving infrastructure. The Bedrock runtime API and IAM-scoped access fits the buyer's procurement language.</p>
+      </div>
+    </div>
+    <h2 style="margin-top:32px">When kolm is the right answer.</h2>
+    <p>You need portable weights you can mail to a phone, run air-gapped, or serve on hardware AWS does not own. Your auditor specifically asked for a third-party-verifiable receipt chain bound to the build artifact, not just CloudTrail logs. You need cross-vendor distillation (Anthropic teacher with a Qwen student, or OpenAI teacher with a Llama student) outside the Bedrock catalog. You want flat compile cost rather than Provisioned Throughput forever. The .kolm file is the contract; you can still import it into Bedrock when the serving target is AWS.</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/how-vs-hyperscaler">More on hyperscalers &rarr;</a>
+      <a class="btn" href="/compare">Back to differentiation matrix &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="ft-row">
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span><a href="/compare">/compare</a> &middot; <a href="/compare/kolm-vs-openpipe-2026">vs OpenPipe (2026)</a> &middot; <a href="/compare/kolm-vs-predibase-2026">vs Predibase (2026)</a> &middot; <a href="/compare/kolm-vs-together-2026">vs Together (2026)</a> &middot; <a href="/compare/kolm-vs-proxis">vs Proxis</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

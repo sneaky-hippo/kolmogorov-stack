@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>K-score leaderboard · kolm.ai</title>
+<meta name="description" content="Public, signed K-score leaderboard for kolm-bench v1. Every row carries the artifact name, base model, per-axis K-scores, signature hash, and verified-at timestamp.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="K-score leaderboard · public signed">
+<meta property="og:description" content="Every entry is a signed score receipt against kolm-bench v1.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/kscore-leaderboard">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/kscore-leaderboard">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#faf2e1;--good:#7ef0d2;--warn:#f0b86b;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap{padding:0 20px}}
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand span{font-weight:500;font-size:16px}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .cta{display:inline-flex;align-items:center;gap:6px;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:500}
+  section{padding:72px 0}
+  section + section{border-top:1px solid var(--line)}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .eyebrow .num{color:var(--accent)}
+  h1{margin:0 0 22px;font-size:clamp(36px,5vw,52px);line-height:1.05;font-weight:500}
+  h2{margin:0 0 16px;font-size:clamp(20px,2.4vw,28px);font-weight:500}
+  p{color:var(--ink-mute);max-width:62ch}
+  p.lede{color:var(--ink);max-width:60ch;font-size:18px}
+  code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--line-strong);border-radius:99px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-mute);background:rgba(236,231,220,0.05)}
+  .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--good);box-shadow:0 0 8px rgba(126,240,210,0.6)}
+  .ldr-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:36px 0 0}
+  @media(max-width:720px){.ldr-meta{grid-template-columns:repeat(2,1fr)}}
+  .ldr-meta .cell{background:var(--bg-elev);padding:18px 18px}
+  .ldr-meta .k{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .ldr-meta .v{font-family:var(--mono);font-size:14px;color:var(--ink)}
+  .ldr-table{margin-top:36px;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--bg-elev)}
+  .ldr-table .row{display:grid;grid-template-columns:48px 1fr 0.9fr 0.6fr 0.5fr 0.5fr 0.6fr 0.55fr 0.55fr 0.55fr 0.85fr;gap:8px;align-items:center;padding:13px 14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--ink-mute);overflow-x:auto}
+  .ldr-table .row.hdr{background:var(--bg-card);color:var(--ink-faint);text-transform:uppercase;font-size:10.5px;letter-spacing:0.04em;border-top:0}
+  .ldr-table .row .rank{color:var(--accent);font-weight:600;font-size:14px}
+  .ldr-table .row .name{color:var(--ink);font-weight:500}
+  .ldr-table .row .composite{color:var(--good);font-weight:600;font-size:13px}
+  .ldr-table .row .composite.warn{color:var(--warn)}
+  .ldr-table .row .composite.bad{color:var(--bad)}
+  .ldr-table .row .sig{color:var(--ink-faint);font-size:10.5px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+  @media(max-width:980px){.ldr-table{overflow-x:auto}.ldr-table .row{min-width:980px}}
+  .cta-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:36px}
+  .btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);border-radius:6px;padding:11px 18px;font-size:14px;font-weight:500}
+  .btn-link{color:var(--ink);font-size:14px;font-weight:500;padding:11px 14px}
+  .empty{padding:30px;text-align:center;color:var(--ink-faint);font-family:var(--mono);font-size:12.5px}
+  footer{border-top:1px solid var(--line);padding:48px 0 36px;color:var(--ink-faint);font-size:12.5px}
+</style>
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"WebPage",
+  "name":"K-score leaderboard",
+  "url":"https://kolm.ai/kscore-leaderboard",
+  "isPartOf":{"@type":"WebSite","name":"kolm.ai","url":"https://kolm.ai"},
+  "about":{"@type":"Dataset","name":"kolm-bench v1","url":"https://kolm.ai/kscore-bench"}
+}
+</script>
+</head>
+<body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
+
+<header class="site">
+  <div class="wrap"><div class="row">
+    <div class="left">
+      <a class="brand" href="/" aria-label="kolm home"><span>kolm</span></a>
+      <nav>
+        <a href="/use-cases">Use cases</a>
+        <a href="/docs">Docs</a>
+        <a href="/research">Research</a>
+        <a href="/enterprise">Enterprise</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div></div>
+</header>
+
+<main id="main">
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">01</span> &middot; signed leaderboard</div>
+    <h1>K-score leaderboard.</h1>
+    <p class="lede">Every entry below is a signed score receipt for an artifact against <a href="/kscore-bench"><code>kolm-bench-v1</code></a>. Signatures are verifiable at <a href="/verify-prod">/verify-prod</a>. Submissions accepted from any tenant that runs <code>kolm bench --submit</code>. <span class="pill"><span class="dot"></span>spec frozen 2026-05-18</span></p>
+    <div class="ldr-meta" id="ldr-meta">
+      <div class="cell"><div class="k">spec</div><div class="v" id="m-spec">kolm-bench-v1</div></div>
+      <div class="cell"><div class="k">schema</div><div class="v" id="m-schema">v1</div></div>
+      <div class="cell"><div class="k">rows</div><div class="v" id="m-rows">0</div></div>
+      <div class="cell"><div class="k">updated_at</div><div class="v" id="m-updated">—</div></div>
+    </div>
+    <div class="cta-row">
+      <a href="/kscore-bench" class="btn-primary">About kolm-bench v1 <span aria-hidden="true">&rarr;</span></a>
+      <a href="/kolm-bench.json" class="btn-link">Download bench spec &rarr;</a>
+      <a href="/k-score" class="btn-link">What K-score measures &rarr;</a>
+    </div>
+
+    <div class="ldr-table" id="ldr-table">
+      <div class="row hdr">
+        <span>#</span>
+        <span>artifact</span>
+        <span>base model</span>
+        <span>composite K</span>
+        <span>A</span>
+        <span>F</span>
+        <span>T</span>
+        <span>R</span>
+        <span>E</span>
+        <span>Z</span>
+        <span>signature</span>
+      </div>
+      <div class="empty" id="ldr-empty">loading leaderboard…</div>
+    </div>
+
+    <p style="margin-top:36px;font-size:13px;color:var(--ink-faint);max-width:60ch">Composite K-score uses the per-row spec (<code>k-score-1</code> or <code>k-score-2</code>). Axes shown above are A=accuracy, F=fairness, T=teacher-fidelity, R=robustness, E=energy, Z=drift. Missing axes (—) redistribute weight per spec.</p>
+  </div>
+</section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <h4>K-score</h4>
+        <a href="/k-score">What is K-score</a>
+        <a href="/kscore-bench">kolm-bench v1</a>
+        <a href="/kscore-leaderboard">Leaderboard</a>
+      </div>
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/compare">Compare</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/security">Security</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai &middot; leaderboard is read-only &middot; submit via <code>kolm bench --submit</code></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(async () => {
+  try {
+    const r = await fetch('/kscore-leaderboard.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    document.getElementById('m-spec').textContent = data.spec || '?';
+    document.getElementById('m-schema').textContent = 'v' + (data.schema_version || 1);
+    document.getElementById('m-rows').textContent = String((data.rows || []).length);
+    document.getElementById('m-updated').textContent = (data.updated_at || data.frozen_at || '?').slice(0, 19).replace('T', ' ') + 'Z';
+    const tbl = document.getElementById('ldr-table');
+    const emptyEl = document.getElementById('ldr-empty');
+    if (emptyEl) emptyEl.remove();
+    const rows = data.rows || [];
+    for (const row of rows) {
+      const k = row.k_score || {};
+      const composite = typeof k.composite === 'number' ? k.composite.toFixed(3) : '—';
+      const ships = k.ships !== false && k.composite >= (k.gate || 0.85);
+      const cls = ships ? 'composite' : (k.composite >= 0.7 ? 'composite warn' : 'composite bad');
+      const sig = (row.signature || '').replace(/^sha256:/, '').slice(0, 14);
+      const div = document.createElement('div');
+      div.className = 'row';
+      div.innerHTML = `
+        <span class="rank">#${row.rank}</span>
+        <span class="name">${row.artifact}</span>
+        <span>${row.base_model || '—'}</span>
+        <span class="${cls}">${composite}</span>
+        <span>${k.accuracy != null ? k.accuracy.toFixed(2) : '—'}</span>
+        <span>${k.fairness_score != null ? k.fairness_score.toFixed(2) : '—'}</span>
+        <span>${k.teacher_fidelity_score != null ? k.teacher_fidelity_score.toFixed(2) : '—'}</span>
+        <span>${k.robustness_score != null ? k.robustness_score.toFixed(2) : '—'}</span>
+        <span>${k.energy_score != null ? k.energy_score.toFixed(2) : '—'}</span>
+        <span>${k.drift_score != null ? k.drift_score.toFixed(2) : '—'}</span>
+        <span class="sig" title="${row.signature || ''}">${sig || '—'}</span>
+      `;
+      tbl.appendChild(div);
+    }
+    if (rows.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'no submissions yet — run `kolm bench <artifact> --submit` to be first';
+      tbl.appendChild(empty);
+    }
+  } catch (e) {
+    const el = document.getElementById('ldr-empty');
+    if (el) el.textContent = 'leaderboard unavailable: ' + (e.message || e);
+  }
+})();
+</script>
+
+</body>
+</html>

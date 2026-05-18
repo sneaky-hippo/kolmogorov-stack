@@ -68,12 +68,14 @@ test('5. at least 4 distinct license types surface (Apache-2.0, MIT, CC-BY-4.0, 
     `data-sources.html names only ${hits.length} of 4 expected license types: ${hits.join(', ')}`);
 });
 
-test('6. domain-specific section uses amber verify-before-ship pills', () => {
+test('6. domain-specific section uses amber pre-ship-verification pills', () => {
   const html = read(PAGE);
-  // Each domain row carries a `pill warn` AND the page mentions
-  // "verify before ship" framing.
-  assert.match(html, /verify before ship/i,
-    'domain section must use "verify before ship" framing');
+  // W256 copy-scrub replaced the exact "verify before ship" phrase with
+  // shipped equivalents ("legal review required" + per-row "verify" pills).
+  // The behavior the assertion locks in is: domain rows surface that some
+  // per-tenant verification step is required before redistribution/ship.
+  assert.match(html, /legal review|verify the dataset|verify.*credential|per-tenant.*verify/i,
+    'domain section must surface that per-tenant verification is required before ship');
   // Count amber pills inside the domain section by looking for the
   // `pill warn` class. Should appear multiple times for the domain rows
   // (per-row pill plus legend + roadmap pill).

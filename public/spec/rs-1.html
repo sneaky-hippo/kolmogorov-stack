@@ -63,7 +63,19 @@
 <section class="paper">
 <div class="wrap">
 
-<p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/spec">spec</a> &nbsp;/&nbsp; RS-1 v2.0</p>
+<p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/spec">spec</a> &nbsp;/&nbsp; RS-1 v2.1</p>
+
+<div class="open-banner" style="margin:0 0 24px;padding:14px 18px;border:1px solid rgba(16,185,129,0.32);border-radius:8px;background:rgba(16,185,129,0.06);font-size:13.5px;line-height:1.6;color:var(--ink-mute);font-family:var(--mono)">
+  <b style="color:var(--accent)">RS-1 is an open standard (Apache-2.0).</b>
+  The format spec, the K-score formula, the four-class taxonomy, and the reference verifier are all Apache-2.0 licensed.
+  Read the reference verifier on <a href="https://github.com/sneaky-hippo/kolmogorov-stack" style="color:var(--accent)">GitHub</a>,
+  install the free standalone verifier at <a href="/verify-cli" style="color:var(--accent)">/verify-cli</a>,
+  or follow the change log at <a href="/spec/changelog" style="color:var(--accent)">/spec/changelog</a>.
+</div>
+
+<div class="version-callout" style="margin:0 0 18px;padding:10px 16px;border-left:2px solid var(--accent);background:rgba(16,185,129,0.04);font-size:13px;line-height:1.55;color:var(--ink-mute);font-family:var(--mono)">
+  <b style="color:var(--ink)">v2.1 current</b> &nbsp;.&nbsp; see <a href="/spec/changelog" style="color:var(--accent)">/spec/changelog</a> for history (v1.0 frozen 2026-01-15 / v1.1 drift / v2.0 supersession + teacher fidelity / v2.1 k-score-2 axes).
+</div>
 
 <h1>RS-1 v2.1: A Reproducible Signed-artifact format for ML inference.</h1>
 <p class="subtitle">Specification, threat model, four recipe classes, three-signature cascade, and the K-score reproducibility criterion. Verifiable revision matching shipping implementation.</p>
@@ -820,7 +832,29 @@ $ kolm verify acme-claims-stale.kolm
 <p>All three produce byte-identical canonical-JSON serializations, byte-identical CIDs, and byte-identical receipt verification results. This is enforced by an interop test suite.</p>
 
 <h2>10. Adoption path</h2>
-<p>RS-1 v2.0 is in active development. The format spec is public, the reference verifier is open source, and the K-score formula is fixed and citeable. Standards-body submission (IETF for CBOR receipt encoding, W3C Verifiable Credentials WG for the credential envelope) is a future consideration; it is not in progress as of this revision. Tenants adopting the format today get cryptographic verifiability and reproducible compile from real captured IO; they do not get RFC-track interop.</p>
+<p>RS-1 v2.1 is in active development. The format spec is public (Apache-2.0), the reference verifier is open source (Apache-2.0), and the K-score formula is fixed and citeable. Standards-body submission (IETF for CBOR receipt encoding, W3C Verifiable Credentials WG for the credential envelope) is a future consideration; the current status is described in &sect;10.2. Tenants adopting the format today get cryptographic verifiability and reproducible compile from real captured IO.</p>
+
+<h3>10.1 How to participate</h3>
+<p>RS-1 is governed in the open and follows a Linux Foundation style process for proposed changes. Five participation surfaces are available:</p>
+<ul>
+<li><b>RFC process.</b> Any normative change to the spec (new manifest field, new recipe class, new verifier check, new signature layer, new K-score axis weight) goes through a numbered RFC pull request against <code>docs/rfcs/</code> in the <a href="https://github.com/sneaky-hippo/kolmogorov-stack">kolmogorov-stack</a> repo. RFCs land with a 14-day public comment window. The current RFC template lives at <code>docs/rfcs/0000-template.md</code>.</li>
+<li><b>Mailing list.</b> Discussion and announcements are mirrored to <code>rs-1-discuss@kolm.ai</code> (subscribe via <code>hello@kolm.ai</code>). Archives are public-by-default; private threads only for security disclosures under the embargo policy at <a href="/security">/security</a>.</li>
+<li><b>Change log.</b> Every minor or major version bump is recorded at <a href="/spec/changelog">/spec/changelog</a> with a date, summary, and a diff link to the spec PR that landed it. v1.0 (2026-01-15), v1.1 (drift block), v2.0 (supersession + teacher fidelity), v2.1 (k-score-2 axes).</li>
+<li><b>Reference verifier.</b> The free standalone <code>kolm verify</code> CLI lives at <a href="/verify-cli">/verify-cli</a>; it verifies any <code>.kolm</code> artifact against this spec with zero login, zero telemetry, zero third-party runtime. Source is Apache-2.0; binary releases ship signed.</li>
+<li><b>Interop test suite.</b> The JavaScript / Python / Rust reference verifiers in &sect;9 are held to byte-identical CID and receipt-verification outputs by the interop suite in <code>tests/interop/</code>. New language ports are welcome; the suite is the conformance gate.</li>
+</ul>
+<p>Compatibility policy: minor versions (v2.0 to v2.1) are additive and backward-compatible at the verifier level; the v2.0 verifier accepts v2.1 manifests by ignoring unknown fields. Major versions (v1.x to v2.x) require a supersession block in the new artifact pointing at the prior artifact's CID; the verifier rejects v1.x manifests whose <code>schema</code> is <code>"rs-1"</code> and <code>version</code> is <code>"2.x"</code> when the contents do not match v2.x's class taxonomy. The supersession chain is documented at &sect;7.15.</p>
+
+<h3>10.2 Standards-Body Status</h3>
+<p>RS-1 is not yet a formal standard. The current status, the candidate venues, and the path to formal standardization are explicit:</p>
+<ul>
+<li><b>Today.</b> RS-1 is a published technical specification under Apache-2.0, governed by the RFC process in &sect;10.1, with multi-language reference verifiers. This is sufficient for tenant adoption, regulator review, and independent re-implementation. It is not sufficient for "RFC 9xxx" style citation.</li>
+<li><b>IETF (CBOR receipt encoding).</b> The runtime receipt structure in &sect;5.2 is a natural fit for an IETF informational RFC under the COSE / CBOR working group. Pre-submission work: re-encode the receipt in CBOR canonical form with a CDDL schema; align with COSE_Sign1 envelopes. Target: independent-stream draft, no charter required. Timeline: candidate for 2026 Q4 after the receipt schema freezes at v2.x.</li>
+<li><b>W3C (Verifiable Credentials envelope).</b> The signed manifest with cascade in &sect;5.1 maps cleanly to a W3C Verifiable Credential with a custom <code>credentialSubject</code> shape carrying the RS-1 manifest fields. Pre-submission work: align the sigstore bundle with the VC Data Integrity proof formats; coordinate with the VC working group. Target: VC v2.0 compatible extension or a community-group note. Timeline: contingent on IETF receipt freeze landing first.</li>
+<li><b>Linux Foundation (project incubation).</b> The reference verifier and conformance suite are candidates for incubation under the Linux Foundation umbrella once external implementers ship a second production-quality verifier. The Apache-2.0 license is already LF-compatible; a project charter draft lives in <code>docs/charter/</code>. Required: external maintainership commitments from at least two independent organizations.</li>
+<li><b>What we will not do.</b> RS-1 will not be submitted to a body that requires patent grants kolm does not control, or to a body whose charter forbids the Ed25519 + sigstore combination in &sect;5.1. The format remains open and stdlib-implementable; standards-body affiliation must not break that property.</li>
+</ul>
+<p>Honest status today: the spec is open, the verifier is open, the change log is public, the RFC process is live. Formal standards-body status is on the roadmap but not yet active. A regulator asking "is RS-1 an IETF / W3C / ISO standard" gets a "no, and here is the candidate venue and timeline" answer rather than a marketing claim.</p>
 
 <h2>11. Related work</h2>
 <p>The artifact-with-receipt pattern draws on sigstore for code signing, SLSA for build provenance, and the SPIFFE identity model. The reproducibility criterion is closer to the MLPerf evaluation philosophy than to ad-hoc accuracy reporting. The receipt chain mirrors certificate transparency log semantics applied to inference. Distillation is implemented after Hinton et al. (2015) and Gu et al. (MiniLLM, 2023); HMAC over canonical body follows Bellare et al. (1996); Ed25519 over canonical body follows Bernstein et al. (2012); the sigstore Rekor anchoring follows Newman et al. (sigstore 2021). LoRA serving infrastructure is provided by Predibase LoRAX (Apache-2.0); kolm sits in the build-side category that produces signed, frozen, compiled artifacts.</p>

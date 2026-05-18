@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Runtimes · source-build llama.cpp for your hardware | kolm.ai</title>
+<meta name="description" content="kolm runtime build-from-source — pinned llama.cpp commit, per-target cmake flags, build-receipt.json next to the binary. NVIDIA Ada/Hopper/Blackwell, AMD RDNA3/CDNA3, Apple Metal, Vulkan, CPU AVX2/AVX-512.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="Runtimes · kolm.ai">
+<meta property="og:description" content="Source-build llama.cpp at a pinned commit. NVIDIA, AMD, Apple, Vulkan, CPU.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/runtimes">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Runtimes · kolm.ai">
+<meta name="twitter:description" content="Source-build llama.cpp at a pinned commit, per-target cmake flags, receipt next to the binary.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/runtimes">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script src="/escape.js"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "headline": "kolm.ai runtimes — build llama.cpp from source",
+      "description": "Per-target cmake flags and pinned-commit source build for NVIDIA Ada/Hopper/Blackwell, AMD RDNA3/CDNA3, Apple Metal, Vulkan, and CPU AVX2/AVX-512.",
+      "url": "https://kolm.ai/runtimes",
+      "author": {"@type": "Organization", "name": "kolm.ai"},
+      "publisher": {"@type": "Organization", "name": "kolm.ai", "url": "https://kolm.ai"},
+      "datePublished": "2026-05-18",
+      "license": "https://opensource.org/licenses/MIT"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "kolm.ai", "item": "https://kolm.ai/"},
+        {"@type": "ListItem", "position": 2, "name": "Runtimes", "item": "https://kolm.ai/runtimes"}
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{--ink:#faf2e1;--ink-mute:#c8bea5;--ink-faint:#86806d;--bg:#08090c;--bg-elev:#11151b;--accent:#7fe1c2;--warn:#f0b86b;--mono:'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace}
+[data-theme=light]{--ink:#1c1810;--ink-mute:#5b5240;--ink-faint:#8a7f66;--bg:#f7f4ec;--bg-elev:#fff;--accent:#10846a;--warn:#a35a14}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:rgba(127,225,194,.35);text-underline-offset:3px}
+a:hover{text-decoration-color:var(--accent)}
+.wrap{max-width:980px;margin:0 auto;padding:48px 24px}
+h1{font-size:2.4rem;letter-spacing:-.02em;margin:0 0 .4em;line-height:1.15}
+h2{font-size:1.5rem;letter-spacing:-.01em;margin:2.4em 0 .6em;color:var(--ink)}
+h3{font-size:1.05rem;margin:1.6em 0 .4em;color:var(--ink-mute);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+p{margin:.7em 0;color:var(--ink-mute)}
+ul{padding-left:1.4em}
+li{margin:.3em 0;color:var(--ink-mute)}
+code,pre{font-family:var(--mono);font-size:.92em}
+code{background:var(--bg-elev);padding:.1em .35em;border-radius:3px;color:var(--ink)}
+pre{background:var(--bg-elev);padding:14px 16px;border-radius:6px;overflow-x:auto;border:1px solid rgba(255,255,255,.05);color:var(--ink)}
+pre code{background:none;padding:0}
+.hero{padding:24px 0 8px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:24px}
+.lede{font-size:1.18rem;color:var(--ink-mute);max-width:720px}
+.tbl{width:100%;border-collapse:collapse;margin:.6em 0 1.4em;font-size:.92rem}
+.tbl th{text-align:left;font-weight:600;color:var(--ink);padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.12);background:var(--bg-elev)}
+.tbl td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--ink-mute);vertical-align:top}
+.tbl td code{font-size:.86em}
+.pill{display:inline-block;padding:2px 8px;border-radius:11px;font-size:.78em;font-weight:500;background:rgba(127,225,194,.14);color:var(--accent)}
+.pill.warn{background:rgba(240,184,107,.16);color:var(--warn)}
+.honest{background:var(--bg-elev);border-left:3px solid var(--warn);padding:14px 18px;margin:1.6em 0;border-radius:0 4px 4px 0}
+.honest p{margin:.3em 0;color:var(--ink)}
+.honest p strong{color:var(--warn)}
+.foot{margin-top:48px;padding-top:24px;border-top:1px solid rgba(255,255,255,.08);font-size:.88rem;color:var(--ink-faint)}
+.foot a{color:var(--ink-mute)}
+.nav{margin-bottom:32px;font-size:.92rem}
+.nav a{color:var(--ink-mute);margin-right:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="nav">
+  <a href="/">kolm.ai</a>
+  <a href="/models">Models</a>
+  <a href="/runtimes" style="color:var(--ink)">Runtimes</a>
+  <a href="/docs">Docs</a>
+  <a href="/pricing">Pricing</a>
+  <a href="/enterprise">Enterprise</a>
+</nav>
+
+<section class="hero">
+  <h1>Runtimes — source-build llama.cpp for your hardware</h1>
+  <p class="lede">
+    <code>kolm runtime build-from-source --target=&lt;arch&gt;</code> downloads a pinned llama.cpp
+    commit, emits the exact cmake flags for your target, builds in
+    <code>workers/runtime-build/</code>, and drops a <code>build-receipt.json</code> next to
+    the binary. The heavy SDKs (cuda-toolkit, rocm-hip-sdk, vulkan-sdk, xcode-cli-tools)
+    live in the isolated worker — the root kolm install stays light.
+  </p>
+  <p class="lede" style="margin-top:14px">
+    <span class="pill">Wave 219</span> &nbsp; complements
+    <a href="/models#frontier">the frontier-models catalog (W217)</a> and
+    <a href="/models">hardware-tier presets (W218)</a>.
+  </p>
+</section>
+
+<h2>Targets</h2>
+<p>Ten supported targets. Pick a slug; the rest is determined by the registry, not by a
+guess at flags. Run <code>kolm runtime targets</code> to list, <code>kolm runtime info
+&lt;slug&gt;</code> to see the cmake args, <code>kolm runtime doctor</code> to check the
+toolchain on this box, and <code>kolm runtime build-from-source --target=&lt;slug&gt;</code>
+to actually build.</p>
+
+<table class="tbl">
+  <thead><tr>
+    <th>slug</th><th>arch</th><th>vendor</th><th>sdk</th><th>min</th><th>notes</th>
+  </tr></thead>
+  <tbody>
+    <tr><td><code>cuda-89</code></td><td>sm_89</td><td>nvidia</td><td>cuda-toolkit</td><td>12.0</td><td>RTX 4090, L40S (Ada). Flash-attn v2.</td></tr>
+    <tr><td><code>cuda-90</code></td><td>sm_90</td><td>nvidia</td><td>cuda-toolkit</td><td>12.4</td><td>H100, H200 (Hopper). Flash-attn v3.</td></tr>
+    <tr><td><code>cuda-100</code></td><td>sm_100</td><td>nvidia</td><td>cuda-toolkit</td><td>12.6</td><td>B100, B200 (Blackwell DC).</td></tr>
+    <tr><td><code>cuda-120</code></td><td>sm_120</td><td>nvidia</td><td>cuda-toolkit</td><td>12.8</td><td>RTX 5090 (Blackwell consumer). NVFP4.</td></tr>
+    <tr><td><code>rocm-gfx1100</code></td><td>gfx1100</td><td>amd</td><td>rocm-hip-sdk</td><td>6.0</td><td>7900 XTX, Strix Halo (RDNA3).</td></tr>
+    <tr><td><code>rocm-gfx942</code></td><td>gfx942</td><td>amd</td><td>rocm-hip-sdk</td><td>6.0</td><td>MI300X (CDNA3).</td></tr>
+    <tr><td><code>vulkan</code></td><td>vulkan</td><td>khronos</td><td>vulkan-sdk</td><td>1.3</td><td>Vendor-neutral. Runs on NVIDIA, AMD, Intel.</td></tr>
+    <tr><td><code>metal</code></td><td>metal</td><td>apple</td><td>xcode-cli</td><td>15.0</td><td>Apple Silicon, embedded kernels.</td></tr>
+    <tr><td><code>cpu-avx2</code></td><td>avx2</td><td>intel/amd</td><td>none</td><td>—</td><td>x86_64 fallback (any post-2013 chip).</td></tr>
+    <tr><td><code>cpu-avx512</code></td><td>avx512</td><td>intel/amd</td><td>none</td><td>—</td><td>AVX-512 + VNNI. Server-grade CPU.</td></tr>
+  </tbody>
+</table>
+
+<h2>Honest framing — what kolm does, what it doesn't</h2>
+<div class="honest">
+<p><strong>kolm runs the build for you, then steps out of the way.</strong></p>
+<p>You get pinned source, pinned cmake flags, a deterministic out-dir, and a
+<code>build-receipt.json</code> that extends the <a href="/captures">W212 capture
+receipt chain</a> to runtime binaries. We do not fork upstream llama.cpp, we do not
+patch its kernels, and we do not ship a vendored copy. If you want a different
+commit, pass <code>--commit=&lt;sha&gt;</code>. If you want a different repo (e.g., a
+fork with FP8 patches), pass <code>--repo-url=&lt;url&gt;</code>.</p>
+<p>This answers the <a href="https://x.com/sudoingX">@sudoingX</a> "if you're serious
+about local inference, start at source level" critique directly: one command, one
+pinned commit, no abstractions over the build.</p>
+</div>
+
+<h2>Use it</h2>
+<pre><code># list every target the worker knows about
+kolm runtime targets
+
+# show the cmake flags + sdk requirement for one target
+kolm runtime info cuda-89
+
+# check whether the toolchain is installed on this box
+kolm runtime doctor --target=cuda-89
+
+# do the build (clones llama.cpp, checks out the pinned commit, runs cmake, installs)
+kolm runtime build-from-source --target=cuda-89 --out=/opt/kolm/runtime/cuda-89
+
+# preview without running anything
+kolm runtime build-from-source --target=cuda-90 --dry-run --json</code></pre>
+
+<h2>Receipt</h2>
+<p>Every successful build writes <code>build-receipt.json</code> in the out-dir:</p>
+<pre><code>{
+  "ok": true,
+  "target": "cuda-89",
+  "repo_url": "https://github.com/ggerganov/llama.cpp.git",
+  "commit": "2026-05-17-frontier-pin",
+  "cmake_args": ["-G","Ninja","-DGGML_CUDA=ON","-DCMAKE_CUDA_ARCHITECTURES=89", ...],
+  "elapsed_ms": 318411,
+  "built_at": "2026-05-18T13:14:22.501Z",
+  "binary_dir": "/opt/kolm/runtime/cuda-89/bin",
+  "receipt_kind": "kolm-runtime-build/1"
+}</code></pre>
+<p>This receipt is the runtime sibling of the
+<a href="/captures">x-kolm-capture-durable</a> header and the
+<a href="/spec">.kolm manifest signatures</a> — every artifact in the kolm stack
+ships with proof of what produced it.</p>
+
+<h2>Where the heavy deps live</h2>
+<p>The cuda-toolkit, rocm-hip-sdk, vulkan-sdk, and xcode-cli-tools are declared in
+<code>workers/runtime-build/package.json</code> under <code>system_requires</code>,
+NOT in the root kolm <code>package.json</code>. The root install stays light. The worker is
+only invoked when you opt in to <code>kolm runtime build-from-source</code>.</p>
+
+<p style="margin-top:32px">
+  <a href="/models#frontier">Frontier models →</a> &nbsp;
+  <a href="/captures">Capture receipts →</a> &nbsp;
+  <a href="/spec">.kolm spec →</a>
+</p>
+
+<div class="foot">
+  <p>kolm.ai · <a href="/runtimes">/runtimes</a> · Wave 219 · pinned commit
+    <code>2026-05-17-frontier-pin</code> · isolated worker
+    <code>workers/runtime-build/</code></p>
+</div>
+</div>
+</body>
+</html>

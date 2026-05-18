@@ -15,16 +15,14 @@
   if (!nav || !actions) return;
 
   // Active state only. Path-driven; idempotent; never rewrites innerHTML.
-  // wave 101: /enterprise is its own top-level tab in the 5-item nav
-  // (Use cases | Docs | Research | Enterprise | Pricing). Removing
-  // `enterprise|customers|roi` from solRe stops /enterprise highlighting
-  // the Use cases tab. Same for `baa|teams|tunnels|byoc|airgap` — those
-  // belong under Enterprise routing, not Use cases. The Enterprise tab
-  // itself uses entRe as an exact top-level match.
+  // W221: collapsed 6-item to canonical 5-item nav
+  // (Product | Models | Docs | Pricing | Enterprise). Use cases collapse
+  // under Product; Research + Training collapse under Docs. /models +
+  // /runtimes both activate the Models tab.
   var path = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
-  var devRe = /^\/(docs|compile|run|recall|serve|evolve|anatomy|k-score|spec|api|sdk|build-your-own|quickstart|integrations|articles|cookbook|architecture|launch|troubleshooting|faq|press|changelog)(\/|$)/;
-  var solRe = /^\/(use-cases|healthcare|finance|legal|defense|edge|insure|health-insurance|whitepaper|motion)(\/|$)/;
-  var resRe = /^\/(research|benchmarks|leaderboard)(\/|$)/;
+  var prdRe = /^\/(product|use-cases|healthcare|finance|legal|defense|edge|insure|health-insurance|whitepaper|motion|captures|quickstart|compile|run|recall|serve|evolve|anatomy|k-score|build-your-own|integrations)(\/|$)/;
+  var modRe = /^\/(models|runtimes|frontier-stack|compute|device|hub|registry|atlas)(\/|$)/;
+  var devRe = /^\/(docs|research|training|spec|api|sdk|articles|cookbook|architecture|launch|troubleshooting|faq|press|changelog|benchmarks|leaderboard|kscore-bench|kscore-leaderboard)(\/|$)/;
   var entRe = /^\/(enterprise|customers|roi|baa|teams|tunnels|byoc|airgap|hipaa-mapping|soc2|security|subprocessors|trust|threat-model|slsa|sbom|compliance|compliance-packs|self-host|cloud)(\/|$)/;
   var prRe  = /^\/pricing(\/|$)/;
   var anchors = nav.querySelectorAll('a');
@@ -32,11 +30,11 @@
     var a = anchors[i];
     var href = a.getAttribute('href') || '';
     var isActive =
-      (href === '/use-cases' && solRe.test(path)) ||
+      (href === '/product'   && prdRe.test(path)) ||
+      (href === '/models'    && modRe.test(path)) ||
       (href === '/docs'      && devRe.test(path)) ||
-      (href === '/research'  && resRe.test(path)) ||
-      (href === '/enterprise'&& entRe.test(path)) ||
-      (href === '/pricing'   && prRe.test(path));
+      (href === '/pricing'   && prRe.test(path)) ||
+      (href === '/enterprise'&& entRe.test(path));
     if (isActive) {
       a.classList.add('active');
       a.setAttribute('aria-current', 'page');

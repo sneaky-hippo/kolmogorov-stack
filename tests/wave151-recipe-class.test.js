@@ -18,6 +18,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {
   RECIPE_CLASSES,
   CLASS_RANK,
@@ -33,8 +36,16 @@ const EMPTY_SHA = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b
 
 // --- 1-4. Taxonomy module ----------------------------------------------------
 
-test('Wave151 / RECIPE_CLASSES contains exactly the four honest classes', () => {
-  assert.deepEqual(RECIPE_CLASSES, ['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model']);
+test('Wave151 / RECIPE_CLASSES contains the honest classes (W286 promoted workflow_capsule to 5th)', () => {
+  // Wave 151 originally shipped four classes; Wave 286 promoted workflow_capsule
+  // from a dead comment in src/workflow-ir.js to a real fifth class with full
+  // verifier semantics. Keep the four pre-W286 classes in the asserted prefix.
+  assert.deepEqual(
+    RECIPE_CLASSES.slice(0, 4),
+    ['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'],
+  );
+  assert.ok(RECIPE_CLASSES.includes('workflow_capsule'),
+    'W286 promoted workflow_capsule to a real class');
 });
 
 test('Wave151 / CLASS_RANK orders rule < synthesized_rule < compiled_rule < distilled_model', () => {
@@ -109,9 +120,16 @@ test('Wave151 / validateRecipeClass accepts honest declarations', () => {
   assert.equal(validateRecipeClass({
     id: 'r3', class: 'compiled_rule', source: 'x', dsl: 'phone-norm dsl',
   }), 'compiled_rule');
+  // W258-ML-8: distilled_model gguf_file path must exist + carry non-zero
+  // bytes. Materialize a tiny GGUF fixture in a tmp dir so the validator's
+  // "real model bytes" floor is satisfied honestly.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wave151-'));
+  const ggufPath = path.join(tmp, 'model.gguf');
+  fs.writeFileSync(ggufPath, Buffer.from('GGUF\x03\x00\x00\x00stub', 'binary'));
   assert.equal(validateRecipeClass({
-    id: 'r4', class: 'distilled_model', source: 'x', gguf_file: 'model.gguf',
+    id: 'r4', class: 'distilled_model', source: 'x', gguf_file: ggufPath,
   }), 'distilled_model');
+  fs.rmSync(tmp, { recursive: true, force: true });
 });
 
 // --- 10-14. validateArtifactClass — manifest-vs-bytes contract ---------------

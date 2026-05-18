@@ -11,17 +11,22 @@
 // pulls its language from here so the user-visible language and the verifier's
 // rejection conditions stay in lockstep.
 
-export const RECIPE_CLASSES = ['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'];
+import fs from 'node:fs';
+
+export const RECIPE_CLASSES = ['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model', 'workflow_capsule'];
 
 // Severity ordering — used to compute artifact_class from the per-recipe
 // classes. The artifact_class is the MAX of its recipe classes under this
 // ordering. A single `distilled_model` recipe in a bundle promotes the whole
-// artifact to `distilled_model` (because a verifier must check for weights).
+// artifact to `distilled_model`. A single `workflow_capsule` recipe (a graph
+// of recipes) promotes the whole artifact to `workflow_capsule` — verifier
+// MUST also check the workflow_ir hash matches manifest.lineage.workflow_ir_hash.
 export const CLASS_RANK = Object.freeze({
   rule: 0,
   synthesized_rule: 1,
   compiled_rule: 2,
   distilled_model: 3,
+  workflow_capsule: 4,
 });
 
 // Honest, user-facing description of each class. Product surfaces import
@@ -67,6 +72,16 @@ export const CLASS_DESCRIPTIONS = Object.freeze({
     distillation_applicable: true,
     runtime: 'onnxruntime / llama.cpp / candle (per target)',
   },
+  workflow_capsule: {
+    short: 'Workflow capsule',
+    one_line: 'A graph of recipes (LLM / tool / branch / artifact nodes) compiled to a frozen, replayable workflow IR.',
+    honest: 'An artifact whose execution is described by a workflow IR (src/workflow-ir.js, spec wir-v1). The IR is a DAG of input / llm / tool / branch / artifact / const / output nodes. The artifact carries the IR alongside a seed cache of (input → output) pairs captured at compile time; the runtime is cache-first (replays cached outputs byte-for-byte when input matches a seed) and fail-loud (throws if it would need to call an executor but no executor is wired). The artifact-level workflow_ir_hash MUST match the IR shape carried in the zip; verifiers reject any mismatch. Source: traced from a real production session (kolm capture → kolm compile --ir) or hand-authored.',
+    teacher_required: false,
+    weights_required: false,
+    quantization_applicable: false,
+    distillation_applicable: false,
+    runtime: 'workflow-IR interpreter + caller-supplied node executors',
+  },
 });
 
 // Infer the class from a recipe shape. Used when the caller did not declare
@@ -82,6 +97,25 @@ export const CLASS_DESCRIPTIONS = Object.freeze({
 //   5. default → rule
 export function inferRecipeClass(recipe) {
   if (!recipe || typeof recipe !== 'object') return 'rule';
+  // W252b Bug 5 — detect ambiguous shapes early. A recipe that names BOTH a
+  // teacher (teacher_vendor or synthesized_by) AND weights (weights_file,
+  // gguf_file, or onnx_file) cannot be honestly classified: synthesized_rule
+  // (teacher emits source code) and distilled_model (teacher emits training
+  // pairs that fine-tune real weights) are different classes with different
+  // verifier guarantees. The caller MUST disambiguate by removing the field
+  // that doesn't belong, or by setting recipe.class explicitly.
+  const hasTeacher = !!(recipe.teacher_vendor || recipe.synthesized_by);
+  const hasWeights = !!(recipe.weights_file || recipe.gguf_file || recipe.onnx_file);
+  if (hasTeacher && hasWeights) {
+    throw new Error(
+      `recipe class ambiguous: recipe '${recipe.id || '?'}' carries BOTH ` +
+      `teacher_vendor/synthesized_by AND weights_file/gguf_file/onnx_file. ` +
+      `Pick one: distilled_model (weights, teacher trained them) or ` +
+      `synthesized_rule (LLM-emitted source, no weights). Set recipe.class ` +
+      `explicitly to disambiguate.`
+    );
+  }
+  if (recipe.workflow_ir || recipe.workflow_ir_hash) return 'workflow_capsule';
   if (recipe.weights_file || recipe.gguf_file || recipe.onnx_file) return 'distilled_model';
   if (recipe.compiled_targets || recipe.native_bin) return 'compiled_rule';
   if (recipe.synthesized_by || recipe.teacher_vendor) return 'synthesized_rule';
@@ -105,9 +139,46 @@ export function validateRecipeClass(recipe) {
   if (declared === 'distilled_model' && !recipe.weights_file && !recipe.gguf_file && !recipe.onnx_file) {
     throw new Error(
       `recipe '${recipe.id || '?'}' declares class='distilled_model' but carries no weights_file / gguf_file / onnx_file. ` +
-      `Honest taxonomy: a distilled_model artifact MUST ship real model bytes. ` +
+      `taxonomy: a distilled_model artifact MUST ship real model bytes. ` +
       `If this is a rule-class recipe, set class='rule' or omit the field.`
     );
+  }
+  // W252b Bug 3 + W258-ML-8 — every weights pointer declared by a
+  // distilled_model recipe must EXIST on disk and be NON-EMPTY at build
+  // time. Earlier this checked only the FIRST non-null pointer
+  // (weights_file || gguf_file || onnx_file); a recipe that named all
+  // three with one valid + two bogus passed. The manifest hash check
+  // that runs later re-binds to bytes for whichever pointer the artifact
+  // actually carries.
+  if (declared === 'distilled_model') {
+    const pointers = [
+      ['weights_file', recipe.weights_file],
+      ['gguf_file', recipe.gguf_file],
+      ['onnx_file', recipe.onnx_file],
+    ].filter(([, v]) => typeof v === 'string' && v.length > 0);
+    for (const [field, wf] of pointers) {
+      let st;
+      try {
+        st = fs.statSync(wf);
+      } catch (e) {
+        if (e && e.code === 'ENOENT') {
+          throw new Error(
+            `recipe '${recipe.id || '?'}' ${field} weights file does not exist at path: ${wf}. ` +
+            `A distilled_model artifact MUST ship real model bytes. Re-run the ` +
+            `distillation worker or correct the ${field} path.`
+          );
+        }
+        throw e;
+      }
+      if (st.size === 0) {
+        throw new Error(
+          `recipe '${recipe.id || '?'}' ${field} weights file is empty (0 bytes) at path: ${wf}. ` +
+          `A distilled_model artifact MUST ship real model bytes; a 0-byte file ` +
+          `is the exact shape this verifier rejects. Re-run the distillation ` +
+          `worker to populate the file.`
+        );
+      }
+    }
   }
   // Compiled-rule claim requires compiled targets (DSL + native bin OR explicit target list).
   if (declared === 'compiled_rule' && !recipe.compiled_targets && !recipe.native_bin && !recipe.dsl) {
@@ -121,6 +192,14 @@ export function validateRecipeClass(recipe) {
     throw new Error(
       `recipe '${recipe.id || '?'}' declares class='synthesized_rule' but carries no teacher attribution. ` +
       `A synthesized_rule recipe must record which teacher emitted the source (recipe.teacher_vendor or recipe.synthesized_by).`
+    );
+  }
+  // Wave 286 — workflow_capsule claim requires a workflow_ir block (or a
+  // workflow_ir_hash if the IR was already detached for hashing).
+  if (declared === 'workflow_capsule' && !recipe.workflow_ir && !recipe.workflow_ir_hash) {
+    throw new Error(
+      `recipe '${recipe.id || '?'}' declares class='workflow_capsule' but carries no workflow_ir block. ` +
+      `A workflow_capsule recipe must ship its workflow_ir (or workflow_ir_hash) so verifiers can replay the graph.`
     );
   }
   return declared;
@@ -185,6 +264,16 @@ export function validateArtifactClass(manifest) {
       return { ok: false, reason: 'artifact_class=synthesized_rule requires manifest.training to record teacher_vendor / teacher_model / synthesized_by' };
     }
   }
+  // Wave 286 — workflow_capsule artifact MUST carry the workflow_ir_hash in
+  // its lineage block so the IR shape can be byte-checked against the zip's
+  // workflow_ir.json. Without this, the runtime would happily replay a tampered
+  // IR.
+  if (declared === 'workflow_capsule') {
+    const wih = manifest.lineage && manifest.lineage.workflow_ir_hash;
+    if (!wih) {
+      return { ok: false, reason: 'artifact_class=workflow_capsule requires manifest.lineage.workflow_ir_hash; without it the runtime cannot prove the IR has not been tampered with.' };
+    }
+  }
   return { ok: true };
 }
 
@@ -193,4 +282,132 @@ export function classBadge(klass) {
   const d = CLASS_DESCRIPTIONS[klass];
   if (!d) return `unknown class: ${klass}`;
   return `${d.short} — ${d.one_line}`;
+}
+
+// ----------------------------------------------------------------------------
+// Wave 285 — honest source_type taxonomy.
+//
+// `class` says WHAT a recipe behaves like at runtime (rule, synthesized_rule,
+// compiled_rule, distilled_model). `source_type` says HOW the recipe source
+// was produced. Both are load-bearing claims and the verifier rejects any
+// mismatch between them.
+//
+// The five honest source types:
+//   hand_written      — human author, no LLM in the loop
+//   pattern_generated — deterministic pattern-matcher emitted the code
+//   llm_emitted       — an LLM teacher emitted the source
+//   distilled         — LoRA-finetuned weights derived from teacher pairs
+//   compiled_from_dsl — emitted by a DSL → JS / native lowering
+// ----------------------------------------------------------------------------
+
+export const RECIPE_SOURCE_TYPES = Object.freeze([
+  'hand_written',
+  'pattern_generated',
+  'llm_emitted',
+  'distilled',
+  'compiled_from_dsl',
+]);
+
+// Class × source_type compatibility matrix. The verifier consults this; any
+// combination not listed under `accepts` is rejected at build time. Keeping
+// the matrix here (next to RECIPE_CLASSES + CLASS_DESCRIPTIONS) prevents
+// drift between the spec, the verifier, and the marketing copy.
+export const CLASS_SOURCE_TYPE_RULES = Object.freeze({
+  rule: {
+    accepts: ['hand_written', 'pattern_generated'],
+    rejects: ['llm_emitted', 'distilled'],
+  },
+  synthesized_rule: {
+    requires: ['llm_emitted'],
+    accepts: ['llm_emitted'],
+  },
+  compiled_rule: {
+    accepts: ['hand_written', 'pattern_generated', 'llm_emitted', 'compiled_from_dsl'],
+    rejects: ['distilled'],
+  },
+  distilled_model: {
+    requires: ['distilled'],
+    accepts: ['distilled'],
+  },
+  // Wave 286 — a workflow_capsule's source can be a captured production trace
+  // (counts as llm_emitted when the trace contains LLM calls) OR a hand-
+  // authored IR (hand_written). It can also be the output of a DSL → IR
+  // lowering (compiled_from_dsl). It is NEVER distilled — a workflow is a
+  // graph of executors, not a model.
+  workflow_capsule: {
+    accepts: ['hand_written', 'llm_emitted', 'compiled_from_dsl'],
+    rejects: ['distilled'],
+  },
+});
+
+// Infer the honest source_type from a recipe's shape. Used when the caller
+// did not declare `recipe.source_type` and we need to derive it for the
+// manifest. Heuristic order (most-specific first):
+//   1. recipe has weights / gguf / onnx → distilled
+//   2. recipe has teacher_vendor / synthesized_by / synthesis_strategy=claude
+//      → llm_emitted
+//   3. recipe has synthesis_strategy=pattern → pattern_generated
+//   4. recipe has dsl block AND no teacher → compiled_from_dsl
+//   5. otherwise → hand_written
+export function inferSourceType(recipe) {
+  if (!recipe || typeof recipe !== 'object') return 'hand_written';
+  if (recipe.weights_file || recipe.gguf_file || recipe.onnx_file) return 'distilled';
+  if (recipe.class === 'distilled_model') return 'distilled';
+  const strat = recipe.synthesis_strategy || (recipe.synthesis && recipe.synthesis.strategy);
+  if (strat === 'pattern' || strat === 'patterns' || strat === 'pattern_match') return 'pattern_generated';
+  if (strat === 'claude' || strat === 'llm' || strat === 'teacher') return 'llm_emitted';
+  if (recipe.teacher_vendor || recipe.teacher_model || recipe.synthesized_by) return 'llm_emitted';
+  if (recipe.class === 'synthesized_rule') return 'llm_emitted';
+  // DSL counts as compiled_from_dsl when the recipe declares emit targets,
+  // a pre-built native_bin, OR the caller has explicitly declared
+  // class='compiled_rule'. A bare DSL on a rule-class recipe is just a
+  // hand-authored declarative form and stays hand_written.
+  if (recipe.dsl && (recipe.compiled_targets || recipe.native_bin || recipe.class === 'compiled_rule')) {
+    return 'compiled_from_dsl';
+  }
+  return 'hand_written';
+}
+
+// Validate a recipe's declared source_type against its declared class.
+// Throws with a verifier-grade error message on mismatch. The error text
+// is asserted by the lock-in tests; keep the verbatim shape stable.
+export function validateRecipeSourceType(recipe) {
+  if (!recipe || typeof recipe !== 'object') {
+    throw new Error('recipe must be an object');
+  }
+  const klass = recipe.class || recipe.recipe_class;
+  const st = recipe.source_type;
+  if (!st) {
+    throw new Error(
+      `recipe '${recipe.id || '?'}' is missing source_type. ` +
+      `Every recipe must declare one of [${RECIPE_SOURCE_TYPES.join(', ')}].`
+    );
+  }
+  if (!RECIPE_SOURCE_TYPES.includes(st)) {
+    throw new Error(
+      `recipe '${recipe.id || '?'}' source_type ${JSON.stringify(st)} is not in [${RECIPE_SOURCE_TYPES.join(', ')}]`
+    );
+  }
+  if (!klass) return st;
+  const rule = CLASS_SOURCE_TYPE_RULES[klass];
+  if (!rule) return st;
+  if (rule.requires && !rule.requires.includes(st)) {
+    throw new Error(
+      `recipe '${recipe.id || '?'}' class=${klass} requires source_type in [${rule.requires.join(', ')}], got ${JSON.stringify(st)}. ` +
+      `Honest taxonomy: a ${klass} recipe MUST carry source_type=${rule.requires[0]}.`
+    );
+  }
+  if (rule.rejects && rule.rejects.includes(st)) {
+    throw new Error(
+      `recipe '${recipe.id || '?'}' class=${klass} rejects source_type=${st}. ` +
+      `A ${klass} recipe cannot have been produced as ${st}; ` +
+      `accepted source_type values: [${rule.accepts.join(', ')}].`
+    );
+  }
+  if (rule.accepts && !rule.accepts.includes(st)) {
+    throw new Error(
+      `recipe '${recipe.id || '?'}' class=${klass} accepts source_type in [${rule.accepts.join(', ')}], got ${JSON.stringify(st)}`
+    );
+  }
+  return st;
 }

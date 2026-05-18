@@ -120,10 +120,15 @@ test('12. HELP.repl prose contains no em-dashes (W202/W203 prose hygiene)', () =
 
 test('13. cmdRepl uses node:readline (no new dependency)', () => {
   // The file already imports readline at the top (used by cmdTui / cmdChat).
-  // We assert cmdRepl uses readline.createInterface inside its body.
-  const fn = SRC.match(/async function cmdRepl[\s\S]*?\n\}/);
-  assert.ok(fn);
-  assert.match(fn[0], /readline\.createInterface/,
+  // We assert cmdRepl uses readline.createInterface inside its body. Slice
+  // from cmdRepl up to the next top-level `async function ` so nested
+  // closures (which contain their own `\n}`) don't truncate the capture.
+  // Use `cmdRepl(` (with the paren) to avoid the `cmdReplay` prefix collision.
+  const start = SRC.indexOf('async function cmdRepl(');
+  assert.ok(start !== -1, 'cmdRepl must exist');
+  const after = SRC.indexOf('\nasync function ', start + 'async function cmdRepl('.length);
+  const body = SRC.slice(start, after === -1 ? SRC.length : after);
+  assert.match(body, /readline\.createInterface/,
     'cmdRepl must create the interactive interface via node:readline (no third-party dep)');
 });
 

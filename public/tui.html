@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>TUI · the alt-screen multi-pane shell for kolm.ai | kolm.ai</title>
+<meta name="description" content="kolm tui is an alt-screen multi-pane TUI for the .kolm value loop: live captures via SSE, artifact inspect + verify, one-key distill + replay. j/k movement, vim-style colon commands, zero deps.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="kolm tui · alt-screen multi-pane shell">
+<meta property="og:description" content="Live captures + artifact inspect + one-key distill, over SSH + tmux + Tailscale. Zero deps.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/tui">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="kolm tui">
+<meta name="twitter:description" content="Live captures + artifact inspect + one-key distill, over SSH + tmux + Tailscale.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/tui">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "kolm tui",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows (WSL)",
+      "description": "Alt-screen multi-pane TUI for the kolm.ai value loop: live captures via SSE, artifact inspect + verify, one-key distill + replay.",
+      "url": "https://kolm.ai/tui",
+      "publisher": {"@type": "Organization", "name": "kolm.ai", "url": "https://kolm.ai"},
+      "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "kolm.ai", "item": "https://kolm.ai/"},
+        {"@type": "ListItem", "position": 2, "name": "Product", "item": "https://kolm.ai/product"},
+        {"@type": "ListItem", "position": 3, "name": "TUI", "item": "https://kolm.ai/tui"}
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{--ink:#faf2e1;--ink-mute:#c8bea5;--ink-faint:#86806d;--bg:#08090c;--bg-elev:#11151b;--accent:#7fe1c2;--warn:#f0b86b;--mono:'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace}
+[data-theme=light]{--ink:#1c1810;--ink-mute:#5b5240;--ink-faint:#8a7f66;--bg:#f7f4ec;--bg-elev:#fff;--accent:#10846a;--warn:#a35a14}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:rgba(127,225,194,.35);text-underline-offset:3px}
+a:hover{text-decoration-color:var(--accent)}
+.wrap{max-width:1040px;margin:0 auto;padding:48px 24px}
+h1{font-size:2.6rem;letter-spacing:-.02em;margin:0 0 .35em;line-height:1.12}
+h2{font-size:1.45rem;letter-spacing:-.01em;margin:2.4em 0 .6em;color:var(--ink)}
+p{margin:.7em 0;color:var(--ink-mute)}
+.lede{font-size:1.18rem;color:var(--ink-mute);max-width:720px}
+.nav{margin-bottom:32px;font-size:.92rem}
+.nav a{color:var(--ink-mute);margin-right:18px}
+.terminal{background:#0a0c11;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:18px;margin:24px 0;overflow:auto}
+.terminal pre{margin:0;font:13px/1.35 var(--mono);color:#dbe7df;white-space:pre;letter-spacing:.01em}
+.player-controls{display:flex;gap:10px;align-items:center;margin-top:10px;font-size:.86rem;color:var(--ink-faint)}
+.player-controls button{background:var(--bg-elev);color:var(--ink);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:4px 10px;font-family:var(--mono);font-size:.82rem;cursor:pointer}
+.player-controls button:hover{border-color:var(--accent);color:var(--accent)}
+.grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}
+@media (max-width:760px){.grid6{grid-template-columns:1fr 1fr}.terminal pre{font-size:11px}}
+.card{background:var(--bg-elev);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:16px}
+.card h3{margin:0 0 .35em;color:var(--ink);font-size:.96rem;letter-spacing:-.01em}
+.card .keys{font-family:var(--mono);font-size:.86rem;color:var(--accent);margin-bottom:.35em}
+.card p{margin:0;font-size:.88rem;color:var(--ink-mute)}
+.install{background:#0a0c11;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:14px 16px;font-family:var(--mono);font-size:.86rem;color:var(--ink);overflow-x:auto}
+.skip-link{position:absolute;left:-9999px;top:auto}
+.skip-link:focus{left:8px;top:8px;background:var(--bg-elev);padding:8px 12px;border-radius:4px}
+.hero{padding:8px 0 24px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:24px}
+.pill{display:inline-block;padding:2px 8px;border-radius:11px;font-size:.78em;font-weight:500;background:rgba(127,225,194,.14);color:var(--accent);margin-left:6px}
+ul{padding-left:1.4em;color:var(--ink-mute)}
+li{margin:.35em 0}
+.row-links{display:flex;flex-wrap:wrap;gap:18px;margin-top:8px}
+</style>
+</head>
+<body>
+<a href="#main" class="skip-link">Skip to content</a>
+<div class="wrap">
+<nav class="nav">
+  <a href="/">kolm.ai</a>
+  <a href="/product">Product</a>
+  <a href="/models">Models</a>
+  <a href="/tui" style="color:var(--ink)">TUI</a>
+  <a href="/docs">Docs</a>
+  <a href="/pricing">Pricing</a>
+  <a href="/enterprise">Enterprise</a>
+</nav>
+
+<main id="main">
+<section class="hero">
+  <h1>kolm tui</h1>
+  <p class="lede">
+    Alt-screen multi-pane shell for the .kolm value loop. Live captures via SSE,
+    artifact inspect &amp; verify, one-key distill &amp; replay. Designed to live
+    inside a tmux pane over SSH+Tailscale, on a phone, on a remote box.
+    <span class="pill">Wave 222</span>
+  </p>
+  <div class="terminal">
+    <pre id="tui-player" aria-label="kolm tui demo (asciinema)">loading demo...</pre>
+    <div class="player-controls">
+      <button id="tui-play" type="button">▶ play</button>
+      <button id="tui-pause" type="button">⏸ pause</button>
+      <button id="tui-restart" type="button">↻ restart</button>
+      <span>asciinema cast · <a href="/cdn/kolm-assets/tui-demo.cast">download .cast</a> to replay with <code>asciinema play</code></span>
+    </div>
+  </div>
+</section>
+
+<h2>Keymap</h2>
+<div class="grid6">
+  <div class="card">
+    <h3>Movement</h3>
+    <div class="keys">j&nbsp;&nbsp;k&nbsp;&nbsp;g&nbsp;&nbsp;G&nbsp;&nbsp;Tab</div>
+    <p>Down · up · top · bottom · switch active pane.</p>
+  </div>
+  <div class="card">
+    <h3>Source</h3>
+    <div class="keys">1&nbsp;&nbsp;2</div>
+    <p>1 = live captures (SSE from /v1/capture/stream). 2 = your local artifacts.</p>
+  </div>
+  <div class="card">
+    <h3>Filter &amp; command</h3>
+    <div class="keys">/&nbsp;&nbsp;:</div>
+    <p>/ types a filter (Enter commits, Esc cancels). : opens vim-style command mode for <code>:open</code>, <code>:inspect</code>, <code>:run</code>, <code>:verify</code>, <code>:quit</code>.</p>
+  </div>
+  <div class="card">
+    <h3>Actions</h3>
+    <div class="keys">Enter&nbsp;&nbsp;r</div>
+    <p>Enter opens the highlighted row. r refreshes both panes (re-lists artifacts, re-opens the SSE stream).</p>
+  </div>
+  <div class="card">
+    <h3>Value loop</h3>
+    <div class="keys">d&nbsp;&nbsp;R&nbsp;&nbsp;v</div>
+    <p>d distills the selected capture namespace (POST /v1/distill/from-captures). R replays the capture against the loaded artifact (POST /v1/replay). v verifies the loaded artifact receipt (POST /v1/receipts/verify).</p>
+  </div>
+  <div class="card">
+    <h3>Help &amp; exit</h3>
+    <div class="keys">?&nbsp;&nbsp;q</div>
+    <p>? toggles the help overlay. q quits (cleanly exits the alt screen, restores cursor + scrollback).</p>
+  </div>
+</div>
+
+<h2>Install &amp; run</h2>
+<pre class="install"># grab the CLI (the rule path · zero heavy deps)
+curl -fsSL https://kolm.ai/install.sh | sh
+
+# in any project where you ran `kolm proxy on`
+kolm tui
+
+# over SSH + tmux + Tailscale (the @sudoingX 5-foundations stack)
+tmux new -d -s kolm 'ssh box "tmux new -As kolm \"kolm tui\""'</pre>
+<p style="font-size:.92rem;color:var(--ink-faint);margin-top:6px">
+  Requires a TTY. In non-interactive contexts (CI, piped stdout) kolm tui exits
+  cleanly with a hint pointing you at <code>kolm list</code> /
+  <code>kolm inspect</code> / <code>kolm tail captures</code>.
+</p>
+
+<h2>What this is for</h2>
+<ul>
+  <li>You're in a remote tmux pane over Tailscale, on a phone via Termius, or on a sleep-then-resume laptop. The TUI survives disconnects (the tmux session holds it; kolm tui itself is just a process).</li>
+  <li>You want to watch captures arrive live (the W213 SSE stream) without leaving the terminal for a browser tab.</li>
+  <li>You want one-key actions on what you see: <kbd>d</kbd> distill, <kbd>R</kbd> replay, <kbd>v</kbd> verify — the close-the-loop verbs from the W213-W216 value loop.</li>
+  <li>You don't want yet another Electron app installed and don't want a third-party TUI framework dragging dozens of transitive deps.</li>
+</ul>
+
+<h2>What it intentionally is not</h2>
+<ul>
+  <li>Not a full terminal-emulator-grade renderer · we redraw the whole frame per keypress because the data volumes (≤500 captures, ≤200 artifacts) make diff-rendering premature optimization.</li>
+  <li>Not a replacement for <a href="/captures">/captures</a> when you want a mouse + drawer-style UX in a browser. Both consume the same SSE.</li>
+  <li>Not an embedded editor · vim-style command mode is for navigation parity, not for replacing your shell or editor.</li>
+</ul>
+
+<h2>Where to go next</h2>
+<p class="row-links">
+  <a href="/captures">Live capture dashboard &rarr;</a>
+  <a href="/quickstart">Quickstart (4 min) &rarr;</a>
+  <a href="/foundations">5-foundations: Tailscale + Termius + tmux + git + scripts &rarr;</a>
+  <a href="/product">Product overview &rarr;</a>
+</p>
+</main>
+</div>
+
+<script>
+// W222/W223 — tiny embedded asciinema-style player. Parses the .cast file
+// (JSON header line + one JSON array per frame), walks the timeline, and
+// writes each frame's "o" payload into the <pre>. Handles the alt-screen
+// clear-and-home (\x1b[2J\x1b[H) by resetting the buffer; everything else
+// goes straight in. Zero deps; CSP-safe (script-src 'self' 'unsafe-inline').
+(function () {
+  var preEl = document.getElementById('tui-player');
+  var playBtn = document.getElementById('tui-play');
+  var pauseBtn = document.getElementById('tui-pause');
+  var restartBtn = document.getElementById('tui-restart');
+  if (!preEl) return;
+  var frames = [];
+  var timer = null;
+  var idx = 0;
+  var buf = '';
+
+  function clearScreenIfRequested(payload) {
+    // Recognize the bare-escape variant (lacks \x1b prefix because the cast
+    // file embeds the cursor-position sequences without ESC for readability)
+    // and the canonical CSI \x1b[2J\x1b[H. Either resets the buffer.
+    if (/^\[2J\[H/.test(payload) || /^\[2J\[H/.test(payload)) {
+      buf = '';
+      return payload.replace(/^\[2J\[H|^\[2J\[H/, '');
+    }
+    return payload;
+  }
+  function stripEscapes(s) {
+    // Drop alt-screen + cursor-show/hide markers from the demo cast.
+    return s.replace(/\[\?(?:1049|25)[hl]/g, '').replace(/\[\?(?:1049|25)[hl]/g, '');
+  }
+  function step() {
+    if (idx >= frames.length) { timer = null; return; }
+    var f = frames[idx++];
+    var payload = stripEscapes(clearScreenIfRequested(f[1]));
+    if (buf === '' && payload.indexOf('\r') >= 0) buf = '';
+    buf += payload;
+    preEl.textContent = buf;
+    var nextDelay = idx < frames.length ? Math.max(40, (frames[idx][0] - f[0]) * 1000) : 1500;
+    timer = setTimeout(step, nextDelay);
+  }
+  function play() {
+    if (timer) return;
+    if (!frames.length) return;
+    if (idx >= frames.length) { idx = 0; buf = ''; }
+    step();
+  }
+  function pause() { if (timer) { clearTimeout(timer); timer = null; } }
+  function restart() { pause(); idx = 0; buf = ''; preEl.textContent = ''; play(); }
+  if (playBtn) playBtn.addEventListener('click', play);
+  if (pauseBtn) pauseBtn.addEventListener('click', pause);
+  if (restartBtn) restartBtn.addEventListener('click', restart);
+
+  fetch('/cdn/kolm-assets/tui-demo.cast', { credentials: 'omit' })
+    .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error('http ' + r.status)); })
+    .then(function (text) {
+      var lines = text.split(/\r?\n/).filter(Boolean);
+      // First line is the header object; subsequent lines are frame arrays.
+      for (var i = 1; i < lines.length; i++) {
+        try {
+          var f = JSON.parse(lines[i]);
+          if (Array.isArray(f) && f.length >= 2) frames.push([f[0], String(f[2] || '')]);
+        } catch (e) {}
+      }
+      if (!frames.length) { preEl.textContent = '(no frames in cast)'; return; }
+      play();
+    })
+    .catch(function (e) {
+      preEl.textContent = '(could not load demo: ' + e.message + ')\nrun `asciinema play /cdn/kolm-assets/tui-demo.cast` locally.';
+    });
+})();
+</script>
+<script src="/escape.js"></script>
+</body>
+</html>

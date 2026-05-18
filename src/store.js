@@ -194,6 +194,7 @@ function getSqliteDb() {
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = FULL;
     PRAGMA foreign_keys = ON;
+    PRAGMA busy_timeout = 30000;
     CREATE TABLE IF NOT EXISTS kolm_store_rows (
       row_id INTEGER PRIMARY KEY AUTOINCREMENT,
       table_name TEXT NOT NULL,
@@ -223,16 +224,32 @@ function importJsonSeedIntoSqlite(db, name) {
   if (sqliteTableImported(db, name)) return;
   const p = tablePath(name);
   const rows = fs.existsSync(p) ? readRowsFile(name, p) : [];
-  db.exec('BEGIN IMMEDIATE');
-  try {
+  runInTxn(db, () => {
     const insertStmt = db.prepare('INSERT INTO kolm_store_rows (table_name, json) VALUES (?, ?)');
     for (const row of rows) insertStmt.run(name, JSON.stringify(row));
     markSqliteTableImported(db, name);
-    db.exec('COMMIT');
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
+  });
+}
+
+// Re-entrant transaction helper used by every multi-statement write below.
+// If we are already inside a withTransaction (BEGIN IMMEDIATE) or another
+// runInTxn (SAVEPOINT), reuse the existing scope via SAVEPOINT so SQLite
+// does not throw "cannot start a transaction within a transaction".
+let _txnDepth = 0;
+let _savepointSeq = 0;
+function runInTxn(db, fn) {
+  if (_txnDepth === 0) {
+    db.exec('BEGIN IMMEDIATE');
+    _txnDepth = 1;
+    try { fn(); db.exec('COMMIT'); _txnDepth = 0; }
+    catch (e) { try { db.exec('ROLLBACK'); } catch {} _txnDepth = 0; throw e; }
+    return;
   }
+  const sp = `sp_${++_savepointSeq}`;
+  db.exec(`SAVEPOINT ${sp}`);
+  _txnDepth++;
+  try { fn(); db.exec(`RELEASE ${sp}`); _txnDepth--; }
+  catch (e) { try { db.exec(`ROLLBACK TO ${sp}`); db.exec(`RELEASE ${sp}`); } catch {} _txnDepth--; throw e; }
 }
 
 function sqliteRows(name) {
@@ -262,19 +279,14 @@ function sqliteUpdate(table, predicate, patch) {
   const rows = sqliteRows(table);
   const updateStmt = db.prepare('UPDATE kolm_store_rows SET json = ?, updated_at = CURRENT_TIMESTAMP WHERE rowid = ?');
   let n = 0;
-  db.exec('BEGIN IMMEDIATE');
-  try {
+  runInTxn(db, () => {
     for (const row of rows) {
       if (!predicate(row.value)) continue;
       Object.assign(row.value, patch);
       updateStmt.run(JSON.stringify(row.value), row.rowid);
       n++;
     }
-    db.exec('COMMIT');
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
+  });
   return n;
 }
 
@@ -283,18 +295,13 @@ function sqliteRemove(table, predicate) {
   const rows = sqliteRows(table);
   const deleteStmt = db.prepare('DELETE FROM kolm_store_rows WHERE rowid = ?');
   let n = 0;
-  db.exec('BEGIN IMMEDIATE');
-  try {
+  runInTxn(db, () => {
     for (const row of rows) {
       if (!predicate(row.value)) continue;
       deleteStmt.run(row.rowid);
       n++;
     }
-    db.exec('COMMIT');
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
+  });
   return n;
 }
 
@@ -302,17 +309,12 @@ function sqliteReset() {
   const db = getSqliteDb();
   const names = [...sqliteTables];
   const deleteStmt = db.prepare('DELETE FROM kolm_store_rows WHERE table_name = ?');
-  db.exec('BEGIN IMMEDIATE');
-  try {
+  runInTxn(db, () => {
     for (const name of names) {
       deleteStmt.run(name);
       markSqliteTableImported(db, name);
     }
-    db.exec('COMMIT');
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
+  });
 }
 
 export function id(prefix = 'id') {
@@ -345,6 +347,41 @@ export function find(table, predicate = () => true) {
 
 export function findOne(table, predicate) {
   return all(table).find(predicate) || null;
+}
+
+// Indexed equality lookup primitive. In sqlite mode this issues a
+// `WHERE json_extract(json, '$.<field>') = ?` query (SQLite >= 3.38 ships
+// JSON1 by default) which becomes an indexed scan once an expression index
+// exists on the field. In json mode it falls back to a full table scan.
+// Use this in place of `all(t).filter(r => r[field] === value)` for any
+// tenant- or hash-scoped lookup that previously read the entire table into
+// memory.
+export function findByField(table, field, value) {
+  if (typeof field !== 'string' || field.length === 0) {
+    throw new Error('findByField(table, field, value): field must be a non-empty string');
+  }
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(field)) {
+    throw new Error(`findByField(table, field, value): unsafe field name ${JSON.stringify(field)}`);
+  }
+  if (STORE_DRIVER === 'sqlite') {
+    const db = getSqliteDb();
+    sqliteTables.add(table);
+    importJsonSeedIntoSqlite(db, table);
+    const rows = db
+      .prepare(`SELECT json FROM kolm_store_rows WHERE table_name = ? AND json_extract(json, '$.${field}') = ? ORDER BY row_id`)
+      .all(table, value);
+    return rows.map(r => JSON.parse(r.json));
+  }
+  return loadJsonTable(table).filter(r => r[field] === value);
+}
+
+// Tenant-scoped lookup convenience. Most multi-tenant tables (observations,
+// invocations, audit_log, concepts, jobs) carry a `tenant` column; this
+// wrapper centralises the access pattern so future SQLite expression indexes
+// can be added in one place. Returns [] for missing tenants.
+export function findByTenant(table, tenant) {
+  if (!tenant) return [];
+  return findByField(table, 'tenant', tenant);
 }
 
 export function remove(table, predicate) {
@@ -403,21 +440,22 @@ export function close() {
 // this for any multi-step write that must not interleave with a concurrent
 // request (entitlement charge + audit append, recipe publish + concept patch,
 // team invite accept + seat allocation).
+//
+// Reentrancy: nested withTransaction calls reuse the outer transaction via
+// SAVEPOINT. This lets a route handler open a transaction (e.g. chargeUsage)
+// and call into a helper that also wraps its work (e.g. tryAppendAudit)
+// without tripping "cannot start a transaction within a transaction".
 export function withTransaction(fn) {
   if (STORE_DRIVER !== 'sqlite') return fn();
   const db = getSqliteDb();
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    const out = fn();
+  let out;
+  runInTxn(db, () => {
+    out = fn();
     if (out && typeof out.then === 'function') {
       throw new Error('withTransaction(fn) requires a synchronous fn; async work must run before/after the transaction');
     }
-    db.exec('COMMIT');
-    return out;
-  } catch (err) {
-    try { db.exec('ROLLBACK'); } catch {}
-    throw err;
-  }
+  });
+  return out;
 }
 
 export function storeDriver() {

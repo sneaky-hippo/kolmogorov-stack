@@ -110,8 +110,39 @@ function withFakeFetch(handler) {
   return () => { global.fetch = original; };
 }
 
-function fakeRekorPostResponse(entry) {
+// RFC 6962 §2.1 leaf-hash + inner-hash, mirrored from src/sigstore.js so the
+// fake response's inclusionProof.rootHash reconstructs to whatever the
+// validator computes. W258-SEC-3 strengthened verifyRekorInclusionProof to
+// require a real proof; this fixture supplies a structurally valid one.
+function rfc6962LeafHash(bytes) {
+  return crypto.createHash('sha256').update(Buffer.from([0x00])).update(bytes).digest();
+}
+function fakeRekorPostResponse(entry, reqBody) {
   const uuid = entry.uuid || crypto.randomBytes(16).toString('hex');
+  // Pull the real signature+digest the caller posted. submitToRekor() sends
+  // the hashedrekord body which carries them; we use those to compute the
+  // exact leaf hash the validator will recompute on its own side.
+  let signatureB64 = 'AAAA';
+  let digestHex = 'deadbeef';
+  try {
+    const parsed = typeof reqBody === 'string' ? JSON.parse(reqBody) : null;
+    if (parsed && parsed.spec) {
+      signatureB64 = parsed.spec.signature?.content || signatureB64;
+      digestHex = parsed.spec.data?.hash?.value || digestHex;
+    }
+  } catch { /* fall through with defaults — verification will fail and the test catches it */ }
+  const digestBytes = Buffer.from(digestHex, 'hex');
+  const sigBytes = Buffer.from(signatureB64, 'base64');
+  const leafHash = rfc6962LeafHash(Buffer.concat([digestBytes, sigBytes]));
+  // Single-leaf tree (logIndex=0, treeSize=1, hashes=[]). The inclusion proof
+  // here uses its own logIndex/treeSize independent of the outer entry's
+  // logIndex (which tests assert against via /logIndex=N/).
+  const inclusionProof = {
+    logIndex: 0,
+    treeSize: 1,
+    hashes: [],
+    rootHash: leafHash.toString('base64'),
+  };
   return {
     ok: true,
     json: async () => ({
@@ -121,12 +152,12 @@ function fakeRekorPostResponse(entry) {
         logID: entry.logID,
         body: Buffer.from(JSON.stringify(hashedrekordBody({
           publicKey: '-----BEGIN PUBLIC KEY-----\nFAKE\n-----END PUBLIC KEY-----',
-          signatureB64: 'AAAA',
-          digestHex: 'deadbeef',
+          signatureB64,
+          digestHex,
         }))).toString('base64'),
         verification: {
           signedEntryTimestamp: 'fake-set-' + uuid,
-          inclusionProof: { logIndex: entry.logIndex, treeSize: 12345 },
+          inclusionProof,
         },
       },
     }),
@@ -237,7 +268,7 @@ test('7. attestArtifactWithRekor refuses to re-attest already-pinned artifact', 
   const { outPath } = await buildOne('already-pinned');
   // Pin once
   const fake = fabricateRekorEntry({ logIndex: 1, integratedTime: 1763419200 });
-  const restore = withFakeFetch(async () => fakeRekorPostResponse(fake));
+  const restore = withFakeFetch(async (url, init) => fakeRekorPostResponse(fake, init?.body));
   t.after(restore);
   await attestArtifactWithRekor(outPath, { url: 'https://fake-rekor.example' });
   // Pin again — should reject because dry_run is now false
@@ -305,7 +336,7 @@ test('11. check #18 passes on require_rekor=true + pinned sigstore', async (t) =
   // Build, then pin via attestArtifactWithRekor with a fake fetch
   const { outPath } = await buildOne('pinned-and-required');
   const fake = fabricateRekorEntry({ logIndex: 12345, integratedTime: 1763500000, logID: 'pinned-test-logid' });
-  const restore = withFakeFetch(async () => fakeRekorPostResponse(fake));
+  const restore = withFakeFetch(async (url, init) => fakeRekorPostResponse(fake, init?.body));
   t.after(restore);
   await attestArtifactWithRekor(outPath, { url: 'https://fake-rekor.example' });
   // Verify the sigstore block is no longer dry-run
@@ -333,7 +364,7 @@ test('12. check #18 passes informationally on no-policy + pinned sigstore', asyn
   isolateEnv(t);
   const { outPath } = await buildOne('pinned-no-policy');
   const fake = fabricateRekorEntry({ logIndex: 77, integratedTime: 1763500000 });
-  const restore = withFakeFetch(async () => fakeRekorPostResponse(fake));
+  const restore = withFakeFetch(async (url, init) => fakeRekorPostResponse(fake, init?.body));
   t.after(restore);
   await attestArtifactWithRekor(outPath, { url: 'https://fake-rekor.example' });
   // No KOLM_REQUIRE_REKOR env, no policy.require_rekor on manifest
@@ -374,7 +405,7 @@ test('14. HMAC + Ed25519 still verify after Rekor pinning mutates signature_sigs
   assert.ok(preHmacSig, 'sanity: HMAC signature present pre-pin');
   // Pin via attestArtifactWithRekor
   const fake = fabricateRekorEntry({ logIndex: 222, integratedTime: 1763600000, logID: 'strip-order-logid' });
-  const restore = withFakeFetch(async () => fakeRekorPostResponse(fake));
+  const restore = withFakeFetch(async (url, init) => fakeRekorPostResponse(fake, init?.body));
   t.after(restore);
   await attestArtifactWithRekor(outPath, { url: 'https://fake-rekor.example' });
   // Re-load and run full verifier

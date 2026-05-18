@@ -76,9 +76,16 @@ test('6. KOLM_AIRGAP=1 mentioned at least once', () => {
     'page must surface the KOLM_AIRGAP=1 air-gap toggle');
 });
 
-test('7. NOT YET WIRED framing present for the networked path', () => {
-  assert.match(html, /NOT YET WIRED/,
-    'page must carry the "NOT YET WIRED" honest-scope framing for the networked LLM path');
+test('7. honest scope framing present for the networked path', () => {
+  // W256 copy-scrub removed the literal "NOT YET WIRED" string per user
+  // directive ("NOT AMBER PILL, WE FUCKING SHIP EVERYTHING"). The behavior
+  // the assertion locks in is: page makes the air-gap default explicit and
+  // names that the network path is opt-in, so the reader can audit which
+  // surface their bytes leave on. Match the shipped framing.
+  assert.match(html, /air-gap.*default|deterministic.*default/i,
+    'page must declare the air-gap/deterministic path is the default');
+  assert.match(html, /--network|opt.in/i,
+    'page must declare the networked LLM path is opt-in (e.g. --network)');
 });
 
 test('8. "candidates" or "scaffold" framing surfaces (NOT "labels")', () => {

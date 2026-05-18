@@ -113,3 +113,96 @@ export async function sendBillingFailed({ email, plan }) {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
+
+// ---------------------------------------------------------------------------
+// Wave 253 sec#5 — setup-token flow.
+//
+// Background: pre-W253 the welcome email carried the raw API key in plaintext
+// in the message body AND inside Resend's request log. A leak of EMAIL_FROM's
+// Resend log (or an inbox compromise weeks after onboarding) would surrender
+// every customer key. The setup token replaces that with:
+//
+//   1. Mint at signup time: tok = base64url({apiKeyId, exp}) + '.' + hmac(secret, payload)
+//      The token NEVER carries the raw key, only the apiKeyId opaque handle.
+//   2. Welcome email links to /setup?token=<tok>. The link expires in 30
+//      minutes (configurable via KOLM_SETUP_TOKEN_TTL_SEC). After expiry the
+//      user must request a fresh token via /forgot-key.
+//   3. Browser POSTs the token to /v1/setup/reveal. The backend calls
+//      verifySetupToken, then consumeRawKeyForReveal(apiKeyId) which is a
+//      one-shot in-memory cache populated at signup. After one consume the
+//      key is gone; refreshing the page shows a "key already revealed" error
+//      and the user must rotate.
+//
+// The secret is KOLM_SETUP_SECRET. If the env var is unset we mint a process-
+// local fallback in process.__kolm_setup_secret_fallback so dev still works.
+// ---------------------------------------------------------------------------
+
+import nodeCrypto from 'node:crypto';
+
+const SETUP_TTL_SEC = Number(process.env.KOLM_SETUP_TOKEN_TTL_SEC || 1800);
+
+function getSetupSecret() {
+  if (process.env.KOLM_SETUP_SECRET) return String(process.env.KOLM_SETUP_SECRET);
+  if (!process.__kolm_setup_secret_fallback) {
+    process.__kolm_setup_secret_fallback = nodeCrypto.randomBytes(32).toString('hex');
+  }
+  return process.__kolm_setup_secret_fallback;
+}
+
+function b64urlEncode(buf) {
+  return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function b64urlDecode(s) {
+  s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return Buffer.from(s, 'base64').toString('utf8');
+}
+
+export function mintSetupToken(apiKeyId, opts = {}) {
+  const exp = Date.now() + (opts.ttlSec || SETUP_TTL_SEC) * 1000;
+  const payload = JSON.stringify({ apiKeyId: String(apiKeyId), exp });
+  const head = b64urlEncode(payload);
+  const sig = b64urlEncode(nodeCrypto.createHmac('sha256', getSetupSecret()).update(head).digest());
+  return head + '.' + sig;
+}
+
+export function verifySetupToken(tok) {
+  try {
+    if (typeof tok !== 'string' || tok.indexOf('.') < 0) return null;
+    const [head, sig] = tok.split('.', 2);
+    if (!head || !sig) return null;
+    const expected = b64urlEncode(nodeCrypto.createHmac('sha256', getSetupSecret()).update(head).digest());
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !nodeCrypto.timingSafeEqual(a, b)) return null;
+    const payload = JSON.parse(b64urlDecode(head));
+    if (!payload || typeof payload !== 'object') return null;
+    if (typeof payload.exp !== 'number' || payload.exp < Date.now()) return null;
+    return payload;
+  } catch { return null; }
+}
+
+// In-memory single-use cache: { apiKeyId -> { key, exp } }
+const RAW_KEY_CACHE = new Map();
+
+export function cacheRawKeyForReveal(apiKeyId, rawKey, opts = {}) {
+  if (!apiKeyId || !rawKey) return;
+  const exp = Date.now() + (opts.ttlSec || SETUP_TTL_SEC) * 1000;
+  RAW_KEY_CACHE.set(String(apiKeyId), { key: String(rawKey), exp });
+  // Lazy GC — sweep on every set so the map never grows unbounded.
+  const now = Date.now();
+  for (const [k, v] of RAW_KEY_CACHE) {
+    if (v.exp < now) RAW_KEY_CACHE.delete(k);
+  }
+}
+
+export function consumeRawKeyForReveal(apiKeyId) {
+  if (!apiKeyId) return null;
+  const id = String(apiKeyId);
+  const entry = RAW_KEY_CACHE.get(id);
+  if (!entry) return null;
+  RAW_KEY_CACHE.delete(id);
+  if (entry.exp < Date.now()) return null;
+  return entry.key;
+}

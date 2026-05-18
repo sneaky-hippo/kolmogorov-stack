@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>kolm setup &middot; reveal your API key &middot; kolm.ai · kolm.ai</title>
+<meta name="description" content="One-time setup page. Reveal your kolm.ai API key — never delivered over email in plaintext.">
+<meta name="robots" content="noindex,nofollow">
+<link rel="canonical" href="https://kolm.ai/setup">
+<style>
+  :root { --ink:#faf2e1; --ink-mute:#b8b099; --ink-faint:#6a6354; --bg:#08090c; --bg-elev:#10121a; --accent:#10b981; --warn:#f0b86b; --bad:#ff6b91; --mono:'JetBrains Mono','SFMono-Regular',Consolas,monospace; }
+  html { color-scheme: dark; background: var(--bg); }
+  html[data-theme="light"] { color-scheme: light; --ink:#1a1a1a; --ink-mute:#444; --ink-faint:#7a7a7a; --bg:#f7f4ec; --bg-elev:#fff; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background: var(--bg); color: var(--ink); line-height:1.55; }
+  .wrap { max-width:640px; margin:48px auto 64px; padding:0 24px; }
+  h1 { font-size:28px; margin:0 0 12px; font-weight:600; letter-spacing:-0.01em; }
+  .lede { color: var(--ink-mute); margin: 0 0 32px; }
+  .card { background: var(--bg-elev); border:1px solid #1f2330; border-radius:12px; padding:24px; }
+  html[data-theme="light"] .card { border-color:#e3decf; }
+  .key { font-family: var(--mono); font-size:14px; word-break:break-all; padding:14px 16px; background:#0c0e14; border:1px solid #2a2f3d; border-radius:8px; color: var(--accent); }
+  html[data-theme="light"] .key { background:#f0ecdd; border-color:#d6cfb8; }
+  .btn { display:inline-block; padding:8px 16px; background:var(--accent); color:#000; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-size:14px; }
+  .btn.secondary { background:transparent; color:var(--ink); border:1px solid #2a2f3d; }
+  .row { display:flex; gap:12px; align-items:center; margin-top:16px; }
+  .small { color: var(--ink-faint); font-size:13px; }
+  .warn { color: var(--warn); }
+  .bad  { color: var(--bad); }
+  .ok   { color: var(--accent); }
+  code  { font-family: var(--mono); }
+  .hidden { display:none; }
+</style>
+  <meta property="og:title" content="kolm setup &middot; reveal your API key &middot; kolm.ai · kolm.ai">
+  <meta property="og:description" content="One-time setup page. Reveal your kolm.ai API key — never delivered over email in plaintext.">
+  <meta property="og:image" content="https://kolm.ai/og/setup.svg">
+  <meta property="og:url" content="https://kolm.ai/setup">
+  <meta property="og:type" content="website">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "kolm",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS, Windows (WSL)",
+  "url": "https://kolm.ai/setup",
+  "description": "One-time setup page. Reveal your kolm.ai API key - never delivered over email in plaintext.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "kolm.ai",
+    "@id": "https://kolm.ai/#org"
+  }
+}
+</script>
+</head>
+<body>
+<div class="wrap">
+  <h1>Activate your kolm account</h1>
+  <p class="lede">Your API key is shown once on this page. Save it to your password manager — we store only a hash and cannot recover the raw key. The setup link is one-time-use.</p>
+
+  <div id="loading" class="card">
+    <p>Validating setup token...</p>
+  </div>
+
+  <div id="success" class="card hidden">
+    <p class="small ok">Your API key (copy now):</p>
+    <div id="key" class="key"></div>
+    <div class="row">
+      <button id="copy" class="btn">Copy to clipboard</button>
+      <a href="/account" class="btn secondary">Go to /account</a>
+    </div>
+    <p class="small" style="margin-top:18px">Quickstart: <a href="/quickstart">kolm.ai/quickstart</a> &middot; Docs: <a href="/docs">kolm.ai/docs</a></p>
+  </div>
+
+  <div id="error" class="card hidden">
+    <p class="bad" id="errmsg">Setup link invalid or expired.</p>
+    <p class="small">Setup links expire 30 minutes after signup and can only be used once. If you missed the key:</p>
+    <ul class="small">
+      <li>Sign in at <a href="/account">/account</a> with your email and rotate the key.</li>
+      <li>Or contact <a href="mailto:founders@kolm.ai">founders@kolm.ai</a> for account recovery.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(async function(){
+  var qs = new URLSearchParams(location.search);
+  var token = qs.get('token') || '';
+  var loading = document.getElementById('loading');
+  var ok = document.getElementById('success');
+  var err = document.getElementById('error');
+  var errmsg = document.getElementById('errmsg');
+  function show(el) { loading.classList.add('hidden'); ok.classList.add('hidden'); err.classList.add('hidden'); el.classList.remove('hidden'); }
+  if (!token) { errmsg.textContent = 'No setup token in URL. Open the link from your welcome email.'; show(err); return; }
+  try {
+    var res = await fetch('/v1/account/reveal-key?token=' + encodeURIComponent(token), { method:'GET' });
+    var j = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !j.api_key) {
+      errmsg.textContent = (j && j.hint) || (j && j.error) || 'Setup link invalid or expired.';
+      show(err);
+      return;
+    }
+    document.getElementById('key').textContent = j.api_key;
+    show(ok);
+    document.getElementById('copy').addEventListener('click', function() {
+      try { navigator.clipboard.writeText(j.api_key); this.textContent = 'Copied ✓'; }
+      catch (_) { this.textContent = 'Copy failed — select the key manually'; }
+    });
+  } catch (e) {
+    errmsg.textContent = 'Network error: ' + (e && e.message ? e.message : 'unknown');
+    show(err);
+  }
+})();
+</script>
+</body>
+</html>

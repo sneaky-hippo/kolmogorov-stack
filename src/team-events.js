@@ -32,7 +32,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-export const TEAM_EVENTS_VERSION = 'team-events-v1';
+export const TEAM_EVENTS_VERSION = 'team-events-v2';
 
 // Kinds an event can be. Adding a kind here is a contract change — bump
 // TEAM_EVENTS_VERSION and migrate.
@@ -48,10 +48,29 @@ export const EVENT_KINDS = Object.freeze({
   CAPABILITY_REQUEST: 'capability_request',  // ask for a feature the artifact
                                               // can't currently express
   CONFIG_CHANGE:      'config_change',       // change to comparator / gate
+  REVIEW_DECISION:    'review_decision',     // (W293) a reviewer's decision
+                                              // on another event's review state
 });
 
-// Append-only events have a strict shape. We reject anything else so that
-// a downstream reader can rely on the contract without per-event guards.
+// Review states a (non-review_decision) event can be in. Set on append to
+// 'pending'; mutated by appending a review_decision event referencing the
+// target event's hash. Last-write-wins.
+export const REVIEW_STATES = Object.freeze(['pending', 'approved', 'rejected', 'needs_revision']);
+
+// Per-kind payload schemas (W293). `required` lists payload fields that
+// must be present + non-empty strings (unless typed otherwise via _types).
+// We reject anything else so that downstream readers can rely on the
+// contract without per-event guards.
+export const EVENT_SCHEMAS = Object.freeze({
+  positive:            Object.freeze({ required: ['input', 'output'] }),
+  correction:          Object.freeze({ required: ['input', 'bad_output', 'good_output'] }),
+  regression_flag:     Object.freeze({ required: ['holdout_row_id'] }),
+  drift_observation:   Object.freeze({ required: ['signal'] }),
+  capability_request:  Object.freeze({ required: ['description'] }),
+  config_change:       Object.freeze({ required: ['change'] }),
+  review_decision:     Object.freeze({ required: ['event_hash', 'state', 'reviewer'] }),
+});
+
 const REQUIRED = ['kind', 'actor', 'artifact_version', 'payload'];
 
 function _now() { return new Date().toISOString(); }
@@ -73,6 +92,22 @@ function _validateEvent(event) {
   }
   if (!event.payload || typeof event.payload !== 'object') {
     throw new Error('event.payload must be an object');
+  }
+  // Strict per-kind payload schema (W293).
+  const schema = EVENT_SCHEMAS[event.kind];
+  if (schema && Array.isArray(schema.required)) {
+    for (const f of schema.required) {
+      const v = event.payload[f];
+      if (v === undefined || v === null || v === '') {
+        throw new Error(`event.payload missing required field for kind=${event.kind}: ${f}`);
+      }
+    }
+  }
+  // review_decision payload.state must be in REVIEW_STATES.
+  if (event.kind === EVENT_KINDS.REVIEW_DECISION) {
+    if (!REVIEW_STATES.includes(event.payload.state)) {
+      throw new Error(`unknown review state: ${event.payload.state} (must be one of ${REVIEW_STATES.join(', ')})`);
+    }
   }
 }
 
@@ -132,11 +167,70 @@ export async function append(team, event) {
     payload: event.payload,
     prev_hash: prevHash,
   };
+  // Every non-review_decision event lands in the 'pending' review state
+  // (W293). review_decision events do not themselves have a review state
+  // — they describe one for the event they reference.
+  if (event.kind !== EVENT_KINDS.REVIEW_DECISION) {
+    enriched.review = { state: 'pending', created_at: ts };
+  }
   // The chain hash binds the entire enriched event (minus its own hash field).
   enriched.hash = _shortHash(JSON.stringify(enriched));
 
   await fs.appendFile(file, JSON.stringify(enriched) + '\n', 'utf8');
   return enriched;
+}
+
+// Append a review_decision event for `event_hash`. The decision is the
+// authoritative state for that event from this point forward (last-write-
+// wins). Reviewers can override prior reviewers; the chain is the audit
+// trail. (W293)
+export async function setReview(team, opts = {}) {
+  const { event_hash, state, reviewer, note, artifact_version, actor } = opts;
+  if (!event_hash) throw new Error('setReview: event_hash required');
+  if (!REVIEW_STATES.includes(state)) {
+    throw new Error(`unknown review state: ${state} (must be one of ${REVIEW_STATES.join(', ')})`);
+  }
+  if (!reviewer || typeof reviewer !== 'string') throw new Error('setReview: reviewer required');
+  // Resolve artifact_version from the target event if not supplied.
+  let av = artifact_version;
+  if (!av) {
+    const events = await read(team);
+    const target = events.find(e => e.hash === event_hash);
+    av = target ? target.artifact_version : 'unknown';
+  }
+  const payload = { event_hash, state, reviewer };
+  if (note) payload.note = note;
+  return await append(team, {
+    kind: EVENT_KINDS.REVIEW_DECISION,
+    actor: actor || reviewer,
+    artifact_version: av,
+    payload,
+  });
+}
+
+// Walk the chain forward and return the latest review_decision for
+// event_hash. Returns {state, reviewer, note?, decision_hash?, timestamp?}.
+// Defaults to the event's own .review (typically `pending`) if no
+// decisions have landed yet. (W293)
+export async function getReview(team, event_hash) {
+  const events = await read(team);
+  const target = events.find(e => e.hash === event_hash);
+  if (!target) return null;
+  let latest = target.review || { state: 'pending', created_at: target.timestamp };
+  let latestDecisionHash = null;
+  for (const e of events) {
+    if (e.kind !== EVENT_KINDS.REVIEW_DECISION) continue;
+    if (!e.payload || e.payload.event_hash !== event_hash) continue;
+    latest = {
+      state: e.payload.state,
+      reviewer: e.payload.reviewer,
+      note: e.payload.note,
+      created_at: e.timestamp,
+    };
+    latestDecisionHash = e.hash;
+  }
+  if (latestDecisionHash) latest.decision_hash = latestDecisionHash;
+  return latest;
 }
 
 // Read events from the team's log. Filters: kind, since (ISO timestamp),
@@ -181,24 +275,75 @@ export async function chain(team) {
 
 // Export learning events as seeds.jsonl rows. Only POSITIVE and CORRECTION
 // kinds contribute, and only when the payload carries the canonical
-// {input, output} pair (or legacy {prompt, completion}, which we normalize).
+// fields per the W293 strict schema (positive: {input, output};
+// correction: {input, bad_output, good_output}).
 //
-// The artifact compile path uses this to fold a team's accumulated learning
-// into the next training set without the team having to manage a separate
-// seeds.jsonl by hand.
+// Review gate (W294):
+//   - by default ONLY events whose latest review_decision is 'approved'
+//     export as seeds. Pending/rejected/needs_revision events are dropped.
+//   - opts.include_pending=true keeps pending (for audit/debug dumps);
+//     it still drops rejected + needs_revision.
+//   - every emitted seed carries source_event_hash + review_decision_hash
+//     so the verifier can prove the approval link from the seed back to
+//     the chained event log.
+//
+// The artifact compile path uses this to fold a team's accumulated
+// reviewed learning into the next training set without the team having to
+// manage a separate seeds.jsonl by hand.
 export async function exportSeeds(team, opts = {}) {
-  const events = await read(team, { kinds: [EVENT_KINDS.POSITIVE, EVENT_KINDS.CORRECTION], ...opts });
+  const includePending = opts.include_pending === true;
+  // Pull the full log once so we can also resolve review decisions per
+  // event in a single pass (the chain is small per team).
+  const all = await read(team);
+  // Pre-compute latest review state per event_hash from the full chain.
+  const latestReview = new Map();
+  for (const e of all) {
+    if (e.kind === EVENT_KINDS.REVIEW_DECISION && e.payload && e.payload.event_hash) {
+      latestReview.set(e.payload.event_hash, {
+        state: e.payload.state,
+        decision_hash: e.hash,
+        reviewer: e.payload.reviewer,
+      });
+    }
+  }
+  let events = all.filter(e => e.kind === EVENT_KINDS.POSITIVE || e.kind === EVENT_KINDS.CORRECTION);
+  if (opts.since) events = events.filter(e => e.timestamp >= opts.since);
+  if (opts.artifact_version) events = events.filter(e => e.artifact_version === opts.artifact_version);
+  if (opts.actor) events = events.filter(e => e.actor === opts.actor);
   const rows = [];
   for (const e of events) {
-    const p = e.payload;
+    const review = latestReview.get(e.hash) || (e.review || { state: 'pending' });
+    if (review.state === 'rejected' || review.state === 'needs_revision') continue;
+    if (review.state === 'pending' && !includePending) continue;
+    if (review.state !== 'approved' && review.state !== 'pending') continue;
+    const p = e.payload || {};
     let input, output;
-    if (p && typeof p.input === 'string') { input = p.input; output = p.output; }
-    else if (p && typeof p.prompt === 'string') { input = p.prompt; output = p.completion; }
+    if (e.kind === EVENT_KINDS.CORRECTION) {
+      if (typeof p.input === 'string' && typeof p.good_output === 'string') {
+        input = p.input; output = p.good_output;
+      }
+    } else {
+      if (typeof p.input === 'string' && typeof p.output === 'string') {
+        input = p.input; output = p.output;
+      } else if (typeof p.prompt === 'string' && typeof p.completion === 'string') {
+        input = p.prompt; output = p.completion;
+      }
+    }
     if (typeof input !== 'string' || typeof output !== 'string') continue;
     const tags = Array.isArray(p.tags) ? p.tags.slice() : [];
     tags.push(`team:${team}`);
     tags.push(`event:${e.kind}`);
-    rows.push({ input, output, tags, source_seq: e.seq, source_event_hash: e.hash });
+    tags.push(`review:${review.state}`);
+    const row = {
+      input,
+      output,
+      tags,
+      source_seq: e.seq,
+      source_event_hash: e.hash,
+      review_state: review.state,
+    };
+    if (review.decision_hash) row.review_decision_hash = review.decision_hash;
+    rows.push(row);
   }
   return rows;
 }
@@ -253,7 +398,11 @@ export async function _resetForTest(team) {
 export default {
   TEAM_EVENTS_VERSION,
   EVENT_KINDS,
+  EVENT_SCHEMAS,
+  REVIEW_STATES,
   append,
+  setReview,
+  getReview,
   read,
   chain,
   exportSeeds,

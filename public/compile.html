@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>kolm compile ·turn a task spec into a signed .kolm artifact</title>
+<title>kolm compile ·turn a task spec into a signed .kolm artifact · kolm.ai</title>
 <meta name="description" content="kolm compile. One command turns your task into a signed .kolm artifact. Run it on a laptop, a phone, or behind your VPC.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -370,6 +370,7 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"kolm","operatingSystem":"macOS, Linux, Windows, iOS, Android","applicationCategory":"DeveloperApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
 </head>
 <body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
 
 <header class="site">
   <div class="wrap row">
@@ -457,6 +458,61 @@
           <input id="mc-corpus" name="corpus_namespace" type="text" placeholder="tickets-2026">
         </label>
       </div>
+      <div class="mc-row">
+        <label class="mc-field">
+          <span class="mc-lbl">Recipe class</span>
+          <select id="mc-class" name="recipe_class">
+            <option value="rule">rule ·deterministic, no model</option>
+            <option value="synthesized_rule">synthesized_rule ·LLM-drafted, frozen</option>
+            <option value="compiled_rule">compiled_rule ·rule fused into small base</option>
+            <option value="distilled_model" selected>distilled_model ·full distillation</option>
+          </select>
+        </label>
+        <label class="mc-field">
+          <span class="mc-lbl">Hardware tier</span>
+          <select id="mc-tier" name="hw_tier">
+            <option value="auto" selected>auto ·detect</option>
+            <option value="cpu-server">cpu-server</option>
+            <option value="3090">3090</option>
+            <option value="4090">4090</option>
+            <option value="5090">5090</option>
+            <option value="m4-max-128">m4-max-128</option>
+            <option value="a100-80">a100-80</option>
+            <option value="h100-80">h100-80</option>
+            <option value="h200-141">h200-141</option>
+            <option value="dgx-spark">dgx-spark</option>
+            <option value="m3-ultra-512">m3-ultra-512</option>
+          </select>
+        </label>
+      </div>
+      <div class="mc-row">
+        <label class="mc-field">
+          <span class="mc-lbl">Output target</span>
+          <select id="mc-target" name="output_target">
+            <option value="gguf" selected>gguf ·llama.cpp</option>
+            <option value="onnx">onnx</option>
+            <option value="safetensors">safetensors</option>
+            <option value="coreml">coreml ·apple</option>
+            <option value="mlx">mlx ·apple silicon</option>
+            <option value="executorch">executorch ·pytorch edge</option>
+            <option value="tensorrt">tensorrt ·nvidia</option>
+            <option value="native-c">native-c</option>
+            <option value="native-rust">native-rust</option>
+            <option value="wasm">wasm</option>
+          </select>
+        </label>
+        <label class="mc-field">
+          <span class="mc-lbl">Multi-device targets <em>cmd/ctrl-click for multiple</em></span>
+          <select id="mc-multi-device" name="multi_device" multiple size="4">
+            <option value="phone-ios">phone-ios</option>
+            <option value="phone-android">phone-android</option>
+            <option value="laptop-cpu" selected>laptop-cpu</option>
+            <option value="browser-wasm">browser-wasm</option>
+            <option value="edge-jetson">edge-jetson</option>
+            <option value="server-cuda" selected>server-cuda</option>
+          </select>
+        </label>
+      </div>
       <label class="mc-field">
         <span class="mc-lbl">Deploy webhook <em>optional ·https only ·Vercel Deploy Hook or any webhook</em></span>
         <input id="mc-hook" name="deploy_hook" type="url" pattern="https://.*" placeholder="https://api.vercel.com/v1/integrations/deploy/prj_...">
@@ -468,6 +524,18 @@
       </div>
     </form>
     <div id="mc-result" class="mc-result" hidden></div>
+    <script>
+      // K_AXIS_LABELS - human-readable labels for the 5 K-score axes used in
+      // the result render. Surfaced inline so the picker form and the result
+      // panel share a single vocabulary.
+      window.K_AXIS_LABELS = {
+        A: 'Accuracy',
+        S: 'Stability',
+        L: 'Latency',
+        C: 'Compliance',
+        V: 'Verifier coverage',
+      };
+    </script>
   </div>
 </section>
 

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>The four kolm recipe classes · evidenced taxonomy</title>
+<title>The four kolm recipe classes · evidenced taxonomy · kolm.ai</title>
 <meta name="description" content="Every .kolm artifact declares its class: rule, synthesized_rule, compiled_rule, or distilled_model. The verifier rejects misdeclared artifacts before signing.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -20,20 +20,43 @@
 <link rel="stylesheet" href="/brand-refresh.css">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="canonical" href="https://kolm.ai/taxonomy">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "kolm",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS, Windows (WSL)",
+  "url": "https://kolm.ai/taxonomy",
+  "description": "Every .kolm artifact declares its class: rule, synthesized_rule, compiled_rule, or distilled_model. The verifier rejects misdeclared artifacts before signing.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "kolm.ai",
+    "@id": "https://kolm.ai/#org"
+  }
+}
+</script>
 </head>
 <body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
 
 <header class="site-header">
   <div class="wrap">
     <a href="/" class="brand"><span>kolm</span></a>
+    <!-- KOLM_NAV_BEGIN (W221) -->
     <nav class="site-nav" aria-label="Primary">
-      <a href="/use-cases">Use cases</a>
-      <a href="/training">Training</a>
+      <a href="/product">Product</a>
+      <a href="/models">Models</a>
       <a href="/docs">Docs</a>
-      <a href="/research">Research</a>
-      <a href="/enterprise">Enterprise</a>
       <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
     </nav>
+    <!-- KOLM_NAV_END (W221) -->
     <div class="site-actions">
       <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button><button type="button" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
       <a href="/signin">sign in</a>
@@ -161,6 +184,19 @@
         </div>
       </article>
 
+      <article class="tax-card workflow">
+        <span class="tag">class · workflow_capsule</span>
+        <h3>Workflow capsule</h3>
+        <p class="tax-one">A graph of recipes (LLM / tool / branch / artifact nodes) compiled to a frozen, replayable workflow IR.</p>
+        <p class="tax-evidence">An artifact whose execution is described by a workflow IR (<code>src/workflow-ir.js</code>, spec <code>wir-v1</code>). The IR is a DAG of <code>input</code> / <code>llm</code> / <code>tool</code> / <code>branch</code> / <code>artifact</code> / <code>const</code> / <code>output</code> nodes. The artifact carries the IR alongside a seed cache of <code>(input -&gt; output)</code> pairs captured at compile time; the runtime is cache-first (replays cached outputs byte-for-byte when input matches a seed) and fail-loud (throws if it would need to call an executor but no executor is wired). The artifact-level <code>workflow_ir_hash</code> MUST match the IR shape carried in the zip; verifiers reject any mismatch. Source: traced from a real production session (<code>kolm capture &rarr; kolm compile --ir</code>) or hand-authored.</p>
+        <div class="tax-meta">
+          <div>teacher required: <b>no</b></div>
+          <div>weights required: <b>no</b></div>
+          <div>quantization: <b>not applicable</b></div>
+          <div>runtime: <b>workflow-IR interpreter + caller-supplied node executors</b></div>
+        </div>
+      </article>
+
     </div>
   </section>
 
@@ -183,6 +219,7 @@
           <tr><td>synthesized_rule</td> <td class="yes">required</td> <td class="no">&minus;</td> <td class="no">&minus;</td> <td class="no">&minus;</td> <td>1</td></tr>
           <tr><td>compiled_rule</td>    <td class="no">&minus;</td> <td class="no">&minus;</td> <td class="no">&minus;</td> <td class="no">&minus;</td> <td>2</td></tr>
           <tr><td>distilled_model</td>  <td class="yes">required</td> <td class="yes">required</td> <td class="yes">applicable</td> <td class="yes">applicable</td> <td>3</td></tr>
+          <tr><td>workflow_capsule</td> <td class="no">&minus;</td> <td class="no">&minus;</td> <td class="no">&minus;</td> <td class="no">&minus;</td> <td>4</td></tr>
         </tbody>
       </table>
       <p class="tax-cli-cap" style="margin-top:14px">An artifact bundling multiple recipes rolls up to the <b>MAX class</b> over its recipes by severity rank. One <code>distilled_model</code> recipe in a bundle of seven promotes the artifact to <code>distilled_model</code> because the verifier must check for weights.</p>
@@ -257,21 +294,25 @@ evals:      11 cases</pre>
     <div class="wrap">
       <h2>Class decision tree</h2>
       <p class="tree-cap">When you do not declare <code>recipe.class</code> explicitly, kolm walks this tree. Source of truth: <code>inferRecipeClass()</code> in <code>src/recipe-class.js</code>. The walk is most-specific first &mdash; a recipe with weights is never demoted to a rule even if it also carries DSL.</p>
-<pre class="tree"><span class="step">1.</span> Recipe has <span class="field">weights_file</span> / <span class="field">gguf_file</span> / <span class="field">onnx_file</span>?
+<pre class="tree"><span class="step">1.</span> Recipe has <span class="field">workflow_ir</span> / <span class="field">workflow_ir_hash</span>?
+   <span class="yes-line">&#9492;&#9472; YES &rarr;</span> <span class="verdict">workflow_capsule</span>     (rank 4 &middot; IR shape required &middot; lineage.workflow_ir_hash verified)
+   <span class="no-line">&#9492;&#9472; NO  &rarr; continue</span>
+
+<span class="step">2.</span> Recipe has <span class="field">weights_file</span> / <span class="field">gguf_file</span> / <span class="field">onnx_file</span>?
    <span class="yes-line">&#9492;&#9472; YES &rarr;</span> <span class="verdict">distilled_model</span>      (rank 3 &middot; weights required &middot; non-empty model_pointer)
    <span class="no-line">&#9492;&#9472; NO  &rarr; continue</span>
 
-<span class="step">2.</span> Recipe has <span class="field">compiled_targets</span> / <span class="field">native_bin</span>?
+<span class="step">3.</span> Recipe has <span class="field">compiled_targets</span> / <span class="field">native_bin</span>?
    <span class="yes-line">&#9492;&#9472; YES &rarr;</span> <span class="verdict">compiled_rule</span>        (rank 2 &middot; toolchain pin &middot; binary_hash verifiable)
    <span class="no-line">&#9492;&#9472; NO  &rarr; continue</span>
 
-<span class="step">3.</span> Recipe has <span class="field">synthesized_by</span> / <span class="field">teacher_vendor</span>?
+<span class="step">4.</span> Recipe has <span class="field">synthesized_by</span> / <span class="field">teacher_vendor</span>?
    <span class="yes-line">&#9492;&#9472; YES &rarr;</span> <span class="verdict">synthesized_rule</span>     (rank 1 &middot; teacher attribution required)
    <span class="no-line">&#9492;&#9472; NO  &rarr; continue</span>
 
-<span class="step">4.</span> Default
+<span class="step">5.</span> Default
    <span class="yes-line">&#9492;&#9472;       &rarr;</span> <span class="verdict">rule</span>                 (rank 0 &middot; floor &middot; hand-authored JS, deterministic)</pre>
-      <p class="tree-cap" style="margin-top:14px">An artifact bundling multiple recipes rolls up under <code>CLASS_RANK</code> (rule=0, synthesized_rule=1, compiled_rule=2, distilled_model=3). The artifact_class is the MAX of its recipe classes &mdash; see <code>rollupArtifactClass()</code>.</p>
+      <p class="tree-cap" style="margin-top:14px">An artifact bundling multiple recipes rolls up under <code>CLASS_RANK</code> (rule=0, synthesized_rule=1, compiled_rule=2, distilled_model=3, workflow_capsule=4). The artifact_class is the MAX of its recipe classes &mdash; see <code>rollupArtifactClass()</code>.</p>
     </div>
   </section>
 
@@ -297,8 +338,12 @@ evals:      11 cases</pre>
           <p class="rej-cond"><b>Missing teacher attribution.</b> <code>manifest.training</code> records neither <code>teacher_vendor</code> nor <code>teacher_model</code> nor <code>synthesized_by</code>. Synthesized rules must name which teacher emitted the source.</p>
         </div>
         <div class="rej-card">
+          <div class="rej-class">artifact_class &middot; workflow_capsule</div>
+          <p class="rej-cond"><b>Missing workflow_ir_hash.</b> <code>manifest.lineage.workflow_ir_hash</code> is absent. A workflow_capsule artifact must carry the IR shape hash so the runtime can prove the IR has not been tampered with between sign and replay.</p>
+        </div>
+        <div class="rej-card">
           <div class="rej-class">artifact_class &middot; any</div>
-          <p class="rej-cond"><b>Unknown class.</b> <code>manifest.artifact_class</code> is not one of <code>rule</code> / <code>synthesized_rule</code> / <code>compiled_rule</code> / <code>distilled_model</code>. The enum is frozen in <code>RECIPE_CLASSES</code>.</p>
+          <p class="rej-cond"><b>Unknown class.</b> <code>manifest.artifact_class</code> is not one of <code>rule</code> / <code>synthesized_rule</code> / <code>compiled_rule</code> / <code>distilled_model</code> / <code>workflow_capsule</code>. The enum is frozen in <code>RECIPE_CLASSES</code>.</p>
         </div>
         <div class="rej-card">
           <div class="rej-class">artifact_class &middot; rule</div>

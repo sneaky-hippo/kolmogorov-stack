@@ -87,18 +87,26 @@ function stripCommentsAndBlanks(text) {
 // may likewise be any JSON value.
 export function normalizeRow(raw, opts = {}) {
   if (!raw || typeof raw !== 'object') return null;
-  // Canonical kolm format: {input, output|expected, tags?, id?, params?}.
+  // Canonical kolm format: {input, output|expected, tags?, id?, params?, metadata?}.
   // Input must be a non-null primitive or object; expected must be defined.
+  //
+  // Wave 284 — when raw.metadata is present, its custom keys (e.g.,
+  // member_id / claim_id / case_id) are preserved so the group-aware split
+  // can resolve them at split time. Known fields (id, tags, params,
+  // source_format) take precedence at the top-level shape.
   if (raw.input !== undefined && raw.input !== null) {
     const expected = raw.expected !== undefined ? raw.expected : raw.output;
     if (expected === undefined) return null;
+    const rawMeta = (raw.metadata && typeof raw.metadata === 'object' && !Array.isArray(raw.metadata)) ? raw.metadata : {};
     return {
       input: raw.input,
       expected,
       metadata: {
-        id: raw.id || null,
-        tags: Array.isArray(raw.tags) ? raw.tags.slice() : [],
-        params: raw.params || null,
+        ...rawMeta,
+        id: raw.id != null ? raw.id : (rawMeta.id != null ? rawMeta.id : null),
+        tags: Array.isArray(raw.tags) ? raw.tags.slice()
+              : (Array.isArray(rawMeta.tags) ? rawMeta.tags.slice() : []),
+        params: raw.params || rawMeta.params || null,
         source_format: 'canonical',
         ...(opts.extra_metadata || {}),
       },
@@ -106,12 +114,15 @@ export function normalizeRow(raw, opts = {}) {
   }
   // Legacy OpenAI fine-tune format: {prompt, completion}
   if (typeof raw.prompt === 'string' && raw.completion != null) {
+    const rawMeta = (raw.metadata && typeof raw.metadata === 'object' && !Array.isArray(raw.metadata)) ? raw.metadata : {};
     return {
       input: raw.prompt,
       expected: raw.completion,
       metadata: {
-        id: raw.id || null,
-        tags: Array.isArray(raw.tags) ? raw.tags.slice() : [],
+        ...rawMeta,
+        id: raw.id != null ? raw.id : (rawMeta.id != null ? rawMeta.id : null),
+        tags: Array.isArray(raw.tags) ? raw.tags.slice()
+              : (Array.isArray(rawMeta.tags) ? rawMeta.tags.slice() : []),
         params: null,
         source_format: 'legacy_prompt_completion',
         ...(opts.extra_metadata || {}),
@@ -180,6 +191,26 @@ function canonicalInput(v) {
 // Deterministic 80/20 split by sha256(canonicalInput(row.input) + split_seed).
 // Stable across machines, reproducible by verifier. Returns { train, holdout,
 // split_seed, holdout_ratio }.
+// Wave 284 — extract the group value for a row given a group_key like
+// 'member_id' or 'claim_id' or 'case_id'. Two sources are honored:
+//   1. row.metadata[group_key] (canonical seed-author shape)
+//   2. row.metadata.tags entries that look like 'group_key:value'
+// Returns null if no group value is found for this row, in which case the
+// row falls back to per-row bucketing (its own input string is the bucket).
+export function extractGroupValue(row, group_key) {
+  if (!group_key) return null;
+  const md = row && row.metadata;
+  if (!md) return null;
+  if (md[group_key] != null) return String(md[group_key]);
+  if (Array.isArray(md.tags)) {
+    const prefix = group_key + ':';
+    for (const t of md.tags) {
+      if (typeof t === 'string' && t.startsWith(prefix)) return t.slice(prefix.length);
+    }
+  }
+  return null;
+}
+
 export function splitSeeds(rows, opts = {}) {
   const split_seed = opts.split_seed || DEFAULT_SPLIT_SEED;
   const holdout_ratio = typeof opts.holdout_ratio === 'number' ? opts.holdout_ratio : DEFAULT_HOLDOUT_RATIO;
@@ -188,20 +219,60 @@ export function splitSeeds(rows, opts = {}) {
   }
   if (!Array.isArray(rows)) throw new Error('rows must be an array');
 
+  const group_key = typeof opts.group_key === 'string' && opts.group_key ? opts.group_key : null;
   const buckets = 1000;
   const cutoff = Math.floor(holdout_ratio * buckets);
 
-  const train = [];
-  const holdout = [];
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const h = sha256(canonicalInput(row.input) + ' ' + split_seed);
+  // Wave 284 — when group_key is set, route every row whose metadata
+  // resolves a group value through a per-group bucket assignment so all
+  // rows sharing the value land in the same partition. Rows that don't
+  // resolve a group value (no member_id / claim_id / case_id) fall back to
+  // per-row hashing — this is the correct behavior for mixed corpora.
+  const groupAssignment = new Map(); // group_value -> 'train' | 'holdout'
+  function assignGroup(groupValue) {
+    if (groupAssignment.has(groupValue)) return groupAssignment.get(groupValue);
+    const h = sha256(groupValue + ' ' + split_seed);
     const bucket = parseInt(h.slice(0, 8), 16) % buckets;
-    if (bucket < cutoff) holdout.push(row);
-    else train.push(row);
+    const partition = bucket < cutoff ? 'holdout' : 'train';
+    groupAssignment.set(groupValue, partition);
+    return partition;
   }
 
-  return { train, holdout, split_seed, holdout_ratio };
+  const train = [];
+  const holdout = [];
+  const trainHashes = new Set();
+  const holdoutHashes = new Set();
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const inputHash = sha256(canonicalInput(row.input));
+    let partition;
+    if (group_key) {
+      const gv = extractGroupValue(row, group_key);
+      if (gv != null) {
+        partition = assignGroup(gv);
+      } else {
+        const h = sha256(canonicalInput(row.input) + ' ' + split_seed);
+        const bucket = parseInt(h.slice(0, 8), 16) % buckets;
+        partition = bucket < cutoff ? 'holdout' : 'train';
+      }
+    } else {
+      const h = sha256(canonicalInput(row.input) + ' ' + split_seed);
+      const bucket = parseInt(h.slice(0, 8), 16) % buckets;
+      partition = bucket < cutoff ? 'holdout' : 'train';
+    }
+    if (partition === 'holdout') {
+      holdout.push(row);
+      holdoutHashes.add(inputHash);
+    } else {
+      train.push(row);
+      trainHashes.add(inputHash);
+    }
+  }
+
+  let overlap_count = 0;
+  for (const h of trainHashes) if (holdoutHashes.has(h)) overlap_count++;
+
+  return { train, holdout, split_seed, holdout_ratio, overlap_count, group_key };
 }
 
 // Hash an array of normalized rows. The hash is over the canonical-JSON
@@ -237,7 +308,18 @@ export function detectDuplicateInputs(rows) {
 // to flag near-duplicate text that would leak from train into holdout even
 // when the input hash differs.
 function jaccardBigrams(a, b) {
-  const tokens = (s) => String(s).toLowerCase().split(/\s+/).filter(Boolean);
+  // Object inputs (e.g., {text: 'foo'}) stringify to '[object Object]' under
+  // String() — every row would tokenize identically and the detector would
+  // falsely flag every pair as near-duplicate. Canonicalize via JSON for
+  // objects, then tokenize on non-word boundaries so JSON punctuation
+  // ({},:,") doesn't dominate the bigram space.
+  const flatten = (v) => {
+    if (v == null) return '';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+    try { return JSON.stringify(v); } catch { return String(v); }
+  };
+  const tokens = (s) => flatten(s).toLowerCase().split(/[^a-z0-9_]+/).filter(Boolean);
   const bigrams = (toks) => {
     const set = new Set();
     for (let i = 0; i < toks.length - 1; i++) set.add(toks[i] + ' ' + toks[i + 1]);
@@ -245,7 +327,8 @@ function jaccardBigrams(a, b) {
   };
   const A = bigrams(tokens(a));
   const B = bigrams(tokens(b));
-  if (A.size === 0 && B.size === 0) return 1;
+  if (A.size === 0 && B.size === 0) return 0;
+  if (A.size === 0 || B.size === 0) return 0;
   let inter = 0;
   for (const x of A) if (B.has(x)) inter++;
   return inter / (A.size + B.size - inter);
@@ -255,11 +338,20 @@ function jaccardBigrams(a, b) {
 // from row.metadata.tags (e.g., a member_id or claim_id tag) so two rows
 // referring to the same underlying entity can be flagged even with different
 // surface text. Returns null if no grouping signal found.
-function groupingKey(row) {
+//
+// Wave 284 — when an explicit `group_key` is supplied (e.g., 'member_id'),
+// the function returns just that group's value so the leakage check matches
+// what splitSeeds enforces. Without an explicit key the function falls back
+// to picking the first tag that looks like an id, which is the pre-W284
+// best-effort behavior.
+function groupingKey(row, group_key) {
+  if (group_key) {
+    const v = extractGroupValue(row, group_key);
+    return v ? group_key + ':' + String(v).toLowerCase() : null;
+  }
   const tags = (row.metadata && row.metadata.tags) || [];
   for (const t of tags) {
     if (typeof t !== 'string') continue;
-    // Tags that look like ids ("member_id:12345", "claim:c-001")
     if (/^[a-z_]+:[a-z0-9_-]+$/i.test(t)) return t.toLowerCase();
   }
   return null;
@@ -299,15 +391,18 @@ export function leakageReport(train, holdout, opts = {}) {
     }
   }
 
-  // Grouping-key overlap
+  // Grouping-key overlap. When the caller supplied a specific group_key
+  // (Wave 284), this is the exact key the splitter enforced; otherwise we
+  // fall back to picking the first tag that looks like an id.
+  const explicit_group_key = typeof opts.group_key === 'string' && opts.group_key ? opts.group_key : null;
   const trainGroups = new Set();
   for (const r of train) {
-    const g = groupingKey(r);
+    const g = groupingKey(r, explicit_group_key);
     if (g) trainGroups.add(g);
   }
   const groupedOverlap = [];
   holdout.forEach((r, i) => {
-    const g = groupingKey(r);
+    const g = groupingKey(r, explicit_group_key);
     if (g && trainGroups.has(g)) groupedOverlap.push({ holdout_index: i, grouping_key: g });
   });
 
@@ -344,7 +439,7 @@ export function classifyEvalSource(seedsPath, rows) {
 
 // Convenience wrapper: load + split + leakage-report in one call. Used by
 // spec-compile.js and the CLI compile path.
-export function prepareSeedSplit({ seedsPath, split_seed, holdout_ratio, task, cwd } = {}) {
+export function prepareSeedSplit({ seedsPath, split_seed, holdout_ratio, task, cwd, group_key } = {}) {
   const resolved = resolveSeedsPath({ explicitPath: seedsPath, task, cwd });
   if (!resolved) return null;
   const loaded = loadSeeds(resolved);
@@ -367,13 +462,14 @@ export function prepareSeedSplit({ seedsPath, split_seed, holdout_ratio, task, c
       leakage_report_hash: null,
       source_skipped: loaded.skipped,
       source_format_mix: { canonical: 0, legacy_prompt_completion: 0 },
+      group_key: group_key || null,
     };
   }
-  const sp = splitSeeds(loaded.rows, { split_seed, holdout_ratio });
+  const sp = splitSeeds(loaded.rows, { split_seed, holdout_ratio, group_key });
   const train_hash = hashSeeds(sp.train);
   const holdout_hash = hashSeeds(sp.holdout);
   const duplicates = detectDuplicateInputs(loaded.rows);
-  const report = leakageReport(sp.train, sp.holdout);
+  const report = leakageReport(sp.train, sp.holdout, { group_key });
   const leakage_report_hash = sha256(canonicalJson(report));
   const eval_source = classifyEvalSource(resolved, loaded.rows);
 
@@ -401,6 +497,7 @@ export function prepareSeedSplit({ seedsPath, split_seed, holdout_ratio, task, c
     leakage_report_hash,
     source_skipped: loaded.skipped,
     source_format_mix: format_mix,
+    group_key: group_key || null,
   };
 }
 

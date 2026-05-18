@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>How to compile a HIPAA-compliant AI from your captured prompts · kolm.ai</title>
+<meta name="description" content="A practical walkthrough for compliance teams: turning captured GPT-class traffic into a HIPAA-compliant local artifact that never leaves the covered entity's network. PHI redaction, BAA scope, USCDI normalization, receipt-chain audit trail, and the kolm verify command auditors care about.">
+<meta name="keywords" content="HIPAA AI, HIPAA compliant AI, on-device PHI, kolm.ai, ai compiler healthcare, USCDI, BAA AI, captured prompts to local model">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta name="author" content="kolm.ai">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
+<meta property="og:site_name" content="kolm.ai">
+<meta property="og:title" content="How to compile a HIPAA-compliant AI from your captured prompts">
+<meta property="og:description" content="Turning captured GPT-class traffic into a HIPAA-compliant local artifact that never leaves the covered entity's network.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/articles/hipaa-ai-from-prompts">
+<meta property="og:image" content="https://kolm.ai/og/articles-hipaa-ai-from-prompts.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="HIPAA-compliant AI from captured prompts · kolm.ai">
+<meta name="twitter:description" content="From captured production traffic to a regulated local artifact, step by step.">
+<meta name="twitter:image" content="https://kolm.ai/og/articles-hipaa-ai-from-prompts.svg">
+<link rel="canonical" href="https://kolm.ai/articles/hipaa-ai-from-prompts">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://kolm.ai/articles/hipaa-ai-from-prompts#article",
+      "headline": "How to compile a HIPAA-compliant AI from your captured prompts",
+      "description": "Turning captured GPT-class traffic into a HIPAA-compliant local artifact that never leaves the covered entity's network.",
+      "author": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "publisher": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "image": "https://kolm.ai/og/articles-hipaa-ai-from-prompts.svg",
+      "datePublished": "2026-05-18",
+      "dateModified": "2026-05-18",
+      "mainEntityOfPage": "https://kolm.ai/articles/hipaa-ai-from-prompts",
+      "articleSection": "Compliance",
+      "keywords": "HIPAA, on-device AI, PHI redaction, USCDI, BAA, ai compiler"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm.ai", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "Articles", "item": "https://kolm.ai/articles" },
+        { "@type": "ListItem", "position": 3, "name": "HIPAA AI from captured prompts", "item": "https://kolm.ai/articles/hipaa-ai-from-prompts" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#a8b0bb;--ink-faint:#5a6471;--bg:#0b0d10;--bg-elev:#11151b;--accent:#10b981;--warn:#f0b86b;--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',system-ui,sans-serif}
+html[data-theme="light"]{--ink:#1a1d22;--ink-mute:#4b5260;--ink-faint:#7a818c;--bg:#f7f4ec;--bg-elev:#fff}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.65}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+header.site{position:sticky;top:0;background:var(--bg);border-bottom:1px solid rgba(255,255,255,.06);z-index:50}
+header.site .wrap{display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;padding:14px 24px}
+header.site .logo{font-family:var(--mono);font-weight:600;letter-spacing:1.2px;color:var(--ink);font-size:18px}
+header.site nav a{margin-left:24px;color:var(--ink-mute);font-size:14px}
+header.site nav a:hover{color:var(--ink)}
+main{max-width:760px;margin:0 auto;padding:56px 24px 96px}
+h1{font-size:42px;line-height:1.15;letter-spacing:-1.2px;font-weight:680;margin:0 0 12px}
+h2{font-size:26px;line-height:1.25;letter-spacing:-0.4px;font-weight:640;margin:48px 0 14px}
+h3{font-size:19px;line-height:1.35;font-weight:600;margin:28px 0 10px}
+p{margin:0 0 16px}.lede{font-size:19px;color:var(--ink-mute);margin:0 0 28px}
+ul,ol{padding-left:22px;margin:0 0 16px}li{margin:6px 0}
+code{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:2px 6px;border-radius:4px}
+pre{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:16px 20px;border-radius:8px;overflow-x:auto;line-height:1.55}
+.warn{background:rgba(240,184,107,.08);border-left:3px solid var(--warn);padding:14px 18px;border-radius:6px;font-size:14px;color:var(--ink-mute);margin:20px 0}
+.muted{color:var(--ink-faint);font-size:14px}
+footer{max-width:1080px;margin:0 auto;padding:32px 24px;color:var(--ink-faint);font-size:13px;border-top:1px solid rgba(255,255,255,.06)}
+@media (max-width:560px){main{padding:32px 18px 64px}h1{font-size:30px}h2{font-size:22px}}
+</style>
+</head>
+<body>
+<a href="#main" style="position:absolute;left:-9999px" onfocus="this.style.cssText='position:fixed;top:8px;left:8px;background:#111;color:#fff;padding:8px 12px;border-radius:6px;z-index:100'">Skip to content</a>
+<header class="site"><div class="wrap"><a class="logo" href="/">kolm.ai</a><nav><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav></div></header>
+<main id="main">
+<h1>How to compile a HIPAA-compliant AI from your captured prompts</h1>
+<p class="lede">A practical walkthrough for compliance teams. From captured GPT-class production traffic to a local artifact that never leaves the covered entity's network, with PHI redaction, USCDI normalization, BAA scope, and a receipt-chain audit trail auditors can verify offline.</p>
+
+<h2>The compliance problem with hosted endpoints</h2>
+<p>A hosted LLM (OpenAI, Anthropic, Google) is a covered service that touches PHI on every request. Compliance teams have to negotiate a BAA, scope the data path, audit retention, audit subprocessors, and accept that the model can change under them without warning. Even with the BAA in place, the data path crosses your network boundary on every inference call. For some classes of PHI (Part 2 SUD records, mental health notes, certain CMS-managed records) that crossing is itself the compliance risk.</p>
+<p>An AI compiler resolves the boundary problem by changing the topology. The captured prompts are used as training data once, against a teacher model that lives on your side of the boundary or that you treat as a one-shot teacher you sign a narrow BAA with. The compile step emits a local artifact. After the compile finishes, inference never leaves the covered entity's network. The BAA scope shrinks to "the corpus-capture window" instead of "every production call forever".</p>
+
+<h2>The four-step compile flow for a regulated workload</h2>
+<ol>
+<li><b>Capture with redaction.</b> Run <code>kolm capture --redactor=phi-redactor.kolm</code> against your application. The redactor is itself a compiled artifact (we ship one trained on i2b2/n2c2 PHI corpora). It runs before the captured row is persisted; the on-disk corpus is post-redaction. Compliance review only sees the redacted form.</li>
+<li><b>Normalize via USCDI.</b> The capture format is normalized into USCDI v4 fields where applicable. This makes the corpus interchange-friendly for the eval step (so your frozen eval can score against canonical fields) and audit-friendly (the field-level provenance is explicit).</li>
+<li><b>Distill against a frozen eval.</b> <code>kolm distill</code> trains a student on the post-redaction corpus, gated by an eval frozen at recipe-spec time. The eval set is hashed into the receipt chain; auditors can re-run it and see the same score. The frozen-eval gate prevents the artifact from shipping if the score falls below threshold.</li>
+<li><b>Compile + sign + verify.</b> <code>kolm compile --tier=3090</code> emits a .kolm artifact with the receipt chain, weights, eval, and recipe. <code>kolm verify</code> walks the Merkle chain to genesis. The chain proves no PHI leaked into the artifact's weights beyond what the redactor allowed, the eval gate fired on the documented questions, and the signing key was the one named in the recipe.</li>
+</ol>
+
+<h2>Practical commands</h2>
+<pre>kolm init my-clinical-summarizer
+kolm capture --teacher=anthropic --redactor=phi-redactor.kolm --to=my-clinical-summarizer
+# (your application runs; capture proxy stores post-redaction pairs)
+kolm distill --from-captures my-clinical-summarizer --min-pairs 1000 --eval-hash=sha256:...
+kolm compile my-clinical-summarizer --tier=3090
+kolm verify my-clinical-summarizer.kolm
+# Inspect the audit trail
+kolm inspect my-clinical-summarizer.kolm --receipts | jq '.chain[] | {step, hash}'</pre>
+
+<h2>What the receipt chain proves to an auditor</h2>
+<p>The .kolm artifact's receipt chain is a Merkle structure over the spec hash, the seeds hash, the captured-corpus hash (post-redaction), the teacher model id, the holdout hash, the frozen-eval hash, the recipe hash, the build timestamp, and the signing key fingerprint. An auditor can:</p>
+<ul>
+<li>Verify the artifact's signature with <code>kolm verify</code>, which exits non-zero on any mismatch.</li>
+<li>Recompute every hash from the stored corpus + recipe and check it matches the on-artifact value.</li>
+<li>Replay the frozen eval and confirm the score matches the threshold the artifact shipped against.</li>
+<li>Inspect the redactor's own artifact-id in the receipt and verify it has its own audit trail back to the n2c2 corpus.</li>
+</ul>
+<p>None of those steps require trusting kolm.ai. The verification is fully offline.</p>
+
+<h2>BAA scope under this topology</h2>
+<p>Under the hosted-endpoint topology, your BAA with the LLM provider covers every production call. The data flow is continuous, the audit is continuous, the subprocessor list is continuous. Under the compile topology, your BAA only needs to cover the capture window (typically days to weeks, until the corpus reaches the threshold for compilation). After the artifact is compiled and verified, inference runs entirely on your hardware; the BAA with the teacher provider is dormant or terminable.</p>
+<p class="muted">See <a href="/security">/security</a> for the KMS + receipt-chain detail and <a href="/baa">/baa</a> for the kolm.ai BAA we offer for the capture-window phase.</p>
+
+<h2>Drift detection on a regulated artifact</h2>
+<p>A frozen-eval gate at compile time isn't enough on its own; clinical language drifts, ICD codes update, patient population shifts. <code>kolm drift detect</code> re-runs the frozen eval against the live artifact on a schedule (cron / systemd / k8s job, your choice). On a breach the verifier rejects the artifact and a supersession entry names the successor. See <a href="/drift">/drift</a> for the lifecycle tiers (M+1 stale notification, M+2 re-distillation cadence, M+3 drift detection cron, M+4 supersession chain).</p>
+
+<div class="warn"><b>Honest scope.</b> kolm ships the verifier, the manifest format, and the scheduler hooks. It does not fork a daemon, run your cron, or page your on-call. The compliance posture this article describes requires the covered entity to operate the schedule, the alert routing, and the redactor selection. The kolm tool is a build step + a verifier; the operations are yours.</div>
+
+<h2>Common questions</h2>
+<h3>Does kolm.ai see PHI?</h3>
+<p>Not in default operation. The capture proxy runs locally. The corpus stays on your filesystem. The teacher call goes to whichever frontier you chose; that provider sees the redacted prompts only. kolm.ai itself sees nothing unless you opt into our hosted compile service (which carries its own BAA).</p>
+
+<h3>Is the redactor itself audited?</h3>
+<p>Yes. <code>phi-redactor.kolm</code> ships with its own receipt chain (training on n2c2 2014 de-identification corpus, NIST PII evaluation on i2b2 holdout, signature by kolm.ai). You can run <code>kolm verify phi-redactor.kolm</code> to confirm. If the redactor's audit doesn't meet your standard, the redactor slot accepts any alternative .kolm artifact.</p>
+
+<h3>What about training-data memorization?</h3>
+<p>Memorization is a real risk for any model trained on PHI even after redaction. Mitigations: differential privacy noise during distillation (<code>--dp-epsilon=8</code>), holdout extraction tests in the eval phase, and the frozen-eval gate rejecting artifacts that score above an extractive baseline. See <a href="/articles/k-sample-verified-inference">"K-sample verified inference"</a> for the extractive-test detail.</p>
+
+<h2>Related reading</h2>
+<ul>
+<li><a href="/what-is-an-ai-compiler">What is an AI compiler? Definition and flow</a></li>
+<li><a href="/articles/fine-tune-vs-compile">Fine-tune vs AI compile: when each is right</a></li>
+<li><a href="/articles/kolm-artifact-walkthrough">The .kolm artifact, field by field</a></li>
+<li><a href="/articles/kolm-ai-vs-kolm-therapeutics">kolm.ai vs Kolm therapeutics for procurement teams</a></li>
+<li><a href="/security">/security</a> · <a href="/drift">/drift</a> · <a href="/spec/rs-1">/spec/rs-1</a></li>
+</ul>
+</main>
+<footer>kolm.ai &middot; the AI compiler &middot; <a href="/product">Product</a> &middot; <a href="/security">Security</a> &middot; <a href="/baa">BAA</a> &middot; <a href="/spec/rs-1">RS-1</a> &middot; <a href="/what-is-an-ai-compiler">What is an AI compiler?</a></footer>
+</body>
+</html>

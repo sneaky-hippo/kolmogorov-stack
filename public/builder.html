@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Builder &middot; no-code .kolm artifact builder &middot; kolm.ai · kolm.ai</title>
+<meta name="description" content="Describe a task in plain English, add a few examples, and compile a signed .kolm artifact. No CLI, no Python, no GPU.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<meta property="og:title" content="Builder &middot; the no-code .kolm artifact builder">
+<meta property="og:description" content="Describe a task, add examples, ship a signed .kolm artifact. No code.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/builder">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/builder">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+<style>
+  :root {
+    --bg: #050607; --bg-elev: #0b0f10; --bg-card: #101514;
+    --line: rgba(255,255,255,0.08); --line-strong: rgba(255,255,255,0.16);
+    --ink: #faf2e1; --ink-mute: #b5bdb1; --ink-faint: #737c73;
+    --accent: #10b981; --accent-strong: #7ef0d2;
+    --warn: #f0b86b; --bad: #ff6b91;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  html[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f7f4ec; --bg-elev: #ffffff; --bg-card: #f0ecdd;
+    --line: rgba(0,0,0,0.08); --line-strong: rgba(0,0,0,0.16);
+    --ink: #1a1a1a; --ink-mute: #4a4a4a; --ink-faint: #7a7a7a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--sans);
+    font-size: 16px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  }
+  a { color: inherit; text-decoration: none; }
+  a.link { color: var(--accent); border-bottom: 1px dotted var(--accent); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .wrap { padding: 0 18px; } }
+
+  header.site {
+    position: sticky; top: 0; z-index: 60;
+    background: rgba(8,9,8,0.78);
+    backdrop-filter: saturate(160%) blur(14px);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+  html[data-theme="light"] header.site { background: rgba(247,244,236,0.86); }
+  header.site .row { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 24px; }
+  header.site .brand { font-weight: 500; font-size: 16px; color: var(--ink); }
+  header.site .brand .dot { color: var(--accent); }
+  header.site .right { display: flex; gap: 14px; align-items: center; }
+  header.site .right a { color: var(--ink-mute); font-size: 13.5px; }
+  header.site .right a:hover { color: var(--ink); }
+
+  section.hero { padding: 56px 0 28px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px; text-transform: uppercase;
+    color: var(--ink-mute); border: 1px solid var(--line-strong);
+    border-radius: 999px; padding: 5px 12px; background: var(--bg-elev);
+  }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  h1 { margin: 18px 0 12px; font-size: clamp(32px, 4.8vw, 48px); line-height: 1.05; font-weight: 500; max-width: 22ch; }
+  h1 .tone { color: var(--accent); }
+  p.lede { margin: 0 0 24px; font-size: 17px; color: var(--ink-mute); max-width: 60ch; }
+  p.lede b { color: var(--ink); font-weight: 500; }
+
+  /* Step nav */
+  .steps {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; margin: 24px 0 32px;
+    background: var(--bg-elev); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px;
+  }
+  @media (max-width: 720px) { .steps { grid-template-columns: 1fr 1fr; } }
+  .step-tab {
+    padding: 10px 12px; border-radius: 6px;
+    border: 1px solid transparent;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--ink-faint); cursor: pointer; text-align: left;
+    background: transparent;
+  }
+  .step-tab .n { color: var(--accent); margin-right: 8px; }
+  .step-tab.active { background: var(--bg-card); color: var(--ink); border-color: var(--line-strong); }
+  .step-tab.done { color: var(--ink-mute); }
+  .step-tab.done .n { color: var(--accent-strong); }
+
+  /* Step panels */
+  .panel {
+    border: 1px solid var(--line); background: var(--bg-elev);
+    border-radius: 12px; padding: 28px; margin-bottom: 16px;
+  }
+  .panel h2 { margin: 0 0 6px; font-size: 22px; font-weight: 500; color: var(--ink); }
+  .panel p.sub { margin: 0 0 18px; color: var(--ink-mute); font-size: 14px; }
+  .panel.hidden { display: none; }
+
+  label { display: block; font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; margin-bottom: 6px; }
+
+  textarea, input[type="text"] {
+    width: 100%; padding: 12px 14px;
+    background: var(--bg-card); color: var(--ink);
+    border: 1px solid var(--line-strong); border-radius: 8px;
+    font-family: var(--sans); font-size: 14.5px; line-height: 1.55;
+    resize: vertical;
+  }
+  textarea:focus, input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  textarea.mono { font-family: var(--mono); font-size: 13px; }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 12.5px; font-weight: 500;
+    padding: 9px 16px; border-radius: 7px;
+    border: 1px solid var(--line-strong); background: var(--bg-card); color: var(--ink-mute);
+    cursor: pointer; transition: color 120ms, background 120ms, border-color 120ms;
+  }
+  .btn:hover { color: var(--ink); border-color: var(--ink-mute); }
+  .btn.primary { background: var(--accent); color: #06120d; border-color: var(--accent); font-weight: 600; }
+  .btn.primary:hover { background: var(--accent-strong); color: #06120d; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Templates grid */
+  .tmpl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 18px 0 8px; }
+  .tmpl-card {
+    border: 1px solid var(--line); background: var(--bg-card);
+    border-radius: 8px; padding: 14px; cursor: pointer;
+    transition: border-color 120ms;
+  }
+  .tmpl-card:hover { border-color: var(--accent); }
+  .tmpl-card h3 { margin: 0 0 4px; font-size: 14px; font-weight: 500; color: var(--ink); }
+  .tmpl-card p { margin: 0; color: var(--ink-mute); font-size: 12.5px; line-height: 1.5; }
+
+  /* Examples table */
+  .ex-table {
+    width: 100%; border-collapse: collapse; margin-top: 12px;
+    font-size: 13.5px; table-layout: fixed;
+  }
+  .ex-table th, .ex-table td {
+    padding: 10px 12px; text-align: left; vertical-align: top;
+    border-bottom: 1px solid var(--line);
+    word-break: break-word;
+  }
+  .ex-table th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; font-weight: 500; }
+  .ex-table td { color: var(--ink); font-family: var(--mono); font-size: 12.5px; }
+  .ex-table td.del { width: 60px; text-align: right; }
+  .ex-table .del-btn { background: transparent; border: 1px solid var(--line-strong); color: var(--ink-faint); font-family: var(--mono); font-size: 11px; padding: 4px 8px; border-radius: 5px; cursor: pointer; }
+  .ex-table .del-btn:hover { color: var(--bad); border-color: var(--bad); }
+  .empty { padding: 32px 12px; text-align: center; color: var(--ink-faint); font-size: 13.5px; }
+
+  .ex-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin-top: 14px; align-items: end; }
+  @media (max-width: 720px) { .ex-add { grid-template-columns: 1fr; } }
+
+  /* K-score breakdown */
+  .ks-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 14px 0; }
+  .ks-cell { border: 1px solid var(--line); background: var(--bg-card); border-radius: 8px; padding: 12px; }
+  .ks-cell .k { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; color: var(--ink-faint); letter-spacing: 0.04em; }
+  .ks-cell .v { margin-top: 4px; font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--ink); }
+  .ks-cell.ships .v { color: var(--accent); }
+  .ks-cell.fail .v { color: var(--bad); }
+
+  /* Recipe preview */
+  pre.code {
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 8px; padding: 14px;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
+    color: var(--ink); overflow-x: auto; margin: 12px 0;
+    max-height: 320px;
+  }
+
+  /* Warnings */
+  .warn-list { margin: 12px 0 0; padding: 0; list-style: none; }
+  .warn-list li {
+    padding: 10px 12px; margin-bottom: 6px; border-radius: 7px;
+    background: rgba(240,184,107,0.10); border: 1px solid rgba(240,184,107,0.30);
+    color: var(--ink); font-size: 13.5px;
+  }
+  .warn-list li code { font-family: var(--mono); color: var(--warn); }
+
+  /* Status / progress */
+  .status { padding: 14px 16px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--line); margin: 14px 0; }
+  .status.ok { border-color: var(--accent); }
+  .status.bad { border-color: var(--bad); color: var(--bad); }
+  .status .label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 4px; }
+  .status .value { font-family: var(--mono); font-size: 14px; color: var(--ink); }
+
+  .download { display: inline-flex; gap: 8px; align-items: center; padding: 12px 18px; border-radius: 8px; background: var(--accent); color: #06120d; font-weight: 600; font-family: var(--mono); font-size: 13px; }
+  .download:hover { background: var(--accent-strong); }
+
+  .verify-cmd {
+    margin-top: 14px;
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 7px; padding: 12px 14px;
+    font-family: var(--mono); font-size: 13px; color: var(--ink);
+    display: flex; justify-content: space-between; gap: 12px; align-items: center;
+    overflow-x: auto;
+  }
+  .verify-cmd .copy { background: transparent; border: 1px solid var(--line-strong); color: var(--ink-mute); font-family: var(--mono); font-size: 11px; padding: 4px 8px; border-radius: 5px; cursor: pointer; }
+  .verify-cmd .copy:hover { color: var(--ink); }
+
+  /* Footer */
+  footer { padding: 48px 0 60px; border-top: 1px solid var(--line); margin-top: 56px; color: var(--ink-faint); font-size: 13px; }
+  footer a { color: var(--ink-mute); }
+  footer a:hover { color: var(--ink); }
+
+  /* a11y */
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .skip { position: absolute; left: -9999px; top: auto; }
+  .skip:focus { left: 16px; top: 16px; background: var(--ink); color: var(--bg); padding: 8px 12px; z-index: 100; border-radius: 6px; }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "kolm",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS, Windows (WSL)",
+  "url": "https://kolm.ai/builder",
+  "description": "Describe a task in plain English, add a few examples, and compile a signed .kolm artifact. No CLI, no Python, no GPU.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "kolm.ai",
+    "@id": "https://kolm.ai/#org"
+  }
+}
+</script>
+</head>
+<body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
+<a href="#main" class="skip">Skip to main content</a>
+
+<header class="site">
+  <div class="wrap row">
+    <a class="brand" href="/">kolm<span class="dot">.</span>ai</a>
+    <div class="right">
+      <a href="/quickstart">Quickstart</a>
+      <a href="/docs">Docs</a>
+      <a href="/account">Account</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+<section class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span>builder &middot; in browser &middot; no install</span>
+    <h1>Build a <span class="tone">.kolm</span> from plain English.</h1>
+    <p class="lede">Describe your task. Paste a handful of examples. Preview the K-score. Compile a signed artifact you can run on a laptop, a phone, or behind your VPC. <b>No code. No GPU. No account needed for the preview.</b></p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+
+    <!-- Step nav -->
+    <nav class="steps" aria-label="Builder steps">
+      <button class="step-tab active" data-step="1" id="tab-1"><span class="n">01</span>Describe</button>
+      <button class="step-tab"        data-step="2" id="tab-2"><span class="n">02</span>Examples</button>
+      <button class="step-tab"        data-step="3" id="tab-3"><span class="n">03</span>Preview</button>
+      <button class="step-tab"        data-step="4" id="tab-4"><span class="n">04</span>Compile</button>
+    </nav>
+
+    <!-- Step 1: Describe -->
+    <div class="panel" id="step-1" role="region" aria-labelledby="h-step-1">
+      <h2 id="h-step-1">Describe your task</h2>
+      <p class="sub">One paragraph. What input goes in, what output should come out. The compiler reads this verbatim, so be specific.</p>
+
+      <label for="task">Task description</label>
+      <textarea id="task" rows="5" placeholder="Example: redact patient names, dates of birth, MRNs, phone numbers, and email addresses from a clinical note. Replace each with [REDACTED]."></textarea>
+
+      <p class="sub" style="margin-top:18px">Or start from a template:</p>
+      <div class="tmpl-grid" id="tmpl-grid" aria-label="Starter templates">
+        <div class="empty">Loading templates&hellip;</div>
+      </div>
+
+      <div class="row">
+        <button class="btn primary" id="to-step-2">Next: add examples &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Examples -->
+    <div class="panel hidden" id="step-2" role="region" aria-labelledby="h-step-2">
+      <h2 id="h-step-2">Add examples</h2>
+      <p class="sub">Each row is one input plus its expected output. Three is the minimum; ten is plenty. The compiler uses these as both training signal and the eval set.</p>
+
+      <table class="ex-table" aria-label="Examples">
+        <thead><tr><th style="width:40%">Input</th><th style="width:40%">Expected output</th><th class="del" aria-label="actions"></th></tr></thead>
+        <tbody id="ex-tbody"><tr><td colspan="3" class="empty">No examples yet. Add one below or load a template.</td></tr></tbody>
+      </table>
+
+      <div class="ex-add">
+        <div>
+          <label for="ex-in">Input</label>
+          <textarea id="ex-in" rows="2" class="mono" placeholder="raw input text"></textarea>
+        </div>
+        <div>
+          <label for="ex-out">Expected output</label>
+          <textarea id="ex-out" rows="2" class="mono" placeholder="what the recipe should produce"></textarea>
+        </div>
+        <div>
+          <button class="btn primary" id="add-ex">Add</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn" id="back-step-1">&larr; Back</button>
+        <button class="btn primary" id="to-step-3">Next: preview K-score &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Preview -->
+    <div class="panel hidden" id="step-3" role="region" aria-labelledby="h-step-3">
+      <h2 id="h-step-3">Preview</h2>
+      <p class="sub">We synthesize a deterministic recipe from your examples and estimate the K-score. Nothing leaves your browser until you click Compile.</p>
+
+      <div class="row">
+        <button class="btn primary" id="run-preview">Run preview</button>
+        <button class="btn" id="back-step-2">&larr; Back</button>
+      </div>
+
+      <div id="preview-out" style="display:none">
+        <h3 style="margin:20px 0 8px;font-size:14px;color:var(--ink-faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.04em">K-score breakdown</h3>
+        <div class="ks-grid" id="ks-grid"></div>
+
+        <h3 style="margin:20px 0 8px;font-size:14px;color:var(--ink-faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.04em">Synthesized recipe</h3>
+        <pre class="code" id="recipe-src"></pre>
+
+        <h3 style="margin:20px 0 8px;font-size:14px;color:var(--ink-faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.04em">Warnings</h3>
+        <ul class="warn-list" id="warn-list"></ul>
+      </div>
+
+      <div class="row" style="margin-top:18px">
+        <button class="btn primary" id="to-step-4" disabled>Next: compile &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Compile -->
+    <div class="panel hidden" id="step-4" role="region" aria-labelledby="h-step-4">
+      <h2 id="h-step-4">Compile</h2>
+      <p class="sub">Compile turns your task + examples into a signed <code>.kolm</code> file. You need an API key for this step (compile costs 10 units).</p>
+
+      <label for="api-key">API key</label>
+      <input type="text" id="api-key" placeholder="ks_... (paste from /account)" autocomplete="off">
+      <p class="sub" style="margin-top:8px">No key? <a class="link" href="/signup">Get one in 60 seconds</a>.</p>
+
+      <div class="row">
+        <button class="btn primary" id="run-compile">Compile artifact</button>
+        <button class="btn" id="back-step-3">&larr; Back</button>
+      </div>
+
+      <div id="compile-status" style="display:none">
+        <div class="status" id="status-box">
+          <div class="label">Status</div>
+          <div class="value" id="status-value">queued&hellip;</div>
+        </div>
+      </div>
+
+      <div id="compile-done" style="display:none;margin-top:18px">
+        <a class="download" id="dl-link" href="#" download>Download .kolm artifact</a>
+        <div class="verify-cmd">
+          <span id="verify-cmd-text">kolm verify ./your-task.kolm</span>
+          <button class="copy" id="copy-verify">Copy</button>
+        </div>
+        <p class="sub" style="margin-top:16px">That command runs the K-score check offline and confirms the artifact's signature chain. Built with <a class="link" href="/quickstart">kolm quickstart</a>.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>kolm.ai &middot; the AI compiler &middot; <a href="/quickstart">CLI quickstart</a> &middot; <a href="/api">API reference</a> &middot; <a href="/spec">.kolm v2 spec</a></p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  // State
+  var state = {
+    task: '',
+    examples: [],
+    templates: [],
+    preview: null,
+    job: null,
+  };
+
+  // ---- Step navigation ----
+  function showStep(n) {
+    for (var i = 1; i <= 4; i++) {
+      document.getElementById('step-' + i).classList.toggle('hidden', i !== n);
+      var tab = document.getElementById('tab-' + i);
+      tab.classList.toggle('active', i === n);
+      tab.classList.toggle('done', i < n);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  document.querySelectorAll('.step-tab').forEach(function(t){
+    t.addEventListener('click', function(){ showStep(parseInt(t.getAttribute('data-step'), 10)); });
+  });
+
+  document.getElementById('to-step-2').addEventListener('click', function(){
+    state.task = document.getElementById('task').value.trim();
+    if (!state.task) { alert('Add a task description before continuing.'); return; }
+    showStep(2);
+  });
+  document.getElementById('back-step-1').addEventListener('click', function(){ showStep(1); });
+  document.getElementById('to-step-3').addEventListener('click', function(){
+    if (state.examples.length < 1) { alert('Add at least one example.'); return; }
+    showStep(3);
+  });
+  document.getElementById('back-step-2').addEventListener('click', function(){ showStep(2); });
+  document.getElementById('to-step-4').addEventListener('click', function(){ showStep(4); });
+  document.getElementById('back-step-3').addEventListener('click', function(){ showStep(3); });
+
+  // ---- Templates ----
+  function renderTemplates() {
+    var grid = document.getElementById('tmpl-grid');
+    if (!state.templates.length) { grid.innerHTML = '<div class="empty">No templates available.</div>'; return; }
+    grid.innerHTML = '';
+    state.templates.forEach(function(t){
+      var card = document.createElement('div');
+      card.className = 'tmpl-card';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      var h = document.createElement('h3'); h.textContent = t.name;
+      var p = document.createElement('p'); p.textContent = t.description;
+      card.appendChild(h); card.appendChild(p);
+      card.addEventListener('click', function(){ loadTemplate(t); });
+      card.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); loadTemplate(t); } });
+      grid.appendChild(card);
+    });
+  }
+  function loadTemplate(t) {
+    document.getElementById('task').value = t.task;
+    state.task = t.task;
+    state.examples = Array.isArray(t.examples) ? t.examples.slice() : [];
+    renderExamples();
+    showStep(2);
+  }
+  fetch('/v1/builder/templates').then(function(r){ return r.json(); }).then(function(j){
+    state.templates = Array.isArray(j.templates) ? j.templates : [];
+    renderTemplates();
+  }).catch(function(){ document.getElementById('tmpl-grid').innerHTML = '<div class="empty">Could not load templates. <a class="link" href="/builder">Retry</a>.</div>'; });
+
+  // ---- Examples ----
+  function renderExamples() {
+    var tb = document.getElementById('ex-tbody');
+    if (!state.examples.length) { tb.innerHTML = '<tr><td colspan="3" class="empty">No examples yet. Add one below or load a template.</td></tr>'; return; }
+    tb.innerHTML = '';
+    state.examples.forEach(function(ex, i){
+      var tr = document.createElement('tr');
+      var inTd = document.createElement('td'); inTd.textContent = typeof ex.input === 'string' ? ex.input : JSON.stringify(ex.input);
+      var outTd = document.createElement('td'); outTd.textContent = typeof ex.expected === 'string' ? ex.expected : JSON.stringify(ex.expected);
+      var delTd = document.createElement('td'); delTd.className = 'del';
+      var btn = document.createElement('button'); btn.className = 'del-btn'; btn.textContent = 'Remove';
+      btn.addEventListener('click', function(){ state.examples.splice(i, 1); renderExamples(); });
+      delTd.appendChild(btn);
+      tr.appendChild(inTd); tr.appendChild(outTd); tr.appendChild(delTd);
+      tb.appendChild(tr);
+    });
+  }
+  document.getElementById('add-ex').addEventListener('click', function(){
+    var inEl = document.getElementById('ex-in');
+    var outEl = document.getElementById('ex-out');
+    var inV = inEl.value;
+    var outV = outEl.value;
+    if (!inV || !outV) { alert('Both input and expected output are required.'); return; }
+    if (state.examples.length >= 100) { alert('Builder caps examples at 100 per task.'); return; }
+    var ex = { input: inV, expected: outV };
+    var bytes = new Blob([JSON.stringify(ex)]).size;
+    if (bytes > 10240) { alert('This example exceeds the 10 KB per-example limit.'); return; }
+    state.examples.push(ex);
+    inEl.value = ''; outEl.value = '';
+    renderExamples();
+  });
+
+  // ---- Preview ----
+  document.getElementById('run-preview').addEventListener('click', function(){
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Synthesizing&hellip;';
+    fetch('/v1/builder/preview', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ task: state.task, examples: state.examples }),
+    }).then(function(r){ return r.json().then(function(j){ return { status: r.status, json: j }; }); })
+      .then(function(res){
+        btn.disabled = false; btn.textContent = 'Run preview';
+        if (res.status !== 200) {
+          alert('Preview failed: ' + (res.json && (res.json.error || res.json.detail) || res.status));
+          return;
+        }
+        state.preview = res.json;
+        renderPreview(res.json);
+        document.getElementById('preview-out').style.display = 'block';
+        document.getElementById('to-step-4').disabled = false;
+      })
+      .catch(function(e){
+        btn.disabled = false; btn.textContent = 'Run preview';
+        alert('Network error: ' + (e && e.message ? e.message : 'unknown'));
+      });
+  });
+
+  function renderPreview(p) {
+    var ks = p.k_score_estimate || {};
+    var grid = document.getElementById('ks-grid');
+    grid.innerHTML = '';
+    var rows = [
+      { k: 'Composite', v: fmt(ks.composite), ships: ks.ships, fail: ks.ships === false },
+      { k: 'Accuracy', v: fmt(ks.accuracy) },
+      { k: 'Coverage', v: fmt(ks.coverage) },
+      { k: 'Size score', v: fmt(ks.size_score) },
+      { k: 'Latency score', v: fmt(ks.latency_score) },
+      { k: 'Cost score', v: fmt(ks.cost_score) },
+    ];
+    rows.forEach(function(r){
+      var div = document.createElement('div');
+      div.className = 'ks-cell' + (r.ships ? ' ships' : '') + (r.fail ? ' fail' : '');
+      var k = document.createElement('div'); k.className = 'k'; k.textContent = r.k;
+      var v = document.createElement('div'); v.className = 'v'; v.textContent = r.v;
+      div.appendChild(k); div.appendChild(v);
+      grid.appendChild(div);
+    });
+    document.getElementById('recipe-src').textContent = p.recipe_source || '/* no recipe synthesized */';
+    var warns = document.getElementById('warn-list');
+    warns.innerHTML = '';
+    if (!Array.isArray(p.warnings) || !p.warnings.length) {
+      var li = document.createElement('li');
+      li.style.background = 'transparent';
+      li.style.borderColor = 'var(--line)';
+      li.style.color = 'var(--ink-mute)';
+      li.textContent = 'No warnings.';
+      warns.appendChild(li);
+    } else {
+      p.warnings.forEach(function(w){
+        var li = document.createElement('li');
+        var code = document.createElement('code'); code.textContent = w.code || 'warning';
+        li.appendChild(code);
+        li.appendChild(document.createTextNode(' ' + (w.message || '')));
+        warns.appendChild(li);
+      });
+    }
+  }
+  function fmt(n) { return (typeof n === 'number') ? n.toFixed(4) : '&mdash;'; }
+
+  // ---- Compile ----
+  document.getElementById('run-compile').addEventListener('click', function(){
+    var key = document.getElementById('api-key').value.trim();
+    if (!key) { alert('API key required. Get one at /signup.'); return; }
+    var btn = this; btn.disabled = true; btn.textContent = 'Submitting&hellip;';
+    fetch('/v1/builder/compile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + key },
+      body: JSON.stringify({ task: state.task, examples: state.examples }),
+    }).then(function(r){ return r.json().then(function(j){ return { status: r.status, json: j }; }); })
+      .then(function(res){
+        if (res.status !== 202 || !res.json.job_id) {
+          btn.disabled = false; btn.textContent = 'Compile artifact';
+          alert('Compile rejected: ' + (res.json && res.json.error || res.status));
+          return;
+        }
+        state.job = res.json;
+        document.getElementById('compile-status').style.display = 'block';
+        pollJob(res.json.job_id, key, btn);
+      }).catch(function(e){
+        btn.disabled = false; btn.textContent = 'Compile artifact';
+        alert('Network error: ' + (e && e.message ? e.message : 'unknown'));
+      });
+  });
+
+  function pollJob(jobId, key, btn) {
+    var statusEl = document.getElementById('status-value');
+    var box = document.getElementById('status-box');
+    var tries = 0;
+    function tick() {
+      tries++;
+      fetch('/v1/compile/' + encodeURIComponent(jobId), { headers: { 'authorization': 'Bearer ' + key } })
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          statusEl.textContent = (j.status || 'unknown') + ' (' + (j.progress || 0) + '%)';
+          if (j.status === 'completed') {
+            box.classList.add('ok');
+            btn.textContent = 'Done';
+            document.getElementById('compile-done').style.display = 'block';
+            var dl = document.getElementById('dl-link');
+            dl.href = j.artifact_url || ('/v1/compile/' + jobId + '/.kolm');
+            dl.setAttribute('download', jobId + '.kolm');
+            var verify = 'kolm verify ./' + jobId + '.kolm';
+            document.getElementById('verify-cmd-text').textContent = verify;
+            return;
+          }
+          if (j.status === 'failed') {
+            box.classList.add('bad');
+            btn.disabled = false; btn.textContent = 'Compile artifact';
+            statusEl.textContent = 'failed: ' + (j.error || 'unknown error');
+            return;
+          }
+          if (tries < 120) setTimeout(tick, 1500);
+          else { btn.disabled = false; btn.textContent = 'Compile artifact'; statusEl.textContent = 'timed out polling after 3 minutes'; }
+        }).catch(function(e){
+          if (tries < 60) setTimeout(tick, 2000);
+          else { btn.disabled = false; btn.textContent = 'Compile artifact'; statusEl.textContent = 'network error: ' + e.message; }
+        });
+    }
+    tick();
+  }
+
+  document.getElementById('copy-verify').addEventListener('click', function(){
+    var txt = document.getElementById('verify-cmd-text').textContent;
+    try { navigator.clipboard.writeText(txt); this.textContent = 'Copied'; }
+    catch (e) { this.textContent = 'Copy failed'; }
+  });
+
+  // initial render
+  renderExamples();
+})();
+</script>
+
+</body>
+</html>

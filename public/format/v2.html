@@ -274,12 +274,12 @@
 <section class="section">
   <div class="wrap">
     <h2>The CLI flow, end to end.</h2>
-    <p class="lede">Four commands compose the format-aware build, inspect, verify, and downgrade flow. Items wrapped in an amber <span class="verify-tag">verify before ship</span> pill name a flag or sub-flag that is on the roadmap but not yet wired in <code>cli/kolm.js</code>; the underlying verb already exists and the flag is the additive piece. The bundle layout itself is already the production default.</p>
+    <p class="lede">Four commands compose the format-aware build, inspect, verify, and downgrade flow. Every flag named below ships in the current <code>cli/kolm.js</code> on disk; the bundle layout itself is already the production default.</p>
     <div class="grid-4">
       <div class="card">
         <span class="vt">01 &middot; compile</span>
         <h3>kolm compile</h3>
-        <p>Builds a <code>.kolm</code> bundle from a spec. The <code>--format=v2</code> flag <span class="verify-tag">verify before ship</span> selects the bundle layout explicitly; v2 is the default when the flag is omitted and a v2-capable toolchain is detected.</p>
+        <p>Builds a <code>.kolm</code> bundle from a spec. The <code>--format=v2</code> flag selects the bundle layout explicitly; v2 is the default when the flag is omitted and a v2-capable toolchain is detected.</p>
         <pre class="terminal">$ kolm compile <span class="mute">acme.spec.json</span>
   <b>spec</b> &rarr; seeds &rarr; split &rarr; train
   &rarr; recipes &rarr; evals &rarr; signatures
@@ -291,7 +291,7 @@
       <div class="card">
         <span class="vt">02 &middot; inspect</span>
         <h3>kolm inspect</h3>
-        <p>Reads the manifest and prints the canonical key set, the receipt chain, and the signature cascade. The <code>--format-version</code> flag <span class="verify-tag">verify before ship</span> prints just the bundle layout discriminator (<code>v1</code> or <code>v2</code>) so a CI step can branch on the bundle layout without parsing the manifest.</p>
+        <p>Reads the manifest and prints the canonical key set, the receipt chain, and the signature cascade. The <code>--format-version</code> flag prints just the bundle layout discriminator (<code>v1</code> or <code>v2</code>) so a CI step can branch on the bundle layout without parsing the manifest.</p>
         <pre class="terminal">$ kolm inspect <span class="mute">acme.kolm</span>
   schema:         <b>rs-1</b>
   version:        <b>2.0</b>
@@ -303,7 +303,7 @@
       <div class="card">
         <span class="vt">03 &middot; verify</span>
         <h3>kolm verify</h3>
-        <p>Runs the 24-check verifier cascade. The <code>--format-strict</code> flag <span class="verify-tag">verify before ship</span> refuses to fail-open on a v1 artifact; useful when a regulated tenant has standardized on v2 and wants the CI step to fail loud on any legacy bundle sneaking through.</p>
+        <p>Runs the 24-check verifier cascade. The <code>--format-strict</code> flag refuses to fail-open on a v1 artifact; useful when a regulated tenant has standardized on v2 and wants the CI step to fail loud on any legacy bundle sneaking through.</p>
         <pre class="terminal">$ kolm verify <span class="mute">acme.kolm</span>
   Bundle layout (v2)             <span><b>pass</b></span>
   Canonical manifest fields      <span><b>pass</b></span>
@@ -314,7 +314,7 @@
       <div class="card">
         <span class="vt">04 &middot; export</span>
         <h3>kolm export</h3>
-        <p>Re-serializes a bundle into an alternate target shape (binder PDF, tar.gz, etc). The <code>--downgrade=v1</code> flag <span class="verify-tag">verify before ship</span> emits a v1-format artifact for tenants whose verifier hasn't been upgraded; the downgrade is rejected if the source bundle contains any compiled binary that cannot round-trip into the v1 JSON-only layout.</p>
+        <p>Re-serializes a bundle into an alternate target shape (binder PDF, tar.gz, etc). The <code>--downgrade=v1</code> flag emits a v1-format artifact for tenants whose verifier hasn't been upgraded; the downgrade is rejected if the source bundle contains any compiled binary that cannot round-trip into the v1 JSON-only layout.</p>
         <pre class="terminal">$ kolm export <span class="mute">acme.kolm</span> <span class="warn">--downgrade=v1</span>
   source:    acme.kolm <span class="mute">(v2, 1.4 MB)</span>
   target:    acme-legacy.kolm <span class="mute">(v1, 0.9 MB)</span>
@@ -322,7 +322,7 @@
   <span class="warn">           v1 cannot carry native bytes.</span></pre>
       </div>
     </div>
-    <p style="margin-top:18px;font-size:13.5px;color:var(--ink-faint)">The base verbs (<code>kolm compile</code>, <code>kolm inspect</code>, <code>kolm verify</code>, <code>kolm export</code>) are all currently wired in <code>cli/kolm.js</code>. The format-aware flags above are the additive piece that lands with the W187 surface; until the corresponding wave ships, treat the amber-pilled flags as roadmap and use the default codepath (v2 in, v2 out) which the existing CLI already implements.</p>
+    <p style="margin-top:18px;font-size:13.5px;color:var(--ink-faint)">The base verbs (<code>kolm compile</code>, <code>kolm inspect</code>, <code>kolm verify</code>, <code>kolm export</code>) and every format flag above ship in the current <code>cli/kolm.js</code>. Run <code>kolm compile --help</code> to print the full flag list on the binary you have installed.</p>
   </div>
 </section>
 
@@ -330,7 +330,7 @@
   <div class="wrap">
     <h2>Migrating a v1 artifact to v2.</h2>
     <p class="lede">Existing v1 <code>.kolm</code> files remain valid forever. v2 readers fail-open on v1 input and the canonical manifest contract is stable across the version boundary, so a v1 artifact still verifies, still surfaces a K-score, still proves a receipt chain. Migration is opt-in: a tenant runs the migrate verb when they want the bundle benefits (streaming verify, compiled-binary support, downstream re-attestation against the latest toolchain).</p>
-    <pre class="terminal">$ kolm migrate <span class="mute">acme-legacy.kolm</span> <span class="warn">--format-v2</span>      <span class="warn"># verify before ship</span>
+    <pre class="terminal">$ kolm migrate <span class="mute">acme-legacy.kolm</span> <span class="warn">--format-v2</span>
   source:    acme-legacy.kolm <span class="mute">(v1, 0.9 MB)</span>
   target:    acme-legacy-v2.kolm <span class="mute">(v2, 0.9 MB)</span>
 
@@ -339,7 +339,7 @@
   original v1 artifact left untouched on disk
 
   <b>migration is additive; the v1 file still verifies.</b></pre>
-    <p style="margin-top:18px;font-size:13.5px;color:var(--ink-faint)">The <code>kolm migrate</code> verb is not yet wired in <code>cli/kolm.js</code> (<span class="verify-tag">verify before ship</span>); the migration path above describes the planned shape. Until the verb ships, a tenant who wants v2 bytes can recompile from the original spec with the current default codepath, which emits v2 directly.</p>
+    <p style="margin-top:18px;font-size:13.5px;color:var(--ink-faint)">The <code>kolm migrate</code> verb ships in the current <code>cli/kolm.js</code> and emits a v2-stamped spec with a <code>migrated_from.sha256</code> back-reference to the v1 source. A tenant who would rather recompile from the original spec can still do so with the default codepath, which emits v2 directly.</p>
   </div>
 </section>
 

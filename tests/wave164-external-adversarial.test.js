@@ -148,10 +148,15 @@ test('1. loadCatalog reads holdouts/catalog.json with >= 3 entries', () => {
 // 2. validateCatalogEntry enforces required fields
 // ---------------------------------------------------------------------------
 test('2. validateCatalogEntry enforces required fields', () => {
+  // W252b promoted expected_sha256 from recommended to hard-required (so
+  // catalog drift can be caught at verify time). Validator throws a
+  // dedicated "missing required expected_sha256" message for that field;
+  // the generic "missing required field '<k>'" message covers the rest.
   const required = ['name', 'kind', 'file', 'license', 'source_url', 'accessed_at'];
   const good = {
     name: 'x', kind: 'external', file: 'holdouts/external/x.jsonl',
     license: 'CC0-1.0', source_url: 'https://example.com', accessed_at: '2026-05-17',
+    expected_sha256: 'a'.repeat(64),
   };
   // Each required field: dropping it should throw
   for (const k of required) {
@@ -159,6 +164,10 @@ test('2. validateCatalogEntry enforces required fields', () => {
     delete bad[k];
     assert.throws(() => validateCatalogEntry(bad), new RegExp(`missing required field '${k}'`));
   }
+  // expected_sha256 has its own dedicated error message.
+  const noHash = { ...good };
+  delete noHash.expected_sha256;
+  assert.throws(() => validateCatalogEntry(noHash), /missing required expected_sha256/);
   // The "good" entry validates without throwing
   const res = validateCatalogEntry(good);
   assert.equal(res.ok, true);
@@ -168,9 +177,12 @@ test('2. validateCatalogEntry enforces required fields', () => {
 // 3. validateCatalogEntry rejects an unknown kind
 // ---------------------------------------------------------------------------
 test('3. validateCatalogEntry rejects unknown kind', () => {
+  // W252b made expected_sha256 a hard-required field; provide a valid 64-hex
+  // value so the unknown-kind branch is actually reached.
   const bad = {
     name: 'x', kind: 'banana', file: 'x.jsonl', license: 'CC0-1.0',
     source_url: 'https://example.com', accessed_at: '2026-05-17',
+    expected_sha256: 'a'.repeat(64),
   };
   assert.throws(() => validateCatalogEntry(bad), /must be one of external, adversarial/);
   assert.deepEqual([...HOLDOUT_KINDS].sort(), ['adversarial', 'external']);

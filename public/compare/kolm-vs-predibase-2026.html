@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm vs Predibase + Rubrik (2026): build-side artifact vs agentic governance</title>
+<meta name="description" content="Predibase was acquired by Rubrik in June 2025 and pivoted to agentic AI governance. Post-acquisition honest comparison: kolm builds the signed file; Rubrik governs the runtime. When each is right.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="kolm vs Predibase + Rubrik (2026)">
+<meta property="og:description" content="Predibase pivoted to agentic governance under Rubrik. kolm proves the build, Rubrik+Predibase govern the runtime. Adjacent shapes.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/compare/kolm-vs-predibase-2026">
+<link rel="canonical" href="https://kolm.ai/compare/kolm-vs-predibase-2026">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://kolm.ai/compare/kolm-vs-predibase-2026#article",
+      "headline": "kolm vs Predibase + Rubrik (post-acquisition 2026): build artifact vs agentic governance",
+      "description": "Honest axis-by-axis comparison of kolm and the Predibase + Rubrik agentic-governance product. Names where each wins.",
+      "author": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "publisher": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "datePublished": "2026-05-18",
+      "dateModified": "2026-05-18",
+      "mainEntityOfPage": "https://kolm.ai/compare/kolm-vs-predibase-2026",
+      "articleSection": "Compare",
+      "keywords": "kolm, Predibase, Rubrik, agentic governance, LoRAX, signed artifact, AI compiler"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "compare", "item": "https://kolm.ai/compare" },
+        { "@type": "ListItem", "position": 3, "name": "kolm vs Predibase (2026)", "item": "https://kolm.ai/compare/kolm-vs-predibase-2026" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px}
+  .lede{font-size:17.5px;line-height:1.55;color:var(--ink-mute);max-width:720px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:56px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:26px;font-weight:500;letter-spacing:-0.018em;margin:0 0 14px}
+  .section h3{font-size:18px;font-weight:500;margin:24px 0 8px;color:var(--ink)}
+  .section p{color:var(--ink-mute);margin:0 0 14px;max-width:720px}
+  .section ul{color:var(--ink-mute);padding-left:18px;margin:0 0 14px}
+  .section ul li{margin-bottom:8px}
+  .section code{font-family:var(--mono);font-size:13px;background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  pre.cli{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:18px 20px;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink);overflow-x:auto;margin:14px 0}
+  pre.cli b{color:var(--accent);font-weight:500}
+  pre.cli .cm{color:var(--ink-faint)}
+  table.matrix{width:100%;border-collapse:collapse;margin:20px 0;font-size:13.5px}
+  table.matrix th{font-family:var(--mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400}
+  table.matrix td{padding:14px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5;color:var(--ink-mute)}
+  table.matrix td.axis{font-weight:500;color:var(--ink);min-width:160px}
+  table.matrix td.kolm{color:var(--ink);background:var(--accent-soft)}
+  table.matrix td.kolm b{color:var(--accent);font-weight:500;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase}
+  .callout{padding:18px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin:24px 0;font-size:14px;color:var(--ink-mute)}
+  .callout b{color:var(--ink)}
+  .right-answer-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:18px 0}
+  .right-answer-grid .card{padding:18px 20px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev)}
+  .right-answer-grid .card h4{margin:0 0 8px;font-size:14px;font-weight:500;color:var(--ink)}
+  .right-answer-grid .card p{margin:0;font-size:13.5px;color:var(--ink-mute)}
+  @media(max-width:680px){.right-answer-grid{grid-template-columns:1fr}}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-family:var(--mono);font-size:12.5px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:36px 0;color:var(--ink-faint);font-size:13px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ft-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
+
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/compare">compare</a><a href="/spec/rs-1">RS-1</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/compare">compare</a> &nbsp;/&nbsp; kolm vs Predibase + Rubrik (post-acquisition 2026)</p>
+    <h1>Predibase governs the runtime. kolm proves the build.</h1>
+    <p class="lede">Rubrik (NYSE: RBRK) acquired Predibase in June 2025 and the combined product pivoted hard toward "agentic AI governance" - monitoring agent actions, rewinding bad state, applying Rubrik's enterprise data-security posture to LLM workloads. That is a real category, and it sits adjacent to kolm. kolm lives on the build side and emits a portable, signed compiled artifact. The two work together; they do not overlap.</p>
+    <p class="stamp">Wave 274 &middot; reviewed 2026-05-18 &middot; build-side artifact vs runtime governance</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What Predibase + Rubrik ships in 2026.</h2>
+    <ul>
+      <li><b>Hosted LoRAX serving</b> on Predibase cloud or a customer VPC under Enterprise contract. Turbo LoRA inference path, multi-LoRA batching, thousands of adapters per GPU.</li>
+      <li><b>Hosted fine-tuning</b> on managed serverless infrastructure with per-second GPU billing. Developer and Enterprise SKUs.</li>
+      <li><b>Agentic AI governance (Rubrik 2026 push)</b>. Agent action monitoring, time-travel rewind of agent state, Rubrik data-security posture applied to LLM workloads, integration with the Rubrik Security Cloud control plane.</li>
+      <li><b>Rubrik enterprise sales motion</b>. NYSE-listed parent, Series-of-record procurement story, MSAs in days, SOC 2 Type 2 + HIPAA-eligible.</li>
+    </ul>
+    <p>What Predibase + Rubrik does not ship: a portable signed compiled file you mail to a phone, an air-gapped deployment that does not call back to Predibase or Rubrik, a third-party-verifiable receipt chain proving what teacher distilled the model and what data the train set saw, or a cryptographically signed eval gate bound into the build artifact.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The axis-by-axis split.</h2>
+    <table class="matrix">
+      <thead><tr><th>Axis</th><th>Predibase + Rubrik</th><th>kolm</th></tr></thead>
+      <tbody>
+        <tr><td class="axis">What you receive</td><td>hosted endpoint plus a runtime governance plane</td><td class="kolm"><b>signed .kolm file</b> &middot; LoRA weights + manifest + receipt chain + Ed25519 sig (W161) + Sigstore entry (W162)</td></tr>
+        <tr><td class="axis">Run location</td><td>Predibase cloud, customer VPC under Enterprise SKU</td><td class="kolm"><b>laptop, phone, edge box, air-gapped VPC</b>, your own GPU, any inference runtime that loads LoRA</td></tr>
+        <tr><td class="axis">Multi-LoRA serving throughput</td><td><b>strong</b> &middot; LoRAX + Turbo LoRA, thousands of adapters per GPU</td><td class="kolm">out of scope &middot; pair kolm with LoRAX downstream when multi-tenant serving is needed (see <a href="/how-vs-lorax" style="color:var(--accent)">/how-vs-lorax</a>)</td></tr>
+        <tr><td class="axis">Agentic governance</td><td><b>strong</b> &middot; action monitoring, rewind, Rubrik data-security posture</td><td class="kolm">out of scope &middot; kolm governs the build; pair with Rubrik for runtime agent governance</td></tr>
+        <tr><td class="axis">Receipt chain</td><td>console eval metrics + Rubrik audit log in their UI</td><td class="kolm"><b>cryptographically verifiable</b> &middot; spec, seeds, split, train, recipes, evals, external_holdout, tenant_shadow, auditor, supersession, drift, signatures, rekor (W144-W167)</td></tr>
+        <tr><td class="axis">Eval gate</td><td>training metrics surfaced; non-blocking</td><td class="kolm"><b>K-score V2 gate</b> &middot; compile blocks if eval &lt; threshold; A/T/F/R/E/Z axes (W164, W275)</td></tr>
+        <tr><td class="axis">PHI redactor</td><td>BAA available; PHI flows through Predibase infra</td><td class="kolm"><b>Wave 157</b> &middot; 18 HIPAA Safe Harbor + 3 kolm extensions; redact before teacher call, reinject after; verifier check #14</td></tr>
+        <tr><td class="axis">Cross-vendor distillation</td><td>vendor-managed teacher selection</td><td class="kolm"><b>Wave 158</b> &middot; <code>--teacher=&lt;vendor:model&gt;</code> across Anthropic, OpenAI, Google, xAI, local; <code>--student-base</code> across 13 SKUs</td></tr>
+        <tr><td class="axis">Drift detection</td><td>monitor at runtime; alert on regression</td><td class="kolm"><b>Wave 167 drift cron</b> &middot; snapshot, report, supersession chain bound into artifact_hash; checks #23 + #24</td></tr>
+        <tr><td class="axis">Vendor exit</td><td>weights portable; runtime + governance config is not</td><td class="kolm"><b>file on disk</b> &middot; RS-1 v2.1 Apache-2.0 open spec; artifact still runs after you fire the vendor</td></tr>
+        <tr><td class="axis">Procurement story</td><td><b>strong</b> &middot; Rubrik NYSE-listed, enterprise MSA, established channel</td><td class="kolm">build-side complement; pair Predibase + Rubrik for procurement and runtime, kolm for build proof</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The Rubrik acquisition validated the category but did not close the gap.</h2>
+    <div class="callout">
+      <b>June 2025:</b> Rubrik acquired Predibase. The combined product pivoted toward agentic AI governance - monitoring agent actions, rewinding state, applying Rubrik's data-security posture to LLM workloads. Rubrik gained a fine-tuning + serving footprint; Predibase gained an enterprise security distribution motion.
+    </div>
+    <p>This proved the market: enterprise security plus LoRA serving is a real spend category. It did not close the gap that motivates kolm. Rubrik + Predibase governs the runtime. kolm proves the build. An agent action monitor cannot tell you what teacher distilled the model, what data the train set held, whether the eval gate fired, whether the bytes on disk match the bytes signed at compile time, or that no raw PHI leaked into adapter weights. Those are kolm's surface.</p>
+    <p>The two products work together. Build a signed adapter with kolm. Deploy it through Predibase. Let Rubrik govern the runtime. The signed .kolm file is the cryptographic contract between the build team and the runtime governance plane.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The integration in one CLI session.</h2>
+    <pre class="cli"><span class="cm"># 1. Build the signed adapter with kolm</span>
+$ <b>kolm distill</b> claim-summarizer \
+    --teacher=anthropic:claude-opus-4-7 \
+    --student-base=qwen2.5-7b \
+    --redact=phi --eval-gate=0.85
+
+  PASS  K-score 0.917 (A=0.94 T=0.91 F=0.97 R=0.88)
+  PASS  PHI redactor: 18 Safe Harbor + 3 kolm extensions, no leakage
+  PASS  Ed25519 signature, Rekor transparency log entry
+  WROTE claim-summarizer.kolm
+
+<span class="cm"># 2. Extract the LoRA for Predibase deploy</span>
+$ <b>kolm extract</b> claim-summarizer.kolm --target=lora-weights --out=./adapter
+
+<span class="cm"># 3. Push to Predibase the way you already do</span>
+$ pb adapter upload ./adapter --base=qwen2.5-7b --name=claim-summarizer
+
+<span class="cm"># 4. Verify the served adapter still matches what kolm signed</span>
+$ <b>kolm verify</b> claim-summarizer.kolm
+  PASS  24/24 checks &middot; Ed25519 + Sigstore validated &middot; receipt chain intact</pre>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>When Predibase + Rubrik is the right answer.</h2>
+    <div class="right-answer-grid">
+      <div class="card">
+        <h4>Multi-tenant LoRA serving at scale</h4>
+        <p>You serve thousands of distinct adapters across many customers. LoRAX + Turbo LoRA on Predibase cloud is genuinely strong on this workload, and someone else owning GPU operations is the point.</p>
+      </div>
+      <div class="card">
+        <h4>Agent governance is your primary spend</h4>
+        <p>Your buyer needs action monitoring, rewind, and a Rubrik security narrative. That is what the post-acquisition product was built for and what the sales motion sells against.</p>
+      </div>
+      <div class="card">
+        <h4>Single enterprise MSA matters</h4>
+        <p>Procurement wants one MSA covering fine-tuning, serving, and runtime governance from a NYSE-listed vendor. Rubrik delivers that posture cleanly.</p>
+      </div>
+      <div class="card">
+        <h4>Runtime-only compliance answer</h4>
+        <p>Your auditor accepts a console audit log plus runtime governance reports as the answer. You do not need a cryptographically signed build artifact.</p>
+      </div>
+    </div>
+    <h2 style="margin-top:32px">When kolm is the right answer.</h2>
+    <p>Your team can consume a signed file and run it themselves. Your workload is edge, air-gapped, or on-device. Your auditor needs cryptographic provenance on the build, not just runtime telemetry. Your compliance team specifically asked for the receipt chain. The PHI redactor (W157), cross-vendor distillation (W158), and supersession chain (W167) become load-bearing the moment your buyer asks "what trained this model and how do I prove it did not see raw PHI."</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/how-vs-lorax">Pair with LoRAX &rarr;</a>
+      <a class="btn" href="/compare">Back to differentiation matrix &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="ft-row">
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span><a href="/compare">/compare</a> &middot; <a href="/compare/kolm-vs-openpipe-2026">vs OpenPipe (2026)</a> &middot; <a href="/compare/kolm-vs-together-2026">vs Together (2026)</a> &middot; <a href="/compare/kolm-vs-bedrock-distill">vs Bedrock</a> &middot; <a href="/compare/kolm-vs-proxis">vs Proxis</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

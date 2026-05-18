@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Developer onboarding &middot; kolm.ai</title>
+<meta name="description" content="CLI-led four-step path: install kolm, capture your first prompt, distill your first artifact, wire it to your IDE.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<link rel="canonical" href="https://kolm.ai/onboard/developer">
+<meta name="robots" content="noindex,follow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .ob-wrap { max-width: 820px; margin: 0 auto; padding: 28px 20px 80px; }
+  .ob-title { font-size: 13px; font-family: var(--mono); color: var(--ink-mute); margin: 0 0 8px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; }
+  .ob-h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; }
+  .ob-lede { color: var(--ink-mute); font-size: 15px; margin: 0 0 26px; line-height: 1.5; }
+  .ob-progress { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 26px; }
+  .ob-pill { font-family: var(--mono); font-size: 11px; color: var(--ink-mute); padding: 8px 10px; border-radius: 6px; background: var(--bg-elev); border: 1px solid var(--line); text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; }
+  .ob-pill.active { color: var(--ink); border-color: var(--accent); background: var(--bg-card); }
+  .ob-pill.done { color: var(--accent); }
+  .ob-step { display: none; }
+  .ob-step.active { display: block; }
+  .ob-step h2 { font-size: 24px; margin: 4px 0 8px; line-height: 1.25; }
+  .ob-step .sub { color: var(--ink-mute); font-size: 14.5px; margin: 0 0 18px; line-height: 1.5; }
+  .ob-card { border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; background: var(--bg-card); margin-bottom: 14px; }
+  .ob-card h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); font-family: var(--mono); margin: 0 0 10px; }
+  .ob-card p { margin: 0 0 6px; color: var(--ink); font-size: 14.5px; line-height: 1.55; }
+  .ob-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 18px; }
+  .ob-skip { color: var(--ink-faint); font-size: 13px; font-family: var(--mono); margin-left: auto; text-decoration: none; }
+  .ob-skip:hover { color: var(--ink); }
+  .ob-term { font-family: var(--mono); font-size: 12.5px; line-height: 1.65; background: var(--bg-elev); border: 1px solid var(--line-strong); padding: 14px 16px; border-radius: 6px; overflow-x: auto; white-space: pre; color: var(--ink); }
+  .ob-term .c { color: var(--ink-faint); }
+  .ob-term .ok { color: var(--accent); }
+  .ob-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+  .ob-tab { font-family: var(--mono); font-size: 12px; padding: 6px 12px; border-radius: 5px; background: transparent; color: var(--ink-mute); border: 1px solid var(--line); cursor: pointer; }
+  .ob-tab.active { color: var(--ink); border-color: var(--accent); background: var(--bg-elev); }
+  .ide-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .ide-card { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: var(--bg-card); display: block; text-decoration: none; color: inherit; }
+  .ide-card:hover { border-color: var(--accent); }
+  .ide-card .h { font-size: 14px; font-weight: 500; margin: 0 0 4px; }
+  .ide-card .p { color: var(--ink-mute); font-size: 12.5px; margin: 0; line-height: 1.4; }
+  @media (max-width: 720px) {
+    .ob-progress { grid-template-columns: 1fr 1fr; }
+    .ide-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand" aria-label="kolm home">kolm</a>
+    <!-- KOLM_NAV_BEGIN (W221) -->
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/product">Product</a>
+      <a href="/models">Models</a>
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
+    </nav>
+    <!-- KOLM_NAV_END (W221) -->
+    <div class="site-actions"><a href="/account">account</a></div>
+  </div>
+</header>
+
+<main class="ob-wrap" id="main">
+  <h1 class="ob-title">Developer path</h1>
+  <h2 class="ob-h1">From npm i to wired-up IDE in four commands</h2>
+  <p class="ob-lede">kolm is one binary, three primitives, and a receipt chain. Install, capture, distill, integrate. Each step prints what it did and signs the result.</p>
+
+  <div class="ob-progress" role="tablist" aria-label="Developer onboarding progress">
+    <div class="ob-pill active" data-step="1">01 . install</div>
+    <div class="ob-pill" data-step="2">02 . capture</div>
+    <div class="ob-pill" data-step="3">03 . distill</div>
+    <div class="ob-pill" data-step="4">04 . IDE</div>
+  </div>
+
+  <section class="ob-step active" data-step="1">
+    <h2>Install the CLI</h2>
+    <p class="sub">Pick your package manager. The CLI ships as a single statically linked binary plus a thin Node wrapper; no daemon required.</p>
+    <div class="ob-tabs" role="tablist">
+      <button class="ob-tab active" data-os="mac" role="tab" aria-selected="true">macOS</button>
+      <button class="ob-tab" data-os="linux" role="tab" aria-selected="false">Linux</button>
+      <button class="ob-tab" data-os="win" role="tab" aria-selected="false">Windows</button>
+    </div>
+    <div class="ob-term" data-tab-content="mac">$ brew install kolm
+$ kolm login --key ks_xxxxxxxx
+<span class="ok">  ok. config written to ~/.kolm/config.json</span>
+$ kolm doctor
+<span class="c">  CLI version 7.x</span>
+<span class="ok">  ready.</span></div>
+    <div class="ob-term" data-tab-content="linux" style="display:none">$ curl -fsSL https://kolm.ai/install.sh | sh
+$ kolm login --key ks_xxxxxxxx
+<span class="ok">  ok. config written to ~/.kolm/config.json</span>
+$ kolm doctor
+<span class="ok">  ready.</span></div>
+    <div class="ob-term" data-tab-content="win" style="display:none">PS&gt; iwr -useb https://kolm.ai/install.ps1 | iex
+PS&gt; kolm login --key ks_xxxxxxxx
+<span class="ok">  ok.</span>
+PS&gt; kolm doctor
+<span class="ok">  ready.</span></div>
+    <div class="ob-actions">
+      <button class="btn primary" type="button" data-next="2">Next: capture a prompt &rarr;</button>
+      <a class="ob-skip" href="/onboard">Switch path</a>
+    </div>
+  </section>
+
+  <section class="ob-step" data-step="2">
+    <h2>kolm capture your first prompt</h2>
+    <p class="sub">Captures turn any LLM call into a signed pair you can later replay, distill, or audit. Run this in your existing app or in a one-off REPL.</p>
+    <div class="ob-term">$ kolm capture --provider openai --tag my-app
+<span class="c">  listening on http://127.0.0.1:11434 (drop-in for any OpenAI client).</span>
+<span class="c">  capturing prompt + response pairs into ~/.kolm/captures/my-app.jsonl</span>
+<span class="ok">  press Ctrl-C to stop. 42 pairs captured so far.</span>
+
+$ kolm tail captures --namespace my-app --limit 3
+<span class="c">  3 most recent capture pairs.</span></div>
+    <div class="ob-card"><h3>why captures</h3><p>You need at least 100 pairs to distill a useful recipe and 1000 pairs to compile a specialist. The capture stream is local-first; nothing leaves your laptop until you opt in.</p></div>
+    <div class="ob-actions">
+      <button class="btn primary" type="button" data-next="3">Next: distill an artifact &rarr;</button>
+      <a class="ob-skip" href="/onboard">Switch path</a>
+    </div>
+  </section>
+
+  <section class="ob-step" data-step="3">
+    <h2>kolm distill your first artifact</h2>
+    <p class="sub">One command takes your captured pairs to a signed .kolm artifact you can run anywhere. The preview flag prints the plan without writing files.</p>
+    <div class="ob-term">$ kolm distill --from-captures --namespace my-app --preview
+<span class="c">  plan: recipe class = "extraction" (you have 380 pairs).</span>
+<span class="c">  teacher: deepseek-v4-flash. base: qwen3-vl-7b.</span>
+<span class="c">  estimated compile time: 3m20s. estimated cost: $0.42.</span>
+
+$ kolm distill --from-captures --namespace my-app
+<span class="ok">  artifact: my-app.kolm. K-score: 0.91. receipt signed.</span>
+$ kolm verify my-app.kolm
+<span class="ok">  signature OK. Rekor entry: 0x7e4f...</span></div>
+    <div class="ob-card"><h3>what you get</h3><p>A single <code>.kolm</code> file you can drop into any container, edge function, or device. It already includes the receipt chain, the spec, and the eval set.</p></div>
+    <div class="ob-actions">
+      <button class="btn primary" type="button" data-next="4">Next: wire to your IDE &rarr;</button>
+      <a class="ob-skip" href="/onboard">Switch path</a>
+    </div>
+  </section>
+
+  <section class="ob-step" data-step="4">
+    <h2>Wire it to your IDE</h2>
+    <p class="sub">kolm ships first-party MCP installers for Cursor, Claude Code, and Continue. Pick yours and run one command. No server config to maintain.</p>
+    <div class="ide-grid">
+      <a class="ide-card" href="/install/cursor">
+        <div class="h">Cursor</div>
+        <p class="p">Adds a kolm tool to the MCP palette. Receipts surface in the right pane.</p>
+      </a>
+      <a class="ide-card" href="/integrations/claude-code">
+        <div class="h">Claude Code</div>
+        <p class="p">Drop-in slash command. Stream completions through your local artifact.</p>
+      </a>
+      <a class="ide-card" href="/integrations/continue">
+        <div class="h">Continue</div>
+        <p class="p">VSCode extension. Use your artifact as a chat or autocomplete provider.</p>
+      </a>
+      <a class="ide-card" href="/integrations/vscode">
+        <div class="h">VSCode</div>
+        <p class="p">Generic VSCode extension. Works with any artifact path.</p>
+      </a>
+      <a class="ide-card" href="/integrations/jetbrains">
+        <div class="h">JetBrains</div>
+        <p class="p">Single plugin for IntelliJ, GoLand, PyCharm, RustRover, and friends.</p>
+      </a>
+      <a class="ide-card" href="/integrations/zed">
+        <div class="h">Zed</div>
+        <p class="p">Native Zed assistant provider. Configuration is one settings.json key.</p>
+      </a>
+    </div>
+    <div class="ob-actions">
+      <a class="btn primary" href="/install/cursor">Install Cursor extension &rarr;</a>
+      <a class="ob-skip" href="/onboard">Switch path</a>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Onboarding</h4>
+        <a href="/onboard/cto">CTO / CISO</a>
+        <a href="/onboard/developer">Developer</a>
+        <a href="/onboard/compliance">Compliance</a>
+        <a href="/onboard/researcher">Researcher</a>
+      </div>
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/cli">CLI</a>
+        <a href="/cookbook">Cookbook</a>
+      </div>
+      <div>
+        <h4>Integrations</h4>
+        <a href="/install/cursor">Cursor</a>
+        <a href="/integrations/claude-code">Claude Code</a>
+        <a href="/integrations">All integrations</a>
+      </div>
+    </div>
+    <div class="footer-tag"><span>kolm.ai - Made with .kolm - Apache-2.0</span></div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // W276 — Developer funnel: step navigation + OS-tab swap.
+  var current = 1;
+  function go(n){
+    current = n;
+    document.querySelectorAll('.ob-step').forEach(function(s){
+      s.classList.toggle('active', s.getAttribute('data-step') === String(n));
+    });
+    document.querySelectorAll('.ob-pill').forEach(function(p){
+      var step = parseInt(p.getAttribute('data-step'), 10);
+      p.classList.toggle('active', step === n);
+      p.classList.toggle('done', step < n);
+    });
+    try { localStorage.setItem('kolm-persona', 'developer'); } catch (_) {}
+  }
+  document.querySelectorAll('[data-next]').forEach(function(b){
+    b.addEventListener('click', function(){ go(parseInt(b.getAttribute('data-next'), 10)); });
+  });
+  document.querySelectorAll('.ob-pill').forEach(function(p){
+    p.addEventListener('click', function(){ go(parseInt(p.getAttribute('data-step'), 10)); });
+  });
+  // OS tab swap.
+  var tabs = document.querySelectorAll('.ob-tab');
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){
+      tabs.forEach(function(x){ x.classList.remove('active'); x.setAttribute('aria-selected', 'false'); });
+      t.classList.add('active'); t.setAttribute('aria-selected', 'true');
+      var os = t.getAttribute('data-os');
+      document.querySelectorAll('[data-tab-content]').forEach(function(el){
+        el.style.display = (el.getAttribute('data-tab-content') === os) ? '' : 'none';
+      });
+    });
+  });
+})();
+</script>
+<script src="/nav.js" defer></script>
+</body>
+</html>

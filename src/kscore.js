@@ -34,6 +34,12 @@
 const V1_WEIGHTS = { A: 0.40, S: 0.15, L: 0.15, C: 0.15, V: 0.15 };
 const V2_WEIGHTS = { A: 0.30, S: 0.10, L: 0.10, C: 0.10, V: 0.10, R: 0.05, T: 0.05, F: 0.10, E: 0.05, Z: 0.05 };
 const GATE = 0.85;
+// W258-ML-1: honest floor for the A divisor when computing R/F/T ratios.
+// Without a real floor the 1e-6 epsilon used to dodge division-by-zero lets
+// a tiny declared accuracy inflate R/F/T to 1.0 via clamp01(holdout / 1e-6).
+// Below this threshold the axis is unverifiable and must redistribute weight
+// rather than emit a falsely-perfect score.
+const MIN_HONEST_A_FOR_RATIO = 0.05;
 
 function clamp01(x) { return Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0)); }
 function round4(x) { return Number(x.toFixed(4)); }
@@ -102,16 +108,29 @@ export function computeKScoreV2(input) {
   const L = latencyScore(input.p50_latency_us);
   const C = costScore(input.cost_usd_per_call);
   const V = clamp01(input.coverage);
-  const R = input.holdout_accuracy == null ? null : clamp01(input.holdout_accuracy / Math.max(1e-6, A));
-  const F = input.subgroup_min_accuracy == null ? null : clamp01(input.subgroup_min_accuracy / Math.max(1e-6, A));
+  // W258-ML-1: R/F/T ratios divide by A. When A is near zero, dividing by a
+  // 1e-6 epsilon trivially clamps the ratio to 1.0 and the axis claims a
+  // false perfect score. Below MIN_HONEST_A_FOR_RATIO the divisor is not
+  // meaningful, so the axis returns null and its weight redistributes.
+  const ratioReady = A >= MIN_HONEST_A_FOR_RATIO;
+  const R = (input.holdout_accuracy == null || !ratioReady)
+    ? null
+    : clamp01(input.holdout_accuracy / A);
+  const F = (input.subgroup_min_accuracy == null || !ratioReady)
+    ? null
+    : clamp01(input.subgroup_min_accuracy / A);
   const E = energyScore(input.joules_per_call);
   const Z = driftScore(input.eval_set_drift);
   // T = student-holdout / teacher-holdout. Reported as A/T (student / teacher).
   // 1.0 = student matches teacher; 0.9 = student at 90% of teacher quality.
-  // Needs BOTH inputs; either missing → T=null and weight redistributes.
-  const T = (input.teacher_holdout_accuracy == null || input.holdout_accuracy == null)
+  // Needs BOTH inputs AND a non-trivial teacher_holdout_accuracy; the same
+  // ratio-floor argument applies to the teacher's holdout: a teacher that
+  // scored 0 on the holdout cannot anchor a fidelity ratio.
+  const teacherReady = input.teacher_holdout_accuracy != null
+    && input.teacher_holdout_accuracy >= MIN_HONEST_A_FOR_RATIO;
+  const T = (input.teacher_holdout_accuracy == null || input.holdout_accuracy == null || !teacherReady)
     ? null
-    : clamp01(input.holdout_accuracy / Math.max(1e-6, input.teacher_holdout_accuracy));
+    : clamp01(input.holdout_accuracy / input.teacher_holdout_accuracy);
 
   const supplied = { A, S, L, C, V };
   if (R != null) supplied.R = R;
@@ -160,6 +179,42 @@ export function computeKScoreV2(input) {
 
 // Default export = whichever path is appropriate for the inputs supplied.
 // Existing callers that pass only v1 inputs continue to get v1 envelopes.
+//
+// W252b Bug 4: when the manifest declares `recipe_class: 'distilled_model'`
+// AND names a `teacher_vendor` (cross-vendor distillation claim) but does NOT
+// supply `teacher_holdout_accuracy`, the T axis cannot be verified. The
+// default behavior is to emit a `T_axis_unverifiable` warning so the verifier
+// surfaces the gap rather than silently redistributing weight. Callers that
+// must enforce teacher fidelity (e.g., regulated procurement gates that will
+// not accept an unverifiable T axis) can pass `strict_teacher_fidelity: true`
+// to upgrade the warning to a throw.
 export function computeKScore(input) {
+  if (input && input.recipe_class === 'distilled_model'
+      && input.teacher_vendor
+      && (input.teacher_holdout_accuracy == null)) {
+    const msg = 'T_axis_unverifiable: distilled_model with teacher_vendor='
+      + String(input.teacher_vendor)
+      + ' teacher_holdout_accuracy not provided (verifier check #T1, RS-1 §7.13).';
+    if (input.lenient_teacher_fidelity === true) {
+      const out = computeKScoreV2(input);
+      const warning = { code: 'T_axis_unverifiable', message: msg };
+      out.warnings = Array.isArray(out.warnings) ? out.warnings.concat(warning) : [warning];
+      return out;
+    }
+    if (input.strict_teacher_fidelity === true) {
+      throw new Error(
+        'strict-teacher-fidelity: teacher_holdout_accuracy not provided for '
+        + 'distilled_model with teacher_vendor=' + String(input.teacher_vendor)
+        + '. Either supply teacher_holdout_accuracy or drop strict_teacher_fidelity.'
+      );
+    }
+    if (input.holdout_accuracy != null) {
+      const out = computeKScoreV2(input);
+      const warning = { code: 'T_axis_unverifiable', message: msg };
+      out.warnings = Array.isArray(out.warnings) ? out.warnings.concat(warning) : [warning];
+      return out;
+    }
+    throw new Error(msg);
+  }
   return computeKScoreV2(input);
 }

@@ -198,14 +198,11 @@ test('15. CLI flags claimed in /format/v2 either exist in cli/kolm.js or are amb
     );
   }
 
-  // Also confirm: if the page mentions the `kolm migrate` verb, it must be
-  // amber-pilled (cli/kolm.js has no cmdMigrate / case 'migrate' yet).
+  // W296f shipped cmdMigrate + case 'migrate'. If the page mentions the verb,
+  // confirm it now resolves in the CLI (no amber pill needed — the verb is
+  // real). This replaces the prior amber-pill assertion W256 retired.
   if (html.includes('kolm migrate')) {
-    assert.ok(!cli.includes("case 'migrate'") && !cli.includes('cmdMigrate'),
-      'cli/kolm.js does not implement migrate verb; precondition for this test branch is intact');
-    const idx = html.indexOf('kolm migrate');
-    const window = html.slice(Math.max(0, idx - 600), idx + 600);
-    assert.ok(window.includes('verify before ship'),
-      'format/v2.html mentions "kolm migrate" verb (not wired in cli/kolm.js); must carry a verify-before-ship amber pill nearby');
+    assert.ok(cli.includes("case 'migrate'") || cli.includes('cmdMigrate'),
+      'format/v2.html mentions "kolm migrate"; cli/kolm.js must implement the verb (cmdMigrate or case \'migrate\')');
   }
 });

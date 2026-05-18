@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>K-score ·kolm</title>
+<title>K-score · kolm.ai</title>
 <meta name="description" content="K-score is a per-artifact gate: every .kolm file gets its own score from its own eval set. Not a leaderboard for the underlying base model. Five components, one number, no eval no ship.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -201,6 +201,7 @@
 </script>
 </head>
 <body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
 
 <header class="site">
   <div class="wrap"><div class="row">
@@ -493,6 +494,69 @@ $ kolm inspect <span class="key">support-triage.kolm</span>
     <div class="cta-row">
       <a href="/signup" class="btn-primary">Compile your first AI <span aria-hidden="true">&rarr;</span></a>
       <a href="/anatomy" class="btn-link">See what'inside .kolm <span aria-hidden="true">&rarr;</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- W275: k-score-2 axes + public bench callout. -->
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">05</span> &middot; v2 axes</div>
+    <h2>Five more axes when the artifact ships the inputs.</h2>
+    <p class="lede">k-score-v1 grades every artifact on five terms (A/S/L/C/V). <b>k-score-v2</b> reads five more (R/F/T/E/Z) when the manifest carries them and reshuffles weight to supplied axes when any are missing. Composite stays in <code>[0, 1]</code>. Same gate.</p>
+    <div class="grid cols-5">
+      <div class="cell">
+        <div class="num">w &middot; 0.05</div>
+        <div class="v">r</div>
+        <div class="name">Robustness</div>
+        <div class="desc">Held-out accuracy on cases the artifact never saw during compile. Stops scoring on the train set.</div>
+      </div>
+      <div class="cell">
+        <div class="num">w &middot; 0.10</div>
+        <div class="v">f</div>
+        <div class="name">Fairness</div>
+        <div class="desc">Lowest subgroup accuracy across declared cohorts. The worst-case slice, not the average.</div>
+      </div>
+      <div class="cell">
+        <div class="num">w &middot; 0.05</div>
+        <div class="v">t</div>
+        <div class="name">Teacher fidelity</div>
+        <div class="desc">student_holdout / teacher_holdout. 1.00 = student matches teacher. Required for distilled_model.</div>
+      </div>
+      <div class="cell">
+        <div class="num">w &middot; 0.05</div>
+        <div class="v">e</div>
+        <div class="name">Energy</div>
+        <div class="desc">1 / (1 + joules_per_call / 100). Local compile measures it; cloud-pointer inherits upstream estimate.</div>
+      </div>
+      <div class="cell">
+        <div class="num">w &middot; 0.05</div>
+        <div class="v">z</div>
+        <div class="name">Drift</div>
+        <div class="desc">1 - eval-set drift vs registry baseline. Drops as the world moves; triggers supersession.</div>
+      </div>
+    </div>
+    <p style="margin-top:24px">When all ten axes are present K weighs A=0.30, S/L/C/V=0.10 each, R/T/E/Z=0.05, F=0.10. Missing axes redistribute. Distilled-model artifacts that declare a teacher vendor but omit <code>teacher_holdout_accuracy</code> throw by default so a silently-absent T cannot inflate the score.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">06</span> &middot; public bench</div>
+    <h2>Same 30 cases. Anywhere. Anyone.</h2>
+    <p class="lede"><b>kolm-bench v1</b> is a frozen 30-case suite (8 classification + 7 extraction + 8 generation + 7 code). Spec signed 2026-05-18, never changes inside the version. Run it locally, post a signed score receipt to the public leaderboard.</p>
+    <pre><span class="com"># grade your artifact against the public bench</span>
+$ kolm bench <span class="key">phi-redactor.kolm</span>
+spec:        kolm-bench-v1
+cases:       30  (8 cls + 7 ext + 8 gen + 7 code)
+composite:   0.94  pass_rate: 28/30  ships: yes
+
+<span class="com"># post the signed receipt to the public leaderboard</span>
+$ kolm bench <span class="key">phi-redactor.kolm</span> --submit</pre>
+    <div class="cta-row">
+      <a href="/kscore-bench" class="btn-primary">Read the bench contract <span aria-hidden="true">&rarr;</span></a>
+      <a href="/kscore-leaderboard" class="btn-link">See the leaderboard <span aria-hidden="true">&rarr;</span></a>
+      <a href="/kolm-bench.json" class="btn-link">Bench spec JSON <span aria-hidden="true">&rarr;</span></a>
     </div>
   </div>
 </section>

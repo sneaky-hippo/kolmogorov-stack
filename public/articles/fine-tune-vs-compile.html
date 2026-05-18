@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fine-tuning vs AI compilation: when each is the right tool · kolm.ai</title>
+<meta name="description" content="A decision tree for AI buyers. Fine-tuning a hosted model and compiling a local artifact solve different problems. This article names the four axes that decide which tool fits: portability, audit, latency budget, and lifecycle ownership.">
+<meta name="keywords" content="fine-tuning vs AI compiler, fine-tune vs compile, kolm.ai, Predibase vs kolm, OpenAI fine-tune vs local, when to compile AI">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta name="author" content="kolm.ai">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
+<meta property="og:site_name" content="kolm.ai">
+<meta property="og:title" content="Fine-tuning vs AI compilation: when each is the right tool">
+<meta property="og:description" content="A decision tree for AI buyers across portability, audit, latency, and lifecycle ownership.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/articles/fine-tune-vs-compile">
+<meta property="og:image" content="https://kolm.ai/og/articles-fine-tune-vs-compile.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Fine-tune vs AI compile · kolm.ai">
+<meta name="twitter:description" content="Four axes that decide whether you fine-tune a hosted model or compile your own.">
+<meta name="twitter:image" content="https://kolm.ai/og/articles-fine-tune-vs-compile.svg">
+<link rel="canonical" href="https://kolm.ai/articles/fine-tune-vs-compile">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://kolm.ai/articles/fine-tune-vs-compile#article",
+      "headline": "Fine-tuning vs AI compilation: when each is the right tool",
+      "description": "A decision tree for AI buyers. Fine-tuning a hosted model and compiling a local artifact solve different problems.",
+      "author": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "publisher": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "image": "https://kolm.ai/og/articles-fine-tune-vs-compile.svg",
+      "datePublished": "2026-05-18",
+      "dateModified": "2026-05-18",
+      "mainEntityOfPage": "https://kolm.ai/articles/fine-tune-vs-compile",
+      "articleSection": "AI Compiler",
+      "keywords": "fine-tuning, AI compiler, kolm.ai, decision tree, when to use"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm.ai", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "Articles", "item": "https://kolm.ai/articles" },
+        { "@type": "ListItem", "position": 3, "name": "Fine-tune vs AI compile", "item": "https://kolm.ai/articles/fine-tune-vs-compile" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#a8b0bb;--ink-faint:#5a6471;--bg:#0b0d10;--bg-elev:#11151b;--accent:#10b981;--warn:#f0b86b;--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',system-ui,sans-serif}
+html[data-theme="light"]{--ink:#1a1d22;--ink-mute:#4b5260;--ink-faint:#7a818c;--bg:#f7f4ec;--bg-elev:#fff}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.65}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+header.site{position:sticky;top:0;background:var(--bg);border-bottom:1px solid rgba(255,255,255,.06);z-index:50}
+header.site .wrap{display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;padding:14px 24px}
+header.site .logo{font-family:var(--mono);font-weight:600;letter-spacing:1.2px;color:var(--ink);font-size:18px}
+header.site nav a{margin-left:24px;color:var(--ink-mute);font-size:14px}
+header.site nav a:hover{color:var(--ink)}
+main{max-width:760px;margin:0 auto;padding:56px 24px 96px}
+h1{font-size:42px;line-height:1.15;letter-spacing:-1.2px;font-weight:680;margin:0 0 12px}
+h2{font-size:26px;line-height:1.25;letter-spacing:-0.4px;font-weight:640;margin:48px 0 14px}
+h3{font-size:19px;line-height:1.35;font-weight:600;margin:28px 0 10px}
+p{margin:0 0 16px}.lede{font-size:19px;color:var(--ink-mute);margin:0 0 28px}
+ul,ol{padding-left:22px;margin:0 0 16px}li{margin:6px 0}
+code{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:2px 6px;border-radius:4px}
+pre{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:16px 20px;border-radius:8px;overflow-x:auto;line-height:1.55}
+table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
+th{color:var(--ink-mute);font-weight:600;background:var(--bg-elev)}
+.warn{background:rgba(240,184,107,.08);border-left:3px solid var(--warn);padding:14px 18px;border-radius:6px;font-size:14px;color:var(--ink-mute);margin:20px 0}
+.muted{color:var(--ink-faint);font-size:14px}
+footer{max-width:1080px;margin:0 auto;padding:32px 24px;color:var(--ink-faint);font-size:13px;border-top:1px solid rgba(255,255,255,.06)}
+@media (max-width:560px){main{padding:32px 18px 64px}h1{font-size:30px}h2{font-size:22px}table{font-size:12px}th,td{padding:8px 6px}}
+</style>
+</head>
+<body>
+<a href="#main" style="position:absolute;left:-9999px" onfocus="this.style.cssText='position:fixed;top:8px;left:8px;background:#111;color:#fff;padding:8px 12px;border-radius:6px;z-index:100'">Skip to content</a>
+<header class="site"><div class="wrap"><a class="logo" href="/">kolm.ai</a><nav><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav></div></header>
+<main id="main">
+<h1>Fine-tuning vs AI compilation: when each is the right tool</h1>
+<p class="lede">Fine-tuning a hosted model (OpenAI fine-tune, Predibase, Together) and compiling your own AI (kolm.ai) solve different problems. This article is a decision tree. The four axes that matter: portability, audit, latency budget, and lifecycle ownership.</p>
+
+<h2>What each tool actually does</h2>
+<p>A hosted fine-tuning service takes your training data, runs an updater against a base model on the provider's hardware, and returns a model id you call by network endpoint. The artifact never leaves their datacenter; you do not get weights. Inference billing continues per call until you stop using it. The provider can deprecate the base, deprecate the fine-tune format, or change the price.</p>
+<p>An AI compiler takes your training data, runs a distillation against a base model on hardware you choose, and emits a file. The artifact is a signed, hashed, portable bundle of (weights + recipe + eval + receipt chain). Inference runs wherever you load the file. There is no per-call billing because there is no call to anyone else's endpoint. The provider relationship ends when the compile finishes.</p>
+
+<h2>The four-axis decision tree</h2>
+<table>
+<thead><tr><th>Axis</th><th>Pick fine-tuning if</th><th>Pick compilation if</th></tr></thead>
+<tbody>
+<tr><td><b>Portability</b></td><td>You never want to move the model off the provider's network. The hosted endpoint is the deployment target.</td><td>You need to run on customer hardware, in an airgap, on a phone, on a vehicle, on a forklift, or in a region the provider does not serve.</td></tr>
+<tr><td><b>Audit</b></td><td>Your audit posture accepts "the provider's SOC 2 report" as the chain of custody. Regulators do not ask for weights.</td><td>Auditors must verify offline what was trained, on what corpus, with what eval, by whom. The receipt chain is part of your compliance program.</td></tr>
+<tr><td><b>Latency budget</b></td><td>P99 of 800 ms is acceptable; the network hop is fine; cold starts on the provider's autoscaler are tolerable.</td><td>You need sub-100 ms p99 in a closed loop, no network in the inference path, predictable memory footprint, no autoscaler.</td></tr>
+<tr><td><b>Lifecycle ownership</b></td><td>You are happy to track provider deprecation notices and re-run fine-tunes when the base changes under you.</td><td>You want to pin the base, pin the recipe, pin the eval, and ship an artifact that runs identically until you choose to replace it.</td></tr>
+</tbody>
+</table>
+
+<h2>Two clean cases</h2>
+<h3>Hosted fine-tune is the right tool</h3>
+<p>Customer-support intent classifier behind a SaaS chat widget. The provider's BAA is sufficient. Latency budget is one second. The team is small and does not want to operate inference infrastructure. The model only ever runs through the provider's endpoint. Fine-tune via Predibase or OpenAI; ship the model id; move on.</p>
+
+<h3>AI compile is the right tool</h3>
+<p>Clinical-note summarizer that must run inside the hospital network, on PHI, with auditor sign-off. Latency budget is 200 ms. The artifact must be verifiable by the security team without trusting any third-party endpoint. The model needs to keep running for at least three years without a vendor deprecation forcing a re-fit. Compile via <code>kolm compile --tier=3090</code>; ship the .kolm; the receipt chain handles the auditor.</p>
+
+<h2>Mixed cases that look ambiguous but are not</h2>
+<h3>You want fine-tuning but also want weights</h3>
+<p>This is a compile case dressed in fine-tune language. The moment "weights leave the provider" enters your requirements, the hosted services have lost the engagement. Compile.</p>
+
+<h3>You want a local artifact but do not want to think about hardware</h3>
+<p>kolm ships hardware-tier presets (<code>--tier=3090 / 5090 / dgx-spark / m3-ultra-512</code>); the tier picks base model + quant + KV-cache config so you do not pick those individually. See <a href="/runtimes">/runtimes</a>. If even tier selection is too much, hosted is still right; do not fight your own preferences.</p>
+
+<h3>You want a local artifact for cost reasons</h3>
+<p>Run the math. For a workload below roughly one million requests/month, the per-call billing on a hosted fine-tune is cheaper than the amortized hardware + operator cost of a local artifact. Above that threshold the curves invert hard. Compile becomes obviously cheaper around five million requests/month for most workloads. If your traffic is unpredictable and may stay small, fine-tune; if your traffic is large and predictable, compile.</p>
+
+<h2>The kolm.ai opinion</h2>
+<p>Both tools are legitimate. The reason kolm.ai exists is that a growing share of workloads (regulated, latency-sensitive, multi-tenant ship-to-customer, defense, edge) have ended up at compile and the hosted ecosystem has been slow to acknowledge those workloads on their own terms. The pricing page calls out the kinds of customer the compile shape fits; <a href="/compare">/compare</a> is the differentiation matrix that names every axis we win on and (importantly) the workloads where a hosted service is the right answer.</p>
+
+<div class="warn"><b>Honest scope.</b> If your workload sits in the hosted-fits-fine column above and you call kolm anyway, you will spend more engineering time than you needed to. The compile shape carries operational ownership that hosted abstracts away. We will not pretend otherwise.</div>
+
+<h2>Common questions</h2>
+<h3>Can I use both?</h3>
+<p>Yes. A common pattern: hosted fine-tune for an internal experiment, kolm compile for the production ship to customer hardware. The captured prompts from the hosted phase become seeds for the compile phase via <code>kolm import openai-finetune ./training.jsonl</code>.</p>
+
+<h3>What about retrieval-augmented generation?</h3>
+<p>RAG is orthogonal. It augments either tool with current documents at inference time. RAG plus fine-tune is a hosted retrieval architecture; RAG plus compile is a local retrieval architecture. The decision tree above is unchanged by whether RAG is in the loop.</p>
+
+<h3>Does the compile output run on CPU?</h3>
+<p>Yes for smaller artifacts (the redactor, the intent classifiers, the smaller code helpers) at acceptable latency. For larger artifacts (the 27B and 30B-A3B dense tiers) you want a recent NVIDIA / AMD / Apple Silicon GPU. See <a href="/models">/models</a> for the verified base catalog.</p>
+
+<h2>Related reading</h2>
+<ul>
+<li><a href="/what-is-an-ai-compiler">What is an AI compiler? Definition and flow</a></li>
+<li><a href="/articles/ai-compiler-comparison">AI compiler comparison: kolm vs Predibase vs OpenPipe vs LoRAX</a></li>
+<li><a href="/articles/kolm-artifact-walkthrough">The .kolm artifact, field by field</a></li>
+<li><a href="/articles/hipaa-ai-from-prompts">HIPAA-compliant AI from captured prompts</a></li>
+<li><a href="/compare">/compare</a> &middot; <a href="/pricing">/pricing</a> &middot; <a href="/runtimes">/runtimes</a></li>
+</ul>
+</main>
+<footer>kolm.ai &middot; the AI compiler &middot; <a href="/product">Product</a> &middot; <a href="/security">Security</a> &middot; <a href="/spec/rs-1">RS-1</a> &middot; <a href="/what-is-an-ai-compiler">What is an AI compiler?</a></footer>
+</body>
+</html>

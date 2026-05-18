@@ -431,11 +431,17 @@ test('compileSpec: production_ready=false when train below MIN_PRODUCTION_TRAIN'
 });
 
 test('compileSpec: production_ready=true with enough train + holdout + no leakage', async () => {
-  // 60 rows -> ~48 train + ~12 holdout, meets MIN_PRODUCTION_TRAIN=40 and
-  // MIN_PRODUCTION_HOLDOUT=10, no leakage.
-  const seedsPath = writeJsonl('prod.jsonl', Array.from({ length: 60 }, (_, i) => ({
-    input: { text: 'p' + i }, output: { echo: 'p' + i },
-  })));
+  // 100 rows -> 80 train + 20 holdout (deterministic split rounds with
+  // empirical margin), comfortably above MIN_PRODUCTION_TRAIN=40 and
+  // MIN_PRODUCTION_HOLDOUT=10. W258-ML-4 leakage check is satisfied by
+  // multi-token rows so bigram-Jaccard sees real lexical signal.
+  const rows = Array.from({ length: 100 }, (_, i) => {
+    const tokens = Array.from({ length: 8 }, (_, k) =>
+      crypto.createHash('sha256').update('prod-' + i + '-' + k).digest('hex').slice(0, 8));
+    const txt = tokens.join(' ');
+    return { input: { text: txt }, output: { echo: txt } };
+  });
+  const seedsPath = writeJsonl('prod.jsonl', rows);
   const outPath = path.join(TMP, 'prod.kolm');
   await compileSpec(basicSpec(), { seedsPath, comparator: 'json_subset', outDir: TMP, outPath });
   const art = loadArtifact(outPath);

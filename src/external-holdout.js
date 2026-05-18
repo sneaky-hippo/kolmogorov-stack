@@ -107,9 +107,21 @@ export function validateCatalogEntry(entry) {
   if (!entry || typeof entry !== 'object') {
     throw new Error('external-holdout: catalog entry must be an object');
   }
-  const required = ['name', 'kind', 'file', 'license', 'source_url', 'accessed_at'];
+  // W252b Bug 6 — expected_sha256 is now REQUIRED, not recommended. Without
+  // it the verifier has no way to confirm the on-disk holdout file has not
+  // drifted from what the catalog declares, and the whole point of the
+  // external-holdout layer is corpus-identity provenance. Adding a row to
+  // the catalog without computing the hash is the exact silent-drift the
+  // verifier was supposed to prevent.
+  const required = ['name', 'kind', 'file', 'license', 'source_url', 'accessed_at', 'expected_sha256'];
   for (const k of required) {
     if (entry[k] == null || entry[k] === '') {
+      if (k === 'expected_sha256') {
+        throw new Error(
+          `external-holdout: catalog entry '${entry.name || '?'}' missing required expected_sha256. ` +
+          `Compute with: openssl dgst -sha256 ${entry.file || '<file>'} and add to catalog entry.`
+        );
+      }
       throw new Error(`external-holdout: catalog entry missing required field '${k}'`);
     }
   }
@@ -119,6 +131,9 @@ export function validateCatalogEntry(entry) {
   // accessed_at must be an ISO-8601 date string (rough check)
   if (!/^\d{4}-\d{2}-\d{2}/.test(entry.accessed_at)) {
     throw new Error(`external-holdout: catalog entry accessed_at='${entry.accessed_at}' must be ISO-8601`);
+  }
+  if (!/^[0-9a-f]{64}$/.test(entry.expected_sha256)) {
+    throw new Error(`external-holdout: catalog entry '${entry.name}' expected_sha256 must be 64 hex chars (got ${entry.expected_sha256.length})`);
   }
   const warnings = [];
   if (!entry.description) warnings.push(`entry '${entry.name}' missing description`);

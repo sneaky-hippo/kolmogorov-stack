@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Private git recipe: the cross-agent memory layer · kolm.ai</title>
+<meta name="description" content="A private git repo is the right home for a fleet of compiled .kolm artifacts. Versioned, hashed, distributed, with the receipt chain in source control. One verb wires it.">
+<meta name="keywords" content="private git AI, kolm sync git, agent memory git, AI artifact version control, receipt chain git">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta name="author" content="kolm.ai">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
+<meta property="og:site_name" content="kolm.ai">
+<meta property="og:title" content="Private git recipe: the cross-agent memory layer">
+<meta property="og:description" content="Versioned, hashed, distributed. The right home for a fleet of compiled .kolm artifacts.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/foundations/git">
+<meta property="og:image" content="https://kolm.ai/og/foundations-git.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Private git recipe · kolm.ai">
+<meta name="twitter:description" content="The cross-agent memory layer.">
+<meta name="twitter:image" content="https://kolm.ai/og/foundations-git.svg">
+<link rel="canonical" href="https://kolm.ai/foundations/git">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://kolm.ai/foundations/git#article",
+      "headline": "Private git recipe: the cross-agent memory layer",
+      "description": "A private git repo is the right home for a fleet of compiled .kolm artifacts.",
+      "author": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "publisher": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "image": "https://kolm.ai/og/foundations-git.svg",
+      "datePublished": "2026-05-18",
+      "dateModified": "2026-05-18",
+      "mainEntityOfPage": "https://kolm.ai/foundations/git",
+      "articleSection": "Foundations"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm.ai", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "Foundations", "item": "https://kolm.ai/foundations" },
+        { "@type": "ListItem", "position": 3, "name": "Private git", "item": "https://kolm.ai/foundations/git" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#a8b0bb;--ink-faint:#5a6471;--bg:#0b0d10;--bg-elev:#11151b;--accent:#10b981;--warn:#f0b86b;--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',system-ui,sans-serif}
+html[data-theme="light"]{--ink:#1a1d22;--ink-mute:#4b5260;--ink-faint:#7a818c;--bg:#f7f4ec;--bg-elev:#fff}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.65}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+header.site{position:sticky;top:0;background:var(--bg);border-bottom:1px solid rgba(255,255,255,.06);z-index:50}
+header.site .wrap{display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;padding:14px 24px}
+header.site .logo{font-family:var(--mono);font-weight:600;letter-spacing:1.2px;color:var(--ink);font-size:18px}
+header.site nav a{margin-left:24px;color:var(--ink-mute);font-size:14px}
+header.site nav a:hover{color:var(--ink)}
+main{max-width:760px;margin:0 auto;padding:56px 24px 96px}
+h1{font-size:42px;line-height:1.15;letter-spacing:-1.2px;font-weight:680;margin:0 0 12px}
+h2{font-size:26px;line-height:1.25;letter-spacing:-0.4px;font-weight:640;margin:48px 0 14px}
+h3{font-size:19px;line-height:1.35;font-weight:600;margin:24px 0 10px}
+p{margin:0 0 16px}.lede{font-size:19px;color:var(--ink-mute);margin:0 0 28px}
+ul,ol{padding-left:22px;margin:0 0 16px}li{margin:6px 0}
+code{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:2px 6px;border-radius:4px}
+pre{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:16px 20px;border-radius:8px;overflow-x:auto;line-height:1.55}
+.warn{background:rgba(240,184,107,.08);border-left:3px solid var(--warn);padding:14px 18px;border-radius:6px;font-size:14px;color:var(--ink-mute);margin:20px 0}
+.muted{color:var(--ink-faint);font-size:14px}
+footer{max-width:1080px;margin:0 auto;padding:32px 24px;color:var(--ink-faint);font-size:13px;border-top:1px solid rgba(255,255,255,.06)}
+@media (max-width:560px){main{padding:32px 18px 64px}h1{font-size:30px}h2{font-size:22px}}
+</style>
+</head>
+<body>
+<a href="#main" style="position:absolute;left:-9999px" onfocus="this.style.cssText='position:fixed;top:8px;left:8px;background:#111;color:#fff;padding:8px 12px;border-radius:6px;z-index:100'">Skip to content</a>
+<header class="site"><div class="wrap"><a class="logo" href="/">kolm.ai</a><nav><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav></div></header>
+<main id="main">
+
+<p class="muted"><a href="/foundations">&larr; The 5 foundations</a></p>
+<h1>Private git recipe</h1>
+<p class="lede">A compiled .kolm artifact is a file. Files want a home that knows about versions, hashes, distribution, and access control. A private git repo answers all four. With the W229 <code>kolm sync</code> verb, you push the artifact + the manifest + the receipt chain in one command, and the entire fleet can pull it with another.</p>
+
+<h2>Why pair them</h2>
+<p>An AI artifact has the same properties as source code. You want diffable history, you want signed commits, you want branch-per-tenant isolation, you want bisect for regressions, you want a real ACL story. Object stores like S3 give you durability but not history or diffability. Model registries give you a UI but lock you to one vendor. A private git remote (Gitea, Forgejo, GitLab self-hosted, GitHub Enterprise, plain ssh + bare repo) gives you everything that matters with tools you already trust.</p>
+<p>The .kolm artifact format is binary, but the manifest is JSON and the receipt chain is a list of hashes. git diffs both cleanly. A code-review tool can show "tenant foo's recipe changed from K-score 0.87 to 0.91, here are the seeds that moved" in the same UI you already use for pull requests.</p>
+
+<h2>One-time setup</h2>
+<ol>
+<li>Pick a git remote you already trust. Gitea (<a href="https://gitea.com">gitea.com</a>) and Forgejo (<a href="https://forgejo.org">forgejo.org</a>) are excellent self-hosted choices; GitLab and GitHub Enterprise work; a plain bare repo on a Linux box works.</li>
+<li>Create an empty private repo named after the fleet: <code>kolm-fleet</code> is fine.</li>
+<li>Authorize the compile box's SSH key on the remote. Test with <code>git ls-remote git@host:org/kolm-fleet.git</code>.</li>
+<li>(Optional) Enable git LFS if your artifacts exceed 100 MB and your remote supports it; <code>kolm sync</code> writes to a per-artifact subdirectory so LFS rules can target <code>**/artifact.kolm</code>.</li>
+</ol>
+
+<h2>The daily flow</h2>
+<pre>
+# 1. compile in tmux, push to the mirror when done
+kolm compile spec.json --out artifact.kolm
+kolm sync push artifact.kolm --git git@host:org/kolm-fleet.git \
+  --subdir tenant-foo/$(date +%Y%m%d) \
+  --message "recipe v3, K-score 0.91, seeds N=4200"
+
+# 2. on a consumer box, pull the latest
+kolm sync pull --git git@host:org/kolm-fleet.git
+ls /tmp/kolm-sync-*/tenant-foo/
+# 20260514  20260516  20260518
+
+# 3. verify the receipt chain locally (no network call to a registry)
+kolm verify /tmp/kolm-sync-*/tenant-foo/20260518/artifact.kolm
+
+# 4. inspect what changed since the last revision
+git -C /tmp/kolm-sync-* log --oneline tenant-foo/
+</pre>
+
+<h2>What this gets you</h2>
+<ul>
+<li>Every revision of every artifact is a git commit. <code>git bisect</code> works for "when did the regression land?"</li>
+<li>The receipt chain is in source control. Pull request review can show the diff between two manifests; the signing chain is visible in <code>git log</code>.</li>
+<li>Branch per tenant isolates blast radius. A bad push to <code>tenant-foo</code> never touches <code>tenant-bar</code>. Merge to <code>main</code> only what passes a review gate.</li>
+<li>Compatible with all the git tooling you already use: GitHub Actions or Gitea Actions for CI, code-review UI for human gates, CODEOWNERS for per-tenant approvers.</li>
+<li>Disaster recovery is git's strength: clone the remote anywhere, you have the entire history.</li>
+</ul>
+
+<div class="warn">kolm does not require a git remote. <code>kolm compile</code> produces the artifact locally; you can copy it with scp, S3, rsync, or a USB stick. The git recipe is for fleets where multiple machines and multiple humans need to coordinate on the same artifact set.</div>
+
+<h2>Layout convention</h2>
+<p>The W229 sync writes a fixed layout per push. Knowing it lets you build tools on top.</p>
+<pre>
+&lt;subdir&gt;/
+  artifact.kolm        # the compiled binary (LFS-eligible path)
+  manifest.json        # full manifest including signature trailer
+  receipt-chain.json   # Merkle leaves in declared order
+  synced_at.txt        # ISO timestamp of the push
+</pre>
+<p>You can grow the subdir tree however you like (<code>tenant/date/</code>, <code>env/recipe-version/</code>, <code>flat/</code>). The four file names are fixed so downstream consumers always know where to read.</p>
+
+<h2>Failure modes worth knowing</h2>
+<p><b>Repo size growth.</b> Compiled artifacts can be hundreds of megabytes. Without LFS, the repo grows fast. Configure LFS for the artifact path on day one, or rotate the repo (rename old, start fresh) on a quarterly cadence.</p>
+<p><b>Push contention.</b> Two compile boxes pushing to the same subdir at the same time produce a merge conflict. Pick one of: (a) one canonical compile box per tenant, (b) date-stamped subdirs that never collide, (c) a queue tool in front of the remote.</p>
+<p><b>Force pushes.</b> Never force-push to the fleet repo. The receipt chain depends on commit history; rewriting it breaks every consumer's <code>kolm verify</code>.</p>
+
+<h2>Related recipes</h2>
+<ul>
+<li><a href="/foundations/tailscale">Tailscale: host the git remote on your tailnet, not the public internet</a></li>
+<li><a href="/foundations/scripts">Script-everything: wrap kolm compile + kolm sync push in one shell function</a></li>
+<li><a href="/foundations/tmux">tmux: keep the compile alive while the push waits its turn</a></li>
+<li><a href="/foundations/termius">Termius: pull the latest artifact from your phone</a></li>
+<li><a href="/foundations">All 5 foundations (overview)</a></li>
+</ul>
+
+</main>
+<footer>kolm.ai &middot; the AI compiler &middot; <a href="/foundations">5 foundations</a> &middot; <a href="/what-is-an-ai-compiler">what is an AI compiler?</a></footer>
+</body>
+</html>

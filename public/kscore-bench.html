@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm-bench v1 — the public K-score benchmark · kolm.ai</title>
+<meta name="description" content="kolm-bench v1 is a 30-case frozen suite anyone can run with one command. It scores any .kolm artifact across all 10 K-score axes against the same fixed inputs. Reproducible, signed, leaderboard-eligible.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:site_name" content="kolm">
+<meta property="og:title" content="kolm-bench v1 — the public K-score benchmark">
+<meta property="og:description" content="30 frozen cases. 10 axes. One number. Anyone can run it.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/kscore-bench">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:title" content="kolm-bench v1 — the public K-score benchmark">
+<meta name="twitter:description" content="30 frozen cases. 10 axes. One number. Anyone can run it.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/kscore-bench">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--bg:#050607;--bg-elev:#0b0f10;--bg-card:#101514;--line:rgba(255,255,255,0.06);--line-strong:rgba(255,255,255,0.12);--ink:#faf2e1;--ink-mute:#b5bdb1;--ink-faint:#737c73;--accent:#faf2e1;--accent-soft:rgba(236,231,220,0.10);--good:#7ef0d2;--warn:#f0b86b;--bad:#ff6b91;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
+  @media(max-width:720px){.wrap{padding:0 20px}}
+  header.site{position:sticky;top:0;z-index:60;background:rgba(8,9,8,0.78);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+  header.site .row{display:flex;align-items:center;justify-content:space-between;height:60px;gap:32px}
+  header.site .left{display:flex;align-items:center;gap:36px}
+  header.site .brand{display:inline-flex;align-items:center;gap:9px;color:var(--ink)}
+  header.site .brand span{font-weight:500;font-size:16px}
+  header.site nav{display:flex;gap:22px}
+  header.site nav a{color:var(--ink-mute);font-size:13.5px;transition:color 120ms}
+  header.site nav a:hover{color:var(--ink)}
+  header.site .right{display:flex;align-items:center;gap:14px}
+  header.site .right .ghost{color:var(--ink-mute);font-size:13.5px}
+  header.site .right .cta{display:inline-flex;align-items:center;gap:6px;color:var(--bg);background:var(--ink);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:500}
+  section{padding:72px 0}
+  section + section{border-top:1px solid var(--line)}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .eyebrow .num{color:var(--accent)}
+  h1{margin:0 0 22px;font-size:clamp(36px,5vw,60px);line-height:1.05;font-weight:500;color:var(--ink);max-width:22ch}
+  h2{margin:0 0 16px;font-size:clamp(24px,3vw,34px);line-height:1.15;font-weight:500;max-width:30ch}
+  p{color:var(--ink-mute);max-width:62ch}
+  p.lede{font-size:18px;color:var(--ink);max-width:60ch}
+  p.lede code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-card);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  pre{background:#0b0f10;border:1px solid var(--line);border-radius:8px;padding:18px 20px;overflow:auto;color:#e2e8f0;font-family:var(--mono);font-size:13px;line-height:1.6;margin:24px 0;max-width:780px}
+  pre .com{color:var(--ink-faint)}
+  pre .key{color:var(--accent)}
+  .grid{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:36px 0 0}
+  .grid.cols-4{grid-template-columns:repeat(4,1fr)}
+  .grid.cols-2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:880px){.grid.cols-4{grid-template-columns:repeat(2,1fr)}.grid.cols-2{grid-template-columns:1fr}}
+  .grid .cell{background:var(--bg-elev);padding:24px 22px}
+  .grid .cell .num{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+  .grid .cell .name{font-family:var(--sans);font-size:14px;font-weight:500;color:var(--ink);margin-bottom:6px}
+  .grid .cell .v{font-family:var(--sans);font-size:34px;font-weight:500;line-height:1;color:var(--ink);margin-bottom:8px}
+  .grid .cell .desc{font-size:13px;color:var(--ink-mute);line-height:1.5}
+  .axis-row{display:grid;grid-template-columns:32px 80px 1fr 80px;gap:14px;align-items:center;padding:14px 16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:13px}
+  .axis-row:first-child{border-top:0}
+  .axis-row .ax-k{color:var(--accent);font-weight:600}
+  .axis-row .ax-n{color:var(--ink)}
+  .axis-row .ax-d{color:var(--ink-mute)}
+  .axis-row .ax-w{color:var(--ink-faint);text-align:right}
+  .axes{border:1px solid var(--line);border-radius:8px;background:var(--bg-elev);margin:24px 0;max-width:840px}
+  .cta-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:36px}
+  .btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);border-radius:6px;padding:11px 18px;font-size:14px;font-weight:500}
+  .btn-link{display:inline-flex;align-items:center;gap:6px;color:var(--ink);padding:11px 14px;font-size:14px;font-weight:500}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--line-strong);border-radius:99px;font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--ink-mute);background:var(--accent-soft)}
+  .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--good);box-shadow:0 0 8px rgba(126,240,210,0.6)}
+  footer{border-top:1px solid var(--line);padding:48px 0 36px;color:var(--ink-faint);font-size:12.5px}
+  footer .cols{display:grid;grid-template-columns:repeat(5,1fr);gap:32px;margin-bottom:24px}
+  @media(max-width:720px){footer .cols{grid-template-columns:1fr 1fr;gap:24px}}
+  footer h4{font-size:11px;color:var(--ink-mute);text-transform:uppercase;margin:0 0 10px;font-weight:500}
+  footer ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+  footer ul a{color:var(--ink-faint)}
+</style>
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "kolm-bench v1",
+  "description": "Public 30-case benchmark for K-score, the kolm.ai artifact-fitness metric. Reproducible from one command.",
+  "url": "https://kolm.ai/kscore-bench",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "creator": { "@type": "Organization", "name": "kolm.ai" },
+  "distribution": [{ "@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://kolm.ai/kolm-bench.json" }],
+  "version": "1.0.0",
+  "datePublished": "2026-05-18"
+}
+</script>
+</head>
+<body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
+
+<header class="site">
+  <div class="wrap"><div class="row">
+    <div class="left">
+      <a class="brand" href="/" aria-label="kolm home"><span>kolm</span></a>
+      <nav>
+        <a href="/use-cases">Use cases</a>
+        <a href="/docs">Docs</a>
+        <a href="/research">Research</a>
+        <a href="/enterprise">Enterprise</a>
+        <a href="/pricing">Pricing</a>
+      </nav>
+    </div>
+    <div class="right">
+      <a href="/signin" class="ghost">sign in</a>
+      <a href="/signup" class="cta">Get API key &rarr;</a>
+    </div>
+  </div></div>
+</header>
+
+<main id="main">
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">01</span> &middot; kolm-bench v1</div>
+    <h1>The K-score benchmark you can run yourself.</h1>
+    <p class="lede"><b>30 frozen cases. 10 axes. One number per artifact.</b> Every <code>.kolm</code> file gets graded against the exact same inputs anyone else's does. The spec is signed, the cases never change inside a version, and the leaderboard is read-only after submission. <span class="pill"><span class="dot"></span>spec frozen 2026-05-18</span></p>
+    <div class="cta-row">
+      <a href="/kscore-leaderboard" class="btn-primary">See the leaderboard <span aria-hidden="true">&rarr;</span></a>
+      <a href="/kolm-bench.json" class="btn-link">Download bench spec (JSON) <span aria-hidden="true">&rarr;</span></a>
+      <a href="/k-score" class="btn-link">What is K-score? <span aria-hidden="true">&rarr;</span></a>
+    </div>
+    <p style="margin-top:18px"><b>Why a public bench?</b> Because every model card today cherry-picks the metric. kolm-bench gives the buyer one signed receipt per artifact across the same 30 cases. Compare apples to apples. No marketing knobs.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">02</span> &middot; The 30 cases</div>
+    <h2>Four task classes. Eight, seven, eight, seven cases each.</h2>
+    <p>Frozen forever inside <code>kolm-bench-v1</code>. Replaced wholesale if and when the spec rolls to v2. Old artifacts keep their v1 receipts.</p>
+    <div class="grid cols-4">
+      <div class="cell">
+        <div class="num">8 cases</div>
+        <div class="name">Classification</div>
+        <div class="desc">Sentiment, intent, support routing. Single-label, deterministic. Tests scorer honesty on the easiest axis.</div>
+      </div>
+      <div class="cell">
+        <div class="num">7 cases</div>
+        <div class="name">Extraction</div>
+        <div class="desc">PII, healthcare fields, invoices, addresses. Structured output, exact-match scoring with field-level coverage.</div>
+      </div>
+      <div class="cell">
+        <div class="num">8 cases</div>
+        <div class="name">Generation</div>
+        <div class="desc">Summarization, translation, rewriting, PHI redaction. Contains-set scoring so the artifact can phrase freely.</div>
+      </div>
+      <div class="cell">
+        <div class="num">7 cases</div>
+        <div class="name">Code</div>
+        <div class="desc">Regex, function bodies, SQL, fix-the-bug. Multi-language. Contains-set scoring on key tokens.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">03</span> &middot; The 10 axes</div>
+    <h2>Each case scores all axes K-score knows about.</h2>
+    <p>K-score-v1 is five axes (A/S/L/C/V). K-score-v2 adds five more (R/F/T/E/Z) that surface when the artifact supplies the inputs. Missing axes redistribute weight to supplied ones — the composite stays comparable.</p>
+    <div class="axes">
+      <div class="axis-row"><span class="ax-k">A</span><span class="ax-n">Accuracy</span><span class="ax-d">Pass-rate on the case's reference output. Dominant term.</span><span class="ax-w">w 0.30 / 0.40</span></div>
+      <div class="axis-row"><span class="ax-k">S</span><span class="ax-n">Size</span><span class="ax-d">Inverse log of artifact bytes. Smaller is closer to 1.</span><span class="ax-w">w 0.10 / 0.15</span></div>
+      <div class="axis-row"><span class="ax-k">L</span><span class="ax-n">Latency</span><span class="ax-d">p50 microseconds per call. 80&nbsp;ms hits ~0.94.</span><span class="ax-w">w 0.10 / 0.15</span></div>
+      <div class="axis-row"><span class="ax-k">C</span><span class="ax-n">Cost</span><span class="ax-d">USD per call. Local-only artifacts hit 1.00.</span><span class="ax-w">w 0.10 / 0.15</span></div>
+      <div class="axis-row"><span class="ax-k">V</span><span class="ax-n">Coverage</span><span class="ax-d">Cases covered / cases declared.</span><span class="ax-w">w 0.10 / 0.15</span></div>
+      <div class="axis-row"><span class="ax-k">R</span><span class="ax-n">Robustness</span><span class="ax-d">Held-out accuracy clamped to [0,1]. v2 only.</span><span class="ax-w">w 0.05</span></div>
+      <div class="axis-row"><span class="ax-k">F</span><span class="ax-n">Fairness</span><span class="ax-d">Lowest subgroup accuracy. v2 only.</span><span class="ax-w">w 0.10</span></div>
+      <div class="axis-row"><span class="ax-k">T</span><span class="ax-n">Teacher fidelity</span><span class="ax-d">student_holdout / teacher_holdout. Distillation honesty. v2 only.</span><span class="ax-w">w 0.05</span></div>
+      <div class="axis-row"><span class="ax-k">E</span><span class="ax-n">Energy</span><span class="ax-d">1 / (1 + joules_per_call / 100). v2 only.</span><span class="ax-w">w 0.05</span></div>
+      <div class="axis-row"><span class="ax-k">Z</span><span class="ax-n">Drift</span><span class="ax-d">1 - eval-set drift vs baseline. v2 only.</span><span class="ax-w">w 0.05</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">04</span> &middot; Run it</div>
+    <h2>One command. Local. Reproducible.</h2>
+    <pre><span class="com"># run the public bench against your .kolm artifact</span>
+$ kolm bench <span class="key">phi-redactor.kolm</span>
+spec:        kolm-bench-v1
+frozen_at:   2026-05-18T00:00:00Z
+cases:       30  (8 cls + 7 ext + 8 gen + 7 code)
+
+cls-01  pass  K=0.95  (A=0.98 S=0.95 L=0.94 C=1.00 V=0.92)
+cls-02  pass  K=0.95  (A=0.98 ...)
+...
+code-07 pass  K=0.91
+
+bench composite: 0.94  pass_rate: 28/30  ships: yes</pre>
+    <pre><span class="com"># axis breakdown for one artifact</span>
+$ kolm score <span class="key">phi-redactor.kolm</span> --axis A,T,F,R
+A (accuracy):           0.962
+T (teacher fidelity):   0.970
+F (fairness):           0.920
+R (robustness):         0.930</pre>
+    <pre><span class="com"># submit your signed receipt to the public leaderboard</span>
+$ kolm bench <span class="key">phi-redactor.kolm</span> --submit
+posted receipt to https://kolm.ai/v1/bench/submit
+rank: pending review (signed-only submissions accepted)</pre>
+    <p>The bench runs entirely on your machine. The artifact never leaves your box; only the signed score receipt does, and only when you pass <code>--submit</code>.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow"><span class="num">05</span> &middot; The contract</div>
+    <h2>What the bench promises &middot; and what it does not.</h2>
+    <div class="grid cols-2">
+      <div class="cell">
+        <div class="num">Promises</div>
+        <p style="margin:0">Same cases on every machine in every shell. Spec frozen at <code>kolm-bench-v1</code>. Per-case axis breakdown reproducible from the score receipt. Score receipts can be verified at <a href="/verify-prod">/verify-prod</a>.</p>
+      </div>
+      <div class="cell">
+        <div class="num">Does not</div>
+        <p style="margin:0">Rank base models. Decide if your artifact is good <i>for your task</i>. Replace your own eval set — bench is the floor, not the ceiling. Hand-tuned cases (your tests.jsonl) always beat the public set for your specific use.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>K-score</h4>
+        <a href="/k-score">What is K-score</a>
+        <a href="/kscore-bench">kolm-bench v1</a>
+        <a href="/kscore-leaderboard">Leaderboard</a>
+        <a href="/kolm-bench.json">Bench JSON</a>
+      </div>
+      <div>
+        <h4>Proof</h4>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+        <a href="/registry">Registry</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/security">Security</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai &middot; bench spec licensed Apache-2.0 &middot; receipts signed in CI</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

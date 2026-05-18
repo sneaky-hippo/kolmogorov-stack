@@ -17,7 +17,7 @@
 // `kolm audit verify` (cli/kolm.js) calls this and exits non-zero on break.
 
 import crypto from 'node:crypto';
-import { all, find, insert } from './store.js';
+import { all, find, insert, withTransaction } from './store.js';
 import { effectiveReceiptSecret } from './env.js';
 
 const TABLE = 'audit_events';
@@ -105,32 +105,42 @@ export function appendAudit({ tenant_id, tenant_name = null, actor = null, op, p
   // chain key — that defeats the point of the table.
   if (!secret) throw new Error('audit chain disabled: no receipt secret available');
 
-  const prev = previousChainHashFor(tenant_id);
+  // W258-BE-5: previously did previousChainHashFor → compute → insert
+  // without a transaction. Two concurrent appends on the same tenant both
+  // read the same prev_hash, both computed an event_hash off that prev,
+  // and the chain verifier (line ~176) flagged the tail as broken
+  // permanently. With BEGIN IMMEDIATE (withTransaction in sqlite mode),
+  // the second concurrent caller blocks until the first commits, so the
+  // prev-fetch in the second call sees the row the first call inserted.
+  // JSON-mode store is single-process synchronous and was already safe.
   const at = new Date().toISOString();
-  const body = {
-    v: CHAIN_VERSION,
-    tenant_id,
-    op,
-    at,
-    payload: payload || {},
-  };
-  const canonical = canonicalisePayload(body);
-  const event_hash = hmacHex(secret, `${prev}|${canonical}`);
-  const row = {
-    id: 'aud_' + crypto.randomBytes(8).toString('hex'),
-    tenant_id,
-    tenant_name,
-    actor,
-    request_id,
-    op,
-    at,
-    payload: payload || {},
-    prev_hash: prev,
-    event_hash,
-    chain_version: CHAIN_VERSION,
-  };
-  insert(TABLE, row);
-  return row;
+  return withTransaction(() => {
+    const prev = previousChainHashFor(tenant_id);
+    const body = {
+      v: CHAIN_VERSION,
+      tenant_id,
+      op,
+      at,
+      payload: payload || {},
+    };
+    const canonical = canonicalisePayload(body);
+    const event_hash = hmacHex(secret, `${prev}|${canonical}`);
+    const row = {
+      id: 'aud_' + crypto.randomBytes(8).toString('hex'),
+      tenant_id,
+      tenant_name,
+      actor,
+      request_id,
+      op,
+      at,
+      payload: payload || {},
+      prev_hash: prev,
+      event_hash,
+      chain_version: CHAIN_VERSION,
+    };
+    insert(TABLE, row);
+    return row;
+  });
 }
 
 // Best-effort wrapper: if anything goes wrong, swallow + log. Use this on hot

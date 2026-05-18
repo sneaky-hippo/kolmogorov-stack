@@ -45,7 +45,7 @@ import { validateExternalHoldoutBlock, EXTERNAL_HOLDOUT_SPEC_VERSION } from './e
 import { validateTenantShadowBlock, TENANT_SHADOW_SPEC_VERSION } from './tenant-holdout.js';
 import { validateAuditorAttestationBlock, AUDITOR_ATTESTATION_SPEC_VERSION } from './auditor-attestation.js';
 import { validateSupersessionBlock, validateDriftReport, buildSupersessionBlock, buildDriftReport, SUPERSESSION_SPEC_VERSION, DRIFT_REPORT_SPEC_VERSION } from './drift-supersession.js';
-import { RECIPE_CLASSES, validateRecipeClass, rollupArtifactClass, validateArtifactClass, CLASS_DESCRIPTIONS } from './recipe-class.js';
+import { RECIPE_CLASSES, validateRecipeClass, rollupArtifactClass, validateArtifactClass, CLASS_DESCRIPTIONS, RECIPE_SOURCE_TYPES, inferSourceType, validateRecipeSourceType } from './recipe-class.js';
 import { hashIr } from './workflow-ir.js';
 import { computeKScore as computeKScoreFromKscoreModule } from './kscore.js';
 import { verifyAttestation, manifestBlock as ccManifestBlock, STATES as CC_STATES } from './confidential-compute.js';
@@ -209,8 +209,19 @@ function normalizeLicense(license) {
   };
 }
 
-export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id, eval_score, tier, pack, index, target_device, train_device, license, artifact_class, seed_provenance, compiled_targets, capability, lineage, workflow_ir, attestation_report, confidential_compute, extra_files, export: exportInput, moe: moeInput, pretokenize: pretokenizeInput, external_holdout: externalHoldoutInput, tenant_shadow_corpus: tenantShadowInput, auditor_attestation: auditorAttestationInput, supersession: supersessionInput, drift_report: driftReportInput }) {
+export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, k_score, judge_id, eval_score, tier, pack, index, target_device, train_device, license, artifact_class, seed_provenance, compiled_targets, capability, lineage, workflow_ir, attestation_report, confidential_compute, extra_files, export: exportInput, moe: moeInput, pretokenize: pretokenizeInput, external_holdout: externalHoldoutInput, tenant_shadow_corpus: tenantShadowInput, auditor_attestation: auditorAttestationInput, supersession: supersessionInput, drift_report: driftReportInput, allow_below_gate }) {
   const secret = requireSignSecret();
+  // W252 — K-score ship gate is load-bearing. If a K-score is supplied AND
+  // it says ships=false, the builder must refuse unless the caller explicitly
+  // passes allow_below_gate=true (which gets stamped on the manifest so the
+  // verifier and downstream procurement gates can flag it). Without this
+  // check, the gate is a comment, not a contract.
+  if (k_score && k_score.ships === false && !allow_below_gate) {
+    const composite = typeof k_score.composite === 'number' ? k_score.composite : 0;
+    const gate = typeof k_score.gate === 'number' ? k_score.gate : 0.85;
+    throw new Error(`k_score below ship gate: composite=${composite}, gate=${gate}. ` +
+      `Pass allow_below_gate=true to override; the manifest will record ship_gate_overridden=true.`);
+  }
   // Default class is 'rule' — the floor. Wave 151 adds 'synthesized_rule' and
   // keeps 'compiled_rule' / 'distilled_model'. The class is load-bearing: the
   // verifier rejects any artifact whose class doesn't match what's in the zip.
@@ -357,6 +368,21 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
       throw new Error(`recipe ${JSON.stringify(r.id)} failed class validation: ${err.message}`);
     }
   });
+  // Wave 285 — every recipe carries an honest source_type declaring HOW the
+  // source was produced (hand_written / pattern_generated / llm_emitted /
+  // distilled / compiled_from_dsl). The verifier rejects any class/source_type
+  // mismatch at build time so a `rule` artifact can never silently ship LLM-
+  // emitted source.
+  const per_recipe_source_types = recipes.map((r, i) => {
+    const inferred = r.source_type || inferSourceType({ ...r, class: per_recipe_classes[i] });
+    const stamped = { ...r, class: per_recipe_classes[i], source_type: inferred };
+    try {
+      validateRecipeSourceType(stamped);
+    } catch (err) {
+      throw new Error(`recipe ${JSON.stringify(r.id)} failed source_type validation: ${err.message}`);
+    }
+    return inferred;
+  });
   const recipes_json = JSON.stringify({
     spec: 'rs-1',
     n: recipes.length,
@@ -372,6 +398,11 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
       // compiled_rule / distilled_model. The artifact-level artifact_class
       // is the max of these. See src/recipe-class.js for definitions.
       class: per_recipe_classes[i],
+      // Wave 285 — honest per-recipe source_type. One of hand_written /
+      // pattern_generated / llm_emitted / distilled / compiled_from_dsl.
+      // Verifiers reject any class/source_type mismatch (rule + llm_emitted
+      // is rejected; synthesized_rule + pattern_generated is rejected; etc.).
+      source_type: per_recipe_source_types[i],
       // Wave F — when the recipe was authored as a DSL, ship the DSL block
       // inside recipes.json so an external verifier can recompute the JS
       // source (via emitJs) AND the native.c / native.rs source (via
@@ -498,6 +529,15 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
     output_overlap_count: typeof seed_provenance.output_overlap_count === 'number' ? seed_provenance.output_overlap_count : null,
     near_duplicate_count: typeof seed_provenance.near_duplicate_count === 'number' ? seed_provenance.near_duplicate_count : null,
     grouped_overlap_count: typeof seed_provenance.grouped_overlap_count === 'number' ? seed_provenance.grouped_overlap_count : null,
+    // Wave 283 — hash of the rows the teacher actually received. When the
+    // policy held (train-only synthesis) this equals train_hash; the
+    // verifier (and an external auditor) reads this to confirm no holdout
+    // leaked into recipe construction.
+    synthesis_input_hash: typeof seed_provenance.synthesis_input_hash === 'string' ? seed_provenance.synthesis_input_hash : null,
+    // Wave 284 — when group-aware splitting was requested, this records
+    // which row-metadata key was used to define a "group" so two rows
+    // about the same member / claim / case never straddle the split.
+    group_key: typeof seed_provenance.group_key === 'string' ? seed_provenance.group_key : null,
   } : {
     seeds_hash: null,
     split_seed: null,
@@ -518,6 +558,8 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
     output_overlap_count: null,
     near_duplicate_count: null,
     grouped_overlap_count: null,
+    synthesis_input_hash: null,
+    group_key: null,
   };
 
   // Compiled-targets manifest block. Only present for compiled_rule artifacts.
@@ -644,6 +686,7 @@ export function buildPayload({ job_id, task, base_model, recipes, lora_pointer, 
     drift_report: drift_report_block,
     confidential_compute: confidential_compute_block,
     k_score: k_score || null,  // patched after zipping for the size_bytes axis
+    ship_gate_overridden: allow_below_gate === true ? true : undefined,
     license: normalizeLicense(license),
     // Wave 161 (Q+8) — signature policy. Every modern artifact ships with
     // Ed25519 by default (Wave 149); the policy field records this stance so
@@ -1046,7 +1089,7 @@ export function packageArtifact({ job_id, payload, outPath }) {
 // with the size-aware K-score patched into the manifest. The double-zip is
 // cheap (≤10ms for 5KB artifacts) and keeps the K-score honest — the size
 // axis includes the K-score bytes themselves.
-export async function buildAndZip({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, outDir, judge_id, tier, pack, index, target_device, train_device, license, artifact_class, seed_provenance, compiled_targets, capability, lineage, workflow_ir, attestation_report, extra_files, export: exportInput, moe: moeInput, pretokenize: pretokenizeInput, external_holdout: externalHoldoutInput, tenant_shadow_corpus: tenantShadowInput, auditor_attestation: auditorAttestationInput, supersession: supersessionInput, drift_report: driftReportInput }) {
+export async function buildAndZip({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, outDir, judge_id, tier, pack, index, target_device, train_device, license, artifact_class, seed_provenance, compiled_targets, capability, lineage, workflow_ir, attestation_report, extra_files, export: exportInput, moe: moeInput, pretokenize: pretokenizeInput, external_holdout: externalHoldoutInput, tenant_shadow_corpus: tenantShadowInput, auditor_attestation: auditorAttestationInput, supersession: supersessionInput, drift_report: driftReportInput, allow_below_gate }) {
   requireSignSecret();
   const dir = outDir || path.join(os.tmpdir(), 'kolm-artifacts');
   fs.mkdirSync(dir, { recursive: true });
@@ -1075,7 +1118,7 @@ export async function buildAndZip({ job_id, task, base_model, recipes, lora_poin
     confidential_compute = await verifyAttestation(kind, attestation_report);
   }
 
-  const sharedBlocks = { capability, lineage, workflow_ir, attestation_report, confidential_compute, extra_files, export: exportInput, moe: moeInput, pretokenize: pretokenizeInput, external_holdout: externalHoldoutInput, tenant_shadow_corpus: tenantShadowInput, auditor_attestation: auditorAttestationInput, supersession: supersessionInput, drift_report: driftReportInput };
+  const sharedBlocks = { capability, lineage, workflow_ir, attestation_report, confidential_compute, extra_files, export: exportInput, moe: moeInput, pretokenize: pretokenizeInput, external_holdout: externalHoldoutInput, tenant_shadow_corpus: tenantShadowInput, auditor_attestation: auditorAttestationInput, supersession: supersessionInput, drift_report: driftReportInput, allow_below_gate };
 
   // Pass 1 — zip to measure size.
   const probePayload = buildPayload({ job_id, task, base_model, recipes, lora_pointer, recall_namespace, training_stats, evals, judge_id: _judgeId, eval_score, tier: _tier, pack, index, target_device, train_device, license, artifact_class, seed_provenance, compiled_targets, ...sharedBlocks });

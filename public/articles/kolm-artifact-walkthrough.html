@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The .kolm artifact, field by field: a format walkthrough · kolm.ai</title>
+<meta name="description" content="An engineer's tour of the .kolm container. Header magic, manifest blocks, weights section, signed receipt chain, frozen-eval payload, recipe block, signature trailer. With hex examples, JSON snippets, and what each field proves to a verifier.">
+<meta name="keywords" content=".kolm format, kolm artifact, AI artifact format, signed model file, kolm.ai format walkthrough, RS-1 spec, AI compiler artifact">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta name="author" content="kolm.ai">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
+<meta property="og:site_name" content="kolm.ai">
+<meta property="og:title" content="The .kolm artifact, field by field: a format walkthrough">
+<meta property="og:description" content="An engineer's tour of the .kolm container: header, manifest, weights, receipt chain, eval, recipe, signature.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/articles/kolm-artifact-walkthrough">
+<meta property="og:image" content="https://kolm.ai/og/articles-kolm-artifact-walkthrough.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The .kolm artifact, field by field · kolm.ai">
+<meta name="twitter:description" content="Header magic, manifest, weights, receipts, eval, recipe, signature.">
+<meta name="twitter:image" content="https://kolm.ai/og/articles-kolm-artifact-walkthrough.svg">
+<link rel="canonical" href="https://kolm.ai/articles/kolm-artifact-walkthrough">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://kolm.ai/articles/kolm-artifact-walkthrough#article",
+      "headline": "The .kolm artifact, field by field: a format walkthrough",
+      "description": "An engineer's tour of the .kolm container: header, manifest, weights, receipt chain, eval, recipe, signature.",
+      "author": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "publisher": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "image": "https://kolm.ai/og/articles-kolm-artifact-walkthrough.svg",
+      "datePublished": "2026-05-18",
+      "dateModified": "2026-05-18",
+      "mainEntityOfPage": "https://kolm.ai/articles/kolm-artifact-walkthrough",
+      "articleSection": "Format",
+      "keywords": ".kolm format, RS-1, manifest, receipt chain, signature, frozen eval"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm.ai", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "Articles", "item": "https://kolm.ai/articles" },
+        { "@type": "ListItem", "position": 3, "name": ".kolm artifact walkthrough", "item": "https://kolm.ai/articles/kolm-artifact-walkthrough" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#a8b0bb;--ink-faint:#5a6471;--bg:#0b0d10;--bg-elev:#11151b;--accent:#10b981;--warn:#f0b86b;--mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;--sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter','Segoe UI',system-ui,sans-serif}
+html[data-theme="light"]{--ink:#1a1d22;--ink-mute:#4b5260;--ink-faint:#7a818c;--bg:#f7f4ec;--bg-elev:#fff}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.65}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+header.site{position:sticky;top:0;background:var(--bg);border-bottom:1px solid rgba(255,255,255,.06);z-index:50}
+header.site .wrap{display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;padding:14px 24px}
+header.site .logo{font-family:var(--mono);font-weight:600;letter-spacing:1.2px;color:var(--ink);font-size:18px}
+header.site nav a{margin-left:24px;color:var(--ink-mute);font-size:14px}
+header.site nav a:hover{color:var(--ink)}
+main{max-width:760px;margin:0 auto;padding:56px 24px 96px}
+h1{font-size:42px;line-height:1.15;letter-spacing:-1.2px;font-weight:680;margin:0 0 12px}
+h2{font-size:26px;line-height:1.25;letter-spacing:-0.4px;font-weight:640;margin:48px 0 14px}
+h3{font-size:19px;line-height:1.35;font-weight:600;margin:28px 0 10px}
+p{margin:0 0 16px}.lede{font-size:19px;color:var(--ink-mute);margin:0 0 28px}
+ul,ol{padding-left:22px;margin:0 0 16px}li{margin:6px 0}
+code{font-family:var(--mono);font-size:14px;background:var(--bg-elev);padding:2px 6px;border-radius:4px}
+pre{font-family:var(--mono);font-size:13px;background:var(--bg-elev);padding:16px 20px;border-radius:8px;overflow-x:auto;line-height:1.55}
+table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top}
+th{color:var(--ink-mute);font-weight:600;background:var(--bg-elev)}
+.warn{background:rgba(240,184,107,.08);border-left:3px solid var(--warn);padding:14px 18px;border-radius:6px;font-size:14px;color:var(--ink-mute);margin:20px 0}
+.muted{color:var(--ink-faint);font-size:14px}
+footer{max-width:1080px;margin:0 auto;padding:32px 24px;color:var(--ink-faint);font-size:13px;border-top:1px solid rgba(255,255,255,.06)}
+@media (max-width:560px){main{padding:32px 18px 64px}h1{font-size:30px}h2{font-size:22px}table{font-size:12px}th,td{padding:8px 6px}pre{font-size:11px}}
+</style>
+</head>
+<body>
+<a href="#main" style="position:absolute;left:-9999px" onfocus="this.style.cssText='position:fixed;top:8px;left:8px;background:#111;color:#fff;padding:8px 12px;border-radius:6px;z-index:100'">Skip to content</a>
+<header class="site"><div class="wrap"><a class="logo" href="/">kolm.ai</a><nav><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav></div></header>
+<main id="main">
+<h1>The .kolm artifact, field by field</h1>
+<p class="lede">A tour of the .kolm container format defined by RS-1. Magic bytes, manifest block, weights section, receipt chain, frozen-eval payload, recipe block, signature trailer. Every field exists to prove something to a verifier offline.</p>
+
+<h2>File layout in one picture</h2>
+<pre>+------------------------+ offset 0
+| MAGIC "KOLM" + version | 8 bytes
++------------------------+
+| Manifest block (JSON)  | variable, length-prefixed
++------------------------+
+| Weights section        | tensor-by-tensor, GGUF-compatible
++------------------------+
+| Recipe block (TOML)    | the spec the compile ran
++------------------------+
+| Frozen-eval payload    | questions + reference answers + score
++------------------------+
+| Receipt chain (JSON)   | Merkle tree of inputs and steps
++------------------------+
+| Signature trailer      | Ed25519 over the SHA-256 of all prior bytes
++------------------------+ EOF</pre>
+
+<h2>Magic + version</h2>
+<p>First 4 bytes are <code>4B 4F 4C 4D</code> (ASCII "KOLM"). Next 4 bytes are a little-endian uint32 spec version. RS-1 v2.1 (current) writes <code>0x00020100</code>. A verifier that does not understand the spec version must refuse the artifact rather than silently fall through.</p>
+
+<h2>Manifest block</h2>
+<p>A length-prefixed JSON object. The manifest is the cheap front matter; the rest of the file is heavy. Indexers, web UIs, and CLI <code>inspect</code> read only the manifest and skip the rest.</p>
+<pre>{
+  "spec_version": "RS-1/2.1",
+  "artifact_id": "my-clinical-summarizer",
+  "artifact_hash": "sha256:8e3f...",
+  "base_model": "qwen3-27b-dense",
+  "base_hash": "sha256:c12a...",
+  "params_b": 27.4,
+  "quant": "Q4_K_M",
+  "context": 8192,
+  "tier": "3090",
+  "recipe_hash": "sha256:91b7...",
+  "eval_score": 0.873,
+  "eval_threshold": 0.85,
+  "build_unix": 1747584321,
+  "signed_by": "kolm-key-id:4f...e2",
+  "supersedes": null,
+  "redactor": "phi-redactor.kolm@sha256:71c4..."
+}</pre>
+<p>Every hash in this block is a Merkle root over the corresponding section. Verification recomputes them from the file body and compares.</p>
+
+<h2>Weights section</h2>
+<p>Tensor blocks in a GGUF-compatible layout (kolm chose GGUF over safetensors because llama.cpp runtimes are the cheapest production deployment target, and the receipt chain works over either). Each tensor has a name, a dtype, a shape, and a payload. The section header is a flat index so the runtime can mmap weights without parsing the whole file.</p>
+
+<h2>Recipe block</h2>
+<p>TOML, by design. Recipes are human-edited. JSON would be machine-clean but human-hostile for nested config.</p>
+<pre>[spec]
+class = "summarizer"
+language = "en"
+domain = "clinical-notes"
+
+[base]
+model = "qwen3-27b-dense"
+quant = "Q4_K_M"
+
+[seeds]
+file = "seeds.jsonl"
+sha256 = "..."
+
+[capture]
+namespace = "my-clinical-summarizer"
+min_pairs = 1000
+redactor = "phi-redactor.kolm"
+
+[eval]
+file = "frozen-eval.jsonl"
+threshold = 0.85
+extractive_baseline_max = 0.07
+
+[ship]
+tier = "3090"
+license = "proprietary"
+signing_key = "kolm-key-id:4f...e2"</pre>
+
+<h2>Frozen-eval payload</h2>
+<p>The eval was frozen at recipe-spec time. The payload contains the question set, the reference answers, the scoring rubric (k-score by axis), and the score the artifact achieved at build. An auditor re-runs the eval against the shipped weights and verifies the score matches within tolerance.</p>
+<pre>{
+  "eval_hash": "sha256:...",
+  "items": [
+    { "id": 1, "input": "...", "reference": "...", "axes": ["accuracy","brevity"] },
+    ...
+  ],
+  "score_at_build": 0.873,
+  "axis_scores": { "accuracy": 0.91, "brevity": 0.84 },
+  "extractive_baseline": 0.04
+}</pre>
+
+<h2>Receipt chain</h2>
+<p>A Merkle tree. Leaves are the hashes of every input that informed the build; internal nodes are concatenated-then-hashed; the root sits in the manifest. The 14 canonical leaves (as of RS-1 v2.1):</p>
+<ol>
+<li>spec_hash</li>
+<li>seeds_hash</li>
+<li>split_hash (train and holdout disjointness proof)</li>
+<li>train_hash (post-redaction corpus)</li>
+<li>recipes_hash</li>
+<li>eval_hash</li>
+<li>external_holdout_hash</li>
+<li>tenant_shadow_hash</li>
+<li>auditor_attestation_hash</li>
+<li>supersession_hash (or zero-hash if this is a fresh build)</li>
+<li>drift_report_hash (set at first drift run, zero at build)</li>
+<li>export_hash</li>
+<li>signatures_hash</li>
+<li>rekor_inclusion_hash (transparency log entry)</li>
+</ol>
+
+<h2>Signature trailer</h2>
+<p>The trailer is exactly 96 bytes: a 32-byte Ed25519 public key id, a 64-byte Ed25519 signature. The signature is over the SHA-256 of every byte from the magic header through the receipt chain. A verifier fails if the trailer is the wrong length, the public key is not in its trust set, or the signature does not validate. There is no algorithm-agility byte; if the file does not start with <code>KOLM</code> and end with a 96-byte Ed25519 trailer, it is not a valid artifact for RS-1 v2.1.</p>
+
+<h2>What <code>kolm verify</code> actually does</h2>
+<ol>
+<li>Read the manifest. Confirm the spec version is recognized.</li>
+<li>Read the signature trailer. Confirm the signing key is in the trust set.</li>
+<li>Recompute the SHA-256 over all prior bytes. Verify the Ed25519 signature.</li>
+<li>For each section, recompute the Merkle root and compare against the manifest hash.</li>
+<li>Replay the frozen eval against the loaded weights; confirm score matches within tolerance.</li>
+<li>If a supersession entry is present, walk back to the prior artifact and confirm the chain.</li>
+<li>If a Rekor inclusion hash is present, optionally check the transparency log.</li>
+</ol>
+<p>Exit zero on full pass. Exit two with a structured reason on any mismatch.</p>
+
+<div class="warn"><b>Forward compatibility.</b> A new RS-1 minor version may add fields to the manifest block; verifiers MUST ignore unrecognized fields. A new major version requires a new verifier. Spec-version bumps are not silent.</div>
+
+<h2>Common questions</h2>
+<h3>Why not safetensors?</h3>
+<p>Safetensors is a fine weights container; it is not an artifact format. It carries no recipe, no eval, no receipt chain, no signature. The .kolm container wraps safetensors-style tensor storage with the audit envelope. A pure safetensors output is available via <code>kolm extract --weights-only</code> if you only want the weights.</p>
+
+<h3>What is the size overhead?</h3>
+<p>For a 27B Q4_K_M artifact (weights are ~14 GB) the manifest is 1.5 KB, the recipe is 800 bytes, the frozen-eval payload is 50 to 500 KB depending on item count, the receipt chain is 4 KB, the signature is 96 bytes. Overhead is in the low single-digit megabytes. Negligible.</p>
+
+<h3>Can I edit the manifest after build?</h3>
+<p>No. Any edit invalidates the signature and the file fails <code>kolm verify</code>. Reissue requires a new compile or a <code>kolm sign --resign</code> with the new signing key (which records the resign event in the receipt chain).</p>
+
+<h2>Related reading</h2>
+<ul>
+<li><a href="/spec/rs-1">RS-1 specification (full)</a></li>
+<li><a href="/format/v2">.kolm format v2 reference</a></li>
+<li><a href="/what-is-an-ai-compiler">What is an AI compiler?</a></li>
+<li><a href="/articles/ai-compiler-comparison">AI compiler comparison: kolm vs Predibase vs OpenPipe vs LoRAX</a></li>
+<li><a href="/articles/hipaa-ai-from-prompts">HIPAA-compliant AI from captured prompts</a></li>
+</ul>
+</main>
+<footer>kolm.ai &middot; the AI compiler &middot; <a href="/product">Product</a> &middot; <a href="/spec/rs-1">RS-1</a> &middot; <a href="/format/v2">.kolm v2</a> &middot; <a href="/what-is-an-ai-compiler">What is an AI compiler?</a></footer>
+</body>
+</html>

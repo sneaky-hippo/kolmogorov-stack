@@ -310,10 +310,19 @@ export async function compileSpec(spec, opts = {}) {
   // 'sample_check' when the holdout is too small to ground a public K-score.
   let seed_provenance = null;
   if (seedSplit) {
+    // W258-ML-4: production_ready must AND every leakage signal seeds.js
+    // computes, not just the exact-overlap pair. Near-duplicate (Jaccard
+    // bigram) and group-id (member_id / claim_id / case_id) overlaps both
+    // contaminate eval just as badly as exact overlap. Original W283
+    // group-aware split work already flows these counts up; the gate was
+    // simply not reading them.
+    const _lr = seedSplit.leakage_report || {};
     const production_ready = seedSplit.train_count >= MIN_PRODUCTION_TRAIN
       && seedSplit.holdout_count >= MIN_PRODUCTION_HOLDOUT
-      && seedSplit.leakage_report.input_overlap_count === 0
-      && seedSplit.leakage_report.output_overlap_count === 0;
+      && (_lr.input_overlap_count || 0) === 0
+      && (_lr.output_overlap_count || 0) === 0
+      && (_lr.near_duplicate_count || 0) === 0
+      && (_lr.grouped_overlap_count || 0) === 0;
     seed_provenance = {
       seeds_hash: seedSplit.seeds_hash,
       split_seed: seedSplit.split_seed,
@@ -339,6 +348,15 @@ export async function compileSpec(spec, opts = {}) {
       near_duplicate_count: seedSplit.leakage_report.near_duplicate_count,
       grouped_overlap_count: seedSplit.leakage_report.grouped_overlap_count,
     };
+    // Wave 283 — surface the hash of the rows the teacher actually saw. The
+    // caller (compile.js) computes this from `train` before invoking ctx
+    // .synthesize so an external auditor can prove the holdout never leaked
+    // into recipe construction. When the caller fed train (the policy),
+    // synthesis_input_hash will equal train_hash; if it doesn't, the manifest
+    // tells the story honestly.
+    if (spec.training_stats && spec.training_stats.synthesis_input_hash) {
+      seed_provenance.synthesis_input_hash = spec.training_stats.synthesis_input_hash;
+    }
   }
 
   const artifactClass = opts.artifactClass || spec.artifact_class || 'rule';
@@ -767,6 +785,7 @@ export async function compileSpec(spec, opts = {}) {
     auditor_attestation: auditorAttestationBlocks.length > 0 ? auditorAttestationBlocks : null,
     supersession: supersessionBlock,
     drift_report: driftReportBlock,
+    allow_below_gate: opts.allow_below_gate === true || opts.allowBelowGate === true,
   });
 
   // Wave 166 — post-build cross-check: every auditor attestation that was

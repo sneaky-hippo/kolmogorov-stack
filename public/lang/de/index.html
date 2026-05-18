@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="de" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm &middot; Kompilieren Sie Ihre eigene KI.</title>
+<meta name="description" content="Bauen, trainieren und besitzen Sie Ihre eigene KI. kolm kompiliert sie auf Ihren Daten, l&auml;uft auf Ihrer Hardware und protokolliert jeden Aufruf. Keine Pro-Aufruf-Geb&uuml;hr, kein Anbieter-Lock-in.">
+<meta name="keywords" content="eigene KI bauen, eigene KI trainieren, lokale KI, private KI, On-Device-KI, KI-Compiler, .kolm-Artefakt, Feinabstimmung, HIPAA KI, DSGVO KI, regulierte KI">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<link rel="alternate" hreflang="en" href="https://kolm.ai/">
+<link rel="alternate" hreflang="de" href="https://kolm.ai/lang/de">
+<link rel="alternate" hreflang="fr" href="https://kolm.ai/lang/fr">
+<link rel="alternate" hreflang="ja" href="https://kolm.ai/lang/ja">
+<link rel="alternate" hreflang="x-default" href="https://kolm.ai/">
+
+<meta property="og:site_name" content="kolm">
+<meta property="og:locale" content="de_DE">
+<meta property="og:title" content="kolm &middot; Kompilieren Sie Ihre eigene KI">
+<meta property="og:description" content="Beschreiben Sie die Aufgabe in einem Satz. Kompilieren Sie sie auf Ihren Daten. Protokollieren Sie jeden Aufruf. Ihre KI, Ihre Hardware, dauerhaft.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://kolm.ai/lang/de">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:title" content="kolm &middot; Kompilieren Sie Ihre eigene KI">
+<meta name="twitter:description" content="Beschreiben Sie die Aufgabe in einem Satz. Kompilieren Sie sie auf Ihren Daten. Ihre KI, dauerhaft.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://kolm.ai/lang/de">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .i18n-shell { max-width: 1180px; margin: 0 auto; padding: 96px 32px 56px; }
+  .i18n-shell h1 { font-size: clamp(42px, 6vw, 76px); line-height: 1.04; margin: 0 0 22px; font-weight: 500; letter-spacing: -0.025em; max-width: 18ch; }
+  .i18n-shell h1 .accent { color: var(--violet, #b3a8ff); }
+  .i18n-shell .lede { font-size: clamp(16px, 1.6vw, 19px); color: var(--ink-mute, #b5bdb1); max-width: 64ch; line-height: 1.6; margin: 0 0 28px; }
+  .i18n-shell .cta-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .lang-switch { display: flex; gap: 6px 14px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint, #737c73); letter-spacing: 0.04em; margin: 0 0 24px; padding: 10px 14px; border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 8px; background: rgba(255,255,255,0.01); max-width: 62ch; flex-wrap: wrap; align-items: center; }
+  .lang-switch .lbl { color: var(--ink-faint, #737c73); text-transform: uppercase; margin-right: 4px; }
+  .lang-switch a { color: var(--ink-mute, #b5bdb1); text-decoration: none; border-bottom: 1px solid transparent; }
+  .lang-switch a:hover, .lang-switch a.is-active { color: var(--ink, #faf2e1); border-bottom-color: var(--accent, #7ef0d2); }
+  .i18n-section { max-width: 1180px; margin: 0 auto; padding: 56px 32px; border-top: 1px solid var(--line, rgba(255,255,255,0.08)); }
+  .i18n-section h2 { font-size: clamp(26px, 3vw, 38px); font-weight: 500; margin: 0 0 14px; line-height: 1.15; letter-spacing: -0.015em; }
+  .i18n-section .sec-lede { color: var(--ink-mute, #b5bdb1); font-size: 15.5px; max-width: 70ch; line-height: 1.65; margin: 0 0 28px; }
+  .i18n-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  @media (max-width: 880px) { .i18n-cards { grid-template-columns: 1fr; } }
+  .i18n-card { padding: 24px 26px; border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 12px; background: var(--bg-2, #11151b); }
+  .i18n-card .pill { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--violet, #faf2e1); margin-bottom: 10px; }
+  .i18n-card h3 { margin: 0 0 8px; font-size: 17px; font-weight: 500; }
+  .i18n-card p { margin: 0; font-size: 13.5px; color: var(--ink-mute, #b5bdb1); line-height: 1.6; }
+  @media (max-width: 560px) {
+    .i18n-shell { padding: 56px 18px 32px; }
+    .i18n-section { padding: 36px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand"><span>kolm</span></a>
+    <!-- KOLM_NAV_BEGIN (W221) -->
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/product">Product</a>
+      <a href="/models">Models</a>
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
+    </nav>
+    <!-- KOLM_NAV_END (W221) -->
+    <div class="site-actions">
+      <button type="button" class="nav-toggle" aria-label="Navigation umschalten" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button>
+      <button type="button" class="theme-toggle" aria-label="Hellen oder dunklen Modus umschalten" title="Hellen oder dunklen Modus umschalten"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></button>
+      <a href="/signin">Anmelden</a>
+      <a href="/signup" class="cta">API-Schl&uuml;ssel holen &rarr;</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="i18n-shell">
+    <div class="lang-switch">
+      <span class="lbl">Sprache</span>
+      <a href="/">English</a>
+      <a href="/lang/de" class="is-active">Deutsch</a>
+      <a href="/lang/fr">Fran&ccedil;ais</a>
+      <a href="/lang/ja">&#26085;&#26412;&#35486;</a>
+    </div>
+    <h1>Kompilieren Sie Ihre <span class="accent">eigene KI.</span></h1>
+    <p class="lede">kolm ist der Compiler, der eine in einem Satz beschriebene Aufgabe in ein .kolm-Artefakt verwandelt. Das Artefakt wird auf Ihren Daten trainiert, l&auml;uft auf Ihrer Hardware und protokolliert jeden einzelnen Aufruf. Kein Pro-Aufruf-Tarif, kein Anbieter-Lock-in, keine stillschweigende &Uuml;bertragung Ihrer Trainingsdaten in eine fremde Cloud. Das Modell geh&ouml;rt Ihnen, dauerhaft.</p>
+    <div class="cta-row">
+      <a href="/signup" class="btn primary electric">API-Schl&uuml;ssel holen &rarr;</a>
+      <a href="/quickstart" class="btn ghost">Schnellstart in 60 Sekunden</a>
+      <a href="/eu" class="btn accent">EU-Residenz</a>
+    </div>
+  </section>
+
+  <section class="i18n-section">
+    <h2>Vier Verben. Ein Vertrag.</h2>
+    <p class="sec-lede">Der gesamte Lebenszyklus eines Modells passt in vier CLI-Verben. Beschreiben Sie die Aufgabe, kompilieren Sie das Artefakt, f&uuml;hren Sie es lokal aus, pr&uuml;fen Sie jede Antwort. Es gibt keinen versteckten Server, kein verstecktes Telemetriesignal und keine versteckte Geb&uuml;hrenstruktur. Was Sie hier sehen, ist alles, was Sie ausf&uuml;hren werden.</p>
+    <div class="i18n-cards">
+      <div class="i18n-card">
+        <div class="pill">kolm compile</div>
+        <h3>Kompilieren.</h3>
+        <p>Aus einer Beschreibung in einem Satz und Ihren Beispieldaten erstellt der Compiler ein deterministisches .kolm-Artefakt mit signierter Quittungskette. Reproduzierbar von Zeile eins an.</p>
+      </div>
+      <div class="i18n-card">
+        <div class="pill">kolm run</div>
+        <h3>Ausf&uuml;hren.</h3>
+        <p>Das Artefakt l&auml;uft auf Ihrer GPU, Ihrem Mac, Ihrem Edge-Ger&auml;t oder Ihrem Servergehege. Keine R&uuml;ckruf-Verbindung, kein Netzwerkpfad, der gefiltert werden muss.</p>
+      </div>
+      <div class="i18n-card">
+        <div class="pill">kolm verify</div>
+        <h3>&Uuml;berpr&uuml;fen.</h3>
+        <p>Jeder Aufruf hinterl&auml;sst eine signierte Quittung. Jede Ablenkung wird erkannt. Jede Nachfolge ist nachvollziehbar. Pr&uuml;fer k&ouml;nnen das Artefakt offline verifizieren.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="i18n-section">
+    <h2>F&uuml;r regulierte K&auml;ufer in Europa.</h2>
+    <p class="sec-lede">kolm wurde von Anfang an f&uuml;r regulierte Workloads entworfen. DSGVO Artikel 28, EU-KI-Verordnung und EU-Datenresidenz sind keine nachgelagerten Funktionen, sondern Eigenschaften des Compilers. F&uuml;r Gesundheitssysteme, Banken, Versicherer, Beh&ouml;rden und Verteidigungsbetriebe in der EU steht eine vorkompilierte BAA und DPA bereit, gegengezeichnet binnen 48 Stunden ab Erstkontakt.</p>
+    <div class="i18n-cards">
+      <div class="i18n-card">
+        <div class="pill">DSGVO</div>
+        <h3>Auftragsverarbeitung.</h3>
+        <p>Sie sind Verantwortlicher, kolm ist Auftragsverarbeiter. Unterauftragnehmer sind transparent gelistet, Datenzugriffe sind kontrolliert und l&ouml;schbar. Schrems II ist gel&ouml;st, indem die Daten die EU nie verlassen.</p>
+      </div>
+      <div class="i18n-card">
+        <div class="pill">EU-KI-Verordnung</div>
+        <h3>Hochrisiko-konform.</h3>
+        <p>Die technische Dokumentation gem&auml;&szlig; Artikel 11 ist Teil des .kolm-Artefakts. Risikoprotokoll, Datenherkunft und K-Score-Achsen werden bei jedem Kompilierungslauf signiert.</p>
+      </div>
+      <div class="i18n-card">
+        <div class="pill">Residenz</div>
+        <h3>EU bleibt EU.</h3>
+        <p>Kompilieren Sie in Frankfurt, Paris, Stockholm oder Mailand. Daten, Gewichte und Quittungen bleiben dort, wo Sie sie hingelegt haben, w&auml;hrend des gesamten Lebenszyklus.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Bauen</h4>
+        <a href="/quickstart">Schnellstart</a>
+        <a href="/docs/de">Dokumentation</a>
+        <a href="/spec/rs-1">RS-1-Spezifikation</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Bereitstellen</h4>
+        <a href="/compute">Backends</a>
+        <a href="/airgap">Air-Gap</a>
+        <a href="/enterprise/self-hosted">Selbst gehostet</a>
+        <a href="/eu">EU-Residenz</a>
+      </div>
+      <div>
+        <h4>Sprache</h4>
+        <a href="/">English</a>
+        <a href="/lang/de">Deutsch</a>
+        <a href="/lang/fr">Fran&ccedil;ais</a>
+        <a href="/lang/ja">&#26085;&#26412;&#35486;</a>
+      </div>
+      <div>
+        <h4>Nachweis</h4>
+        <a href="/verify-prod">Artefakt pr&uuml;fen</a>
+        <a href="/baa">BAA / DPA</a>
+        <a href="/privacy">Datenschutz</a>
+        <a href="/security">Sicherheit</a>
+      </div>
+      <div>
+        <h4>Unternehmen</h4>
+        <a href="/pricing">Preise</a>
+        <a href="/enterprise">Enterprise</a>
+        <a href="/contact">Kontakt</a>
+        <a href="/changelog">Changelog</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai &middot; Hergestellt mit .kolm &middot; Apache-2.0</span>
+      <span>Quittungen werden in CI signiert. Pr&uuml;fen Sie jedes Artefakt unter /verify-prod.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/nav.js" defer></script>
+</body>
+</html>

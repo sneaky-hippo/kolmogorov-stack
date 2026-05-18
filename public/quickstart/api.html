@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>HTTP API quickstart &middot; kolm.ai &middot; the AI compiler over REST &middot; kolm.ai</title>
+<meta name="description" content="Five curl commands. Sign up, capture, compile, replay, verify. Every kolm.ai surface is reachable as REST over Bearer-keyed HTTP. JSON in, JSON out, signed receipts on the way back.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="HTTP API quickstart &middot; kolm.ai &middot; the AI compiler over REST">
+<meta property="og:description" content="Five curl commands. Capture, compile, verify. JSON in, signed receipts out.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/quickstart/api">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="HTTP API quickstart &middot; kolm.ai &middot; the AI compiler over REST">
+<meta name="twitter:description" content="Five curl commands. Capture, compile, verify. Signed receipts.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/quickstart/api">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"HTTP API quickstart · kolm.ai · the AI compiler over REST","description":"Five curl commands. From signup to a signed .kolm artifact replayable over HTTP.","url":"https://kolm.ai/quickstart/api","publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+.hero{padding:72px 0 36px;border-bottom:1px solid var(--line)}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0}
+.stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+.section{padding:56px 0;border-bottom:1px solid var(--line)}
+.section h2{font-size:28px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:780px}
+.section p.lede{font-size:16px;max-width:780px;margin:0 0 28px}
+pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:18px 20px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:0}
+pre.terminal b{color:var(--accent);font-weight:400}
+pre.terminal .mute{color:var(--ink-faint)}
+.step{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:14px;margin-bottom:18px}
+.step .step-head{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.step .step-num{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:4px 10px;border-radius:4px;border:1px solid rgba(16,185,129,0.30)}
+.step .step-name{font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+.step .step-cli{font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);background:var(--bg);padding:2px 8px;border-radius:3px;border:1px solid var(--line);letter-spacing:0.02em}
+.step p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+.endpoint-table{width:100%;border-collapse:collapse;margin:0;font-size:13px}
+.endpoint-table th{text-align:left;padding:10px 14px;font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:0.06em;text-transform:uppercase;border-bottom:1px solid var(--line);font-weight:500}
+.endpoint-table td{padding:10px 14px;border-bottom:1px solid var(--line);color:var(--ink-mute)}
+.endpoint-table td code{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--bg);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
+@media(max-width:820px){.related{grid-template-columns:1fr}}
+.related a{padding:18px 20px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:6px}
+.related a:hover{border-color:var(--accent-soft)}
+.related b{font-size:14px;color:var(--ink);font-weight:500}
+.related span{font-size:13px;color:var(--ink-mute);line-height:1.5}
+footer{padding:36px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <!-- kolm-nav-start --><nav><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav><!-- kolm-nav-end -->
+</div></header>
+
+<main id="main">
+
+<section class="hero"><div class="wrap">
+  <div class="crumbs"><a href="/">kolm.ai</a> / <a href="/quickstart">quickstart</a> / api</div>
+  <h1>The HTTP API quickstart for kolm.ai &middot; the AI compiler</h1>
+  <p class="lede">Five curl commands. Every kolm.ai surface is reachable as REST over Bearer-keyed HTTP. JSON in, JSON out, signed receipts on the way back. If your stack speaks HTTP you already speak kolm.ai.</p>
+  <p class="stamp">target time: 2 minutes &middot; prerequisites: a shell with curl &middot; auth: Bearer ks_...</p>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <h2>Five-step flow</h2>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 1</span><span class="step-name">Provision an anonymous tenant</span><span class="step-cli">POST /v1/auth/anon</span></div>
+    <p>No signup form. POST returns a Bearer key valid for the trial quota. Save it once; reuse it forever.</p>
+    <pre class="terminal"><b>$</b> curl -s https://kolm.ai/v1/auth/anon -X POST | tee /tmp/k.json
+<span class="mute">{
+  &quot;tenant&quot;: { &quot;id&quot;: &quot;ten_yc8e9f2a&quot;, &quot;plan&quot;: &quot;free&quot;, &quot;quota&quot;: 10000 },
+  &quot;api_key&quot;: &quot;ks_anon_8e2a4...c1d7&quot;
+}</span>
+<b>$</b> export KOLM_KEY=$(jq -r .api_key /tmp/k.json)</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 2</span><span class="step-name">Capture a prompt+response pair</span><span class="step-cli">POST /v1/capture/log</span></div>
+    <p>Push the observation directly. The response carries <code>x-kolm-capture-durable: true</code> only after the write reached durable storage. If that header is missing or <code>false</code>, the row did not persist and your client must retry &mdash; the receipt cannot lie.</p>
+    <pre class="terminal"><b>$</b> curl -s https://kolm.ai/v1/capture/log -i \
+    -H &quot;authorization: Bearer $KOLM_KEY&quot; -H &quot;content-type: application/json&quot; \
+    -d &apos;{&quot;namespace&quot;:&quot;summarizer&quot;,&quot;items&quot;:[{&quot;input&quot;:&quot;Summarize this PR:...&quot;,&quot;output&quot;:&quot;This PR refactors...&quot;,&quot;latency_us&quot;:8421}],&quot;model&quot;:&quot;qwen-3.5-27b&quot;}&apos;
+<span class="mute">HTTP/2 201
+x-kolm-capture-durable: true
+x-kolm-namespace: summarizer
+x-kolm-capture-id: cap_018a3e...</span>
+<span class="mute">{ &quot;persisted&quot;: 1, &quot;total&quot;: 1, &quot;durable&quot;: true }</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 3</span><span class="step-name">Compile from captures</span><span class="step-cli">POST /v1/distill/from-captures</span></div>
+    <p>Promote a namespace once it has crossed the readiness threshold. The job runs async; poll the returned <code>job_id</code> via <code>GET /v1/jobs/:id</code>, or open the streaming receipt with <code>GET /v1/jobs/:id/logs</code>.</p>
+    <pre class="terminal"><b>$</b> curl -s https://kolm.ai/v1/distill/from-captures -X POST \
+    -H &quot;authorization: Bearer $KOLM_KEY&quot; -H &quot;content-type: application/json&quot; \
+    -d &apos;{&quot;namespace&quot;:&quot;summarizer&quot;,&quot;tier&quot;:&quot;3090&quot;,&quot;recipe_class&quot;:&quot;specialist&quot;}&apos;
+<span class="mute">{ &quot;job_id&quot;: &quot;job_w8e2&quot;, &quot;status&quot;: &quot;running&quot;, &quot;watch&quot;: &quot;/v1/jobs/job_w8e2/logs&quot; }</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 4</span><span class="step-name">List + download the artifact</span><span class="step-cli">GET /v1/artifacts &amp; GET /v1/artifacts/:id/download</span></div>
+    <p>Every completed compile job becomes an artifact under your tenant. Pull the metadata first, then the bytes.</p>
+    <pre class="terminal"><b>$</b> curl -s https://kolm.ai/v1/artifacts -H &quot;authorization: Bearer $KOLM_KEY&quot; | jq &apos;.artifacts[0]&apos;
+<span class="mute">{ &quot;id&quot;: &quot;art_summ_v3&quot;, &quot;recipe_class&quot;: &quot;specialist&quot;, &quot;k_score&quot;: 0.91, &quot;download_url&quot;: &quot;/v1/artifacts/art_summ_v3/download&quot; }</span>
+<b>$</b> curl -sLO https://kolm.ai/v1/artifacts/art_summ_v3/download -H &quot;authorization: Bearer $KOLM_KEY&quot;</pre>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 5</span><span class="step-name">Replay against the captures</span><span class="step-cli">POST /v1/replay</span></div>
+    <p>Close the loop: replay the same captured prompts against the new artifact, compare per-row k_score + latency delta + cost delta. Same screen, same one click, observe&rarr;compile&rarr;replay.</p>
+    <pre class="terminal"><b>$</b> curl -s https://kolm.ai/v1/replay -X POST \
+    -H &quot;authorization: Bearer $KOLM_KEY&quot; -H &quot;content-type: application/json&quot; \
+    -d &apos;{&quot;namespace&quot;:&quot;summarizer&quot;,&quot;artifact_id&quot;:&quot;art_summ_v3&quot;,&quot;limit&quot;:20}&apos;
+<span class="mute">{ &quot;rows&quot;: 20, &quot;k_mean&quot;: 0.91, &quot;latency_delta_us&quot;: -184000, &quot;cost_delta_micro_usd&quot;: -2400 }</span></pre>
+  </div>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <h2>Endpoint cheat sheet</h2>
+  <p class="lede">The full list lives in <a href="/docs/api">/docs/api</a>. The fifteen most-used endpoints &mdash; one row per concern.</p>
+  <table class="endpoint-table">
+    <thead><tr><th>Method</th><th>Path</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST</code></td><td><code>/v1/auth/anon</code></td><td>provision an anonymous tenant + Bearer key</td></tr>
+      <tr><td><code>GET</code></td><td><code>/v1/account</code></td><td>tenant identity + plan + quota</td></tr>
+      <tr><td><code>POST</code></td><td><code>/v1/capture/log</code></td><td>push a batch of prompt+response observations</td></tr>
+      <tr><td><code>GET</code></td><td><code>/v1/capture/stream</code></td><td>SSE live tail of captures for a namespace</td></tr>
+      <tr><td><code>GET</code></td><td><code>/v1/capture/health</code></td><td>capture driver liveness + durability flag</td></tr>
+      <tr><td><code>POST</code></td><td><code>/v1/distill/from-captures</code></td><td>kick off a compile job from a namespace</td></tr>
+      <tr><td><code>POST</code></td><td><code>/v1/compile</code></td><td>compile from an explicit recipe spec</td></tr>
+      <tr><td><code>GET</code></td><td><code>/v1/jobs/:id</code></td><td>poll job state</td></tr>
+      <tr><td><code>GET</code></td><td><code>/v1/jobs/:id/logs</code></td><td>SSE stream of job log lines</td></tr>
+      <tr><td><code>GET</code></td><td><code>/v1/artifacts</code></td><td>list completed artifacts in your tenant</td></tr>
+      <tr><td><code>GET</code></td><td><code>/v1/artifacts/:id</code></td><td>artifact metadata + receipt chain summary</td></tr>
+      <tr><td><code>GET</code></td><td><code>/v1/artifacts/:id/download</code></td><td>artifact bytes (zip)</td></tr>
+      <tr><td><code>POST</code></td><td><code>/v1/replay</code></td><td>replay captures against an artifact + diff</td></tr>
+      <tr><td><code>POST</code></td><td><code>/v1/receipts/verify</code></td><td>offline-replay the receipt chain</td></tr>
+      <tr><td><code>POST</code></td><td><code>/v1/loop/try</code></td><td>anonymous demo of the capture receipt envelope</td></tr>
+    </tbody>
+  </table>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <h2>The other quickstarts</h2>
+  <p class="lede">Same five-step value loop, different surface.</p>
+  <div class="related">
+    <a href="/quickstart/cli"><b>CLI quickstart &rarr;</b><span>Five terminal commands. No web UI, no SaaS handoff.</span></a>
+    <a href="/quickstart/sdk"><b>SDK quickstart &rarr;</b><span>Native TypeScript and Python bindings. Drop-in for the OpenAI SDK.</span></a>
+    <a href="/quickstart/embed"><b>Embed quickstart &rarr;</b><span>Ship a signed .kolm inside another product.</span></a>
+  </div>
+</div></section>
+
+</main>
+
+<footer><div class="wrap">
+  <span>kolm.ai &middot; the AI compiler &middot; <a href="/articles/kolm-ai-vs-kolm-therapeutics">not the band, not the therapeutics company</a></span>
+</div></footer>
+</body>
+</html>

@@ -1,4 +1,7 @@
 name: kolm CI pipeline (compile → test → publish)
+# W211: push trigger removed. Empty KOLM_KEY on push events caused
+# kolm whoami → exit 3 on every commit that touched examples/**.jsonl.
+# Forks/contributors opt in via workflow_dispatch + a per-fork KOLM_KEY.
 on:
   workflow_dispatch:
     inputs:
@@ -18,14 +21,13 @@ on:
         description: public / team / private
         required: false
         default: team
-  push:
-    paths:
-      - "examples/**.jsonl"
-      - ".github/workflows/kolm-ci-pipeline.yml"
 
 jobs:
   compile-test-publish:
     runs-on: ubuntu-latest
+    # W211: gate the job on a non-empty KOLM_KEY so a fork without the
+    # secret renders the workflow but never fails on it.
+    if: ${{ secrets.KOLM_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

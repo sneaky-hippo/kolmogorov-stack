@@ -4,6 +4,7 @@ import express from 'express';
 import crypto from 'node:crypto';
 import rateLimit from 'express-rate-limit';
 import { synthesize, synthesizeStream } from './synthesis.js';
+import { computeKScore } from './kscore.js';
 import { handleAssistant } from './assistant.js';
 import { effectiveReceiptSecret, isProductionRuntime, runtimeReadiness, tenantReceiptVerificationKeys } from './env.js';
 import * as registry from './registry.js';
@@ -14,7 +15,7 @@ import { mountOAuth, oauthConfigured } from './oauth.js';
 import { sendWelcome, sendBillingActivated, sendBillingFailed, emailConfigured } from './email.js';
 import { compileJs, verify } from './verifier.js';
 import { LIBRARY_VERSION, libraryDescription } from './library.js';
-import { all, findOne, insert, update, id as storeId, stats as storeStats } from './store.js';
+import { all, findOne, findByField, findByTenant, insert, update, withTransaction, id as storeId, stats as storeStats } from './store.js';
 import { verifiedInference } from './verified.js';
 import { createJob, getJob, listJobs, runJob } from './compile.js';
 import * as recall from './recall.js';
@@ -46,9 +47,44 @@ import { verifySignatureBlock as verifyEd25519Block, keyFingerprint as ed25519Fi
 import * as pubkeyDir from './pubkey-directory.js';
 import { verifySigstoreBundle, attestWithRekor, fetchRekorEntryByLogIndex, rekorUrl as sigstoreRekorUrl, isDisabled as isSigstoreDisabled, submitToRekor } from './sigstore.js';
 import { saveCorpus as saveTenantCorpus, loadCorpus as loadTenantCorpus, listCorpora as listTenantCorpora, deleteCorpus as deleteTenantCorpus, hashCorpusFile as hashTenantCorpusFile } from './tenant-holdout.js';
+import { listArtifacts as marketplaceListArtifacts, getArtifact as marketplaceGetArtifact, getCatalogManifest as marketplaceGetCatalogManifest, resolveArtifactPath as marketplaceResolveArtifactPath } from './marketplace.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+// W258-BE-1/2/3: wire the previously-dead durability + fan-out + alert
+// modules. router.js never imported these so W212/W213/W215 wave-claims
+// were on disk but not on the live request path. recordCapture() now
+// awaits insertCapture (throws → caller returns 503), publishes to SSE
+// subscribers, and fires threshold alerts atomically.
+import {
+  insertCapture,
+  isDurable as captureIsDurable,
+  driverName as captureDriverName,
+  listCaptures,
+  countCaptures,
+  health as captureHealth,
+} from './capture-store.js';
+import {
+  subscribe as subscribeCapture,
+  subscribe as subscribeCaptureStream,
+  publishCapture,
+  subscriberCount as captureSubscriberCount,
+} from './capture-stream.js';
+import {
+  THRESHOLDS,
+  getPreferences as notifGetPreferences,
+  setPreferences as notifSetPreferences,
+  addPushSubscription as notifAddPushSubscription,
+  removePushSubscription as notifRemovePushSubscription,
+  listPushSubscriptions as notifListPushSubscriptions,
+  getThresholdState as notifGetThresholdState,
+  setThresholdState as notifSetThresholdState,
+  tryAdvanceThresholdState as notifTryAdvanceThresholdState,
+  thresholdCrossedBy as notifThresholdCrossedBy,
+  isDistillReady as notifIsDistillReady,
+  fireThresholdAlert as notifFireThresholdAlert,
+  publicConfig as notifPublicConfig,
+} from './notifications.js';
 
 // Per-IP rate limiters (S5, S10). Express trust-proxy is set to 2 in
 // server.js so X-Forwarded-For resolves through the Vercel→Railway chain.
@@ -163,6 +199,82 @@ const enterpriseLeadLimiter = rateLimit({
 // Process-restart resets the array; Resend has the durable record.
 const enterpriseLeads = [];
 
+// W261: /v1/builder/preview is intentionally unauthenticated so a curious
+// visitor can try the no-code builder without signing up. Rate-limit to
+// keep synthesis cost predictable. Compile requires auth (separate path).
+const builderLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'rate-limited - builder preview caps at 30/min/ip' },
+  keyGenerator: ipKey,
+  validate: { trustProxy: false },
+});
+
+// W261: starter templates shown on /builder. Each template has a task
+// description and a small example set the user can clone with one click.
+// These are the 5 named starters: PHI redactor, invoice parser,
+// MSA clause extraction, PR review, multilingual greeting.
+const BUILDER_TEMPLATES = [
+  {
+    id: 'phi-redactor',
+    name: 'PHI redactor',
+    description: 'Strip protected health information from clinical notes. Replaces names, MRNs, dates, and contact fields with [REDACTED].',
+    task: 'Redact protected health information (PHI) from clinical notes. Replace patient names, dates of birth, medical record numbers, phone numbers, and email addresses with [REDACTED].',
+    examples: [
+      { input: 'Patient John Smith (MRN 12345, DOB 1975-04-12) presented with chest pain. Phone 415-555-0142.', expected: 'Patient [REDACTED] (MRN [REDACTED], DOB [REDACTED]) presented with chest pain. Phone [REDACTED].' },
+      { input: 'Mary Johnson, age 56, email mary.j@example.com, reports headache for 3 days.', expected: '[REDACTED], age 56, email [REDACTED], reports headache for 3 days.' },
+      { input: 'Discharge summary for Robert Lee (DOB 1962-11-08): patient stable.', expected: 'Discharge summary for [REDACTED] (DOB [REDACTED]): patient stable.' },
+    ],
+  },
+  {
+    id: 'invoice-parser',
+    name: 'Invoice parser',
+    description: 'Extract structured fields (invoice number, date, amount, vendor) from raw invoice text.',
+    task: 'Parse an invoice text blob and return a JSON object with fields: invoice_number, date, amount_usd, vendor.',
+    examples: [
+      { input: 'Invoice #INV-2026-0042 dated 2026-05-15, amount $1,249.00, Acme Corp.', expected: { invoice_number: 'INV-2026-0042', date: '2026-05-15', amount_usd: 1249.00, vendor: 'Acme Corp' } },
+      { input: 'Bill INV-7781 from Globex on 2026-04-30 for $89.50.', expected: { invoice_number: 'INV-7781', date: '2026-04-30', amount_usd: 89.50, vendor: 'Globex' } },
+      { input: 'Invoice INV-9023, dated 2026-03-12, total $542.75, vendor Initech.', expected: { invoice_number: 'INV-9023', date: '2026-03-12', amount_usd: 542.75, vendor: 'Initech' } },
+    ],
+  },
+  {
+    id: 'msa-clause-extraction',
+    name: 'MSA clause extraction',
+    description: 'Pull named clauses (indemnity, termination, governing law) out of a Master Services Agreement.',
+    task: 'Read a Master Services Agreement and return a JSON object naming the section that covers each of: indemnity, termination, governing_law.',
+    examples: [
+      { input: 'Section 7. Indemnity. Provider shall indemnify Customer... Section 11. Termination. Either party may terminate... Section 14. Governing Law. This Agreement is governed by Delaware.', expected: { indemnity: 'Section 7', termination: 'Section 11', governing_law: 'Section 14' } },
+      { input: '12.1 Termination for cause. 12.2 Termination for convenience. 8. Indemnification by Vendor. 19. Governing law and venue: California.', expected: { indemnity: '8', termination: '12', governing_law: '19' } },
+    ],
+  },
+  {
+    id: 'pr-review',
+    name: 'PR review',
+    description: 'One-line summary plus risk label (low, medium, high) for a pull-request diff.',
+    task: 'Read a pull-request title and diff and return a JSON object with a one-sentence summary and a risk label of low, medium, or high.',
+    examples: [
+      { input: 'Title: fix off-by-one in pagination\nDiff: -    if (i < n)\n+    if (i <= n)', expected: { summary: 'Fixes off-by-one bug in pagination loop.', risk: 'low' } },
+      { input: 'Title: drop production index\nDiff: -CREATE INDEX users_email_idx ON users(email);', expected: { summary: 'Drops the users_email_idx index in production.', risk: 'high' } },
+    ],
+  },
+  {
+    id: 'multilingual-greeting',
+    name: 'Multilingual greeting',
+    description: 'Pick the localized greeting for a language code (en, es, fr, de, ja, zh).',
+    task: 'Given a language code, return the appropriate greeting: en -> Hello, es -> Hola, fr -> Bonjour, de -> Hallo, ja -> Konnichiwa, zh -> Ni hao.',
+    examples: [
+      { input: 'en', expected: 'Hello' },
+      { input: 'es', expected: 'Hola' },
+      { input: 'fr', expected: 'Bonjour' },
+      { input: 'de', expected: 'Hallo' },
+      { input: 'ja', expected: 'Konnichiwa' },
+      { input: 'zh', expected: 'Ni hao' },
+    ],
+  },
+];
+
 const PRICING = {
   synthesis_small: 0.10,   // < 1 KB generator
   synthesis_large: 1.00,   // 1 KB - 32 KB
@@ -269,6 +381,34 @@ export function buildRouter() {
     uptime_s: Math.round(process.uptime()),
     stats: storeStats(),
   }));
+
+  // W313 — public anonymous "try it" demo of the capture-receipt shape.
+  // No auth, no write side-effects; visitors on /value-loop POST a prompt+response
+  // and see the exact same receipt envelope a real authenticated /v1/bridges/observe
+  // would emit, with `demo:true` + `durable:false` so the body cannot lie.
+  r.post('/v1/loop/try', (req, res) => {
+    const { prompt = '', response = '', model = 'kolm-demo' } = req.body || {};
+    if (!prompt || !response) {
+      return res.status(400).json({ error: 'prompt_and_response_required' });
+    }
+    if (String(prompt).length > 2000 || String(response).length > 2000) {
+      return res.status(413).json({ error: 'payload_too_large', limit: 2000 });
+    }
+    const sig = templateSignature(String(prompt), String(model));
+    res.set('x-kolm-capture-durable', 'false');
+    res.set('x-kolm-capture-demo', 'true');
+    res.json({
+      demo: true,
+      durable: false,
+      observation_id: 'demo_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      template_hash: sig.hash,
+      template_preview: sig.normalized,
+      model: String(model).slice(0, 128),
+      cluster_size: 1,
+      ready_for_synthesis: false,
+      note: 'demo only · not written to durable store · use POST /v1/bridges/observe with a tenant key to actually capture',
+    });
+  });
 
   // Deploy readiness: public, low-detail, and suitable for platform health
   // gates. /health stays green for static uptime; /ready fails when critical
@@ -1226,6 +1366,102 @@ export function buildRouter() {
     }
   });
 
+  // ---------- /v1/builder/* — no-code in-browser artifact builder (W261) ----------
+  // Two of the three builder endpoints are unauthed: anyone can fetch templates
+  // or preview a K-score estimate without an API key. The compile endpoint is
+  // authed and lives further down, after the auth gate is mounted.
+
+  // GET /v1/builder/templates — public list of starter templates.
+  r.get('/v1/builder/templates', (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ templates: BUILDER_TEMPLATES });
+  });
+
+  // POST /v1/builder/preview — synthesize a recipe and estimate K-score.
+  // Rate-limited; no auth. Inputs are validated tightly so this cannot be
+  // used as a generic compute oracle. The 10 KB per-example cap matches the
+  // body limit on /v1/compile and keeps the synthesis cost bounded.
+  r.post('/v1/builder/preview', builderLimiter, async (req, res) => {
+    try {
+      const body = req.body || {};
+      const task = body.task;
+      const examples = Array.isArray(body.examples) ? body.examples : [];
+      if (!task || typeof task !== 'string') {
+        return res.status(400).json({ error: 'task (string) required' });
+      }
+      if (task.length > 4000) {
+        return res.status(400).json({ error: 'task too long (>4000 chars)' });
+      }
+      if (examples.length > 100) {
+        return res.status(400).json({ error: 'examples capped at 100 entries' });
+      }
+      for (let i = 0; i < examples.length; i++) {
+        const ex = examples[i];
+        if (!ex || typeof ex !== 'object') {
+          return res.status(400).json({ error: 'each example must be an object {input, expected}' });
+        }
+        const bytes = Buffer.byteLength(JSON.stringify(ex), 'utf8');
+        if (bytes > 10240) {
+          return res.status(400).json({ error: `example ${i} exceeds 10240 bytes` });
+        }
+      }
+      const warnings = [];
+      if (examples.length < 3) warnings.push({ code: 'few_examples', message: 'add at least 3 examples for a reliable estimate' });
+
+      // Synthesize a recipe from the supplied positives. The pattern-mode
+      // synthesizer is deterministic and runs without an API key, so the
+      // preview path always returns SOMETHING (even when synthesis cannot
+      // satisfy the gate it returns the best candidate with accepted:false).
+      let synth;
+      try {
+        synth = await synthesize({
+          positives: examples,
+          negatives: [],
+          output_spec: { type: 'string' },
+          priors: { hint: task.slice(0, 800) },
+        });
+      } catch (e) {
+        return res.status(500).json({ error: 'synthesis_failed', detail: String(e.message || e) });
+      }
+
+      const recipe_source = synth.source || synth.best_source || '';
+      const passRate = synth.pass_rate_positive ?? synth.best_result?.pass_rate_positive ?? 0;
+      const latencyUs = synth.latency_p50_us ?? synth.best_result?.latency_p50_us ?? null;
+      const sizeBytes = synth.size_bytes ?? (recipe_source ? Buffer.byteLength(recipe_source, 'utf8') : 0);
+      const coverage = examples.length ? 1 : 0;
+
+      const k_score_estimate = computeKScore({
+        accuracy: passRate,
+        coverage,
+        size_bytes: sizeBytes,
+        p50_latency_us: latencyUs,
+        cost_usd_per_call: 0,
+      });
+
+      if (!synth.accepted) {
+        warnings.push({ code: 'below_gate', message: synth.reason || 'quality below gate; add more examples or tighten the task' });
+      }
+      if (passRate < 1 && examples.length > 0) {
+        warnings.push({ code: 'partial_pass', message: `recipe passes ${Math.round(passRate * 100)}% of the supplied positives` });
+      }
+
+      res.json({
+        ok: true,
+        accepted: !!synth.accepted,
+        recipe_source,
+        k_score_estimate,
+        warnings,
+        synth: {
+          quality_score: synth.quality_score ?? synth.best_result?.quality_score ?? null,
+          strategy: synth.strategy || null,
+          attempts: synth.attempts_n || null,
+        },
+      });
+    } catch (e) {
+      res.status(500).json({ error: 'preview_failed', detail: String(e.message || e) });
+    }
+  });
+
   r.use(authMiddleware);
 
   // Authenticated /v1/health — full snapshot including provider availability
@@ -1261,8 +1497,15 @@ export function buildRouter() {
   // GET  /v1/compile/:id      → status snapshot
   // GET  /v1/compile/:id/.kolm → download the artifact
   // GET  /v1/compile           → list this tenant's jobs
+  // W234 — accept-list of chat templates the registered .kolm runtime can
+  // serialize. Mirrors src/chat-templates.js TEMPLATES keys; bumping the
+  // registry must also bump this enum so badly-named requests reject early.
+  const VALID_CHAT_TEMPLATES = new Set([
+    'chatml', 'qwen-3-thinking', 'llama-3', 'phi-3', 'deepseek-v4', 'plain',
+  ]);
   r.post('/v1/compile', async (req, res) => {
-    const { task, examples = [], corpus_namespace, base_model, deploy_hook, preset, lora_rank, k_threshold } = req.body || {};
+    const { task, examples = [], corpus_namespace, base_model, deploy_hook, preset, lora_rank, k_threshold,
+            chat_template, thinking_mode, recipe_class, hw_tier, output_target, multi_device } = req.body || {};
     if (!task || typeof task !== 'string') return res.status(400).json({ error: 'task (string) required' });
     if (task.length > 4000) return res.status(400).json({ error: 'task description too long (>4000 chars)' });
     if (examples && (!Array.isArray(examples) || examples.length > 200)) {
@@ -1278,10 +1521,38 @@ export function buildRouter() {
     if (k_threshold != null && (typeof k_threshold !== 'number' || k_threshold < 0.50 || k_threshold > 0.99)) {
       return res.status(400).json({ error: 'k_threshold must be a number in [0.50..0.99]' });
     }
+    if (chat_template != null && (typeof chat_template !== 'string' || !VALID_CHAT_TEMPLATES.has(chat_template))) {
+      return res.status(400).json({ error: 'chat_template must be one of ' + Array.from(VALID_CHAT_TEMPLATES).join(', ') });
+    }
+    if (thinking_mode != null && typeof thinking_mode !== 'boolean') {
+      return res.status(400).json({ error: 'thinking_mode must be a boolean' });
+    }
+    // W243 — canonical enums shared with /v1/specialists/auto-distill + cmdCompile + cmdDistill + cmdTui + /account.
+    // Recipe class drives the manifest's spec_class field; hw_tier drives base_model + quant selection;
+    // output_target picks the runtime format (gguf|onnx|safetensors|coreml|mlx|executorch|tensorrt|native-c|native-rust|wasm);
+    // multi_device is an array (cap 6) of edge surfaces to cross-compile for.
+    if (recipe_class != null && !['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'].includes(recipe_class)) {
+      return res.status(400).json({ error: "recipe_class must be one of 'rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'" });
+    }
+    if (hw_tier != null && !['auto', 'cpu-server', '3090', '4090', '5090', 'm4-max-128', 'a100-80', 'h100-80', 'h200-141', 'dgx-spark', 'm3-ultra-512'].includes(hw_tier)) {
+      return res.status(400).json({ error: "hw_tier must be one of 'auto', 'cpu-server', '3090', '4090', '5090', 'm4-max-128', 'a100-80', 'h100-80', 'h200-141', 'dgx-spark', 'm3-ultra-512'" });
+    }
+    if (output_target != null && !['gguf', 'onnx', 'safetensors', 'coreml', 'mlx', 'executorch', 'tensorrt', 'native-c', 'native-rust', 'wasm'].includes(output_target)) {
+      return res.status(400).json({ error: "output_target must be one of 'gguf', 'onnx', 'safetensors', 'coreml', 'mlx', 'executorch', 'tensorrt', 'native-c', 'native-rust', 'wasm'" });
+    }
+    if (multi_device != null) {
+      if (!Array.isArray(multi_device)) return res.status(400).json({ error: 'multi_device must be an array' });
+      if (multi_device.length > 6) return res.status(400).json({ error: 'multi_device exceeds max 6 targets' });
+      const VALID_MD = ['phone-ios', 'phone-android', 'laptop-cpu', 'browser-wasm', 'edge-jetson', 'server-cuda'];
+      for (const d of multi_device) {
+        if (!VALID_MD.includes(d)) return res.status(400).json({ error: `multi_device entry '${d}' must be one of ${VALID_MD.join(', ')}` });
+      }
+    }
     const job = createJob({
       task, examples, corpus_namespace, base_model,
       tenant: req.tenant, tenant_id: req.tenant_record?.id || null,
       deploy_hook, preset, lora_rank, k_threshold,
+      chat_template, thinking_mode,
     });
     const ctx = {
       synthesize,
@@ -1382,6 +1653,86 @@ export function buildRouter() {
     res.set('Content-Type', 'application/zip');
     res.set('Content-Disposition', `attachment; filename="${j.id}.kolm"`);
     fs.createReadStream(j.artifact_path).pipe(res);
+  });
+
+  // POST /v1/builder/compile — authed wrapper that turns the no-code builder's
+  // {task, examples} payload into a real compile job. Validation matches
+  // /v1/builder/preview so a Preview→Compile flow that passes preview also
+  // passes here; the only added requirement is the API key (handled by
+  // authMiddleware mounted above this line). Recipe class and namespace are
+  // forced so builder-originated artifacts are distinguishable in audits.
+  r.post('/v1/builder/compile', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const task = body.task;
+      const examples = Array.isArray(body.examples) ? body.examples : [];
+      if (!task || typeof task !== 'string') {
+        return res.status(400).json({ error: 'task (string) required' });
+      }
+      if (task.length > 4000) {
+        return res.status(400).json({ error: 'task too long (>4000 chars)' });
+      }
+      if (examples.length > 100) {
+        return res.status(400).json({ error: 'examples capped at 100 entries' });
+      }
+      for (let i = 0; i < examples.length; i++) {
+        const ex = examples[i];
+        if (!ex || typeof ex !== 'object') {
+          return res.status(400).json({ error: 'each example must be an object {input, expected}' });
+        }
+        const bytes = Buffer.byteLength(JSON.stringify(ex), 'utf8');
+        if (bytes > 10240) {
+          return res.status(400).json({ error: `example ${i} exceeds 10240 bytes` });
+        }
+      }
+
+      const job = createJob({
+        task,
+        examples,
+        corpus_namespace: 'builder',
+        recipe_class: 'synthesized_rule',
+        tenant: req.tenant,
+        tenant_id: req.tenant_record?.id || null,
+      });
+      const ctx = {
+        synthesize,
+        publicRecipes: () => [],
+        examples,
+        recall: { query: () => [] },
+        registry: {
+          createConcept: registry.createConcept,
+          publishVersion: registry.publishVersion,
+        },
+        outDir: process.env.KOLM_ARTIFACT_DIR,
+      };
+      chargeUsage(req.tenant_record, 10);
+      tryAppendAudit({
+        tenant_id: req.tenant_record?.id || req.tenant,
+        tenant_name: req.tenant_record?.name || null,
+        actor: 'tenant',
+        op: AUDIT_OPS.COMPILE_CREATED,
+        payload: { job_id: job.id, source: 'builder', examples_n: job.examples_n },
+      });
+      const ON_SERVERLESS = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+      if (ON_SERVERLESS || req.query.sync === '1') {
+        try { await runJob(job, ctx); } catch (e) { /* runJob persists its own error state */ }
+        const fresh = getJob(job.id, req.tenant) || job;
+        return res.status(202).json({
+          job_id: fresh.id,
+          status: fresh.status,
+          poll: `/v1/compile/${fresh.id}`,
+          artifact_url: fresh.status === 'completed' ? `/v1/compile/${fresh.id}/.kolm` : null,
+        });
+      }
+      setImmediate(() => runJob(job, ctx));
+      res.status(202).json({
+        job_id: job.id,
+        status: job.status,
+        poll: `/v1/compile/${job.id}`,
+      });
+    } catch (e) {
+      res.status(500).json({ error: 'builder_compile_failed', detail: String(e.message || e) });
+    }
   });
 
   // ---------- /v1/artifacts* — RS-1 contract aliases over compile jobs ----------
@@ -1861,21 +2212,39 @@ export function buildRouter() {
 
   // Single-source debug view. Confirms a sidecar exists and returns its
   // frontmatter + first 4KB of body so a UI can preview what qmd indexed.
-  r.get('/v1/recall/sources/:id(*)', (req, res) => {
+  r.get('/v1/recall/sources/:id(*)', async (req, res) => {
     // The :id is a URL-encoded relative path inside the tenant corpus. We
     // resolve it against the per-tenant slice of KOLM_RECALL_ROOT — admins can
     // see across tenants, tenants only see their own.
+    //
+    // W252: stat first, reject sidecars over 1 MiB with 413 (don't slurp the
+    // whole file into memory + block the event loop). Read via fs.promises so
+    // the request thread never blocks on disk I/O.
+    const MAX_BYTES = 1024 * 1024;
     const root = process.env.KOLM_RECALL_ROOT || os.tmpdir();
     const tenantRoot = path.resolve(root, req.tenant || '_anon');
     const lookupRoot = req.is_admin ? path.resolve(root) : tenantRoot;
     const id = decodeURIComponent(req.params.id || '');
     const full = path.resolve(lookupRoot, id);
-    if (!full.startsWith(lookupRoot)) {
+    // W258-SEC-2: startsWith alone is a prefix-collision bug. lookupRoot
+    // `/root/acme` would accept `/root/acme-evil/secret` because the prefix
+    // matches without a separator. Require either exact equality OR the
+    // prefix to end with the platform path separator (Windows + POSIX).
+    const rootWithSep = lookupRoot.endsWith(path.sep) ? lookupRoot : lookupRoot + path.sep;
+    if (full !== lookupRoot && !full.startsWith(rootWithSep)) {
       return res.status(400).json({ error: 'path escapes recall root' });
     }
     const sidecar = full.endsWith('.md') ? full : full + '.md';
-    if (!fs.existsSync(sidecar)) return res.status(404).json({ error: 'sidecar not found' });
-    const text = fs.readFileSync(sidecar, 'utf-8');
+    let st;
+    try {
+      st = await fs.promises.stat(sidecar);
+    } catch {
+      return res.status(404).json({ error: 'sidecar not found' });
+    }
+    if (st.size > MAX_BYTES) {
+      return res.status(413).json({ error: 'sidecar too large', max_bytes: MAX_BYTES, size: st.size });
+    }
+    const text = await fs.promises.readFile(sidecar, 'utf-8');
     res.json({ id, sidecar, length: text.length, preview: text.slice(0, 4096) });
   });
 
@@ -2296,99 +2665,113 @@ export function buildRouter() {
       return res.status(400).type('text/plain').send('malformed event');
     }
 
-    // Idempotency: skip if we've already processed this event id.
+    // W252: wrap idempotency + plan mutation in withTransaction. If any write
+    // throws (corrupt stripe_events.json, sqlite locked, disk full), the
+    // tenant row stays unchanged and we surface 503 webhook_store_unavailable
+    // so Stripe retries. The old silent-swallow on insert(stripe_events) is
+    // gone; tenant lookups go through findOne, not full table scans.
+    let outcome;
     try {
-      const seen = all('stripe_events').some(e => e.id === event.id);
-      if (seen) return res.json({ received: true, idempotent: true, id: event.id });
-      insert('stripe_events', { id: event.id, type: event.type, received_at: new Date().toISOString() });
-    } catch (_) {}
+      outcome = withTransaction(() => {
+        // Idempotency: skip if this event id is already recorded.
+        const seen = findOne('stripe_events', e => e.id === event.id);
+        if (seen) return { kind: 'idempotent', body: { received: true, idempotent: true, id: event.id } };
+        insert('stripe_events', { id: event.id, type: event.type, received_at: new Date().toISOString() });
 
-    if (event.type === 'checkout.session.completed') {
-      const s = event.data && event.data.object || {};
-      const tenantId = s.client_reference_id;
-      const planId = planFromAmount(s.amount_total);
-      if (!tenantId) {
-        return res.json({ received: true, warning: 'no client_reference_id', id: event.id });
-      }
-      const tenant = all('tenants').find(t => t.id === tenantId);
-      if (!tenant) {
-        return res.json({ received: true, warning: 'tenant not found', id: event.id });
-      }
-      const resolvedPlan = planId || tenant.pending_plan || null;
-      if (!resolvedPlan || !PLAN_CATALOG[resolvedPlan]) {
-        return res.json({ received: true, warning: 'no plan match', amount_total: s.amount_total, id: event.id });
-      }
-      const meta = PLAN_CATALOG[resolvedPlan];
-      update('tenants', x => x.id === tenantId, {
-        plan: resolvedPlan,
-        quota: meta.quota,
-        seats: meta.seats,
-        pending_plan: null,
-        stripe_customer_id: s.customer || null,
-        stripe_subscription_id: s.subscription || null,
-        paid_at: new Date().toISOString(),
-        cancelled_at: null,
-        billing_status: 'active',
-      });
-      // Best-effort welcome / activation email — never blocks the webhook.
-      if (tenant.email && emailConfigured()) {
-        sendBillingActivated({ email: tenant.email, plan: resolvedPlan, quota: meta.quota }).catch(() => {});
-      }
-      return res.json({ received: true, plan: resolvedPlan, tenant: tenantId, id: event.id });
-    }
-
-    if (event.type === 'customer.subscription.updated') {
-      const sub = event.data && event.data.object || {};
-      const tenant = all('tenants').find(t => t.stripe_subscription_id === sub.id);
-      if (!tenant) return res.json({ received: true, warning: 'tenant not found', id: event.id });
-      const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
-      const stripeStatus = String(sub.status || 'active');
-      const billingStatus = stripeStatus === 'past_due' ? 'past_due'
-        : stripeStatus === 'unpaid' ? 'past_due'
-        : stripeStatus === 'canceled' ? 'cancelled'
-        : 'active';
-      update('tenants', x => x.id === tenant.id, {
-        billing_status: billingStatus,
-        current_period_end: periodEnd,
-        cancel_at_period_end: !!sub.cancel_at_period_end,
-      });
-      return res.json({ received: true, billing_status: billingStatus, tenant: tenant.id, id: event.id });
-    }
-
-    if (event.type === 'customer.subscription.deleted') {
-      const sub = event.data && event.data.object || {};
-      const tenant = all('tenants').find(t => t.stripe_subscription_id === sub.id);
-      if (!tenant) return res.json({ received: true, warning: 'tenant not found', id: event.id });
-      update('tenants', x => x.id === tenant.id, {
-        plan: 'free',
-        quota: PLAN_CATALOG.free.quota,
-        seats: PLAN_CATALOG.free.seats,
-        pending_plan: null,
-        cancelled_at: new Date().toISOString(),
-        billing_status: 'cancelled',
-      });
-      return res.json({ received: true, plan: 'free', tenant: tenant.id, id: event.id });
-    }
-
-    if (event.type === 'invoice.payment_failed') {
-      // Stripe handles retries via dunning. We mark the tenant past_due so the
-      // dashboard can surface a warning and email them a heads-up.
-      const inv = event.data && event.data.object || {};
-      const tenant = all('tenants').find(t =>
-        t.stripe_subscription_id === inv.subscription ||
-        t.stripe_customer_id === inv.customer
-      );
-      if (tenant) {
-        update('tenants', x => x.id === tenant.id, { billing_status: 'past_due' });
-        if (tenant.email && emailConfigured()) {
-          sendBillingFailed({ email: tenant.email, plan: tenant.plan }).catch(() => {});
+        if (event.type === 'checkout.session.completed') {
+          const s = event.data && event.data.object || {};
+          const tenantId = s.client_reference_id;
+          const planId = planFromAmount(s.amount_total);
+          if (!tenantId) return { kind: 'ok', body: { received: true, warning: 'no client_reference_id', id: event.id } };
+          const tenant = findOne('tenants', t => t.id === tenantId);
+          if (!tenant) return { kind: 'ok', body: { received: true, warning: 'tenant not found', id: event.id } };
+          const resolvedPlan = planId || tenant.pending_plan || null;
+          if (!resolvedPlan || !PLAN_CATALOG[resolvedPlan]) {
+            return { kind: 'ok', body: { received: true, warning: 'no plan match', amount_total: s.amount_total, id: event.id } };
+          }
+          const meta = PLAN_CATALOG[resolvedPlan];
+          update('tenants', x => x.id === tenantId, {
+            plan: resolvedPlan,
+            quota: meta.quota,
+            seats: meta.seats,
+            pending_plan: null,
+            stripe_customer_id: s.customer || null,
+            stripe_subscription_id: s.subscription || null,
+            paid_at: new Date().toISOString(),
+            cancelled_at: null,
+            billing_status: 'active',
+          });
+          return { kind: 'ok', body: { received: true, plan: resolvedPlan, tenant: tenantId, id: event.id }, sideEffect: { kind: 'activated', tenant } };
         }
-        return res.json({ received: true, action: 'past_due_marked', tenant: tenant.id, id: event.id });
-      }
-      return res.json({ received: true, action: 'noted', id: event.id });
+
+        if (event.type === 'customer.subscription.updated') {
+          const sub = event.data && event.data.object || {};
+          const tenant = findOne('tenants', t => t.stripe_subscription_id === sub.id);
+          if (!tenant) return { kind: 'ok', body: { received: true, warning: 'tenant not found', id: event.id } };
+          const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+          const stripeStatus = String(sub.status || 'active');
+          const billingStatus = stripeStatus === 'past_due' ? 'past_due'
+            : stripeStatus === 'unpaid' ? 'past_due'
+            : stripeStatus === 'canceled' ? 'cancelled'
+            : 'active';
+          update('tenants', x => x.id === tenant.id, {
+            billing_status: billingStatus,
+            current_period_end: periodEnd,
+            cancel_at_period_end: !!sub.cancel_at_period_end,
+          });
+          return { kind: 'ok', body: { received: true, billing_status: billingStatus, tenant: tenant.id, id: event.id } };
+        }
+
+        if (event.type === 'customer.subscription.deleted') {
+          const sub = event.data && event.data.object || {};
+          const tenant = findOne('tenants', t => t.stripe_subscription_id === sub.id);
+          if (!tenant) return { kind: 'ok', body: { received: true, warning: 'tenant not found', id: event.id } };
+          update('tenants', x => x.id === tenant.id, {
+            plan: 'free',
+            quota: PLAN_CATALOG.free.quota,
+            seats: PLAN_CATALOG.free.seats,
+            pending_plan: null,
+            cancelled_at: new Date().toISOString(),
+            billing_status: 'cancelled',
+          });
+          return { kind: 'ok', body: { received: true, plan: 'free', tenant: tenant.id, id: event.id } };
+        }
+
+        if (event.type === 'invoice.payment_failed') {
+          const inv = event.data && event.data.object || {};
+          const tenant = findOne('tenants', t =>
+            t.stripe_subscription_id === inv.subscription ||
+            t.stripe_customer_id === inv.customer
+          );
+          if (tenant) {
+            update('tenants', x => x.id === tenant.id, { billing_status: 'past_due' });
+            return { kind: 'ok', body: { received: true, action: 'past_due_marked', tenant: tenant.id, id: event.id }, sideEffect: { kind: 'past_due', tenant } };
+          }
+          return { kind: 'ok', body: { received: true, action: 'noted', id: event.id } };
+        }
+
+        return { kind: 'ok', body: { received: true, type: event.type, action: 'ignored' } };
+      });
+    } catch (err) {
+      return res.status(503).json({
+        error: 'webhook_store_unavailable',
+        detail: String(err && err.message || err),
+      });
     }
 
-    return res.json({ received: true, type: event.type, action: 'ignored' });
+    // Post-transaction side effects: emails are best-effort and must NOT
+    // roll the transaction back if they fail.
+    if (outcome && outcome.sideEffect) {
+      const { kind, tenant } = outcome.sideEffect;
+      if (kind === 'activated' && tenant.email && emailConfigured()) {
+        const meta = PLAN_CATALOG[outcome.body.plan] || {};
+        sendBillingActivated({ email: tenant.email, plan: outcome.body.plan, quota: meta.quota }).catch(() => {});
+      }
+      if (kind === 'past_due' && tenant.email && emailConfigured()) {
+        sendBillingFailed({ email: tenant.email, plan: tenant.plan }).catch(() => {});
+      }
+    }
+    return res.json(outcome.body);
   });
 
   // Self-serve cancel / downgrade-to-free. Any paid tenant can drop to the
@@ -3758,7 +4141,9 @@ export function buildRouter() {
 
   // POST /v1/bridges/observe — agents log a (model, prompt, response) tuple.
   // After ≥4 calls with the same template signature we surface a synthesis suggestion.
-  r.post('/v1/bridges/observe', (req, res) => {
+  // W258-BE-1: persists via insertCapture (durable contract). 503 on store
+  // failure — same envelope as the capture proxy handlers.
+  r.post('/v1/bridges/observe', async (req, res) => {
     const { model = '', prompt = '', response, latency_ms, cost_usd } = req.body || {};
     if (!prompt || response === undefined) {
       return res.status(400).json({ error: 'prompt and response are required' });
@@ -3777,8 +4162,18 @@ export function buildRouter() {
       cost_usd: Number(cost_usd) || 0,
       created_at: new Date().toISOString(),
     };
-    insert('observations', obs);
-    const cluster = all('observations').filter(o => o.tenant === req.tenant && o.template_hash === sig.hash);
+    try {
+      await insertCapture(obs);
+    } catch (e) {
+      const ephemeral = e && e.code === 'CAPTURE_STORE_EPHEMERAL';
+      res.set('x-kolm-capture-durable', 'false');
+      return res.status(503).json({
+        error: ephemeral ? 'capture_store_ephemeral' : 'capture_store_unavailable',
+        message: String(e && e.message || e),
+      });
+    }
+    res.set('x-kolm-capture-durable', String(captureIsDurable()));
+    const cluster = findByTenant('observations', req.tenant).filter(o => o.template_hash === sig.hash);
     res.json({
       observation_id: obs.id,
       template_hash: sig.hash,
@@ -3792,7 +4187,7 @@ export function buildRouter() {
 
   // GET /v1/bridges/suggestions — recipe-synthesis suggestions clustered from observations.
   r.get('/v1/bridges/suggestions', (req, res) => {
-    const obs = all('observations').filter(o => o.tenant === req.tenant);
+    const obs = findByTenant('observations', req.tenant);
     const groups = new Map();
     for (const o of obs) {
       const g = groups.get(o.template_hash) || { template_hash: o.template_hash, template_preview: o.template_preview, model: o.model, count: 0, total_cost_usd: 0, total_latency_ms: 0, examples: [] };
@@ -3820,14 +4215,16 @@ export function buildRouter() {
     const ns = req.query?.namespace ? String(req.query.namespace) : null;
     const lim = Math.min(200, Math.max(1, parseInt(req.query?.limit, 10) || 50));
     const includeDiscarded = req.query?.include_discarded === '1';
-    let obs = all('observations').filter(o => o.tenant === req.tenant);
-    if (ns) obs = obs.filter(o => (o.namespace || 'default') === ns);
+    const tenantObs = findByTenant('observations', req.tenant);
+    const obsNs = (o) => o.corpus_namespace || o.namespace || 'default';
+    let obs = tenantObs;
+    if (ns) obs = obs.filter(o => obsNs(o) === ns);
     if (!includeDiscarded) obs = obs.filter(o => !o.discarded);
     obs.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
-    const namespaces = [...new Set(all('observations').filter(o => o.tenant === req.tenant).map(o => o.namespace || 'default'))];
+    const namespaces = [...new Set(tenantObs.map(obsNs))];
     const ready = namespaces.map(n => ({
       namespace: n,
-      pairs: all('observations').filter(o => o.tenant === req.tenant && (o.namespace || 'default') === n && !o.discarded).length,
+      pairs: tenantObs.filter(o => obsNs(o) === n && !o.discarded).length,
     })).filter(x => x.pairs >= 1000);
     res.json({
       total: obs.length,
@@ -3867,7 +4264,7 @@ export function buildRouter() {
     const hash = req.body?.template_hash || req.query?.template_hash;
     const name = req.body?.name || `auto-${String(hash || '').slice(0, 8)}`;
     if (!hash) return res.status(400).json({ error: 'template_hash required' });
-    const obs = all('observations').filter(o => o.tenant === req.tenant && o.template_hash === hash);
+    const obs = findByTenant('observations', req.tenant).filter(o => o.template_hash === hash);
     if (obs.length < 4) return res.status(400).json({ error: 'not enough observations (need 4+)' });
     // Prefer the extracted variable portion as the example input. Fall back to the
     // full prompt only if the variable wasn't isolated.
@@ -3888,6 +4285,313 @@ export function buildRouter() {
     } catch (e) {
       res.status(400).json({ error: String(e.message || e) });
     }
+  });
+
+  // ---------- W214: click-to-distill from captured corpus ----------
+  // Preview (GET) is read-only: aggregate the durable capture-store by
+  // template-hash and report which clusters are eligible.
+  // Commit  (POST) picks recipe vs specialist by count (<1000 vs >=1000),
+  // forwards to /v1/bridges/auto-synthesize (recipe) or KOLM_TRAINER_BRIDGE_URL
+  // (specialist). Errors surface as 503 (capture-store) / 400 (not_enough/
+  // no_cluster) / 503 (distill_bridge_not_configured) — never silent success.
+  r.get('/v1/distill/from-captures/preview', authMiddleware, async (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const namespace = sanitizeNamespace(String(req.query?.namespace || 'default'));
+    let captures;
+    try {
+      captures = await listCaptures(req.tenant, namespace, 5000);
+    } catch (e) {
+      const ephemeral = e && e.code === 'CAPTURE_STORE_EPHEMERAL';
+      return res.status(503).json({
+        error: ephemeral ? 'capture_store_ephemeral' : 'capture_store_unavailable',
+        message: String(e && e.message || e),
+      });
+    }
+    const clusters = new Map();
+    for (const c of captures) {
+      const k = c.template_hash || 'untagged';
+      clusters.set(k, (clusters.get(k) || 0) + 1);
+    }
+    const top = [...clusters.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([template_hash, count]) => ({ template_hash, count }));
+    const total = captures.length;
+    res.json({
+      namespace,
+      total_captures: total,
+      top_clusters: top,
+      mode_hint: total >= 1000 ? 'specialist' : 'recipe',
+      recipe_eligible: top.length > 0 && top[0].count >= 4,
+      specialist_eligible: total >= 1000,
+    });
+  });
+  r.post('/v1/distill/from-captures', authMiddleware, async (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const body = req.body || {};
+    const namespace = sanitizeNamespace(String(body.namespace || 'default'));
+    const minPairs = Math.max(4, Number(body.min_pairs) || 4);
+    const forceMode = body.mode && ['recipe', 'specialist'].includes(String(body.mode)) ? String(body.mode) : null;
+    let captures;
+    try {
+      captures = await listCaptures(req.tenant, namespace, 5000);
+    } catch (e) {
+      const ephemeral = e && e.code === 'CAPTURE_STORE_EPHEMERAL';
+      return res.status(503).json({
+        error: ephemeral ? 'capture_store_ephemeral' : 'capture_store_unavailable',
+        message: String(e && e.message || e),
+      });
+    }
+    if (captures.length < minPairs) {
+      return res.status(400).json({
+        error: 'not_enough_captures',
+        message: `need at least ${minPairs} captures in namespace "${namespace}", have ${captures.length}`,
+        namespace,
+        count: captures.length,
+        min_pairs: minPairs,
+      });
+    }
+    const mode = forceMode || (captures.length >= 1000 ? 'specialist' : 'recipe');
+    if (mode === 'recipe') {
+      const clusters = new Map();
+      for (const c of captures) {
+        const k = c.template_hash || 'untagged';
+        if (!clusters.has(k)) clusters.set(k, []);
+        clusters.get(k).push(c);
+      }
+      const sorted = [...clusters.entries()].sort((a, b) => b[1].length - a[1].length);
+      const bestArr = sorted.length ? sorted[0][1] : [];
+      if (bestArr.length < 4) {
+        return res.status(400).json({
+          error: 'no_cluster',
+          message: `largest template-hash cluster has only ${bestArr.length} captures; need at least 4 to synthesize a recipe`,
+          namespace,
+          mode: 'recipe',
+          best_cluster_size: bestArr.length,
+        });
+      }
+      const name = body.name || `auto-${namespace}-${Date.now().toString(36)}`;
+      const positives = bestArr.slice(0, 8).map((c) => ({ input: c.variable_input || c.prompt, expected: c.response }));
+      try {
+        const synth = await synthesize({
+          name,
+          positives,
+          description: `Auto-synthesized from ${bestArr.length} captures in namespace ${namespace}.`,
+          tags: ['auto-from-captures', `ns:${namespace}`],
+          tenant: req.tenant,
+        });
+        return res.status(synth.accepted ? 200 : 422).json({
+          mode: 'recipe',
+          namespace,
+          job_id: synth.concept_id || synth.id || null,
+          accepted: !!synth.accepted,
+          synth,
+          captures_promoted: synth.accepted ? bestArr.length : 0,
+        });
+      } catch (e) {
+        return res.status(400).json({ error: 'synthesize_failed', message: String(e.message || e), namespace });
+      }
+    }
+    // mode === 'specialist'
+    const bridgeUrl = process.env.KOLM_TRAINER_BRIDGE_URL || '';
+    if (!bridgeUrl) {
+      return res.status(503).json({
+        error: 'distill_bridge_not_configured',
+        message: 'Or set mode=recipe to use the in-tree synthesizer, or set KOLM_TRAINER_BRIDGE_URL to a reachable trainer bridge endpoint.',
+        namespace,
+        count: captures.length,
+      });
+    }
+    try {
+      const res2 = await fetch(bridgeUrl.replace(/\/$/, '') + '/v1/distill', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tenant: req.tenant, namespace, captures_count: captures.length }),
+      });
+      const body2 = await res2.json().catch(() => ({}));
+      return res.status(res2.ok ? 202 : (res2.status || 502)).json({
+        mode: 'specialist',
+        namespace,
+        bridge_status: res2.status,
+        job_id: body2.job_id || null,
+        bridge: body2,
+      });
+    } catch (e) {
+      return res.status(502).json({ error: 'distill_bridge_unreachable', message: String(e.message || e), namespace });
+    }
+  });
+
+  // ===== W216: replay captured prompts against a compiled artifact ===========
+  // Close-the-loop demo. Pull N rows from the durable W212 store, run each
+  // through runtime.runVersion(use_cache:false), and emit a per-row diff
+  // (upstream vs local) with jaccard k-score + latency-delta + cost-delta.
+
+  function tokenizeForK(s) {
+    const norm = String(s || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
+    const out = norm.split(/\s+/).filter(Boolean);
+    return out;
+  }
+  function jaccardK(a, b) {
+    const A = new Set(tokenizeForK(a));
+    const B = new Set(tokenizeForK(b));
+    if (A.size === 0 && B.size === 0) return 1;
+    if (A.size === 0 || B.size === 0) return 0;
+    let inter = 0;
+    for (const t of A) if (B.has(t)) inter += 1;
+    const union = A.size + B.size - inter;
+    return union === 0 ? 1 : inter / union;
+  }
+
+  // replayPlan picks the artifact + namespace + limit a replay should target.
+  // Pulled out so /v1/replay and /v1/replay/preview share the same arithmetic.
+  async function replayPlan({ tenant, body }) {
+    const namespace = sanitizeNamespace(String(body.namespace || 'default'));
+    const concept_id = body.concept_id ? String(body.concept_id) : null;
+    const version_id = body.version_id ? String(body.version_id) : null;
+    const limit = Math.max(1, Math.min(200, Number(body.limit) || 25));
+    if (!concept_id && !version_id) {
+      return { error: { status: 400, body: { error: 'concept_id_or_version_id_required' } } };
+    }
+    let resolvedVersionId = version_id;
+    if (!resolvedVersionId && concept_id) {
+      const c = registry.getConcept(concept_id, tenant);
+      if (!c) return { error: { status: 404, body: { error: 'artifact_not_found', concept_id } } };
+      resolvedVersionId = c.head_version || null;
+    }
+    if (!resolvedVersionId) {
+      return { error: { status: 404, body: { error: 'artifact_not_found' } } };
+    }
+    return { namespace, version_id: resolvedVersionId, limit };
+  }
+
+  r.get('/v1/replay/preview', authMiddleware, async (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const plan = await replayPlan({ tenant: req.tenant, body: {
+      namespace: req.query.namespace,
+      concept_id: req.query.concept_id,
+      version_id: req.query.version_id,
+      limit: req.query.limit,
+    } });
+    if (plan.error) return res.status(plan.error.status).json(plan.error.body);
+    let count;
+    try {
+      count = await countCaptures(req.tenant, plan.namespace);
+    } catch (e) {
+      return res.status(503).json({
+        error: 'capture_store_unavailable',
+        message: String(e && e.message || e),
+      });
+    }
+    res.json({
+      ok: true,
+      namespace: plan.namespace,
+      version_id: plan.version_id,
+      captures: count,
+      will_replay: Math.min(plan.limit, count),
+      limit: plan.limit,
+    });
+  });
+
+  r.post('/v1/replay', authMiddleware, async (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const t0 = Date.now();
+    const body = req.body || {};
+    // Surface concept_id_or_version_id_required directly in the POST handler so
+    // contract tests can assert it without crawling replayPlan.
+    if (!body.concept_id && !body.version_id) {
+      return res.status(400).json({ error: 'concept_id_or_version_id_required' });
+    }
+    const plan = await replayPlan({ tenant: req.tenant, body });
+    if (plan.error) return res.status(plan.error.status).json(plan.error.body);
+    const { namespace, version_id, limit } = plan;
+    let rows;
+    try {
+      rows = await listCaptures(req.tenant, namespace, limit);
+    } catch (e) {
+      return res.status(503).json({
+        error: 'capture_store_unavailable',
+        message: String(e && e.message || e),
+      });
+    }
+    if (!rows || rows.length === 0) {
+      return res.status(400).json({ error: 'no_captures', namespace });
+    }
+    const diffs = [];
+    let succeeded = 0;
+    let failed = 0;
+    let kSum = 0;
+    let kN = 0;
+    let costTotal = 0;
+    for (const row of rows) {
+      const prompt = row.variable_input || row.prompt || '';
+      const upstream_output = row.response || '';
+      const upstream_lat = Number(row.latency_us) || 0;
+      const upstream_cost = Math.round((Number(row.cost_usd) || 0) * 1e6);
+      let local_output = '';
+      let local_error = null;
+      let local_lat = 0;
+      let local_cost = 0;
+      try {
+        const r2 = await runtime.runVersion({ version_id, input: prompt, tenant: req.tenant, use_cache: false });
+        local_output = r2.output || '';
+        local_lat = Number(r2.latency_us) || 0;
+        local_cost = Math.round((Number(r2.cost_usd) || 0) * 1e6);
+        succeeded += 1;
+      } catch (e) {
+        local_error = String(e && e.message || e);
+        failed += 1;
+      }
+      const k = local_error ? 0 : jaccardK(upstream_output, local_output);
+      if (!local_error) { kSum += k; kN += 1; }
+      costTotal += local_cost;
+      diffs.push({
+        capture_id: row.id,
+        upstream_model: row.model || null,
+        prompt_head: String(prompt).slice(0, 200),
+        upstream_output: String(upstream_output).slice(0, 4000),
+        local_output: String(local_output).slice(0, 4000),
+        local_error,
+        k_score: k,
+        latency_us: { upstream: upstream_lat, local: local_lat, delta: local_lat - upstream_lat },
+        cost_micro_usd: { upstream: upstream_cost, local: local_cost, delta: local_cost - upstream_cost },
+      });
+    }
+    res.json({
+      ok: true,
+      namespace: namespace,
+      version_id: version_id,
+      replayed: rows.length,
+      succeeded: succeeded,
+      failed: failed,
+      k_score_mean: kN ? kSum / kN : 0,
+      cost_micro_usd_total: costTotal,
+      elapsed_ms: Date.now() - t0,
+      diffs,
+    });
+  });
+
+  // POST /v1/nl/scaffold — networked drafter for `kolm nl --network`. The CLI
+  // air-gap branch produces the same shape locally via scaffoldRecipeFromNl;
+  // this endpoint exists so a tenant that opts in (--network or KOLM_AIRGAP=0)
+  // can get an LLM-augmented scaffold without forking the CLI. The
+  // x-kolm-nl-source response header tells the caller which branch served
+  // (network = hosted LLM enrichment; airgap = deterministic fallback).
+  r.post('/v1/nl/scaffold', async (req, res) => {
+    const body = req.body || {};
+    const text = String(body.text || body.prompt || '').trim();
+    const classHint = body.class_hint || body.classHint || null;
+    if (!text) return res.status(400).json({ error: 'text_required' });
+    if (classHint && !['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'].includes(classHint)) {
+      return res.status(400).json({ error: 'invalid_class_hint', allowed: ['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'] });
+    }
+    const { scaffoldRecipeFromNl } = await import('./assistant.js');
+    const scaffold = scaffoldRecipeFromNl({ text, classHint, airGap: true });
+    // If a hosted teacher is configured we'd enrich here; the current deploy
+    // serves the deterministic scaffold as the canonical answer so the route
+    // is callable today. Header advertises which path actually ran.
+    const source = 'airgap';
+    res.setHeader('x-kolm-nl-source', source);
+    res.json({ ...scaffold, network_status: source === 'network' ? 'wired' : 'air_gap', source });
   });
 
   // GET /v1/bridges/specialist-candidates — recipes whose call volume justifies a Specialist.
@@ -3936,9 +4640,17 @@ export function buildRouter() {
   // that /v1/bridges/observe writes to, so /v1/bridges/auto-synthesize and
   // /v1/specialists/auto-distill can promote captures to recipes / LoRAs.
 
-  function recordCapture({ tenant, provider, model, namespace, prompt, response, latency_us, status, cost_usd }) {
+  // W258-BE-1/2/3 (Pablo durability receipt fix, post-W212 wiring):
+  // Throws on store failure so the caller can return 503 instead of the
+  // historical silent swallow that returned 200 + capture-id for rows
+  // that were never persisted. After a successful insert we (a) publish
+  // to the SSE fan-out (W258-BE-2) so /v1/capture/stream pushes immediately
+  // and the dashboard stops doing a 2 s poll-and-scan, and (b) check
+  // threshold crossings (W258-BE-3) and fire alerts atomically.
+  async function recordCapture({ tenant, provider, model, namespace, prompt, response, latency_us, status, cost_usd }) {
     if (!prompt || response === undefined || response === null) return null;
     const hash = promptHash(prompt + '|' + (model || ''));
+    const ns = namespace || 'default';
     const obs = {
       id: 'cap_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
       tenant,
@@ -3952,19 +4664,80 @@ export function buildRouter() {
       latency_us: latency_us || 0,
       cost_usd: cost_usd || 0,
       provider,
-      corpus_namespace: namespace,
+      corpus_namespace: ns,
       status,
       created_at: new Date().toISOString(),
     };
-    try { insert('observations', obs); } catch (_) {}
+    // insertCapture throws on disk-full / ephemeral-/tmp / driver failure.
+    // We do NOT catch here — propagation is the whole point of the fix.
+    await insertCapture(obs);
+    obs.durable = captureIsDurable();
+    // Fan-out to live tail subscribers (browser dashboard + `kolm tail captures`).
+    try { publishCapture(obs); } catch (_) {}
+    // Threshold alerts: count this tenant+namespace AFTER the insert; if we
+    // crossed 100/500/1000 and won the dedupe CAS, fire push+email best-effort
+    // off the response path so the proxy round-trip is not blocked.
+    // The thresholdCrossedBy() helper from src/notifications.js is imported
+    // here aliased as notifThresholdCrossedBy to avoid naming clashes.
+    try {
+      const count = await countCaptures(tenant, ns);
+      const crossed = notifThresholdCrossedBy(count - 1, count);
+      if (crossed && notifTryAdvanceThresholdState(tenant, ns, crossed)) {
+        // Mirror the CAS into setThresholdState so the rest of the codebase
+        // (verifier + /v1/notifications/state) reads the canonical pin.
+        notifSetThresholdState(tenant, ns, crossed);
+        obs.crossed_threshold = crossed;
+        const baseUrl = process.env.PUBLIC_BASE
+          || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://kolm.ai');
+        notifFireThresholdAlert({ tenant, namespace: ns, count, threshold: crossed, baseUrl })
+          .catch(() => {}); // best-effort; never propagate alert failure
+      }
+    } catch (_) {
+      // Count / threshold-state failures must not break the capture path.
+    }
     return obs;
+  }
+
+  // Shared helper: a capture handler that wraps recordCapture with the
+  // common error-to-503 envelope + durability + distill-ready headers.
+  // Returns true if the handler already sent a response (error path); the
+  // caller continues only when this returns the obs object.
+  async function recordCaptureWithReceipt(req, res, args) {
+    try {
+      const obs = await recordCapture(args);
+      if (obs) {
+        res.set('x-kolm-capture-id', obs.id);
+        res.set('x-kolm-namespace', args.namespace || 'default');
+        res.set('x-kolm-capture-durable', String(obs.durable !== false));
+        if (notifIsDistillReady(args.tenant, args.namespace || 'default')) {
+          res.set('x-kolm-distill-ready', 'true');
+        }
+        if (obs.crossed_threshold) {
+          res.set('x-kolm-distill-threshold', String(obs.crossed_threshold));
+        }
+      } else {
+        res.set('x-kolm-namespace', args.namespace || 'default');
+      }
+      return obs;
+    } catch (e) {
+      const ephemeral = e && (e.code === 'CAPTURE_STORE_EPHEMERAL');
+      res.set('x-kolm-capture-durable', 'false');
+      res.status(503).json({
+        error: ephemeral ? 'capture_store_ephemeral' : 'capture_store_unavailable',
+        message: String(e && e.message || e),
+        hint: ephemeral
+          ? 'Set KOLM_STORE_DRIVER=vercel_postgres (or KOLM_DATA_DIR to a persistent path) — /tmp is per-invocation on Vercel.'
+          : 'The durable capture store is unavailable. Retry; if persistent, check /v1/capture/health.',
+      });
+      return null;
+    }
   }
 
   // POST /v1/capture/log — server-to-server batch insert of (input, output)
   // pairs into the capture corpus. Mirrors what /v1/capture/anthropic and
   // /v1/capture/openai write when they observe a real upstream round-trip,
   // but lets pipelines and tests seed the corpus without proxying.
-  r.post('/v1/capture/log', (req, res) => {
+  r.post('/v1/capture/log', async (req, res) => {
     if (!req.tenant) return res.status(401).json({ error: 'auth required' });
     const { namespace = 'default', items, provider = 'manual', model = '' } = req.body || {};
     if (!Array.isArray(items) || items.length === 0) {
@@ -3973,23 +4746,209 @@ export function buildRouter() {
     if (items.length > 200) return res.status(400).json({ error: 'items must be ≤200 per request' });
     const cleanNs = sanitizeNamespace(namespace);
     const ids = [];
+    const failures = [];
+    let anyDurable = true;
     for (const it of items) {
       const input = typeof it === 'object' ? (it.input ?? it.prompt ?? '') : String(it);
       const output = typeof it === 'object' ? (it.output ?? it.response ?? '') : '';
       if (!input || output === undefined || output === null || output === '') continue;
-      const obs = recordCapture({
-        tenant: req.tenant,
-        provider: String(provider).slice(0, 32),
-        model: String(model).slice(0, 128),
-        namespace: cleanNs,
-        prompt: input,
-        response: output,
-        latency_us: typeof it === 'object' ? (Number(it.latency_us) || 0) : 0,
-        status: 200,
-      });
-      if (obs) ids.push(obs.id);
+      try {
+        const obs = await recordCapture({
+          tenant: req.tenant,
+          provider: String(provider).slice(0, 32),
+          model: String(model).slice(0, 128),
+          namespace: cleanNs,
+          prompt: input,
+          response: output,
+          latency_us: typeof it === 'object' ? (Number(it.latency_us) || 0) : 0,
+          status: 200,
+        });
+        if (obs) {
+          ids.push(obs.id);
+          if (obs.durable === false) anyDurable = false;
+        }
+      } catch (e) {
+        failures.push(String(e.message || e));
+      }
     }
-    res.status(201).json({ ok: true, namespace: cleanNs, count: ids.length, ids });
+    // If we accepted N items but stored ZERO, the batch is a failure (503).
+    // If some stored and some failed, return 207 with detail.
+    if (ids.length === 0 && failures.length > 0) {
+      res.set('x-kolm-capture-durable', 'false');
+      return res.status(503).json({
+        error: 'capture_store_unavailable',
+        namespace: cleanNs,
+        count: 0,
+        failures: failures.slice(0, 5),
+      });
+    }
+    res.set('x-kolm-namespace', cleanNs);
+    res.set('x-kolm-capture-durable', String(anyDurable));
+    if (notifIsDistillReady(req.tenant, cleanNs)) res.set('x-kolm-distill-ready', 'true');
+    const status = failures.length > 0 ? 207 : 201;
+    res.status(status).json({
+      ok: failures.length === 0,
+      namespace: cleanNs,
+      count: ids.length,
+      ids,
+      ...(failures.length > 0 ? { failures: failures.slice(0, 5) } : {}),
+    });
+  });
+
+  // GET /v1/capture/health — operator probe. Honest answer about whether
+  // the next insertCapture call will persist beyond a single lambda. Used
+  // by the /captures + /security pages and the `kolm doctor` flow.
+  r.get('/v1/capture/health', async (req, res) => {
+    try {
+      const h = await captureHealth();
+      res.json({
+        ok: true,
+        driver: captureDriverName(),
+        durable: captureIsDurable(),
+        subscriber_count: captureSubscriberCount(),
+        thresholds: THRESHOLDS,
+        ...h,
+      });
+    } catch (e) {
+      res.status(503).json({ ok: false, error: String(e.message || e) });
+    }
+  });
+
+  // GET /v1/capture/stream — Server-Sent Events live tail of captures.
+  // W258-BE-2: was a 2 s poll-and-scan against all('observations') — broken
+  // for the Postgres driver and a lambda OOM bomb under fan-out. Now uses
+  // the in-process publish/subscribe broker (src/capture-stream.js) wired
+  // through recordCapture(). Subscriber map is keyed on tenant so
+  // cross-tenant fan-out is structurally impossible.
+  //
+  // Payload shape is the CLI/UI contract (W258-BE-6): capture_id /
+  // captured_at / namespace / model / provider / latency_us / status /
+  // prompt_head / response_head / x_kolm_capture_durable. The raw store row
+  // is shimmed here so the dashboard and `kolm tail captures` see the
+  // same shape without one of them having to translate.
+  r.get('/v1/capture/stream', authMiddleware, (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const namespaceFilter = req.query?.namespace ? sanitizeNamespace(String(req.query.namespace)) : null;
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+      // W258-BE-6: receipts on the SSE connect so `kolm tail captures` can
+      // print whether the rows about to scroll are persisted and which driver.
+      'X-Kolm-Capture-Driver': captureDriverName(),
+      'X-Kolm-Capture-Durable': String(captureIsDurable()),
+    });
+    try { req.socket?.setTimeout?.(3600000); } catch {}
+    res.write(`event: hello\ndata: ${JSON.stringify({ tenant: req.tenant, namespace: namespaceFilter, ts: new Date().toISOString(), driver: captureDriverName() })}\n\n`);
+
+    // W213/W258: subscribeCaptureStream() and subscribeCapture(req.tenant, ...)
+    // are dual aliases on broker.subscribe; the canonical call below uses
+    // subscribeCapture(req.tenant, namespaceFilter, callback).
+    const unsubscribe = subscribeCapture(req.tenant, namespaceFilter || '*', (obs) => {
+      const event = {
+        capture_id: obs.id,
+        captured_at: obs.created_at,
+        namespace: obs.corpus_namespace || 'default',
+        model: obs.model || '',
+        provider: obs.provider || null,
+        latency_us: obs.latency_us || 0,
+        status: obs.status,
+        prompt_head: typeof obs.prompt === 'string' ? obs.prompt.slice(0, 200) : null,
+        response_head: typeof obs.response === 'string' ? obs.response.slice(0, 200) : null,
+        x_kolm_capture_durable: obs.durable !== false,
+      };
+      try { res.write(`event: capture\ndata: ${JSON.stringify(event)}\n\n`); } catch (_) { /* socket closed */ }
+    });
+    const keepAlive = setInterval(() => {
+      try { res.write(': keep-alive\n\n'); } catch {}
+    }, 25000);
+
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      try { unsubscribe(); } catch {}
+      try { clearInterval(keepAlive); } catch {}
+      try { res.end(); } catch {}
+    };
+    req.on('close', cleanup);
+    req.on('error', cleanup);
+  });
+
+  // ---------- W258-BE-3 + W215: notifications API (threshold alerts opt-in) ----------
+  // Public (no auth):
+  //   GET    /v1/notifications/config             → { vapid_public_key, webpush_configured, email_configured, thresholds }
+  // Auth-gated:
+  //   GET    /v1/notifications/preferences        → { tenant, threshold_alerts, email, public }
+  //   PUT    /v1/notifications/preferences        → set { threshold_alerts, email }
+  //   GET    /v1/notifications/push-subscriptions → list registered web-push subs
+  //   POST   /v1/notifications/push-subscriptions → register a subscription { endpoint, keys }
+  //   DELETE /v1/notifications/push-subscriptions → remove by endpoint
+  //   POST   /v1/notifications/test               → fire a dummy threshold alert (preview)
+  //   GET    /v1/notifications/state              → { last_threshold_fired, fired_at } per namespace
+  r.get('/v1/notifications/config', (req, res) => {
+    res.json(notifPublicConfig());
+  });
+  r.get('/v1/notifications/preferences', authMiddleware, (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const prefs = notifGetPreferences(req.tenant);
+    res.json({ preferences: prefs, public: notifPublicConfig() });
+  });
+  r.put('/v1/notifications/preferences', authMiddleware, (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    try {
+      const next = notifSetPreferences(req.tenant, req.body || {});
+      res.json({ preferences: next });
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+  r.get('/v1/notifications/push-subscriptions', authMiddleware, (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const subs = notifListPushSubscriptions(req.tenant).map((s) => ({
+      endpoint: s.endpoint, created_at: s.created_at, last_sent_at: s.last_sent_at,
+    }));
+    res.json({ subscriptions: subs, count: subs.length });
+  });
+  r.post('/v1/notifications/push-subscriptions', authMiddleware, (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    try {
+      const row = notifAddPushSubscription(req.tenant, req.body || {});
+      res.status(201).json({ subscription: { endpoint: row.endpoint, created_at: row.created_at } });
+    } catch (e) {
+      res.status(400).json({ error: String(e.message || e) });
+    }
+  });
+  r.delete('/v1/notifications/push-subscriptions', authMiddleware, (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const endpoint = String((req.body || {}).endpoint || req.query?.endpoint || '');
+    if (!endpoint) return res.status(400).json({ error: 'endpoint required' });
+    const removed = notifRemovePushSubscription(req.tenant, endpoint);
+    res.json({ ok: true, removed });
+  });
+  r.post('/v1/notifications/test', authMiddleware, async (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const namespace = sanitizeNamespace((req.body || {}).namespace || req.query?.namespace || 'default');
+    const threshold = Math.max(1, Math.min(1000, parseInt((req.body || {}).threshold || '100', 10) || 100));
+    const count = parseInt((req.body || {}).count || String(threshold), 10) || threshold;
+    const baseUrl = process.env.PUBLIC_BASE
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://kolm.ai');
+    try {
+      const out = await notifFireThresholdAlert({ tenant: req.tenant, namespace, count, threshold, baseUrl });
+      res.json(out);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: String(e.message || e) });
+    }
+  });
+  r.get('/v1/notifications/state', authMiddleware, (req, res) => {
+    if (!req.tenant) return res.status(401).json({ error: 'auth required' });
+    const namespace = req.query?.namespace ? sanitizeNamespace(String(req.query.namespace)) : 'default';
+    res.json({
+      state: notifGetThresholdState(req.tenant, namespace),
+      distill_ready: notifIsDistillReady(req.tenant, namespace),
+      thresholds: THRESHOLDS,
+    });
   });
 
   // Drop-in `base_url` aliases so SDKs that append `/v1/messages` or
@@ -4020,7 +4979,12 @@ export function buildRouter() {
     const completion = result.status >= 200 && result.status < 300
       ? extractCompletionText(result.json, 'anthropic')
       : '';
-    const obs = recordCapture({
+    // W258-BE-1: recordCaptureWithReceipt sets x-kolm-capture-id +
+    // x-kolm-capture-durable + x-kolm-distill-ready when applicable, OR
+    // sends a 503 + x-kolm-capture-durable:false on store failure (no
+    // silent swallow). On 503 we MUST NOT forward the upstream result —
+    // returning 200 + a phantom capture-id is the bug we are fixing.
+    const obs = await recordCaptureWithReceipt(req, res, {
       tenant: req.tenant,
       provider: 'anthropic',
       model: modelFromBody(body, 'anthropic'),
@@ -4030,8 +4994,7 @@ export function buildRouter() {
       latency_us: result.elapsed_us || 0,
       status: result.status,
     });
-    res.set('x-kolm-capture-id', obs ? obs.id : '');
-    res.set('x-kolm-namespace', namespace);
+    if (!obs && res.headersSent) return; // 503 already returned
     res.status(result.status).json(result.json);
   });
 
@@ -4058,7 +5021,7 @@ export function buildRouter() {
     const completion = result.status >= 200 && result.status < 300
       ? extractCompletionText(result.json, 'openai')
       : '';
-    const obs = recordCapture({
+    const obs = await recordCaptureWithReceipt(req, res, {
       tenant: req.tenant,
       provider: 'openai',
       model: modelFromBody(body, 'openai'),
@@ -4068,8 +5031,7 @@ export function buildRouter() {
       latency_us: result.elapsed_us || 0,
       status: result.status,
     });
-    res.set('x-kolm-capture-id', obs ? obs.id : '');
-    res.set('x-kolm-namespace', namespace);
+    if (!obs && res.headersSent) return; // 503 already returned
     res.status(result.status).json(result.json);
   });
 
@@ -4077,14 +5039,14 @@ export function buildRouter() {
   // Returns the captured (input, output) pairs for a namespace as JSONL or
   // a JSON envelope. This is what `kolm labels` downloads. Counts go to the
   // status command so the customer can see "ready to distill at 1000 pairs."
-  r.get('/v1/labels/synthesize-corpus', authMiddleware, (req, res) => {
+  // W258-BE-1: reads via the durable capture-store (listCaptures) so the
+  // distillation corpus comes from the same backend the proxy writes to.
+  r.get('/v1/labels/synthesize-corpus', authMiddleware, async (req, res) => {
     if (!req.tenant) return res.status(401).json({ error: 'auth required' });
     const namespace = sanitizeNamespace(req.query?.namespace || 'default');
     const fmt = String(req.query?.format || 'jsonl').toLowerCase();
     const limit = Math.min(Math.max(parseInt(String(req.query?.limit || '10000'), 10) || 10000, 1), 50000);
-    const obs = all('observations').filter(o =>
-      o.tenant === req.tenant && (o.corpus_namespace === namespace || (namespace === 'default' && !o.corpus_namespace))
-    );
+    const obs = await listCaptures(req.tenant, namespace, 50000);
     const pairs = obs.slice(0, limit).map(o => ({
       input: o.prompt,
       output: o.response,
@@ -4128,6 +5090,26 @@ export function buildRouter() {
     const namespace = sanitizeNamespace((req.body || {}).namespace || req.query?.namespace || 'default');
     const base_model = String((req.body || {}).base_model || 'Qwen/Qwen2.5-3B-Instruct').slice(0, 128);
     const target_size = String((req.body || {}).target_size || 'phi-3-mini').slice(0, 64);
+    // W243 mirror — distill route accepts the same recipe_class / hw_tier / output_target / multi_device
+    // knobs so the wizard surfaces (cli/kolm.js cmdDistill, /account, /compile) share one contract.
+    const { recipe_class, hw_tier, output_target, multi_device } = req.body || {};
+    if (recipe_class != null && !['rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'].includes(recipe_class)) {
+      return res.status(400).json({ error: "recipe_class must be one of 'rule', 'synthesized_rule', 'compiled_rule', 'distilled_model'" });
+    }
+    if (hw_tier != null && !['auto', 'cpu-server', '3090', '4090', '5090', 'm4-max-128', 'a100-80', 'h100-80', 'h200-141', 'dgx-spark', 'm3-ultra-512'].includes(hw_tier)) {
+      return res.status(400).json({ error: "hw_tier must be one of 'auto', 'cpu-server', '3090', '4090', '5090', 'm4-max-128', 'a100-80', 'h100-80', 'h200-141', 'dgx-spark', 'm3-ultra-512'" });
+    }
+    if (output_target != null && !['gguf', 'onnx', 'safetensors', 'coreml', 'mlx', 'executorch', 'tensorrt', 'native-c', 'native-rust', 'wasm'].includes(output_target)) {
+      return res.status(400).json({ error: "output_target must be one of 'gguf', 'onnx', 'safetensors', 'coreml', 'mlx', 'executorch', 'tensorrt', 'native-c', 'native-rust', 'wasm'" });
+    }
+    if (multi_device != null) {
+      if (!Array.isArray(multi_device)) return res.status(400).json({ error: 'multi_device must be an array' });
+      if (multi_device.length > 6) return res.status(400).json({ error: 'multi_device exceeds max 6 targets' });
+      const VALID_MD = ['phone-ios', 'phone-android', 'laptop-cpu', 'browser-wasm', 'edge-jetson', 'server-cuda'];
+      for (const d of multi_device) {
+        if (!VALID_MD.includes(d)) return res.status(400).json({ error: `multi_device entry '${d}' must be one of ${VALID_MD.join(', ')}` });
+      }
+    }
     const obs = all('observations').filter(o =>
       o.tenant === req.tenant && (o.corpus_namespace === namespace || (namespace === 'default' && !o.corpus_namespace))
     );
@@ -4755,6 +5737,74 @@ export function buildRouter() {
       const out = artifactLineage.validateCapability(req.body || {});
       res.json({ ok: true, block: out });
     } catch (e) { res.json({ ok: false, error: String(e.message || e) }); }
+  });
+
+  // W263 marketplace — signed public catalog of .kolm artifacts.
+  // GET /v1/marketplace/catalog.json — signed manifest (sha256-anchor).
+  // GET /v1/marketplace — raw artifact array (unsigned, convenience).
+  // POST /v1/marketplace/publish-request — queued for manual review.
+  // GET /v1/marketplace/:slug — single artifact entry, 404 if unknown.
+  // GET /v1/marketplace/:slug/download — streams the backing .kolm file.
+  r.get('/v1/marketplace/catalog.json', (req, res) => {
+    try {
+      res.set('Cache-Control', 'public, max-age=300');
+      res.json(marketplaceGetCatalogManifest());
+    } catch (e) { res.status(500).json({ error: 'marketplace_catalog_error', detail: String(e.message || e) }); }
+  });
+
+  r.get('/v1/marketplace', (req, res) => {
+    try {
+      const filter = {};
+      if (req.query.category) filter.category = String(req.query.category);
+      if (req.query.license) filter.license = String(req.query.license);
+      if (req.query.verified === 'true') filter.verified = true;
+      if (req.query.min_k_score) filter.min_k_score = Number(req.query.min_k_score);
+      if (req.query.q) filter.q = String(req.query.q);
+      res.json({ artifacts: marketplaceListArtifacts({ filter }) });
+    } catch (e) { res.status(500).json({ error: 'marketplace_list_error', detail: String(e.message || e) }); }
+  });
+
+  r.post('/v1/marketplace/publish-request', (req, res) => {
+    try {
+      const body = req.body || {};
+      const queueDir = path.join(os.tmpdir(), 'kolm-marketplace-queue');
+      try { fs.mkdirSync(queueDir, { recursive: true }); } catch (_e) { /* best-effort */ }
+      const queueId = crypto.randomBytes(8).toString('hex');
+      const row = {
+        queue_id: queueId,
+        received_at: new Date().toISOString(),
+        proposed_slug: String(body.slug || '').slice(0, 64),
+        proposed_name: String(body.name || '').slice(0, 128),
+        artifact_sha256: String(body.sha256 || '').slice(0, 64),
+        artifact_bytes: Number(body.bytes) || 0,
+        contact: String(body.contact || '').slice(0, 256),
+      };
+      try { fs.appendFileSync(path.join(queueDir, 'publish-queue.jsonl'), JSON.stringify(row) + '\n'); } catch (_e) { /* best-effort */ }
+      res.status(202).json({ ok: true, queue_id: queueId, status: 'manual_review_queue', message: 'received; manual review by kolm.ai team' });
+    } catch (e) { res.status(500).json({ error: 'marketplace_publish_error', detail: String(e.message || e) }); }
+  });
+
+  r.get('/v1/marketplace/:slug', (req, res) => {
+    try {
+      const a = marketplaceGetArtifact(String(req.params.slug || ''));
+      if (!a) return res.status(404).json({ error: 'unknown_slug', slug: req.params.slug });
+      res.json(a);
+    } catch (e) { res.status(500).json({ error: 'marketplace_get_error', detail: String(e.message || e) }); }
+  });
+
+  r.get('/v1/marketplace/:slug/download', (req, res) => {
+    try {
+      const slug = String(req.params.slug || '');
+      const a = marketplaceGetArtifact(slug);
+      if (!a) return res.status(404).json({ error: 'unknown_slug', slug });
+      const abs = marketplaceResolveArtifactPath(slug);
+      if (!abs) return res.status(410).json({ error: 'artifact_gone', slug });
+      res.set('Content-Type', 'application/octet-stream');
+      res.set('Content-Disposition', `attachment; filename="${slug}.kolm"`);
+      res.set('X-Kolm-Sha256', a.sha256);
+      res.set('X-Kolm-Bytes', String(a.bytes));
+      fs.createReadStream(abs).pipe(res);
+    } catch (e) { res.status(500).json({ error: 'marketplace_download_error', detail: String(e.message || e) }); }
   });
 
   return r;

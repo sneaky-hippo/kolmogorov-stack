@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Researcher onboarding &middot; kolm.ai</title>
+<meta name="description" content="Frontier-models-led four-step path: browse the model registry, distill from a teacher, submit to the K-score leaderboard, co-author a research paper.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<link rel="canonical" href="https://kolm.ai/onboard/researcher">
+<meta name="robots" content="noindex,follow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+<style>
+  .ob-wrap { max-width: 820px; margin: 0 auto; padding: 28px 20px 80px; }
+  .ob-title { font-size: 13px; font-family: var(--mono); color: var(--ink-mute); margin: 0 0 8px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; }
+  .ob-h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; }
+  .ob-lede { color: var(--ink-mute); font-size: 15px; margin: 0 0 26px; line-height: 1.5; }
+  .ob-progress { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 26px; }
+  .ob-pill { font-family: var(--mono); font-size: 11px; color: var(--ink-mute); padding: 8px 10px; border-radius: 6px; background: var(--bg-elev); border: 1px solid var(--line); text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; }
+  .ob-pill.active { color: var(--ink); border-color: var(--accent); background: var(--bg-card); }
+  .ob-pill.done { color: var(--accent); }
+  .ob-step { display: none; }
+  .ob-step.active { display: block; }
+  .ob-step h2 { font-size: 24px; margin: 4px 0 8px; line-height: 1.25; }
+  .ob-step .sub { color: var(--ink-mute); font-size: 14.5px; margin: 0 0 18px; line-height: 1.5; }
+  .ob-card { border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; background: var(--bg-card); margin-bottom: 14px; }
+  .ob-card h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-mute); font-family: var(--mono); margin: 0 0 10px; }
+  .ob-card p { margin: 0 0 8px; color: var(--ink); font-size: 14.5px; line-height: 1.55; }
+  .ob-term { font-family: var(--mono); font-size: 12.5px; line-height: 1.65; background: var(--bg-elev); border: 1px solid var(--line-strong); padding: 14px 16px; border-radius: 6px; overflow-x: auto; white-space: pre; color: var(--ink); }
+  .ob-term .c { color: var(--ink-faint); }
+  .ob-term .ok { color: var(--accent); }
+  .model-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .model-card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; background: var(--bg-elev); }
+  .model-card .name { font-family: var(--mono); font-size: 13px; color: var(--ink); font-weight: 500; }
+  .model-card .meta { color: var(--ink-mute); font-size: 12px; margin-top: 4px; line-height: 1.5; }
+  .ob-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 18px; }
+  .ob-skip { color: var(--ink-faint); font-size: 13px; font-family: var(--mono); margin-left: auto; text-decoration: none; }
+  .ob-skip:hover { color: var(--ink); }
+  .next-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .next-card { border: 1px solid var(--line); border-radius: 8px; padding: 16px; background: var(--bg-card); display: block; text-decoration: none; color: inherit; }
+  .next-card:hover { border-color: var(--accent); }
+  .next-card .h { font-size: 15px; font-weight: 500; margin: 0 0 4px; }
+  .next-card .p { color: var(--ink-mute); font-size: 13px; margin: 0; line-height: 1.45; }
+  @media (max-width: 720px) {
+    .ob-progress { grid-template-columns: 1fr 1fr; }
+    .model-row, .next-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand" aria-label="kolm home">kolm</a>
+    <!-- KOLM_NAV_BEGIN (W221) -->
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/product">Product</a>
+      <a href="/models">Models</a>
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
+    </nav>
+    <!-- KOLM_NAV_END (W221) -->
+    <div class="site-actions"><a href="/account">account</a></div>
+  </div>
+</header>
+
+<main class="ob-wrap" id="main">
+  <h1 class="ob-title">Researcher path</h1>
+  <h2 class="ob-h1">Frontier teachers, frozen evals, reproducible artifacts</h2>
+  <p class="ob-lede">kolm is a research-grade distillation pipeline with a public registry, a frozen benchmark, and a leaderboard you can actually submit to. Four steps from teacher selection to co-authored paper.</p>
+
+  <div class="ob-progress" role="tablist" aria-label="Researcher onboarding progress">
+    <div class="ob-pill active" data-step="1">01 . models</div>
+    <div class="ob-pill" data-step="2">02 . distill</div>
+    <div class="ob-pill" data-step="3">03 . leaderboard</div>
+    <div class="ob-pill" data-step="4">04 . co-author</div>
+  </div>
+
+  <section class="ob-step active" data-step="1">
+    <h2>Browse the model registry</h2>
+    <p class="sub">14 frontier open-weight base models, 10 hardware tiers, and one tier-to-model auto-selector. Every row has a content hash, a license tag, and a recommended K-score gate.</p>
+    <div class="model-row">
+      <div class="model-card"><div class="name">qwen3-vl-7b</div><div class="meta">vision + language. 7B params. Apache-2.0. Runs on a 3090.</div></div>
+      <div class="model-card"><div class="name">deepseek-v4-flash</div><div class="meta">general-purpose teacher. MIT. Recommended for extraction.</div></div>
+      <div class="model-card"><div class="name">glm-4.7-air</div><div class="meta">long-context reasoning. Apache-2.0. Runs on a 5090.</div></div>
+      <div class="model-card"><div class="name">kimi-k2.5-1t</div><div class="meta">1T-param frontier teacher. Apache-2.0. DGX-Spark tier.</div></div>
+    </div>
+    <div class="ob-card"><h3>read more</h3><p>Full registry at <a href="/models" style="color:var(--accent)">/models</a>. Use <code>kolm models frontier</code> to print the table to stdout, or <code>kolm models tiers</code> to see HW recommendations.</p></div>
+    <div class="ob-actions">
+      <button class="btn primary" type="button" data-next="2">Next: distill from a teacher &rarr;</button>
+      <a class="ob-skip" href="/onboard">Switch path</a>
+    </div>
+  </section>
+
+  <section class="ob-step" data-step="2">
+    <h2>Distill from a teacher</h2>
+    <p class="sub">Pick a teacher, a base, and a recipe class. kolm runs the pipeline, generates seeds, distills, evaluates, and ships a signed artifact. Reproducible to the byte.</p>
+    <div class="ob-term">$ kolm distill \
+  --teacher deepseek-v4-flash \
+  --base qwen3-vl-7b \
+  --class extraction \
+  --seeds 1000 \
+  --eval external_holdout
+<span class="c">  generating 1000 seeds (deterministic, seeded RNG).</span>
+<span class="c">  distilling at K-score gate 0.85.</span>
+<span class="c">  running 12-axis K-score.</span>
+<span class="ok">  artifact OK. K-score: 0.91. composite gate cleared.</span>
+<span class="ok">  external_holdout_hash bound. tenant_shadow_hash recorded.</span>
+$ kolm verify my-artifact.kolm
+<span class="ok">  signature OK. receipt chain intact.</span></div>
+    <div class="ob-card"><h3>read more</h3><p>Full distillation docs at <a href="/docs/distill" style="color:var(--accent)">/docs/distill</a>. Recipe classes at <a href="/taxonomy" style="color:var(--accent)">/taxonomy</a>. Frontier methods survey at <a href="/research/methods-2026-q2" style="color:var(--accent)">/research/methods-2026-q2</a>.</p></div>
+    <div class="ob-actions">
+      <button class="btn primary" type="button" data-next="3">Next: submit to leaderboard &rarr;</button>
+      <a class="ob-skip" href="/onboard">Switch path</a>
+    </div>
+  </section>
+
+  <section class="ob-step" data-step="3">
+    <h2>Submit to the K-score leaderboard</h2>
+    <p class="sub">The kolm-bench v1 suite is 30 frozen cases across classification, extraction, generation, and code. Submit your artifact; the leaderboard re-runs the suite deterministically.</p>
+    <div class="ob-term">$ kolm bench --artifact my-artifact.kolm
+<span class="c">  loading kolm-bench v1 (30 frozen cases).</span>
+<span class="c">  running 12-axis K-score per case.</span>
+<span class="ok">  composite_mean: 0.918. pass: 27. fail: 3.</span>
+$ kolm bench --artifact my-artifact.kolm --submit
+<span class="ok">  uploaded. leaderboard rank: 7 of 42.</span>
+<span class="c">  view at https://kolm.ai/kscore-leaderboard</span></div>
+    <div class="ob-card"><h3>read more</h3><p>The leaderboard at <a href="/kscore-leaderboard" style="color:var(--accent)">/kscore-leaderboard</a>, the methodology at <a href="/k-score" style="color:var(--accent)">/k-score</a>, the bench spec at <a href="/kscore-bench" style="color:var(--accent)">/kscore-bench</a>.</p></div>
+    <div class="ob-actions">
+      <button class="btn primary" type="button" data-next="4">Next: co-author a paper &rarr;</button>
+      <a class="ob-skip" href="/onboard">Switch path</a>
+    </div>
+  </section>
+
+  <section class="ob-step" data-step="4">
+    <h2>Co-author a research paper</h2>
+    <p class="sub">If your artifact lands in the top 10, we will help you write it up. Open science only; the paper, the artifact, and the data all ship together.</p>
+    <div class="next-grid">
+      <a class="next-card" href="/research">
+        <div class="h">Research index</div>
+        <p class="p">Active research lines, open problems, and prior collaborator papers.</p>
+      </a>
+      <a class="next-card" href="/research/methods-2026-q2">
+        <div class="h">Frontier methods 2026 Q2</div>
+        <p class="p">Our running survey of distillation methods. Cite and contribute.</p>
+      </a>
+      <a class="next-card" href="/research/provenance-data-generation">
+        <div class="h">Provenance and data generation</div>
+        <p class="p">How kolm enforces source-data provenance in the seed-generation step.</p>
+      </a>
+      <a class="next-card" href="/community">
+        <div class="h">Community</div>
+        <p class="p">Discord, monthly research call, and the kolm-research mailing list.</p>
+      </a>
+    </div>
+    <div class="ob-actions">
+      <a class="btn primary" href="/research">Open the research index &rarr;</a>
+      <a class="ob-skip" href="/onboard">Switch path</a>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Onboarding</h4>
+        <a href="/onboard/cto">CTO / CISO</a>
+        <a href="/onboard/developer">Developer</a>
+        <a href="/onboard/compliance">Compliance</a>
+        <a href="/onboard/researcher">Researcher</a>
+      </div>
+      <div>
+        <h4>Research</h4>
+        <a href="/research">Index</a>
+        <a href="/research/methods-2026-q2">Methods</a>
+        <a href="/kscore-leaderboard">Leaderboard</a>
+      </div>
+      <div>
+        <h4>Models</h4>
+        <a href="/models">Registry</a>
+        <a href="/taxonomy">Recipe classes</a>
+        <a href="/k-score">K-score</a>
+      </div>
+    </div>
+    <div class="footer-tag"><span>kolm.ai - Made with .kolm - Apache-2.0</span></div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // W276 — Researcher funnel: step navigation.
+  var current = 1;
+  function go(n){
+    current = n;
+    document.querySelectorAll('.ob-step').forEach(function(s){
+      s.classList.toggle('active', s.getAttribute('data-step') === String(n));
+    });
+    document.querySelectorAll('.ob-pill').forEach(function(p){
+      var step = parseInt(p.getAttribute('data-step'), 10);
+      p.classList.toggle('active', step === n);
+      p.classList.toggle('done', step < n);
+    });
+    try { localStorage.setItem('kolm-persona', 'researcher'); } catch (_) {}
+  }
+  document.querySelectorAll('[data-next]').forEach(function(b){
+    b.addEventListener('click', function(){ go(parseInt(b.getAttribute('data-next'), 10)); });
+  });
+  document.querySelectorAll('.ob-pill').forEach(function(p){
+    p.addEventListener('click', function(){ go(parseInt(p.getAttribute('data-step'), 10)); });
+  });
+})();
+</script>
+<script src="/nav.js" defer></script>
+</body>
+</html>

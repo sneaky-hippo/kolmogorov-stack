@@ -29,6 +29,19 @@ import os from 'node:os';
 import path from 'node:path';
 import { compileJs } from './verifier.js';
 import { verifyManifestSignature, decodePack, decodeIndex } from './artifact.js';
+import { runWasmTarget } from './runners/wasm-runner.js';
+import { runNativeTarget } from './runners/native-runner.js';
+import { runGgufTarget, ggufRuntimeAvailable } from './runners/gguf-runner.js';
+import { runOnnxTarget, onnxRuntimeAvailable } from './runners/onnx-runner.js';
+
+// W287 — supported runtime_target values for dispatchRuntime. The historical
+// default is 'js' (every artifact built before W287 had no runtime_target
+// field, which decodes to 'js' for back-compat). The other four route to
+// per-target runners in src/runners/. Any value outside this set throws
+// KOLM_E_UNSUPPORTED_RUNTIME at dispatch time (loadArtifact does NOT throw;
+// structural load is independent of executability so a binder can still
+// inspect a manifest whose runner is unavailable on this host).
+export const SUPPORTED_RUNTIME_TARGETS = Object.freeze(['js', 'wasm', 'native', 'gguf', 'onnx']);
 
 const MAX_INPUT_BYTES = 1024 * 1024;          // 1 MiB
 const DEFAULT_TIMEOUT_MS = 1000;              // 1 s per recipe
@@ -45,45 +58,139 @@ const MAX_AUDIT_INPUT_PREVIEW = 200;
 // Users can re-verify any time via `kolm verify --remote` once that is wired.
 // Env override: KOLM_TRUST_CLOUD_ARTIFACTS=0 disables this fallback (strict
 // mode). KOLM_TRUST_CLOUD_ARTIFACTS=1 (default) keeps the fallback.
+// Wave 253 sec#14: cloud-trust file used to be `{trusted: {sha: {meta}}}`. Two
+// problems with that: (1) an attacker with write to ~/.kolm could insert any
+// sha + bytes pair and the file content was the only "proof"; (2) two-arg
+// callers (sha, bytes) had no clean shape to write. New shape carries an
+// HMAC over (sha + recorded_at + bytes) using a machine-local secret in
+// ~/.kolm/cloud-trust.secret (mode 0600). Tampering with any field
+// invalidates the entry. File shape:
+//   { version: 2, entries: [{ sha, recorded_at, bytes, hmac }, ...] }
+// Old `{trusted:{}}` files are still readable via the back-compat loader so
+// existing installs don't lose their trust list — but pre-W253 entries are
+// considered unverifiable and not honored unless KOLM_TRUST_CLOUD_LEGACY=1
+// is set explicitly.
 const CLOUD_TRUST_PATH = path.join(os.homedir(), '.kolm', 'cloud-trusted.json');
+const CLOUD_TRUST_SECRET_PATH = path.join(os.homedir(), '.kolm', 'cloud-trust.secret');
+
+function getOrCreateTrustSecret() {
+  try {
+    if (fs.existsSync(CLOUD_TRUST_SECRET_PATH)) {
+      const s = fs.readFileSync(CLOUD_TRUST_SECRET_PATH, 'utf8').trim();
+      if (s && s.length >= 32) return s;
+    }
+    const fresh = crypto.randomBytes(32).toString('hex');
+    fs.mkdirSync(path.dirname(CLOUD_TRUST_SECRET_PATH), { recursive: true });
+    fs.writeFileSync(CLOUD_TRUST_SECRET_PATH, fresh, 'utf8');
+    try { fs.chmodSync(CLOUD_TRUST_SECRET_PATH, 0o600); } catch {}
+    return fresh;
+  } catch {
+    // Memory fallback if we can't write — entries from this session aren't
+    // persistable but at least won't crash callers.
+    return 'kolm-fallback-' + crypto.randomBytes(16).toString('hex');
+  }
+}
+
+function hmacEntry(sha, recorded_at, bytes) {
+  const secret = getOrCreateTrustSecret();
+  const h = crypto.createHmac('sha256', secret);
+  h.update(String(sha) + '\n' + String(recorded_at) + '\n' + String(bytes));
+  return h.digest('hex');
+}
 
 function loadCloudTrust() {
   try {
-    if (!fs.existsSync(CLOUD_TRUST_PATH)) return { trusted: {} };
+    if (!fs.existsSync(CLOUD_TRUST_PATH)) return { version: 2, entries: [] };
     const j = JSON.parse(fs.readFileSync(CLOUD_TRUST_PATH, 'utf8'));
-    if (!j || typeof j !== 'object' || !j.trusted || typeof j.trusted !== 'object') return { trusted: {} };
-    return j;
-  } catch { return { trusted: {} }; }
+    if (Array.isArray(j)) return { version: 2, entries: j };
+    if (j && Array.isArray(j.entries)) return { version: j.version || 2, entries: j.entries };
+    // Legacy `{trusted: {sha: {meta}}}` shape — migrate in memory but do not
+    // persist HMACs we can't recompute (no original `recorded_at` match).
+    if (j && j.trusted && typeof j.trusted === 'object') {
+      const entries = [];
+      for (const [sha, meta] of Object.entries(j.trusted)) {
+        entries.push({
+          sha,
+          recorded_at: meta && meta.recorded_at || null,
+          bytes: meta && meta.bytes || null,
+          legacy: true,
+        });
+      }
+      return { version: 1, entries };
+    }
+    return { version: 2, entries: [] };
+  } catch { return { version: 2, entries: [] }; }
 }
 
-export function recordCloudTrusted(artifactPath, meta = {}) {
+function persistTrust(j) {
+  fs.mkdirSync(path.dirname(CLOUD_TRUST_PATH), { recursive: true });
+  fs.writeFileSync(CLOUD_TRUST_PATH, JSON.stringify({ version: 2, entries: j.entries }, null, 2));
+  try { fs.chmodSync(CLOUD_TRUST_PATH, 0o600); } catch {}
+}
+
+// recordCloudTrusted now supports both call shapes:
+//   recordCloudTrusted(sha, bytes)                       <- W253 ML#14 + audit
+//   recordCloudTrusted(artifactPath, { ... })            <- legacy callers
+// In both shapes we end up with (sha, recorded_at, bytes) which we HMAC and
+// append to the entries array.
+export function recordCloudTrusted(arg1, arg2 = {}) {
+  let sha, bytes;
   try {
-    const buf = fs.readFileSync(artifactPath);
-    const sha = crypto.createHash('sha256').update(buf).digest('hex');
+    if (typeof arg1 === 'string' && /^(sha256:)?[0-9a-f]{32,}$/i.test(arg1)) {
+      sha = arg1.startsWith('sha256:') ? arg1.slice(7) : arg1;
+      bytes = typeof arg2 === 'number' ? arg2 : (arg2 && typeof arg2.bytes === 'number' ? arg2.bytes : 0);
+    } else if (typeof arg1 === 'string') {
+      const buf = fs.readFileSync(arg1);
+      sha = crypto.createHash('sha256').update(buf).digest('hex');
+      bytes = buf.length;
+    } else {
+      return null;
+    }
+    const recorded_at = new Date().toISOString();
+    const hmac = hmacEntry(sha, recorded_at, bytes);
     const j = loadCloudTrust();
-    j.trusted[sha] = {
-      path: artifactPath,
-      recorded_at: new Date().toISOString(),
-      bytes: buf.length,
-      ...meta,
-    };
-    fs.mkdirSync(path.dirname(CLOUD_TRUST_PATH), { recursive: true });
-    fs.writeFileSync(CLOUD_TRUST_PATH, JSON.stringify(j, null, 2));
-    try { fs.chmodSync(CLOUD_TRUST_PATH, 0o600); } catch {}
+    j.entries = (j.entries || []).filter(e => e.sha !== sha);
+    j.entries.push({ sha, recorded_at, bytes, hmac });
+    persistTrust(j);
     return sha;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
 
-export function isCloudTrusted(artifactBuf) {
+// isCloudTrusted accepts EITHER an artifact Buffer OR a string sha. Returns
+// true on a verified hit, false on miss or tamper. An entry is "verified"
+// only when the on-disk hmac matches a fresh HMAC over its (sha, recorded_at,
+// bytes). This prevents an attacker who can write the JSON (but not the
+// secret file at mode 0600) from inserting trust entries.
+export function isCloudTrusted(input) {
   const flag = process.env.KOLM_TRUST_CLOUD_ARTIFACTS;
-  if (flag === '0' || flag === 'false') return null;
+  if (flag === '0' || flag === 'false') return false;
   try {
-    const sha = crypto.createHash('sha256').update(artifactBuf).digest('hex');
+    let sha;
+    if (Buffer.isBuffer(input)) {
+      sha = crypto.createHash('sha256').update(input).digest('hex');
+    } else if (typeof input === 'string') {
+      sha = input.startsWith('sha256:') ? input.slice(7) : input;
+    } else {
+      return false;
+    }
     const j = loadCloudTrust();
-    return j.trusted[sha] ? sha : null;
-  } catch { return null; }
+    for (const e of (j.entries || [])) {
+      if (e.sha !== sha) continue;
+      if (e.legacy) {
+        if (process.env.KOLM_TRUST_CLOUD_LEGACY === '1') return true;
+        return false;
+      }
+      if (!e.hmac) return false;
+      const expected = hmacEntry(e.sha, e.recorded_at, e.bytes);
+      if (crypto.timingSafeEqual(Buffer.from(e.hmac, 'hex'), Buffer.from(expected, 'hex'))) {
+        return true;
+      }
+      return false;
+    }
+    return false;
+  } catch { return false; }
 }
 
 // Convenience wrapper: returns the sha of the artifact at `artifactPath`
@@ -204,10 +311,138 @@ export function loadArtifact(artifactPath) {
     model,
     pack,
     index,
+    // W287 — raw zip entries so dispatchRuntime + per-target runners can read
+    // bytes like target.wasm / target/linux-x64/recipe / model.gguf without
+    // re-opening the zip. Keys are entry names; values are Buffers.
+    entries,
     signature_valid: true,
     signature_mode: signatureMode,
     artifact_path: artifactPath,
   };
+}
+
+// W287 — declarative health probe for a runtime target. Returns
+// { ok: true } when the manifest's declared runtime_target is supported on
+// this host and its required configuration is present, or
+// { ok: false, reason } otherwise. This is the "can I actually run this?"
+// gate the binder + UI surface — loadArtifact is structural-only and never
+// throws on a missing runner; callers ask runtimeAvailable BEFORE attempting
+// dispatchRuntime so they can present a clean "install llama.cpp to run"
+// instead of catching KOLM_E_GGUF_RUNTIME_MISSING after the fact.
+export function runtimeAvailable(manifest) {
+  if (!manifest || typeof manifest !== 'object') {
+    return { ok: false, reason: 'manifest missing' };
+  }
+  const target = manifest.runtime_target || 'js';
+  if (!SUPPORTED_RUNTIME_TARGETS.includes(target)) {
+    return { ok: false, reason: `unsupported runtime_target ${JSON.stringify(target)} (supported: ${SUPPORTED_RUNTIME_TARGETS.join(', ')})` };
+  }
+  if (target === 'js') return { ok: true };
+  if (target === 'wasm') {
+    // wasm needs the bytes in the bundle; we cannot probe that without a
+    // loaded bundle so we report ok at the manifest level and let
+    // runWasmTarget surface KOLM_E_TARGET_MISSING when the bytes are absent.
+    return { ok: true };
+  }
+  if (target === 'native') {
+    const ep = manifest.entrypoint || {};
+    if (!ep.binary) {
+      return { ok: false, reason: 'native runtime_target requires manifest.entrypoint.binary' };
+    }
+    if (process.platform === 'win32' && !ep.binary.endsWith('.exe')) {
+      return { ok: false, reason: 'on Windows, manifest.entrypoint.binary must end in .exe' };
+    }
+    return { ok: true };
+  }
+  if (target === 'gguf') {
+    const cfg = manifest.runtime_target_config || {};
+    if (!cfg.gguf_path) {
+      return { ok: false, reason: 'gguf runtime_target requires manifest.runtime_target_config.gguf_path' };
+    }
+    return ggufRuntimeAvailable();
+  }
+  if (target === 'onnx') {
+    const cfg = manifest.runtime_target_config || {};
+    if (!cfg.onnx_path) {
+      return { ok: false, reason: 'onnx runtime_target requires manifest.runtime_target_config.onnx_path' };
+    }
+    return onnxRuntimeAvailable();
+  }
+  return { ok: false, reason: `unhandled runtime_target ${JSON.stringify(target)}` };
+}
+
+// W287 — runtime dispatch. Reads manifest.runtime_target (default 'js' for
+// back-compat) and routes the call to the matching runner. The JS path
+// preserves the historical semantics (compileJs + recipe loop in runArtifact),
+// so existing artifacts continue to execute unchanged. Non-JS targets bypass
+// the recipe loop entirely; their entrypoint is whatever the manifest declares.
+//
+// Returns the runner's output shape. Throws KOLM_E_UNSUPPORTED_RUNTIME when
+// the target is unknown OR the runtime is not available on this host.
+export async function dispatchRuntime(bundle, input, opts = {}) {
+  const target = bundle?.manifest?.runtime_target || 'js';
+  if (!SUPPORTED_RUNTIME_TARGETS.includes(target)) {
+    throw kolmError('KOLM_E_UNSUPPORTED_RUNTIME', `runtime_target ${JSON.stringify(target)} not in [${SUPPORTED_RUNTIME_TARGETS.join(', ')}]`);
+  }
+  // For non-js targets, gate on runtimeAvailable so missing deps surface as
+  // KOLM_E_UNSUPPORTED_RUNTIME with the binder-readable reason. The actual
+  // runner can still throw a more specific code (KOLM_E_TARGET_MISSING etc.)
+  // when bundle bytes are missing — that is handled inside each runner.
+  if (target !== 'js') {
+    const probe = runtimeAvailable(bundle.manifest);
+    if (!probe.ok) {
+      throw kolmError('KOLM_E_UNSUPPORTED_RUNTIME', `runtime_target=${target} not available: ${probe.reason}`);
+    }
+  }
+  if (target === 'js') {
+    return runJsTarget(bundle, input, opts);
+  }
+  if (target === 'wasm') return runWasmTarget(bundle, input, opts);
+  if (target === 'native') return runNativeTarget(bundle, input, opts);
+  if (target === 'gguf') return runGgufTarget(bundle, input, opts);
+  if (target === 'onnx') return runOnnxTarget(bundle, input, opts);
+  throw kolmError('KOLM_E_UNSUPPORTED_RUNTIME', `unhandled runtime_target ${JSON.stringify(target)}`);
+}
+
+// W287 — JS runner extracted from runArtifact so dispatchRuntime can call
+// it directly without re-loading the artifact. Walks the recipe array in
+// order, returns the first recipe that compiles + executes within the
+// timeout. Output shape matches runArtifact's return value.
+async function runJsTarget(bundle, input, opts = {}) {
+  const { recipes, manifest, pack, index } = bundle;
+  if (!recipes.recipes || !recipes.recipes.length) {
+    throw kolmError('KOLM_E_NO_RECIPES', 'artifact has no executable recipes');
+  }
+  const timeout = opts.timeoutMs || DEFAULT_TIMEOUT_MS;
+  const params = opts.params || null;
+  const t0 = process.hrtime.bigint();
+  const tried = [];
+  let lastError = null;
+  for (const r of recipes.recipes) {
+    if (!r.source) continue;
+    let fn;
+    try { fn = compileJs(r.source); }
+    catch (e) { tried.push({ id: r.id, stage: 'compile', error: e.message }); lastError = `compile ${r.id}: ${e.message}`; continue; }
+    try {
+      const output = fn(input, { timeout, pack, index, params });
+      const us = Number(process.hrtime.bigint() - t0) / 1000;
+      return {
+        output,
+        recipe_id: r.id,
+        recipe_name: r.name,
+        latency_us: Math.round(us),
+        k_score: manifest.k_score || null,
+        runtime: 'js',
+      };
+    } catch (e) {
+      tried.push({ id: r.id, stage: 'run', error: e.message });
+      lastError = `run ${r.id}: ${e.message}`;
+      continue;
+    }
+  }
+  const err = kolmError('KOLM_E_NO_RECIPE_HANDLED', `no recipe in artifact handled the input. tried ${tried.length}; last: ${lastError}`);
+  err.tried = tried;
+  throw err;
 }
 
 // Run the artifact against a single input. Returns { output, recipe_id, latency_us, receipt, audit }.

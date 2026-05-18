@@ -3,7 +3,7 @@
 
 import 'dotenv/config';
 import crypto from 'node:crypto';
-import { findOne, insert, all, update } from './store.js';
+import { findOne, insert, all, update, withTransaction } from './store.js';
 import { isProductionRuntime } from './env.js';
 
 export { isProductionRuntime };
@@ -369,6 +369,12 @@ export function authMiddleware(req, res, next) {
   const p = req.path;
   // Non-API paths bypass auth entirely (page routes, static, 404 fallback handle them)
   if (!p.startsWith('/v1/')) return next();
+  // W258-SEC-1: ?api_key=... lands in CDN access logs, Referer chains, and
+  // browser history. The query-param fallback is removed for tenant API
+  // keys. CLI / server-to-server callers already use Authorization or
+  // X-API-Key; the browser dashboard uses the httpOnly cookie. Anonymous
+  // ?anon=<token> bootstrap (short-lived, scoped) still uses its own
+  // dedicated route — it never hits this fallback.
   if (PUBLIC_API(p)) {
     // Soft-auth: never reject, but if the caller sent a valid key, populate
     // req.tenant_record so the route can differentiate anon vs owner reads
@@ -376,7 +382,7 @@ export function authMiddleware(req, res, next) {
     const header = req.headers.authorization || '';
     const xApi = req.headers['x-api-key'] || '';
     const cookieKey = (req.cookies && req.cookies.kolm_session) || '';
-    const key = cookieKey || header.replace(/^Bearer\s+/i, '').trim() || xApi || req.query.api_key;
+    const key = cookieKey || header.replace(/^Bearer\s+/i, '').trim() || xApi;
     if (key) {
       const t = findTenantByApiKey(key);
       if (t && !(t.kind === 'anon' && t.expires_at && new Date(t.expires_at) < new Date())) {
@@ -389,13 +395,19 @@ export function authMiddleware(req, res, next) {
   const adminKey = adminApiKey();
   const header = req.headers.authorization || '';
   const xApi = req.headers['x-api-key'] || '';
-  // S7: prefer the httpOnly cookie. Header / query params still accepted
-  // for back-compat (CLI, server-to-server, existing localStorage callers).
-  // Cookie takes precedence so a logged-in browser session is consulted
-  // first; this means a future migration can flip the order without
-  // breaking existing integrations.
   const cookieKey = (req.cookies && req.cookies.kolm_session) || '';
-  const key = cookieKey || header.replace(/^Bearer\s+/i, '').trim() || xApi || req.query.api_key;
+  // S7 + W258-SEC-1: cookie > Authorization > X-API-Key. Query-param api_key
+  // was removed because it leaks credentials through CDN access logs and
+  // Referer headers. If a caller sends ?api_key=... we now reject with 401
+  // and a hint to use a header, so the regression is loud not silent.
+  const queryKey = req.query && req.query.api_key ? String(req.query.api_key) : '';
+  if (queryKey) {
+    return res.status(401).json({
+      error: 'api_key_in_query_unsupported',
+      hint: 'pass the key via Authorization: Bearer <key> or X-API-Key header. The ?api_key= form was removed to keep credentials out of CDN logs.',
+    });
+  }
+  const key = cookieKey || header.replace(/^Bearer\s+/i, '').trim() || xApi;
 
   if (adminKey && key === adminKey) {
     req.tenant = process.env.DEFAULT_TENANT || 'demo';
@@ -447,11 +459,22 @@ export function authMiddleware(req, res, next) {
 }
 
 // Lightweight billing increment. Call from billable handlers.
+// W258-BE-4: previously did a read-modify-write off the stale tenant_record
+// snapshot the middleware captured at request entry. Two concurrent billable
+// requests on the same tenant would both read `used=N`, both write `N+units`,
+// and the second increment was lost — paying-plan tenants drifted past quota
+// and we under-billed. Wrap the read-modify-write in withTransaction so
+// SQLite's BEGIN IMMEDIATE serializes the increment. Re-read the row inside
+// the transaction so we increment from the latest committed value, not the
+// possibly-stale tenant_record handed to the middleware.
 export function chargeUsage(tenant_record, units = 1) {
   if (!tenant_record) return;
-  update('tenants', x => x.id === tenant_record.id, {
-    used: (tenant_record.used || 0) + units,
-    last_used_at: new Date().toISOString(),
+  withTransaction(() => {
+    const fresh = findOne('tenants', x => x.id === tenant_record.id) || tenant_record;
+    update('tenants', x => x.id === tenant_record.id, {
+      used: (fresh.used || 0) + units,
+      last_used_at: new Date().toISOString(),
+    });
   });
 }
 

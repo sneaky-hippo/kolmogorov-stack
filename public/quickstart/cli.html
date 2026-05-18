@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>CLI quickstart: kolm.ai &middot; the AI compiler from the terminal &middot; kolm.ai</title>
+<meta name="description" content="Five terminal commands. From `kolm signup` to a signed .kolm artifact serving offline. No editor switch, no web UI, no SaaS handoff. kolm.ai is the AI compiler.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="CLI quickstart: kolm.ai &middot; the AI compiler from the terminal">
+<meta property="og:description" content="Five terminal commands. From signup to a signed .kolm artifact serving offline.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/quickstart/cli">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CLI quickstart: kolm.ai &middot; the AI compiler from the terminal">
+<meta name="twitter:description" content="Five terminal commands. Signed .kolm artifact serving offline.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="canonical" href="https://kolm.ai/quickstart/cli">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"CLI quickstart: kolm.ai · the AI compiler from the terminal","description":"Five terminal commands. From signup to a signed .kolm artifact serving offline.","url":"https://kolm.ai/quickstart/cli","publisher":{"@type":"Organization","name":"kolm.ai"}}</script>
+<style>
+:root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+[data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:static;background:var(--accent);color:#fff;padding:8px 14px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;justify-content:space-between;align-items:center}
+header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+header.site nav a{color:inherit;text-decoration:none}
+header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+.hero{padding:72px 0 36px;border-bottom:1px solid var(--line)}
+.crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+.crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px;max-width:920px}
+.lede{font-size:18px;line-height:1.55;color:var(--ink-mute);max-width:780px;margin:0}
+.stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+.section{padding:56px 0;border-bottom:1px solid var(--line)}
+.section h2{font-size:28px;font-weight:500;letter-spacing:-0.018em;margin:0 0 16px;max-width:780px}
+.section p.lede{font-size:16px;max-width:780px;margin:0 0 28px}
+pre.terminal{background:#06080a;color:#e9eef3;border:1px solid var(--line);border-radius:10px;padding:18px 20px;overflow-x:auto;font:12.5px/1.55 var(--mono);margin:0}
+pre.terminal b{color:var(--accent);font-weight:400}
+pre.terminal .mute{color:var(--ink-faint)}
+.step{padding:24px 26px;border:1px solid var(--line);border-radius:12px;background:var(--bg-elev);display:flex;flex-direction:column;gap:14px;margin-bottom:18px}
+.step .step-head{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.step .step-num{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:4px 10px;border-radius:4px;border:1px solid rgba(16,185,129,0.30)}
+.step .step-name{font-size:18px;font-weight:500;color:var(--ink);letter-spacing:-0.012em}
+.step .step-cli{font-family:var(--mono);font-size:11.5px;color:var(--ink-mute);background:var(--bg);padding:2px 8px;border-radius:3px;border:1px solid var(--line);letter-spacing:0.02em}
+.step p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-mute)}
+.related{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
+@media(max-width:820px){.related{grid-template-columns:1fr}}
+.related a{padding:18px 20px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:6px}
+.related a:hover{border-color:var(--accent-soft)}
+.related b{font-size:14px;color:var(--ink);font-weight:500}
+.related span{font-size:13px;color:var(--ink-mute);line-height:1.5}
+footer{padding:36px 0;color:var(--ink-faint);font-family:var(--mono);font-size:11.5px}
+footer a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site"><div class="wrap">
+  <a class="logo" href="/">kolm.ai</a>
+  <!-- kolm-nav-start --><nav><a href="/product">Product</a><a href="/models">Models</a><a href="/docs">Docs</a><a href="/pricing">Pricing</a><a href="/enterprise">Enterprise</a></nav><!-- kolm-nav-end -->
+</div></header>
+
+<main id="main">
+
+<section class="hero"><div class="wrap">
+  <div class="crumbs"><a href="/">kolm.ai</a> / <a href="/quickstart">quickstart</a> / cli</div>
+  <h1>The CLI quickstart for kolm.ai &middot; the AI compiler</h1>
+  <p class="lede">Five commands. Signup, login, capture, compile, verify. No editor switch, no web UI, no SaaS handoff. Every command exits with a code your shell can branch on, every artifact carries a signed receipt your auditor can replay, and the whole flow runs on your hardware.</p>
+  <p class="stamp">target time: 90 seconds &middot; prerequisites: node 18+ &middot; works offline after first login</p>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <h2>Install</h2>
+  <p class="lede">One npm install via the scoped tarball. The CLI ships from the same package the device shell uses, so the SDK and the CLI agree on every wire format.</p>
+  <pre class="terminal"><b>$</b> npm i -g @kolm/cli
+<b>$</b> kolm version
+<span class="mute">kolm 7.2.4 (node 20.10.0, darwin-arm64)</span></pre>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <h2>Five-step flow</h2>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 1</span><span class="step-name">Sign up</span><span class="step-cli">kolm signup</span></div>
+    <p>Provisions an anonymous tenant with a free quota. Stashes the key in <code>~/.kolm/config.json</code> at 0600. With <code>--email</code> you also get a paid plan upgrade URL.</p>
+    <pre class="terminal"><b>$</b> kolm signup --email you@example.com
+<span class="mute">tenant:  ten_yc8e9f2a   plan: free   quota: 10000   base: https://kolm.ai
+key:     ks_test_abc...4321</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 2</span><span class="step-name">Verify identity &amp; quota</span><span class="step-cli">kolm whoami --json</span></div>
+    <p>Anytime you want to know which tenant the local CLI is acting as, ask. The <code>--json</code> envelope is the stable script-parseable shape: <code>{logged_in, base, cli_version, key_fingerprint, tenant{id,plan,quota,seats,email}, _raw}</code>.</p>
+    <pre class="terminal"><b>$</b> kolm whoami --json | jq .tenant
+<span class="mute">{
+  "id": "ten_yc8e9f2a",
+  "plan": "free",
+  "quota": 10000,
+  "seats": 1,
+  "email": "you@example.com"
+}</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 3</span><span class="step-name">Capture from your real traffic</span><span class="step-cli">kolm tail captures</span></div>
+    <p>Point any existing OpenAI-compatible client at the kolm proxy base. Every prompt+response pair lands in your tenant&apos;s durable capture store and streams live to your terminal.</p>
+    <pre class="terminal"><b>$</b> export OPENAI_BASE_URL=https://kolm.ai/v1/bridges/openai
+<b>$</b> export OPENAI_API_KEY=$(kolm key fingerprint --raw)
+<b>$</b> kolm tail captures --namespace summarizer
+<span class="mute">[live] cap_018a3e... summarizer    qwen-3.5-27b   234ms  &quot;Summarize this PR:...&quot; -&gt; &quot;This PR refactors...&quot;</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 4</span><span class="step-name">Compile from captures</span><span class="step-cli">kolm distill --from-captures</span></div>
+    <p>Once a namespace crosses ~1,000 captured pairs (kolm tells you), compile them into a <code>.kolm</code> artifact. The compiler enforces the receipt chain (<code>spec &rarr; seeds &rarr; split &rarr; train &rarr; recipes &rarr; evals &rarr; export &rarr; signatures &rarr; rekor</code>) and refuses to ship if any link is missing.</p>
+    <pre class="terminal"><b>$</b> kolm distill --from-captures summarizer --tier=3090
+<span class="mute">job_w8e2 distill running. 64 GPU-min budget. follow with: kolm watch job_w8e2</span>
+<b>$</b> kolm watch job_w8e2
+<span class="mute">[done] artifact_summarizer_v3.kolm  k_score=0.91  size=148MB  receipts:9/9 signed</span></pre>
+  </div>
+
+  <div class="step">
+    <div class="step-head"><span class="step-num">step 5</span><span class="step-name">Verify and run</span><span class="step-cli">kolm verify &amp;&amp; kolm run</span></div>
+    <p>Verify replays the receipt chain offline against the artifact bytes &mdash; never trust an artifact you cannot verify. Run dispatches the artifact to the right runtime (JS, WASM, native, GGUF, or ONNX) based on what is inside.</p>
+    <pre class="terminal"><b>$</b> kolm verify artifact_summarizer_v3.kolm
+<span class="mute">verify OK. 9/9 receipts signed, 0 drift breach, k_score 0.91 within tolerance.</span>
+<b>$</b> kolm run artifact_summarizer_v3.kolm --prompt &quot;Summarize this PR:...&quot;
+<span class="mute">This PR refactors the auth middleware to fail-closed on token expiry...</span></pre>
+  </div>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <h2>The other quickstarts</h2>
+  <p class="lede">Same five-step value loop, different surface. Pick the one that matches how you ship.</p>
+  <div class="related">
+    <a href="/quickstart/api"><b>HTTP API quickstart &rarr;</b><span>Same flow against the kolm.ai REST surface. Five curl commands.</span></a>
+    <a href="/quickstart/sdk"><b>SDK quickstart &rarr;</b><span>Native TypeScript and Python bindings. Drop-in replacement for the OpenAI SDK.</span></a>
+    <a href="/quickstart/embed"><b>Embed quickstart &rarr;</b><span>Ship a signed .kolm inside another product. Browser, Node, edge.</span></a>
+  </div>
+</div></section>
+
+</main>
+
+<footer><div class="wrap">
+  <span>kolm.ai &middot; the AI compiler &middot; <a href="/articles/kolm-ai-vs-kolm-therapeutics">not the band, not the therapeutics company</a></span>
+</div></footer>
+</body>
+</html>

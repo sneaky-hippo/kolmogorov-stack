@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>Settings &middot; kolm.ai · kolm.ai</title>
+<meta name="description" content="Notification preferences, threshold alerts, browser push subscriptions, and email-of-record for kolm.ai.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+
+<link rel="canonical" href="https://kolm.ai/settings">
+<meta property="og:title" content="Settings &middot; kolm.ai" />
+<meta property="og:description" content="Notification preferences. Opt in to WebPush + email alerts when a namespace crosses 100 / 500 / 1000 captures." />
+<meta property="og:image" content="https://kolm.ai/og-card.svg" />
+<meta property="og:type" content="website" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/brand-refresh.css">
+  <meta property="og:url" content="https://kolm.ai/settings">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "kolm",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS, Windows (WSL)",
+  "url": "https://kolm.ai/settings",
+  "description": "Notification preferences, threshold alerts, browser push subscriptions, and email-of-record for kolm.ai.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "kolm.ai",
+    "@id": "https://kolm.ai/#org"
+  }
+}
+</script>
+</head>
+<body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
+<a href="#main" class="skip-link">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand" aria-label="kolm home">kolm</a>
+    <!-- KOLM_NAV_BEGIN (W221) -->
+    <nav class="site-nav" aria-label="Primary">
+      <a href="/product">Product</a>
+      <a href="/models">Models</a>
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
+    </nav>
+    <!-- KOLM_NAV_END (W221) -->
+    <div class="site-actions">
+      <a href="/docs">Help</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="page-main">
+  <section class="page-head">
+    <div>
+      <div class="eyebrow"><span class="pulse"></span>notification preferences</div>
+      <h1>Settings.</h1>
+      <p class="lede">Threshold alerts, browser push, email-of-record. Default off. Per-tenant. One screen, all toggles.</p>
+      <p class="lede" style="margin-top:8px;font-size:13.5px;color:var(--ink-faint)">
+        Threshold alerts fire when a namespace crosses 100, 500, or 1,000 captured pairs. Each threshold fires at most once per namespace per kolm install (reset via the dashboard test button). Opt-in is required &mdash; we will not push or email until you flip the toggle.
+      </p>
+    </div>
+  </section>
+
+  <section id="settings-empty" class="card" hidden>
+    <h2>No key in this browser.</h2>
+    <p>Settings need an API key. <a href="/account">Sign in on /account</a> or <a href="/signup">create one</a>.</p>
+  </section>
+
+  <section id="settings-loaded" hidden>
+    <div class="settings-grid">
+
+      <section class="card settings-card" id="notif-prefs">
+        <h2>Threshold alerts</h2>
+        <p>Fire when a namespace crosses 100 / 500 / 1,000 captured pairs. Counts use the durable W212 capture store.</p>
+        <label class="field" style="display:flex;align-items:center;gap:10px">
+          <input type="checkbox" id="prefs-threshold-alerts">
+          <span class="lbl" style="margin:0">Enable threshold alerts</span>
+        </label>
+        <label class="field">
+          <span class="lbl">Email of record</span>
+          <input id="prefs-email" type="email" placeholder="you@example.com" autocomplete="email" spellcheck="false">
+        </label>
+        <div class="toolbar">
+          <button id="prefs-save" class="btn primary" type="button">Save preferences</button>
+          <button id="prefs-test" class="btn ghost" type="button">Send test alert</button>
+        </div>
+        <p id="prefs-status" class="delta" aria-live="polite"></p>
+        <p class="fineprint" style="margin:10px 0 0;font-size:12px;color:var(--ink-faint);font-family:var(--mono);line-height:1.6">
+          Email delivery requires <code>RESEND_API_KEY</code> on the deploy. The test button fires the same path as the real threshold crossing, so it exercises WebPush + email + capture-handler header injection end to end.
+        </p>
+      </section>
+
+      <section class="card settings-card" id="notif-push">
+        <h2>Browser push</h2>
+        <p>VAPID-signed WebPush. We send a "tickle" (empty payload) &mdash; the service worker renders a generic "open /captures" notification.</p>
+        <p id="push-config-status" class="fineprint" style="margin:6px 0;font-size:12px;color:var(--ink-faint);font-family:var(--mono)">checking WebPush configuration...</p>
+        <div class="toolbar">
+          <button id="push-subscribe" class="btn accent" type="button" disabled>Subscribe this browser</button>
+          <button id="push-unsubscribe" class="btn ghost" type="button" disabled>Unsubscribe</button>
+        </div>
+        <p id="push-status" class="delta" aria-live="polite"></p>
+        <ul id="push-list" style="margin:10px 0 0;padding:0;list-style:none;font-family:var(--mono);font-size:12px;color:var(--ink-faint)"></ul>
+      </section>
+
+      <section class="card settings-card">
+        <h2>What gets sent</h2>
+        <ul style="margin:0;padding-left:18px;color:var(--ink-mute);line-height:1.7">
+          <li>WebPush: title = <code>kolm: namespace "&lt;ns&gt;" hit N captures</code>; body cites whether recipe (&lt;1000) or specialist (&gt;=1000) is now unlocked.</li>
+          <li>Email: same subject + plain-text + HTML body with a link to <code>/captures?namespace=&lt;ns&gt;</code>.</li>
+          <li>Response header: <code>x-kolm-distill-ready: true</code> on the capture response that crosses the threshold AND every capture afterward in that namespace.</li>
+          <li>Response header: <code>x-kolm-distill-threshold: 100|500|1000</code> on the single capture that crossed.</li>
+        </ul>
+      </section>
+
+      <section class="card settings-card">
+        <h2>Why default off</h2>
+        <p>kolm.ai does not push or email until you opt in. The capture loop generates real notification volume &mdash; one tenant running 5 namespaces past 1,000 pairs would otherwise fire 15 emails. We hold the toggle until the operator says yes.</p>
+      </section>
+
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p style="margin:0;color:var(--ink-faint);font-size:12px;font-family:var(--mono)">
+      kolm.ai &middot; <a href="/captures">/captures</a> &middot; <a href="/account">/account</a> &middot; <a href="/security">/security</a>
+    </p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var KEY_NAME = 'kolm_api_key';
+  function getKey(){ try { return localStorage.getItem(KEY_NAME) || sessionStorage.getItem(KEY_NAME) || ''; } catch (e) { return ''; } }
+  function authHeaders(){ var k = getKey(); return k ? { 'Authorization': 'Bearer ' + k, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }; }
+  function toast(el, msg, ok){ if (!el) return; el.textContent = msg; el.style.color = ok ? 'var(--accent)' : '#ff6b91'; }
+  function api(path, opts){ opts = opts || {}; opts.headers = Object.assign({}, authHeaders(), opts.headers || {}); return fetch(path, opts).then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j; }); }); }
+
+  var key = getKey();
+  if (!key) { document.getElementById('settings-empty').hidden = false; return; }
+  document.getElementById('settings-loaded').hidden = false;
+
+  var prefsStatus = document.getElementById('prefs-status');
+  var pushStatus = document.getElementById('push-status');
+  var pushConfigStatus = document.getElementById('push-config-status');
+  var pushList = document.getElementById('push-list');
+  var subscribeBtn = document.getElementById('push-subscribe');
+  var unsubscribeBtn = document.getElementById('push-unsubscribe');
+
+  var vapidKey = null;
+  var webpushConfigured = false;
+
+  function urlBase64ToUint8Array(b64) {
+    var pad = '='.repeat((4 - b64.length % 4) % 4);
+    var s = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+    var raw = atob(s);
+    var out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  // 1. Load config so we know what to render.
+  fetch('/v1/notifications/config').then(function(r){ return r.json(); }).then(function(c){
+    vapidKey = c.vapid_public_key;
+    webpushConfigured = !!c.webpush_configured;
+    pushConfigStatus.textContent = 'WebPush: ' + (webpushConfigured ? 'configured' : 'NOT configured (server admin: set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT)') + ' &middot; email: ' + (c.email_configured ? 'configured' : 'NOT configured (set RESEND_API_KEY)') + ' &middot; thresholds: ' + c.thresholds.join(' / ');
+    pushConfigStatus.innerHTML = pushConfigStatus.textContent;
+    if (webpushConfigured && 'serviceWorker' in navigator && 'PushManager' in window) {
+      subscribeBtn.disabled = false;
+    }
+  });
+
+  // 2. Load preferences.
+  api('/v1/notifications/preferences').then(function(p){
+    document.getElementById('prefs-threshold-alerts').checked = !!p.threshold_alerts;
+    document.getElementById('prefs-email').value = p.email || '';
+  }).catch(function(err){ toast(prefsStatus, 'load failed: ' + err.message, false); });
+
+  // 3. Load current push subscriptions for this tenant.
+  function refreshSubs(){
+    api('/v1/notifications/push-subscriptions').then(function(j){
+      pushList.innerHTML = '';
+      (j.subscriptions || []).forEach(function(s){
+        var li = document.createElement('li');
+        li.style.padding = '4px 0';
+        var host = '';
+        try { host = new URL(s.endpoint).host; } catch (e) { host = s.endpoint.slice(0, 40); }
+        li.textContent = host + ' &middot; created ' + (s.created_at || '?') + (s.last_sent_at ? ' &middot; last sent ' + s.last_sent_at : '');
+        li.innerHTML = li.textContent;
+        pushList.appendChild(li);
+      });
+    }).catch(function(){});
+  }
+  refreshSubs();
+
+  // Save preferences.
+  document.getElementById('prefs-save').addEventListener('click', function(){
+    var body = {
+      threshold_alerts: document.getElementById('prefs-threshold-alerts').checked,
+      email: document.getElementById('prefs-email').value || '',
+    };
+    api('/v1/notifications/preferences', { method: 'PUT', body: JSON.stringify(body) })
+      .then(function(p){ toast(prefsStatus, 'saved &middot; threshold_alerts=' + p.threshold_alerts + (p.email ? ' &middot; email=' + p.email : ''), true); })
+      .catch(function(err){ toast(prefsStatus, 'save failed: ' + err.message, false); });
+  });
+
+  // Send test alert.
+  document.getElementById('prefs-test').addEventListener('click', function(){
+    toast(prefsStatus, 'firing test alert...', true);
+    api('/v1/notifications/test', { method: 'POST', body: JSON.stringify({ namespace: 'default', threshold: 100 }) })
+      .then(function(r){
+        if (!r.ok) toast(prefsStatus, 'test refused: ' + (r.reason || 'unknown') + ' (opt in above first)', false);
+        else toast(prefsStatus, 'test fired &middot; push sent=' + (r.push && r.push.sent) + ' failed=' + (r.push && r.push.failed) + ' &middot; email=' + (r.email && r.email.skipped ? 'skipped' : 'sent'), true);
+      })
+      .catch(function(err){ toast(prefsStatus, 'test failed: ' + err.message, false); });
+  });
+
+  // Push subscribe flow.
+  subscribeBtn.addEventListener('click', async function(){
+    if (!vapidKey) { toast(pushStatus, 'no VAPID key &mdash; server not configured', false); return; }
+    try {
+      var reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      var sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+      var json = sub.toJSON();
+      await api('/v1/notifications/push-subscriptions', { method: 'POST', body: JSON.stringify(json) });
+      toast(pushStatus, 'subscribed &middot; ' + (new URL(sub.endpoint)).host, true);
+      unsubscribeBtn.disabled = false;
+      refreshSubs();
+    } catch (e) {
+      toast(pushStatus, 'subscribe failed: ' + (e.message || e), false);
+    }
+  });
+
+  // Push unsubscribe.
+  unsubscribeBtn.addEventListener('click', async function(){
+    try {
+      var reg = await navigator.serviceWorker.ready;
+      var sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await api('/v1/notifications/push-subscriptions', { method: 'DELETE', body: JSON.stringify({ endpoint: sub.endpoint }) });
+        await sub.unsubscribe();
+      }
+      toast(pushStatus, 'unsubscribed', true);
+      refreshSubs();
+    } catch (e) {
+      toast(pushStatus, 'unsubscribe failed: ' + (e.message || e), false);
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@ structured scaffold ready to drop into `spec.json` + `seeds.jsonl`.
 ## Usage
 
 ```
-kolm nl "<free text request>" [--class <c>] [--out <path>] [--json] [--no-network]
+kolm nl "<free text request>" [--class <c>] [--out <path>] [--json] [--network|--no-network]
 ```
 
 ## Flags
@@ -15,9 +15,12 @@ kolm nl "<free text request>" [--class <c>] [--out <path>] [--json] [--no-networ
   `compiled_rule`, `distilled_model`. Default: keyword-inferred from the request.
 - `--out <path>` write the scaffold to a file (default: stdout).
 - `--json` machine-readable JSON output. Default: human-readable.
-- `--no-network` force the air-gap path (same as `KOLM_AIRGAP=1`). Today the
-  networked path is **not yet wired** so every invocation is effectively
-  air-gap; the flag exists for forward compatibility.
+- `--no-network` force the air-gap path (same as `KOLM_AIRGAP=1`). This is the
+  default so every invocation is deterministic by default; pass `--network` to
+  opt into the hosted-LLM drafter.
+- `--network` opt into the hosted-LLM drafter. The CLI POSTs the request to
+  `/v1/nl/scaffold` and the response carries the `x-kolm-nl-source` header so
+  the caller can confirm which branch served.
 
 ## Examples
 
@@ -40,7 +43,7 @@ kolm nl "redact PHI from clinical notes" --class rule --out scaffolds/phi.json
   "suggested_seed_examples":     [{ "prompt": "...", "completion": "..." }, ...],   // length 10
   "next_steps":                  [ "kolm compile --spec ...", "kolm verify ..." ],
   "class_inference_basis":       "keyword:edi | class_hint | default",
-  "network_status":              "air_gap | not_yet_wired",
+  "network_status":              "air_gap | wired",
   "note":                        "scaffolds are starting points. refine + verify before compile."
 }
 ```
@@ -64,10 +67,11 @@ Pass `--class <c>` to override.
 
 - The air-gap path is deterministic, keyword-based, and ships today. Same input
   always produces the same scaffold.
-- The networked LLM-augmented path is **not yet wired**. When it lands, it will
-  replace the placeholder fields (seed examples, task description refinement)
-  with model-generated suggestions, leaving class inference + slug + gate
-  intact.
+- The networked LLM-augmented path is opt-in via `--network`. It replaces the
+  placeholder fields (seed examples, task description refinement) with
+  model-generated suggestions, leaves class inference + slug + gate intact,
+  and the response carries the `x-kolm-nl-source` header so a caller can
+  confirm which branch served.
 - Scaffolds are starting points, not finished recipes. Edit the seeds, refine
   the task description, then run `kolm compile --spec <file>` and
   `kolm verify <artifact>.kolm` before you ship anything to production.

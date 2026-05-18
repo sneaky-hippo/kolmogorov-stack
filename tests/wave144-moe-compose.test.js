@@ -46,7 +46,10 @@ async function buildExpert(dir, id, name, source, evalCases) {
     evals: { spec: 'rs-1-evals', cases: evalCases, coverage: 1.0 },
   };
   const out = path.join(dir, `${id}.kolm`);
-  await compileSpec(spec, { outPath: out, allowSeedAutoResolve: false });
+  // Tiny per-expert eval sets (often 1 case) trip the W258-ML-1 K-score ship
+  // gate by design. MoE experts are micro-artifacts that derive their ship
+  // signal from the composite gate, so override here.
+  await compileSpec(spec, { outPath: out, allowSeedAutoResolve: false, allow_below_gate: true });
   return out;
 }
 

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm vs Proxis (YC W26): complementary distillation tooling</title>
+<meta name="description" content="Proxis (YC W26) ships fast knowledge distillation tooling. kolm ships a signed compiled artifact and receipt chain on top of distillation. Honest matrix and complement framing.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<meta property="og:title" content="kolm vs Proxis (YC W26)">
+<meta property="og:description" content="Proxis is fast knowledge distillation. kolm is the signed compiled artifact + receipt chain on top. Adjacent shapes, often complementary.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/compare/kolm-vs-proxis">
+<link rel="canonical" href="https://kolm.ai/compare/kolm-vs-proxis">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://kolm.ai/compare/kolm-vs-proxis#article",
+      "headline": "kolm vs Proxis (YC W26): distillation tooling and signed compiled artifact",
+      "description": "Honest comparison of kolm and Proxis. Distillation tooling is adjacent to signed artifact + receipt chain; the two are often complementary.",
+      "author": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "publisher": { "@type": "Organization", "name": "kolm.ai", "@id": "https://kolm.ai/#org" },
+      "datePublished": "2026-05-18",
+      "dateModified": "2026-05-18",
+      "mainEntityOfPage": "https://kolm.ai/compare/kolm-vs-proxis",
+      "articleSection": "Compare",
+      "keywords": "kolm, Proxis, knowledge distillation, YC W26, signed artifact, AI compiler"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "kolm", "item": "https://kolm.ai/" },
+        { "@type": "ListItem", "position": 2, "name": "compare", "item": "https://kolm.ai/compare" },
+        { "@type": "ListItem", "position": 3, "name": "kolm vs Proxis", "item": "https://kolm.ai/compare/kolm-vs-proxis" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--accent-soft:rgba(16,185,129,0.10);--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669;--accent-soft:rgba(5,150,105,0.10)}
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1180px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px;flex-wrap:wrap}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .hero{padding:88px 0 36px;border-bottom:1px solid var(--line)}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 18px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:42px;line-height:1.08;font-weight:500;letter-spacing:-0.02em;margin:0 0 18px}
+  .lede{font-size:17.5px;line-height:1.55;color:var(--ink-mute);max-width:720px;margin:0}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:20px 0 0;letter-spacing:0.04em}
+  .section{padding:56px 0;border-bottom:1px solid var(--line)}
+  .section h2{font-size:26px;font-weight:500;letter-spacing:-0.018em;margin:0 0 14px}
+  .section h3{font-size:18px;font-weight:500;margin:24px 0 8px;color:var(--ink)}
+  .section p{color:var(--ink-mute);margin:0 0 14px;max-width:720px}
+  .section ul{color:var(--ink-mute);padding-left:18px;margin:0 0 14px}
+  .section ul li{margin-bottom:8px}
+  .section code{font-family:var(--mono);font-size:13px;background:var(--bg-elev);padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--ink)}
+  pre.cli{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:18px 20px;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink);overflow-x:auto;margin:14px 0}
+  pre.cli b{color:var(--accent);font-weight:500}
+  pre.cli .cm{color:var(--ink-faint)}
+  .stack-diagram{padding:24px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin:24px 0;font-family:var(--mono);font-size:13px;line-height:2;color:var(--ink-mute)}
+  .stack-diagram b{color:var(--accent);font-weight:500}
+  .stack-diagram .arr{color:var(--ink-faint);margin:0 8px}
+  table.matrix{width:100%;border-collapse:collapse;margin:20px 0;font-size:13.5px}
+  table.matrix th{font-family:var(--mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-weight:400}
+  table.matrix td{padding:14px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5;color:var(--ink-mute)}
+  table.matrix td.axis{font-weight:500;color:var(--ink);min-width:160px}
+  table.matrix td.kolm{color:var(--ink);background:var(--accent-soft)}
+  table.matrix td.kolm b{color:var(--accent);font-weight:500;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase}
+  .callout{padding:18px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev);margin:24px 0;font-size:14px;color:var(--ink-mute)}
+  .callout b{color:var(--ink)}
+  .right-answer-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:18px 0}
+  .right-answer-grid .card{padding:18px 20px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev)}
+  .right-answer-grid .card h4{margin:0 0 8px;font-size:14px;font-weight:500;color:var(--ink)}
+  .right-answer-grid .card p{margin:0;font-size:13.5px;color:var(--ink-mute)}
+  @media(max-width:680px){.right-answer-grid{grid-template-columns:1fr}}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;font-family:var(--mono);font-size:12.5px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:36px 0;color:var(--ink-faint);font-size:13px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  .ft-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;border-top:1px solid var(--line);padding-top:20px;font-family:var(--mono);font-size:11.5px}
+</style>
+</head>
+<body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
+
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/compare">compare</a><a href="/spec/rs-1">RS-1</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/compare">compare</a> &nbsp;/&nbsp; kolm vs Proxis (YC W26)</p>
+    <h1>Proxis distills fast. kolm signs and ships the result.</h1>
+    <p class="lede">Proxis (Y Combinator W26 batch) is building developer-friendly knowledge distillation tooling: take a frontier teacher model, generate a synthetic dataset, train a small student, get measurable cost and latency wins. That is a real and useful slice of the workflow. kolm sits on the layer above: it consumes the distilled student weights, gates them on a K-score eval, wraps them in a signed manifest with a full receipt chain, and emits a portable .kolm file. The two products are complementary far more often than competitive.</p>
+    <p class="stamp">Wave 274 &middot; reviewed 2026-05-18 &middot; distillation tooling vs signed compiled artifact</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>What Proxis ships in 2026.</h2>
+    <ul>
+      <li><b>Knowledge distillation pipeline</b>. Teacher selection, synthetic dataset generation, student training, evaluation loop, all wrapped in a developer-grade CLI/SDK.</li>
+      <li><b>Cost and latency optimization story</b>. Replace expensive frontier API calls with a smaller student that hits similar task accuracy at a fraction of the per-token cost.</li>
+      <li><b>YC W26 momentum</b>. Strong founding team, fresh seed capital, broad early adoption across mid-stage AI startups doing inference-cost optimization.</li>
+      <li><b>Developer ergonomics first</b>. The product is shaped for an ML engineer running iterations, not for a procurement officer reading a receipt chain.</li>
+    </ul>
+    <p>What Proxis does not (yet) ship: a signed portable file you mail to a phone, a cryptographically verifiable build receipt that an auditor can read against an external transparency log, a PHI redactor wired into the teacher call, or a deployment mode that runs air-gapped. Those are kolm's surface.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The stack with both.</h2>
+    <p>Proxis runs the distillation iteration loop and produces strong student weights. kolm takes those weights, runs the K-score eval gate, captures the full provenance (teacher, redactor, train split, holdout, recipes), signs the resulting artifact with Ed25519, posts a Rekor transparency entry, and writes the portable .kolm file your runtime consumes. The split is clean:</p>
+    <div class="stack-diagram">
+      task brief<span class="arr">&rarr;</span><b>Proxis</b><span class="arr">&rarr;</span>distilled student weights<span class="arr">&rarr;</span><b>kolm</b><span class="arr">&rarr;</span>signed .kolm + receipt chain<span class="arr">&rarr;</span>runtime
+    </div>
+    <p>The signed .kolm is the contract between the distillation team and the deploy team. Proxis can optimize the inner loop aggressively; kolm carries the cryptographic provenance and eval gate that compliance and procurement need.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The axis-by-axis split.</h2>
+    <table class="matrix">
+      <thead><tr><th>Axis</th><th>Proxis</th><th>kolm</th></tr></thead>
+      <tbody>
+        <tr><td class="axis">Primary surface</td><td>knowledge distillation tooling for developers</td><td class="kolm"><b>build-side AI compiler</b> &middot; capture, compile, ship, audit</td></tr>
+        <tr><td class="axis">Output</td><td>distilled student weights, evaluation metrics</td><td class="kolm"><b>signed .kolm file</b> &middot; weights + manifest + receipt chain + Ed25519 sig (W161) + Sigstore entry (W162)</td></tr>
+        <tr><td class="axis">Distillation loop</td><td><b>strong</b> &middot; iterating teacher, dataset synthesis, student training in tight cycles</td><td class="kolm">covers the loop via <code>kolm distill</code>, but optimizing the inner loop is not the primary surface</td></tr>
+        <tr><td class="axis">Eval gate at build time</td><td>metrics emitted; non-blocking</td><td class="kolm"><b>K-score V2 gate</b> &middot; compile blocks if eval &lt; threshold; A/T/F/R/E/Z axes (W164, W275)</td></tr>
+        <tr><td class="axis">PHI redactor</td><td>not the primary focus</td><td class="kolm"><b>Wave 157</b> &middot; 18 HIPAA Safe Harbor + 3 kolm extensions; verifier check #14 confirms no raw PHI in adapter weights</td></tr>
+        <tr><td class="axis">Cross-vendor distillation manifest</td><td>track teacher in tooling metadata</td><td class="kolm"><b>Wave 158</b> &middot; teacher_vendor + teacher_model + student_base + distillation_method bound into signed manifest; check #15</td></tr>
+        <tr><td class="axis">Receipt chain</td><td>training run logs</td><td class="kolm"><b>cryptographically verifiable</b> &middot; spec, seeds, split, train, recipes, evals, external_holdout, tenant_shadow, auditor, supersession, drift, signatures, rekor (W144-W167)</td></tr>
+        <tr><td class="axis">Drift detection</td><td>not in scope</td><td class="kolm"><b>Wave 167 drift cron</b> &middot; snapshot, report, supersession chain bound into artifact_hash; checks #23 + #24</td></tr>
+        <tr><td class="axis">Third-party verifiability</td><td>metrics readable in tool</td><td class="kolm"><b>auditor attestation</b> &middot; W166 N+7 external auditor signs eval_result with own Ed25519 key</td></tr>
+        <tr><td class="axis">Runs offline</td><td>training requires teacher API access; deploy is your problem</td><td class="kolm"><b>yes</b> &middot; .kolm + local runtime ships in /airgap mode, no callback</td></tr>
+        <tr><td class="axis">Vendor exit</td><td>weights are yours, tooling is portable Python</td><td class="kolm"><b>file on disk</b> &middot; RS-1 v2.1 Apache-2.0 open spec; receipt chain travels with the artifact</td></tr>
+        <tr><td class="axis">Maturity</td><td>YC W26 batch, early-stage product</td><td class="kolm">274 waves shipped, RS-1 v2.1 published, frozen receipt chain spec</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The Proxis + kolm integration in one CLI session.</h2>
+    <div class="callout">
+      The cleanest pairing: Proxis runs the distillation iteration loop and emits student weights. You point <code>kolm compile --from-weights</code> at the Proxis output, attach the captured I/O pairs as seeds, and kolm produces the signed .kolm file your runtime and auditor consume.
+    </div>
+    <pre class="cli"><span class="cm"># 1. Distill with Proxis (their tooling, their loop)</span>
+$ proxis distill task.yaml \
+    --teacher=anthropic:claude-opus-4-7 \
+    --student=qwen2.5-7b \
+    --out ./student-weights
+
+  WROTE student-weights/*.safetensors + metrics.json
+
+<span class="cm"># 2. Wrap the Proxis output with kolm</span>
+$ <b>kolm compile</b> --from-weights ./student-weights \
+    --seeds ./captures.jsonl \
+    --teacher=anthropic:claude-opus-4-7 \
+    --redact=phi --eval-gate=0.85
+
+  PASS  K-score 0.914 (A=0.93 T=0.92 F=0.95 R=0.88)
+  PASS  PHI redactor: 18 Safe Harbor + 3 kolm extensions, no leakage
+  PASS  Ed25519 signature, Rekor transparency log entry
+  WROTE task.kolm
+
+<span class="cm"># 3. Verify, deploy anywhere</span>
+$ <b>kolm verify</b> task.kolm
+  PASS  24/24 checks &middot; Ed25519 + Sigstore validated &middot; receipt chain intact</pre>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>When Proxis alone is the right answer.</h2>
+    <div class="right-answer-grid">
+      <div class="card">
+        <h4>You are iterating fast on the distillation loop</h4>
+        <p>You need to try a dozen teacher and student combinations in a week. A focused distillation tool with great developer ergonomics is the right shape; signing every iteration is friction you do not need yet.</p>
+      </div>
+      <div class="card">
+        <h4>Your buyer does not need a receipt chain</h4>
+        <p>Cost and latency wins are the only conversation. No regulated data, no procurement-grade audit requirement, no third-party verifier needed.</p>
+      </div>
+      <div class="card">
+        <h4>You own the entire pipeline already</h4>
+        <p>The same team trains, deploys, and operates. You do not need a signed handoff between build and deploy because there is no handoff.</p>
+      </div>
+      <div class="card">
+        <h4>You want a single-vendor relationship</h4>
+        <p>One YC-stage vendor with a tight feedback loop is more valuable to you than a multi-vendor signed-artifact workflow.</p>
+      </div>
+    </div>
+    <h2 style="margin-top:32px">When kolm + Proxis is the right shape.</h2>
+    <p>You use Proxis for the inner distillation loop and kolm for the outer build artifact: signed manifest, K-score gate, PHI redactor, receipt chain, supersession lifecycle, third-party auditor attestation. The .kolm file is what your compliance team, your auditor, and your downstream runtime consume. Proxis owns the experimentation; kolm owns the cryptographic shipment.</p>
+    <div class="actions">
+      <a class="btn primary" href="/quickstart">Compile your first .kolm &rarr;</a>
+      <a class="btn" href="/spec/rs-1">RS-1 spec &rarr;</a>
+      <a class="btn" href="/compare">Back to differentiation matrix &rarr;</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="ft-row">
+      <span>kolm.ai &middot; Apache-2.0 &middot; RS-1 v2.1</span>
+      <span><a href="/compare">/compare</a> &middot; <a href="/compare/kolm-vs-openpipe-2026">vs OpenPipe (2026)</a> &middot; <a href="/compare/kolm-vs-predibase-2026">vs Predibase (2026)</a> &middot; <a href="/compare/kolm-vs-together-2026">vs Together (2026)</a> &middot; <a href="/compare/kolm-vs-bedrock-distill">vs Bedrock</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

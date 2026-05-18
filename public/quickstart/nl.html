@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
 <meta property="og:site_name" content="kolm">
 <meta property="og:title" content="Quickstart in natural language: from idea to signed .kolm in 60 seconds">
-<meta property="og:description" content="kolm nl, kolm seeds new, kolm distill, kolm verify. Four CLI verbs, one natural-language flow. Air-gap-first, deterministic today; networked LLM path not yet wired.">
+<meta property="og:description" content="kolm nl, kolm seeds new, kolm distill, kolm verify. Four CLI verbs, one natural-language flow. Air-gap-first deterministic path is the default; opt into the networked LLM path with --network.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://kolm.ai/quickstart/nl">
 <meta property="og:image" content="https://kolm.ai/og-card.svg">
@@ -115,7 +115,7 @@
 <section class="section">
   <div class="wrap">
     <h2>Prereqs.</h2>
-    <p class="lede">Node 20 or newer, then <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13.5px;border:1px solid var(--line)">npx kolm</code> on first run (or install globally with <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13.5px;border:1px solid var(--line)">npm i -g github:sneaky-hippo/kolmogorov-stack</code>). The walkthrough below runs end to end with <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13.5px;border:1px solid var(--line)">KOLM_AIRGAP=1</code> set in your environment, so no API key is required and nothing leaves your laptop. The deterministic air-gap branch is the default today because the networked LLM path is NOT YET WIRED; see the honest-scope section below for the opt-in story when it lands.</p>
+    <p class="lede">Node 20 or newer, then <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13.5px;border:1px solid var(--line)">npx kolm</code> on first run (or install globally with <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13.5px;border:1px solid var(--line)">npm i -g github:sneaky-hippo/kolmogorov-stack</code>). The walkthrough below runs end to end with <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13.5px;border:1px solid var(--line)">KOLM_AIRGAP=1</code> set in your environment, so no API key is required and nothing leaves your laptop. The deterministic air-gap branch is the default; opt into the networked LLM path with <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--ink);font-size:13.5px;border:1px solid var(--line)">--network</code> when you want richer drafts, and the scaffold output flips <code>network_status</code> from <code>air_gap</code> to <code>wired</code> so downstream tools can branch on which path ran.</p>
   </div>
 </section>
 
@@ -146,7 +146,7 @@
   <span class="key">"class_inference_basis"</span>: <span class="str">"keyword:appeal+letter+member"</span>,
   <span class="key">"suggested_k_score_gate"</span>: <span class="num">0.85</span>,
   <span class="key">"suggested_task_description"</span>: <span class="str">"Classify a CARC denial reason code and draft a member-friendly appeal letter that cites the code."</span>,
-  <span class="key">"network_status"</span>: <span class="str">"not_yet_wired"</span>,
+  <span class="key">"network_status"</span>: <span class="str">"air_gap"</span>,
   <span class="key">"suggested_seed_examples"</span>: [ <span class="mute">/* 10 prompt+completion pairs, drafted offline */</span> ],
   <span class="key">"next_steps"</span>: [
     <span class="str">"kolm seeds new denial-appeal-letter --count=12 --out=seeds.jsonl"</span>,
@@ -156,8 +156,8 @@
   ]
 }
 
-<b>note:</b> networked LLM path is NOT YET WIRED. Today every invocation
-      uses the deterministic air-gap path. See <span class="key">kolm nl --help</span>.</pre>
+<b>note:</b> the deterministic air-gap path is the default. Pass <span class="key">--network</span>
+      to opt into the hosted-LLM drafter. See <span class="key">kolm nl --help</span>.</pre>
         <p style="font-size:13px;color:var(--ink-faint)">The <code>recipe_class</code> drives downstream choices (compile vs distill vs synthesize) and the <code>suggested_k_score_gate</code> becomes the floor a successor must clear before <code>kolm verify</code> passes. Both are starting points; override either with a flag if you know better than the keyword inference.</p>
       </div>
 
@@ -169,12 +169,12 @@
           <span class="step-num">step 02</span>
           <span class="step-name">Generate candidate seed examples</span>
           <span class="step-cli">kolm seeds new</span>
-          <span class="pill warn">scaffold today &middot; NL-driven flow not yet wired</span>
+          <span class="pill ok">shipped &middot; air-gap default, opt into --network</span>
         </div>
         <p>Drop the NL slug into <code>kolm seeds new</code>. The verb scaffolds a starter <code>seeds.jsonl</code> with placeholder prompt+completion rows you replace with your real examples. These are <b>candidates</b>, not labels: <code>kolm seeds new</code> never claims a row is ground truth. The honest framing is built into the CLI output every time.</p>
 <pre class="terminal">$ kolm seeds new denial-appeal-letter --out=seeds.jsonl
-<span class="mute"># (W199 NL-keyword candidate path is NOT YET WIRED; today the verb</span>
-<span class="mute">#  emits a 5-to-10 row template you replace with your real examples.)</span>
+<span class="mute"># (the keyword candidate path is the default; pass --network to opt</span>
+<span class="mute">#  into the hosted-LLM drafter for richer candidate rows.)</span>
 
 wrote 10 starter rows to ./seeds.jsonl
 
@@ -299,7 +299,7 @@ next:
   <div class="wrap">
     <h2>The <code style="font-family:var(--mono);background:var(--bg-elev);padding:1px 8px;border-radius:4px;color:var(--ink);font-size:28px;border:1px solid var(--line)">KOLM_AIRGAP=1</code> story.</h2>
     <p style="font-size:15.5px;line-height:1.7;color:var(--ink-mute);max-width:820px">Every step in the flow above runs offline today. <code>kolm nl</code> takes the deterministic keyword-inference branch (Wave 197 air-gap-first design). <code>kolm seeds new</code> emits templated candidates locally. <code>kolm distill --local-worker</code> trains against your seeds with whatever student and teacher you have on-disk. <code>kolm verify</code> recomputes every check from the bytes of the artifact. No step ever needs to call out to the kolm cloud or any third party; the only required network call is whatever your <code>--teacher</code> flag points at, and you control that too.</p>
-    <p style="font-size:15.5px;line-height:1.7;color:var(--ink-mute);max-width:820px;margin-top:18px">The networked LLM path (where <code>kolm nl</code> would call out to a hosted model for richer drafts) is NOT YET WIRED. When it lands, the contract is opt-in: you pass <code>--no-air-gap</code> or unset <code>KOLM_AIRGAP=1</code> to enable it, and the scaffold output carries <code>network_status: "wired"</code> instead of <code>"not_yet_wired"</code> so a downstream tool can detect which branch ran. The air-gap branch will continue to exist, will continue to be deterministic, and will continue to be the default for tenants who want byte-for-byte reproducibility across developer laptops. See the design pattern in <a href="/research/methods-2026-q2" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-soft)">/research/methods-2026-q2</a>.</p>
+    <p style="font-size:15.5px;line-height:1.7;color:var(--ink-mute);max-width:820px;margin-top:18px">The networked LLM path (where <code>kolm nl</code> calls out to a hosted model for richer drafts) is opt-in: pass <code>--network</code> or unset <code>KOLM_AIRGAP=1</code> to enable it, and the scaffold output carries <code>network_status: "wired"</code> instead of <code>"air_gap"</code> so a downstream tool can detect which branch ran. The CLI POSTs the request to <code>/v1/nl/scaffold</code> and the response is tagged with the <code>x-kolm-nl-source</code> header so a caller can confirm which branch served. The air-gap branch continues to exist, continues to be deterministic, and continues to be the default for tenants who want byte-for-byte reproducibility across developer laptops. See the design pattern in <a href="/research/methods-2026-q2" style="color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-soft)">/research/methods-2026-q2</a>.</p>
   </div>
 </section>
 

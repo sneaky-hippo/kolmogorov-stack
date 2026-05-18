@@ -48,13 +48,15 @@ export const WORKFLOW_IR_VERSION = 'wir-v1';
 // Node kinds that an IR can contain. Each corresponds to a replayable span
 // kind in src/trace-capture.js (minus the non-replayable IO and STATE kinds).
 export const NODE_KINDS = Object.freeze({
-  INPUT:     'input',     // the workflow's entry point (one per IR)
-  LLM:       'llm',       // model call
-  TOOL:      'tool',      // function call
-  BRANCH:    'branch',    // conditional fork
-  ARTIFACT:  'artifact',  // nested workflow_capsule invocation
-  CONST:     'const',     // literal value (constant folded)
-  OUTPUT:    'output',    // the workflow's exit point (one per IR)
+  INPUT:        'input',         // the workflow's entry point (one per IR)
+  LLM:          'llm',           // model call
+  TOOL:         'tool',          // function call
+  BRANCH:       'branch',        // conditional fork
+  ARTIFACT:     'artifact',      // nested workflow_capsule invocation
+  CONST:        'const',         // literal value (constant folded)
+  OUTPUT:       'output',        // the workflow's exit point (one per IR)
+  MEMORY_READ:  'memory_read',   // (W269) read from per-run kv scratchpad
+  MEMORY_WRITE: 'memory_write',  // (W269) write to per-run kv scratchpad
 });
 
 const VALID_KINDS = new Set(Object.values(NODE_KINDS));
@@ -83,6 +85,17 @@ export function validateIr(ir) {
   if (!Array.isArray(ir.edges)) throw new Error('ir.edges must be an array');
   if (!Array.isArray(ir.seeds)) throw new Error('ir.seeds must be an array');
 
+  // tool_registry: if present, MUST be an array of strings. Empty means
+  // "no tools allowed" (closed-by-default). Absent means legacy un-gated
+  // mode (back-compat with pre-W269 capsules).
+  let toolRegistry = null;
+  if (ir.tool_registry !== undefined) {
+    if (!Array.isArray(ir.tool_registry)) {
+      throw new Error('ir.tool_registry must be an array of tool names when present');
+    }
+    toolRegistry = new Set(ir.tool_registry);
+  }
+
   const ids = new Set();
   let inputs = 0;
   let outputs = 0;
@@ -93,6 +106,20 @@ export function validateIr(ir) {
     if (!VALID_KINDS.has(n.kind)) throw new Error(`bad node kind: ${n.kind}`);
     if (n.kind === NODE_KINDS.INPUT) inputs += 1;
     if (n.kind === NODE_KINDS.OUTPUT) outputs += 1;
+    // (W269) tool_registry gate: any TOOL node whose tool_name is missing
+    // from the registry is rejected. If the registry is absent we allow
+    // anything (legacy mode).
+    if (n.kind === NODE_KINDS.TOOL && toolRegistry) {
+      if (!toolRegistry.has(n.tool_name)) {
+        throw new Error(`tool ${n.tool_name} is not in ir.tool_registry (not allowed for this capsule)`);
+      }
+    }
+    // (W269) memory nodes need a non-empty string key.
+    if (n.kind === NODE_KINDS.MEMORY_READ || n.kind === NODE_KINDS.MEMORY_WRITE) {
+      if (typeof n.key !== 'string' || !n.key) {
+        throw new Error(`${n.kind} node ${n.id} needs a non-empty string key`);
+      }
+    }
   }
   if (inputs !== 1) throw new Error(`exactly one INPUT node required, got ${inputs}`);
   if (outputs !== 1) throw new Error(`exactly one OUTPUT node required, got ${outputs}`);
@@ -270,9 +297,34 @@ export async function interpret(ir, input, opts = {}) {
           throw new Error(`no artifact executor wired, but IR has live ARTIFACT node: ${id}`);
         }
         const subInput = _resolve(node.input_template, env);
-        const v = await opts.exec.artifact({ id, artifact_hash: node.artifact_hash, recipe_id: node.recipe_id }, subInput);
+        // (W269) Thread the memory store + parent trace context into the
+        // sub-IR call so composed specialists can build on what earlier
+        // specialists wrote.
+        const ctx = { memory: opts.memory, parent_trace: trace };
+        const v = await opts.exec.artifact({ id, artifact_hash: node.artifact_hash, recipe_id: node.recipe_id }, subInput, ctx);
         env[id] = v;
         trace[id] = { kind: 'artifact', artifact_hash: node.artifact_hash, recipe_id: node.recipe_id, input: subInput, value: v };
+        break;
+      }
+      case NODE_KINDS.MEMORY_READ: {
+        // (W269) Read from the per-run key-value scratchpad. Missing keys
+        // bind to null rather than throwing — agents commonly probe a
+        // memory slot to decide whether to populate it.
+        const mem = opts.memory;
+        const v = mem && typeof mem.get === 'function' ? (mem.get(node.key) ?? null) : null;
+        env[id] = v;
+        trace[id] = { kind: 'memory_read', key: node.key, value: v };
+        break;
+      }
+      case NODE_KINDS.MEMORY_WRITE: {
+        // (W269) Write to the per-run scratchpad. Binds env[id] to the
+        // written value so downstream nodes can chain on it.
+        const v = _resolve(node.value_template, env);
+        if (opts.memory && typeof opts.memory.set === 'function') {
+          opts.memory.set(node.key, v);
+        }
+        env[id] = v;
+        trace[id] = { kind: 'memory_write', key: node.key, value: v };
         break;
       }
       case NODE_KINDS.OUTPUT: {

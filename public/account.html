@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>Account · kolm</title>
+<title>Account · kolm.ai</title>
 <meta name="description" content="Manage your kolm account, API key, compile defaults, and provider settings.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -19,18 +19,43 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/brand-refresh.css">
+  <meta property="og:url" content="https://kolm.ai/account">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "kolm",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS, Windows (WSL)",
+  "url": "https://kolm.ai/account",
+  "description": "Manage your kolm account, API key, compile defaults, and provider settings.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "kolm.ai",
+    "@id": "https://kolm.ai/#org"
+  }
+}
+</script>
 </head>
 <body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
 <header class="site-header">
   <div class="wrap">
     <a href="/" class="brand" aria-label="kolm home">kolm</a>
+    <!-- KOLM_NAV_BEGIN (W221) -->
     <nav class="site-nav" aria-label="Primary">
-      <a href="/training">Training</a>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/captures">Captures</a>
-      <a href="/audit-log">Audit log</a>
-      <a href="/account" aria-current="page">Account</a>
+      <a href="/product">Product</a>
+      <a href="/models">Models</a>
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/enterprise">Enterprise</a>
     </nav>
+    <!-- KOLM_NAV_END (W221) -->
     <div class="site-actions">
       <a href="/docs">Help</a>
       <a class="cta" href="/dashboard#dash-compile">New compile &rarr;</a>
@@ -120,6 +145,61 @@
         <label class="field">
           <span class="lbl">K-score floor</span>
           <input id="cfg-k-threshold" type="text" inputmode="decimal" value="0.90">
+        </label>
+        <!-- W243 compile wizard knobs. The 4 selects mirror /compile.html (mc-*),
+             cmdCompile + cmdDistill (--class, --tier, --target, --multi-device),
+             cmdTui (TUI_VALID_*), and the /v1/compile + /v1/specialists/auto-distill
+             validation contracts. Names are the assertion targets for W243 tests. -->
+        <label class="field">
+          <span class="lbl">Recipe class</span>
+          <select id="cfg-recipe-class">
+            <option value="rule">rule</option>
+            <option value="synthesized_rule">synthesized_rule</option>
+            <option value="compiled_rule">compiled_rule</option>
+            <option value="distilled_model">distilled_model</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl">Hardware tier</span>
+          <select id="cfg-hw-tier">
+            <option value="auto">auto</option>
+            <option value="cpu-server">cpu-server</option>
+            <option value="3090">3090</option>
+            <option value="4090">4090</option>
+            <option value="5090">5090</option>
+            <option value="m4-max-128">m4-max-128</option>
+            <option value="a100-80">a100-80</option>
+            <option value="h100-80">h100-80</option>
+            <option value="h200-141">h200-141</option>
+            <option value="dgx-spark">dgx-spark</option>
+            <option value="m3-ultra-512">m3-ultra-512</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl">Output target</span>
+          <select id="cfg-output-target">
+            <option value="gguf">gguf</option>
+            <option value="onnx">onnx</option>
+            <option value="safetensors">safetensors</option>
+            <option value="coreml">coreml</option>
+            <option value="mlx">mlx</option>
+            <option value="executorch">executorch</option>
+            <option value="tensorrt">tensorrt</option>
+            <option value="native-c">native-c</option>
+            <option value="native-rust">native-rust</option>
+            <option value="wasm">wasm</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl">Multi-device targets</span>
+          <select id="cfg-multi-device" multiple size="4">
+            <option value="phone-ios">phone-ios</option>
+            <option value="phone-android">phone-android</option>
+            <option value="laptop-cpu">laptop-cpu</option>
+            <option value="browser-wasm">browser-wasm</option>
+            <option value="edge-jetson">edge-jetson</option>
+            <option value="server-cuda">server-cuda</option>
+          </select>
         </label>
       </section>
 

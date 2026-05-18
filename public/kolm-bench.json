@@ -1,0 +1,43 @@
+{
+  "spec": "kolm-bench-v1",
+  "schema_version": 1,
+  "frozen_at": "2026-05-18T00:00:00Z",
+  "doc": "https://kolm.ai/kscore-bench",
+  "leaderboard": "https://kolm.ai/kscore-leaderboard",
+  "license": "Apache-2.0",
+  "cases": [
+    { "id": "cls-01", "cls": "classification", "input": { "text": "this product is amazing, ten stars" }, "reference": "positive" },
+    { "id": "cls-02", "cls": "classification", "input": { "text": "broke after one week, never again" }, "reference": "negative" },
+    { "id": "cls-03", "cls": "classification", "input": { "text": "arrived on time, it works" }, "reference": "neutral" },
+    { "id": "cls-04", "cls": "classification", "input": { "text": "how do I reset my password?" }, "reference": "support_request" },
+    { "id": "cls-05", "cls": "classification", "input": { "text": "I want a refund" }, "reference": "refund_request" },
+    { "id": "cls-06", "cls": "classification", "input": { "text": "do you ship to germany?" }, "reference": "shipping_question" },
+    { "id": "cls-07", "cls": "classification", "input": { "text": "this is fraud, I never made this purchase" }, "reference": "dispute" },
+    { "id": "cls-08", "cls": "classification", "input": { "text": "thanks!" }, "reference": "acknowledgement" },
+
+    { "id": "ext-01", "cls": "extraction", "input": { "text": "My name is Jane Doe, ssn 123-45-6789" }, "reference": { "name": "Jane Doe", "ssn": "123-45-6789" } },
+    { "id": "ext-02", "cls": "extraction", "input": { "text": "Call me at (555) 234-5678 anytime" }, "reference": { "phone": "(555) 234-5678" } },
+    { "id": "ext-03", "cls": "extraction", "input": { "text": "Patient John Smith, DOB 1985-03-12, MRN 4421" }, "reference": { "name": "John Smith", "dob": "1985-03-12", "mrn": "4421" } },
+    { "id": "ext-04", "cls": "extraction", "input": { "text": "Invoice #INV-9921, total $1,420.50" }, "reference": { "invoice_id": "INV-9921", "amount": 1420.50 } },
+    { "id": "ext-05", "cls": "extraction", "input": { "text": "Email me at jane@example.com or jane.doe@corp.io" }, "reference": { "emails": ["jane@example.com", "jane.doe@corp.io"] } },
+    { "id": "ext-06", "cls": "extraction", "input": { "text": "Meeting on March 15 at 2:30 PM EST" }, "reference": { "date": "2026-03-15", "time": "14:30 EST" } },
+    { "id": "ext-07", "cls": "extraction", "input": { "text": "Address: 100 Main St, Springfield, IL 62701" }, "reference": { "street": "100 Main St", "city": "Springfield", "state": "IL", "zip": "62701" } },
+
+    { "id": "gen-01", "cls": "generation", "input": { "task": "summarize", "text": "The quarterly report shows revenue up 12% YoY driven by enterprise contracts; churn declined to 3.2%, with NRR at 118%." }, "reference": { "contains": ["revenue up 12%", "churn 3.2%", "NRR 118%"] } },
+    { "id": "gen-02", "cls": "generation", "input": { "task": "rewrite_formal", "text": "hey wanna grab coffee tmrw?" }, "reference": { "contains": ["Would you like", "tomorrow"] } },
+    { "id": "gen-03", "cls": "generation", "input": { "task": "translate_es", "text": "Where is the train station?" }, "reference": { "contains": ["estación", "tren"] } },
+    { "id": "gen-04", "cls": "generation", "input": { "task": "summarize", "text": "Patient presented with fever 101.4, chills, and productive cough x 3 days. CXR shows RLL consolidation; started on amoxicillin 875mg BID." }, "reference": { "contains": ["pneumonia", "amoxicillin", "RLL"] } },
+    { "id": "gen-05", "cls": "generation", "input": { "task": "rewrite_polite", "text": "this is wrong, fix it now" }, "reference": { "contains": ["could you", "please"] } },
+    { "id": "gen-06", "cls": "generation", "input": { "task": "expand", "text": "Q3 strong" }, "reference": { "contains": ["Q3", "performance", "strong"] } },
+    { "id": "gen-07", "cls": "generation", "input": { "task": "redact_phi", "text": "Patient John Doe, MRN 4421, presented with chest pain." }, "reference": { "contains": ["[NAME]", "[MRN]", "chest pain"] } },
+    { "id": "gen-08", "cls": "generation", "input": { "task": "json_normalize", "text": "order id 88-22, qty 3" }, "reference": { "contains": ["\"order_id\"", "\"qty\": 3"] } },
+
+    { "id": "code-01", "cls": "code", "input": { "task": "regex_email" }, "reference": "/^[\\w.+-]+@[\\w-]+\\.[\\w.-]+$/" },
+    { "id": "code-02", "cls": "code", "input": { "task": "fn_is_even", "lang": "js" }, "reference": { "contains": ["n % 2", "return", "=== 0"] } },
+    { "id": "code-03", "cls": "code", "input": { "task": "fn_factorial", "lang": "py" }, "reference": { "contains": ["def factorial", "return", "n * factorial"] } },
+    { "id": "code-04", "cls": "code", "input": { "task": "sql_top_5_users" }, "reference": { "contains": ["SELECT", "ORDER BY", "LIMIT 5"] } },
+    { "id": "code-05", "cls": "code", "input": { "task": "regex_ipv4" }, "reference": { "contains": ["\\d{1,3}\\.", "\\d{1,3}"] } },
+    { "id": "code-06", "cls": "code", "input": { "task": "fn_clamp", "lang": "rust" }, "reference": { "contains": ["fn clamp", "min", "max"] } },
+    { "id": "code-07", "cls": "code", "input": { "task": "fix_off_by_one", "lang": "js" }, "reference": { "contains": ["<=", "fixed"] } }
+  ]
+}

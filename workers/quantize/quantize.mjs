@@ -107,10 +107,13 @@ if (!report.ready_for_quantize || !pyScriptExists) {
     console.log(`  reason: ${manifest.note}`);
     console.log(`  next:   ${manifest.next}`);
   }
-  // Honest exit: 0 because the worker did exactly what it documents (emit a
-  // scaffolding manifest). The CLI surfaces the "scaffolding-only" status
-  // back to the user via the manifest body, not via an error code.
-  process.exit(0);
+  // Wave 253 ML#9: exit non-zero (2) when the ML stack isn't ready and
+  // --doctor wasn't passed. Pre-W253 we exited 0 with a scaffolding manifest,
+  // which let CI green-light a "quantize" that didn't actually quantize. CI
+  // should fail loud so the operator sees the gap. --doctor is the one
+  // intentional "happy path with not-ready" mode — handled above and exits
+  // with `ready_for_quantize ? 0 : 1` so doctor differs from default-mode 2.
+  process.exit(2);
 }
 
 // Python ready + script present: invoke it. kolm does not interpret the

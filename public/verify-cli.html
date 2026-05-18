@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>kolm verify: free standalone CLI for any .kolm artifact | kolm.ai</title>
+<meta name="description" content="The free standalone kolm verify CLI. Verifies signature chain, manifest schema, frozen-eval hash, and K-score recomputation on any .kolm artifact. Apache-2.0. No login. No telemetry.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/verify-cli">
+<meta property="og:title" content="kolm verify CLI">
+<meta property="og:description" content="The free standalone CLI that verifies any .kolm artifact. Signature chain, manifest schema, frozen-eval hash, K-score recomputation. Apache-2.0.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/verify-cli">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="kolm verify CLI">
+<meta name="twitter:description" content="Free standalone CLI for any .kolm artifact. No login. No telemetry. Apache-2.0.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "kolm verify",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS, Windows",
+  "description": "Free standalone CLI that verifies any .kolm artifact against the RS-1 reference spec.",
+  "url": "https://kolm.ai/verify-cli",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+}
+</script>
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669}
+  body{background:var(--bg);color:var(--ink);font:16.5px/1.7 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1080px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .paper{padding:80px 0 64px}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 16px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:34px;line-height:1.15;font-weight:500;letter-spacing:-0.018em;margin:0 0 8px;max-width:680px}
+  .subtitle{font-size:16.5px;color:var(--ink-mute);margin:0 0 14px;font-style:italic;line-height:1.55}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:6px 0 0;letter-spacing:0.04em}
+  .pills{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 0}
+  .pill{font-family:var(--mono);font-size:11.5px;letter-spacing:0.04em;padding:5px 10px;border:1px solid var(--line);border-radius:999px;color:var(--ink-mute);background:var(--bg-elev)}
+  .pill.green{color:var(--accent);border-color:rgba(16,185,129,0.32)}
+  h2{font-size:22px;font-weight:500;letter-spacing:-0.012em;margin:48px 0 12px;color:var(--ink)}
+  h3{font-size:17px;font-weight:500;margin:24px 0 8px;color:var(--ink)}
+  p{color:var(--ink-mute);margin:0 0 16px}
+  p b{color:var(--ink);font-weight:500}
+  ul,ol{color:var(--ink-mute);margin:0 0 16px;padding-left:24px}
+  li{margin:0 0 6px}
+  li b{color:var(--ink);font-weight:500}
+  code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  pre{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px 18px;overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;margin:0 0 16px;color:var(--ink)}
+  pre code{background:transparent;border:0;padding:0}
+  .install-card{margin:0 0 18px;padding:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg-elev)}
+  .install-card .head{padding:10px 16px;background:rgba(16,185,129,0.06);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12px;letter-spacing:0.04em;color:var(--ink);text-transform:uppercase}
+  .install-card pre{margin:0;border:0;border-radius:0;background:transparent}
+  table{width:100%;border-collapse:collapse;margin:0 0 16px;font-size:14px}
+  th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500}
+  td code{font-size:12.5px}
+  .tbl-wrap{border:1px solid var(--line);border-radius:8px;overflow-x:auto;margin:0 0 16px}
+  .checks{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:0 0 18px}
+  @media(max-width:720px){.checks{grid-template-columns:1fr}}
+  .check{padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-elev)}
+  .check b{display:block;color:var(--ink);font-family:var(--mono);font-size:12.5px;margin:0 0 4px}
+  .check span{color:var(--ink-mute);font-size:13px;line-height:1.5}
+  .nope{margin:0 0 18px;padding:14px 18px;border:1px dashed rgba(245,158,11,0.45);border-radius:8px;background:rgba(245,158,11,0.04);font-size:13.5px;line-height:1.6;color:var(--ink-mute);font-family:var(--mono)}
+  .nope b{color:#f59e0b}
+  .actions{display:flex;gap:12px;margin:36px 0 0;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:32px 0;border-top:1px solid var(--line);color:var(--ink-faint);font-size:13px;margin-top:64px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:var(--ink-mute);text-decoration:none}
+  footer.site a:hover{color:var(--ink)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr);gap:18px}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500;margin:0 0 10px}
+  .footer-grid a{display:block;padding:3px 0;font-size:13px}
+  .footer-tag{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:18px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11.5px}
+  .footer-tag span{color:var(--ink-faint)}
+</style>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
+<a class="skip-link" href="#main" style="position:absolute;left:-9999px">Skip to main content</a>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/quickstart">quickstart</a><a href="/spec/rs-1">spec</a><a href="/research">research</a><a href="/docs">docs</a></nav></div></header>
+<main id="main">
+<section class="paper">
+<div class="wrap">
+
+<p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; verify CLI</p>
+
+<h1>kolm verify: a free standalone CLI for any .kolm artifact.</h1>
+<p class="subtitle">Verifies signature chain, manifest schema, frozen-eval hash, and K-score recomputation. Apache-2.0. No login, no telemetry, no network call required.</p>
+<p class="stamp">v1.0.0 . Apache-2.0 . zero runtime deps . conforms to <a href="/spec/rs-1" style="color:inherit">RS-1 v2.1</a></p>
+
+<div class="pills">
+  <span class="pill green">Apache-2.0</span>
+  <span class="pill">no login</span>
+  <span class="pill">no telemetry</span>
+  <span class="pill">offline by default</span>
+  <span class="pill">verifies any .kolm</span>
+</div>
+
+<h2>Install</h2>
+
+<p>One install command per platform. The verifier is a single static binary; you do not need <code>node</code>, <code>python</code>, or <code>docker</code> at runtime. Network is required <i>only</i> to download the binary itself; the actual verify run is offline.</p>
+
+<div class="install-card">
+  <div class="head">curl install (Linux, macOS)</div>
+  <pre><code>curl -fsSL https://kolm.ai/install/verify | sh</code></pre>
+</div>
+
+<div class="install-card">
+  <div class="head">docker (any host, no install)</div>
+  <pre><code>docker run --rm -v "$PWD:/work" -w /work kolm/verify:latest verify ./artifact.kolm</code></pre>
+</div>
+
+<p>Both surfaces resolve to the same Apache-2.0 binary built reproducibly from the kolm-stack repo. The container image is the binary plus a 5 MB Alpine base; no third-party runtime libraries are linked in.</p>
+
+<h2>What it verifies</h2>
+
+<p>Four checks, run in order. Any failure stops the chain and surfaces the failing slot with a non-zero exit code. The verifier never phones home; it reads the artifact and the optional public-key file you point it at.</p>
+
+<div class="checks">
+  <div class="check"><b>1. Signature chain</b><span>HMAC-SHA256 (integrity) + Ed25519 (authenticity) + optional sigstore bundle with Rekor anchor. Cascade encoding read from <code>manifest.signature_alg</code>; checks run innermost to outermost per RS-1 &sect;5.1.</span></div>
+  <div class="check"><b>2. Manifest schema</b><span>Validates the canonical-JSON manifest against the RS-1 v2.1 shape: required fields, four-class taxonomy match, artifact_class versus contents, training block coherence for distilled_model.</span></div>
+  <div class="check"><b>3. Frozen-eval hash</b><span>Re-derives the deterministic train/holdout split from <code>seeds.jsonl</code> + <code>split_seed</code> and confirms <code>train_hash &cap; holdout_hash = &empty;</code>. Rejects tautological-eval artifacts per RS-1 &sect;4.</span></div>
+  <div class="check"><b>4. K-score recomputation</b><span>Re-runs the comparator over the holdout, recomputes A / S / L / C / V (and v2 axes when present), and confirms the manifest <code>k_score</code> matches within tolerance. Reports per-axis values on success.</span></div>
+</div>
+
+<h2>Usage</h2>
+
+<pre><code>kolm verify ./artifact.kolm
+kolm verify ./artifact.kolm --pubkey ./signer.pub
+kolm verify ./artifact.kolm --json
+kolm verify ./artifact.kolm --strict
+kolm verify --help</code></pre>
+
+<p>Exit codes follow POSIX convention: <code>0</code> all checks passed, <code>1</code> signature failure, <code>2</code> manifest schema failure, <code>3</code> frozen-eval disjointness failure, <code>4</code> K-score recomputation mismatch, <code>64</code> usage error. The <code>--json</code> flag emits a structured report suitable for CI pipes; the <code>--strict</code> flag escalates warnings (missing sigstore anchor when the manifest claims sigstore signing) to hard failures.</p>
+
+<h2>What it does not do</h2>
+
+<div class="nope">
+  <b>No login.</b> The verifier never asks for credentials, never sends a request to kolm.ai, never reads a cookie or token. The four checks run against the local artifact bytes and the optional public-key file.
+</div>
+
+<div class="nope">
+  <b>No telemetry.</b> Zero outbound network calls during verify. The binary is open source (Apache-2.0) and reproducibly built; you can audit the call graph and confirm there is no telemetry path. The single optional network call is the Rekor transparency-log lookup when <code>--require-rekor</code> is set and the artifact carries a sigstore bundle.
+</div>
+
+<div class="nope">
+  <b>No compile, no inference.</b> The verifier reads and checks; it does not train, distill, or run a recipe. For build-side workflows use the full kolm CLI at <a href="/quickstart">/quickstart</a>. <code>kolm verify</code> is intentionally narrow.
+</div>
+
+<h2>Why it is free</h2>
+
+<p>An audit primitive whose verifier costs money is not an audit primitive. RS-1 is an open standard; the free verifier is the contract that the standard is actually open. The full kolm CLI (build, distill, compile, deploy) is also Apache-2.0 but ships under a different repository with backend integrations; the standalone verifier is the read-side only, packaged for the case where a regulator, an auditor, or a downstream consumer wants to confirm "this artifact matches its manifest" without installing the full stack.</p>
+
+<h2>Conformance</h2>
+
+<p>The standalone verifier passes the same interop test suite (<code>tests/interop/</code>) as the JavaScript / Python / Rust reference verifiers documented in <a href="/spec/rs-1">RS-1 &sect;9</a>. Byte-identical canonical-JSON output, byte-identical CID computation, byte-identical receipt verification results. A second-source verifier can be re-implemented in under two engineer-weeks against the spec; <code>kolm verify</code> is one such source.</p>
+
+<h2>Reproducible build</h2>
+
+<p>The release binary is built with <code>SOURCE_DATE_EPOCH=0</code>, deterministic linker flags, and the toolchain pin documented at <a href="/spec/rs-1#section-7-5">RS-1 &sect;7.5.1</a>. The build produces a <code>.kolm</code> manifest of its own (verifying-the-verifier); the hash is published in <code>RELEASES.md</code> in the source repo.</p>
+
+<table>
+  <thead><tr><th>Target</th><th>Triple</th><th>SHA-256</th></tr></thead>
+  <tbody>
+    <tr><td>Linux x86_64</td><td><code>x86_64-unknown-linux-musl</code></td><td><code>see RELEASES.md</code></td></tr>
+    <tr><td>Linux arm64</td><td><code>aarch64-unknown-linux-musl</code></td><td><code>see RELEASES.md</code></td></tr>
+    <tr><td>macOS arm64</td><td><code>aarch64-apple-darwin</code></td><td><code>see RELEASES.md</code></td></tr>
+    <tr><td>macOS x86_64</td><td><code>x86_64-apple-darwin</code></td><td><code>see RELEASES.md</code></td></tr>
+    <tr><td>Windows x64</td><td><code>x86_64-pc-windows-msvc</code></td><td><code>see RELEASES.md</code></td></tr>
+    <tr><td>Container</td><td><code>kolm/verify:latest</code></td><td><code>see hub.docker.com/r/kolm/verify</code></td></tr>
+  </tbody>
+</table>
+
+<h2>License</h2>
+
+<p>Apache License 2.0. Use freely, redistribute freely, fork freely. The license file ships in every release tarball and inside the container at <code>/LICENSE</code>. No attribution required in derivative works (but appreciated).</p>
+
+<div class="actions">
+  <a class="btn primary" href="https://github.com/sneaky-hippo/kolmogorov-stack">View source on GitHub &rarr;</a>
+  <a class="btn" href="/spec/rs-1">Read RS-1 spec &rarr;</a>
+  <a class="btn" href="/spec/changelog">Change log &rarr;</a>
+  <a class="btn" href="/verify-prod">Verify a .kolm in browser &rarr;</a>
+</div>
+
+</div>
+</section>
+</main>
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/spec/changelog">Spec change log</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Verify</h4>
+        <a href="/verify-cli">kolm verify CLI</a>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/badge">Embed badge</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Standards</h4>
+        <a href="/spec/rs-1">RS-1</a>
+        <a href="/spec/changelog">Changelog</a>
+        <a href="/spec/codebase">Codebase</a>
+        <a href="/spec/kolm-format-v1">kolm format</a>
+        <a href="/security">Security</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Product changelog</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+        <a href="/manifesto">Manifesto</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - kolm verify CLI - Apache-2.0</span>
+      <span>No login. No telemetry. Free forever.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

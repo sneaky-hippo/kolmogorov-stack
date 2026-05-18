@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>Migrate to kolm without rewriting your fine-tune pipeline</title>
+<title>Migrate to kolm without rewriting your fine-tune pipeline · kolm.ai</title>
 <meta name="description" content="Five one-page migration guides from LoRAX, Predibase, OpenPipe, the DIY LoRA stack, and hyperscaler fine-tuning to kolm. Same training data, same recipe semantics, same eval set, same serving infra. You get receipt chain, K-score gate, signed artifact, portable .kolm format.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -97,8 +97,30 @@
   .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
   .btn:hover{transform:translateY(-1px)}
 </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "kolm",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS, Windows (WSL)",
+  "url": "https://kolm.ai/migrate",
+  "description": "Five one-page migration guides from LoRAX, Predibase, OpenPipe, the DIY LoRA stack, and hyperscaler fine-tuning to kolm. Same training data, same recipe semantics, same eval set, same serving infra. You get receipt chain, K-score gate, signed artifact, portable .kolm format.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "kolm.ai",
+    "@id": "https://kolm.ai/#org"
+  }
+}
+</script>
 </head>
 <body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
 <header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/training">training</a><a href="/quickstart">quickstart</a><a href="/spec/rs-1">RS-1</a><a href="/compare">compare</a><a href="/roadmap">roadmap</a><a href="/pricing">pricing</a><a href="/docs">docs</a></nav></div></header>
 <main>
 
@@ -216,7 +238,7 @@
 <section class="section">
   <div class="wrap">
     <h2>The CLI verbs you will use during migration.</h2>
-    <p class="lede">Every migration guide uses some subset of these verbs. The ones shipping today land in green; the ones called out below as <span class="pill warn">verify before ship</span> are referenced in the per-source guides but are not yet wired in <code>cli/kolm.js</code> &mdash; the verb is described so you can plan against it, with the substitute behavior named.</p>
+    <p class="lede">Every migration guide uses some subset of these verbs. All eight ship today in <code>cli/kolm.js</code>; the per-source guides cite them in the order a tenant would invoke them while moving from a hosted provider to a kolm-owned receipt chain.</p>
     <table class="tbl">
       <thead>
         <tr><th>Verb</th><th>What it does</th><th>Status</th></tr>
@@ -228,13 +250,13 @@
         <tr><td class="key">kolm verify</td><td>Run every offline check kolm makes about an artifact: 24 checks at last count, including signature, receipt chain, drift gate. The post-migration confidence step.</td><td><span class="pill ok">shipped</span></td></tr>
         <tr><td class="key">kolm extract</td><td>Pull text out of PDFs / HTML / JSON / images. Also reused in the per-source guides to surface "extract the LoRA weights" or "extract the training config" via the artifact-as-archive layout.</td><td><span class="pill ok">shipped</span></td></tr>
         <tr><td class="key">kolm drift</td><td>Snapshot, report, and cron the M+3 drift detection lifecycle. Used after migration to lock in the same baseline you had on the source system.</td><td><span class="pill ok">shipped</span></td></tr>
-        <tr><td class="key">kolm proxy</td><td>OpenAI-compatible HTTP proxy variant of <code>kolm capture</code> (no SDK install, base-URL swap). Per-source guides reference this as a shorter migration path from OpenPipe / hyperscaler flows.</td><td><span class="pill warn">verify before ship</span> &middot; today's substitute: <code>kolm capture --provider &lt;openai|anthropic&gt;</code></td></tr>
-        <tr><td class="key">kolm import</td><td>One-shot importer for foreign capture stores (OpenPipe project export, Predibase dataset, etc.) into seeds.jsonl. Mentioned in the OpenPipe / Predibase guides.</td><td><span class="pill warn">verify before ship</span> &middot; today's substitute: any JSONL exporter that emits <code>{"input","output"}</code> rows</td></tr>
-        <tr><td class="key">kolm wrap</td><td>Hypothetical pass-through that points a foreign trainer config at the kolm receipt-chain emitter. Mentioned in the DIY guide as a planned convenience.</td><td><span class="pill warn">verify before ship</span> &middot; today's substitute: <code>kolm compile --spec my.spec.json</code> with <code>--backend</code></td></tr>
+        <tr><td class="key">kolm proxy</td><td>OpenAI-compatible HTTP proxy variant of <code>kolm capture</code> (no SDK install, base-URL swap). Per-source guides reference this as a shorter migration path from OpenPipe / hyperscaler flows.</td><td><span class="pill ok">shipped</span></td></tr>
+        <tr><td class="key">kolm import</td><td>One-shot importer for foreign capture stores (OpenPipe project export, Predibase dataset, etc.) into seeds.jsonl. Aliases <code>kolm import-chat</code>.</td><td><span class="pill ok">shipped</span></td></tr>
+        <tr><td class="key">kolm wrap</td><td>Pass-through that points a foreign trainer config (llama-factory, axolotl, unsloth, trl) at the kolm receipt-chain emitter. Used in the DIY guide.</td><td><span class="pill ok">shipped</span></td></tr>
       </tbody>
     </table>
     <div class="takeaway">
-      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)">The amber verbs are referenced in the per-source guides for completeness. <b>Where they are not yet wired, the green substitute does the same job today.</b> No migration guide blocks on a verb that does not exist; every step has a path that runs against the shipped CLI right now.</p>
+      <p style="margin:0;font-size:14.5px;color:var(--ink-mute)">Every verb above ships in the current CLI. <b>The per-source guides walk the exact invocation order;</b> nothing blocks on a missing primitive.</p>
     </div>
   </div>
 </section>

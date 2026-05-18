@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
-<title>Models · the base-model and device registry | kolm</title>
+<title>Models · the base-model and device registry | kolm.ai</title>
 <meta name="description" content="Every base model and device kolm compiles against. Qwen 2.5, Llama 3.2, Gemma 3, Phi 3.5, SmolLM2. Defaults per device, license, VRAM, context. Override with kolm models pin.">
 <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
@@ -122,6 +122,7 @@
 <link rel="stylesheet" href="/brand-refresh.css">
 </head>
 <body>
+<span class="brand-anchor" style="position:absolute;left:-9999px" aria-hidden="true">kolm.ai - the AI compiler. Not Kolm therapeutics, Kolm band, Kolm engines, or Petter Kolm.</span>
 
 <header class="site">
   <div class="row">
@@ -281,6 +282,40 @@ $ kolm compile --task "classify support tickets" --target-device rtx-5090
     <p>Two things we are not claiming.</p>
     <p><strong>We did not train these base models.</strong> The base-model field selects a foundation; <code>.kolm</code> is the LoRA adapter on top, plus the receipt chain. The base remains under its upstream license; you remain the licensee.</p>
     <p><strong>Benchmark numbers in the picker come from public scorecards.</strong> MMLU / GSM8K / MATH / HumanEval / IFEval scores quoted in this page and in the Qwen 2.5 tech report are reproductions kolm has not independently rerun. The <a href="/leaderboard" style="color:var(--ink);text-decoration:underline">/leaderboard</a> page tracks reproductions we have run; everything else is cited.</p>
+
+    <h2 id="frontier">Frontier 2026 catalog</h2>
+    <p>Open-weight frontier models verified into <code>src/model-registry.js</code>. Each row carries <code>verified_at</code>, source URL, license, recommended quant, and hardware tier. Run <code>kolm models frontier</code> to list, <code>kolm models show &lt;id&gt;</code> to inspect, <code>kolm models verify</code> to re-validate source-URL freshness before ship.</p>
+    <table>
+      <thead><tr><th>Model</th><th>Params</th><th>Quant</th><th>Tier</th><th>License</th></tr></thead>
+      <tbody>
+        <tr><td><code>stepfun-ai/step3.5-flash-reap-121b</code></td><td>121B (REAP)</td><td>Q6</td><td><code>dgx-spark</code></td><td>Apache-2.0</td></tr>
+        <tr><td><code>Qwen/Qwen3.6-27B-Instruct</code></td><td>27B</td><td>Q4</td><td><code>3090</code></td><td>Apache-2.0</td></tr>
+        <tr><td><code>nvidia/Nemotron-3-Nano-Omni-30B-A3B</code></td><td>30B-A3B (multimodal)</td><td>Q4</td><td><code>dgx-spark</code></td><td>NVIDIA Open</td></tr>
+        <tr><td><code>deepseek-ai/DeepSeek-V4-PRO-1.6T</code></td><td>1.6T</td><td>Q2</td><td><code>m3-ultra-512</code></td><td>DeepSeek</td></tr>
+        <tr><td><code>deepseek-ai/DeepSeek-V4-Flash-158B</code></td><td>158B</td><td>Q4</td><td><code>h200-141</code></td><td>DeepSeek</td></tr>
+        <tr><td><code>zai-org/GLM-4.7-Flash</code></td><td>large</td><td>Q4</td><td><code>h100-80</code></td><td>Apache-2.0</td></tr>
+        <tr><td><code>zai-org/GLM-4.5-Air-REAP-82B-A12B</code></td><td>82B-A12B (REAP)</td><td>Q4</td><td><code>a100-80</code></td><td>Apache-2.0</td></tr>
+        <tr><td><code>google/gemma-4-26b-a4b-it</code></td><td>26B-A4B</td><td>Q4</td><td><code>3090</code></td><td>Gemma</td></tr>
+        <tr><td><code>Qwen/Qwen3-VL-235B-A22B-Instruct</code></td><td>235B-A22B (vision)</td><td>Q4</td><td><code>h200-141</code></td><td>Apache-2.0</td></tr>
+        <tr><td><code>Qwen/Qwen3-Coder-30B-A3B-Instruct</code></td><td>30B-A3B (code)</td><td>Q4</td><td><code>3090</code></td><td>Apache-2.0</td></tr>
+        <tr><td><code>Qwen/Qwen3.5-27B-Instruct</code></td><td>27B</td><td>Q4</td><td><code>3090</code></td><td>Apache-2.0</td></tr>
+        <tr><td><code>moonshotai/Kimi-K2.5-1T</code></td><td>1T</td><td>Q2</td><td><code>m3-ultra-512</code></td><td>Moonshot</td></tr>
+        <tr><td><code>NousResearch/Hermes-4.3-36B</code></td><td>36B</td><td>Q4</td><td><code>5090</code></td><td>Apache-2.0</td></tr>
+        <tr><td><code>cerebras/Carnice-35B-A3B-Instruct</code></td><td>35B-A3B</td><td>Q4</td><td><code>5090</code></td><td>Apache-2.0</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="tiers">Hardware tiers</h2>
+    <p>Pre-flighted hardware presets. Pass <code>kolm compile --tier=3090</code> (or 5090 / a100-80 / h100-80 / h200-141 / dgx-spark / m3-ultra-512) and kolm picks the matching base+quant+context settings.</p>
+    <ul>
+      <li><code>3090</code> &mdash; single RTX 3090, 24 GB VRAM, consumer ceiling for Q4 27B-class models.</li>
+      <li><code>5090</code> &mdash; single RTX 5090, 32 GB VRAM, fits 36B Q4 with comfortable context.</li>
+      <li><code>a100-80</code> &mdash; A100-80GB, datacenter workhorse.</li>
+      <li><code>h100-80</code> &mdash; H100-80GB, datacenter standard 2024-2026.</li>
+      <li><code>h200-141</code> &mdash; H200-141GB, 235B-A22B-class fits Q4 with room to spare.</li>
+      <li><code>dgx-spark</code> &mdash; DGX Spark workstation, 128 GB unified.</li>
+      <li><code>m3-ultra-512</code> &mdash; Apple M3 Ultra Mac Studio, 512 GB unified, runs Q2 1T-class.</li>
+    </ul>
   </div>
 </main>
 

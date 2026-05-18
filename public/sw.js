@@ -1,5 +1,5 @@
 // Recipe service worker · keeps the registry available offline.
-const CACHE = 'kolm-v7-2026-05-17-wave210-shift6-final-sweep-complete';
+const CACHE = 'kolm-v7-2026-05-18-wave334-hero-rescue';
 const PRECACHE = [
   '/device',
   '/styles.css',
@@ -52,4 +52,36 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
+});
+
+// W215: WebPush handler — receive a threshold alert and surface it as a
+// notification. The /v1/notifications/test route fires the same payload shape.
+self.addEventListener('push', (e) => {
+  let payload = {};
+  try { payload = e.data ? e.data.json() : {}; } catch (_) { payload = { title: 'kolm.ai', body: e.data ? e.data.text() : '' }; }
+  const title = payload.title || 'kolm.ai capture threshold crossed';
+  const body = payload.body || (payload.namespace ? (payload.namespace + ': ' + (payload.count || 0) + ' captures — distill is ready') : '');
+  const url = payload.url || '/captures';
+  e.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: '/icon.png',
+      badge: '/icon.png',
+      data: { url },
+      tag: payload.tag || ('kolm-' + (payload.namespace || 'default')),
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (e) => {
+  const url = (e.notification.data && e.notification.data.url) || '/captures';
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+      for (const w of wins) {
+        if ('focus' in w) { w.navigate(url); return w.focus(); }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })
+  );
 });

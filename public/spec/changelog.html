@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#08090c;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>html,body{background:#08090c;color:#faf2e1}html{color-scheme:dark}</style>
+<title>RS-1 spec change log: v1.0 to v2.1 | kolm.ai</title>
+<meta name="description" content="RS-1 spec change log. Every minor and major version: v1.0 (frozen 2026-01-15) v1.1 (drift block) v2.0 (supersession + teacher fidelity) v2.1 (k-score-2 axes). Date, summary, diff link.">
+<meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f7f4ec" media="(prefers-color-scheme: light)">
+<script>(function(){try{var t=localStorage.getItem('kolm-theme');if(t==='light'){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.background='#f7f4ec';document.documentElement.style.colorScheme='light';}}catch(e){}})();</script>
+<link rel="canonical" href="https://kolm.ai/spec/changelog">
+<meta property="og:title" content="RS-1 spec change log">
+<meta property="og:description" content="Every RS-1 version with date, summary, and diff link. v1.0 (2026-01-15) to v2.1 (current).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://kolm.ai/spec/changelog">
+<meta property="og:image" content="https://kolm.ai/og-card.svg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="RS-1 spec change log">
+<meta name="twitter:description" content="Every RS-1 version with date, summary, and diff link.">
+<meta name="twitter:image" content="https://kolm.ai/og-card.svg">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "RS-1 spec change log",
+  "description": "Every RS-1 version with date, summary, and diff link.",
+  "url": "https://kolm.ai/spec/changelog",
+  "author": {"@type": "Organization", "name": "Kolmogorov"},
+  "publisher": {"@type": "Organization", "name": "Kolmogorov", "url": "https://kolm.ai"},
+  "datePublished": "2026-05-18",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0"
+}
+</script>
+<style>
+  :root{--ink:#ece7dc;--ink-mute:#b5bdb1;--ink-faint:#737c73;--line:rgba(236,231,220,0.08);--bg:#0b0d10;--bg-elev:#101316;--accent:#10b981;--mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+  [data-theme=light]{--ink:#1f2429;--ink-mute:#4b5158;--ink-faint:#737c73;--line:rgba(0,0,0,0.08);--bg:#fdfcf8;--bg-elev:#ffffff;--accent:#059669}
+  body{background:var(--bg);color:var(--ink);font:16.5px/1.7 -apple-system,Inter,system-ui,sans-serif;margin:0}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  header.site{padding:18px 0;border-bottom:1px solid var(--line)}
+  header.site .wrap{display:flex;justify-content:space-between;align-items:center;max-width:1080px}
+  header.site nav{display:flex;gap:18px;font-family:var(--mono);font-size:12px}
+  header.site nav a{color:inherit;text-decoration:none}
+  header.site .logo{font-family:var(--mono);font-size:13px;color:inherit;text-decoration:none}
+  .paper{padding:80px 0 64px}
+  .crumbs{font-family:var(--mono);font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 16px}
+  .crumbs a{color:inherit;text-decoration:none;border-bottom:1px dashed var(--line)}
+  h1{font-size:34px;line-height:1.15;font-weight:500;letter-spacing:-0.018em;margin:0 0 8px;max-width:680px}
+  .subtitle{font-size:16.5px;color:var(--ink-mute);margin:0 0 14px;font-style:italic;line-height:1.55}
+  .stamp{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint);margin:6px 0 0;letter-spacing:0.04em}
+  h2{font-size:22px;font-weight:500;letter-spacing:-0.012em;margin:48px 0 12px;color:var(--ink)}
+  h3{font-size:17px;font-weight:500;margin:24px 0 8px;color:var(--ink)}
+  p{color:var(--ink-mute);margin:0 0 16px}
+  p b{color:var(--ink);font-weight:500}
+  ul,ol{color:var(--ink-mute);margin:0 0 16px;padding-left:24px}
+  li{margin:0 0 6px}
+  li b{color:var(--ink);font-weight:500}
+  code{font-family:var(--mono);font-size:0.92em;color:var(--ink);background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+  .entry{margin:0 0 18px;padding:18px 22px;border:1px solid var(--line);border-radius:10px;background:var(--bg-elev)}
+  .entry .ver{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 8px}
+  .entry .ver h3{margin:0;font-size:19px;color:var(--ink)}
+  .entry .ver .date{font-family:var(--mono);font-size:12px;color:var(--ink-faint);letter-spacing:0.04em}
+  .entry .ver .badge{font-family:var(--mono);font-size:11px;letter-spacing:0.04em;padding:3px 9px;border:1px solid var(--line);border-radius:999px;color:var(--ink-mute);background:var(--bg)}
+  .entry .ver .badge.current{color:var(--accent);border-color:rgba(16,185,129,0.32);background:rgba(16,185,129,0.06)}
+  .entry .summary{font-size:14.5px;line-height:1.65;color:var(--ink-mute);margin:0 0 10px}
+  .entry .summary b{color:var(--ink);font-weight:500}
+  .entry ul{margin:0 0 10px;font-size:14px}
+  .entry .links{margin:10px 0 0;font-family:var(--mono);font-size:12px;color:var(--ink-faint)}
+  .entry .links a{color:var(--accent);text-decoration:none;border-bottom:1px dashed rgba(16,185,129,0.32);margin-right:14px}
+  table{width:100%;border-collapse:collapse;margin:0 0 16px;font-size:14px}
+  th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500}
+  td code{font-size:12.5px}
+  .tbl-wrap{border:1px solid var(--line);border-radius:8px;overflow-x:auto;margin:0 0 16px}
+  .actions{display:flex;gap:12px;margin:36px 0 0;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:8px;font-family:var(--mono);font-size:13px;text-decoration:none;border:1px solid var(--line);color:var(--ink);transition:all 160ms}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn:hover{transform:translateY(-1px)}
+  footer.site{padding:32px 0;border-top:1px solid var(--line);color:var(--ink-faint);font-size:13px;margin-top:64px}
+  footer.site .wrap{max-width:1180px}
+  footer.site a{color:var(--ink-mute);text-decoration:none}
+  footer.site a:hover{color:var(--ink)}
+  .footer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:24px;margin-bottom:24px}
+  @media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,1fr);gap:18px}}
+  .footer-grid h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);font-weight:500;margin:0 0 10px}
+  .footer-grid a{display:block;padding:3px 0;font-size:13px}
+  .footer-tag{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:18px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11.5px}
+  .footer-tag span{color:var(--ink-faint)}
+</style>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#main" style="position:absolute;left:-9999px">Skip to main content</a>
+<header class="site"><div class="wrap"><a class="logo" href="/">k o l m</a><nav><a href="/quickstart">quickstart</a><a href="/spec/rs-1">spec</a><a href="/research">research</a><a href="/docs">docs</a></nav></div></header>
+<main id="main">
+<section class="paper">
+<div class="wrap">
+
+<p class="crumbs"><a href="/">kolm</a> &nbsp;/&nbsp; <a href="/spec/rs-1">spec</a> &nbsp;/&nbsp; change log</p>
+
+<h1>RS-1 spec change log.</h1>
+<p class="subtitle">Every RS-1 version with date, summary, and link to the diff. Open-standard governance, Apache-2.0, RFC-driven changes.</p>
+<p class="stamp">v2.1 current . citeable as <code>kolm.ai/spec/changelog</code> . see also <a href="/spec/rs-1" style="color:inherit">/spec/rs-1</a></p>
+
+<h2>Versions at a glance</h2>
+
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>Version</th><th>Date</th><th>Status</th><th>Theme</th></tr></thead>
+  <tbody>
+    <tr><td><code>v1.0</code></td><td>2026-01-15</td><td>frozen</td><td>initial RS-1 spec</td></tr>
+    <tr><td><code>v1.1</code></td><td>2026-02-28</td><td>frozen</td><td>added drift block</td></tr>
+    <tr><td><code>v2.0</code></td><td>2026-05-17</td><td>frozen</td><td>added supersession + teacher-fidelity</td></tr>
+    <tr><td><code>v2.1</code></td><td>2026-05-18</td><td>current</td><td>k-score-2 axes (R/F/T/E/Z)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Entries</h2>
+
+<div class="entry" id="v2-1">
+<div class="ver"><h3>v2.1</h3><span class="date">2026-05-18</span><span class="badge current">current</span></div>
+<p class="summary"><b>k-score-2 axes.</b> The five v2 K-score axes (R real-world independence, F fairness, T teacher-fidelity, E eval-source label, Z drift) are promoted from scaffolding to first-class. The reference verifier checks each populated axis; the manifest declares which axes are computed; the bench page surfaces axis means.</p>
+<ul>
+<li>R axis: external + adversarial holdouts (Presidio, i2b2 2014, MIMIC-III for PHI; CMS / NCQA for claims). Verifier check #16.</li>
+<li>F axis: equal performance across declared subgroups in seeds.jsonl tags. Verifier check #17.</li>
+<li>T axis: teacher-delta for distilled_model. Verifier check #18.</li>
+<li>E axis: eval-source label (synthetic_starter, tenant_captured, external_public, adversarial_pair, auditor_witnessed). Verifier check #19.</li>
+<li>Z axis: drift snapshot/report/cron mechanism with supersession-chain hand-off. Verifier check #20.</li>
+<li>&sect;7.1 + &sect;7.2 demoted from "wave forthcoming" to cross-references at the implementation-confirmed subsections &sect;7.6 (W157) and &sect;7.7 (W158).</li>
+<li>v2.0 verifiers accept v2.1 manifests by ignoring unknown fields; v2.1 is additive and backward-compatible at the read path.</li>
+</ul>
+<p class="links"><a href="https://github.com/sneaky-hippo/kolmogorov-stack/compare/spec-v2.0...spec-v2.1">view diff: v2.0 to v2.1</a><a href="/spec/rs-1">read spec</a></p>
+</div>
+
+<div class="entry" id="v2-0">
+<div class="ver"><h3>v2.0</h3><span class="date">2026-05-17</span><span class="badge">frozen</span></div>
+<p class="summary"><b>supersession + teacher-fidelity.</b> Major revision. Adds the supersession-chain block that lets a new artifact cite the prior artifact CID it replaces, plus the teacher-fidelity T axis for distilled_model recipes. Closes the tautological-eval loophole by making seeds.jsonl train/holdout split a hard verifier gate.</p>
+<ul>
+<li>Four-class taxonomy frozen: <code>rule</code>, <code>synthesized_rule</code>, <code>compiled_rule</code>, <code>distilled_model</code>. Verifier check #3 rejects misdeclared artifacts.</li>
+<li>Three-signature cascade: HMAC-SHA256 + Ed25519 + optional sigstore with Rekor anchor. Verifier checks #4-#6.</li>
+<li>Supersession block: <code>supersession_of</code> field cites prior artifact CID; supersession reason from a fixed taxonomy (<code>drift_detected</code>, <code>scheduled_rebuild</code>, <code>security_patch</code>, <code>recipe_revision</code>, <code>policy_change</code>, <code>tenant_request</code>). Verifier check #15.</li>
+<li>Teacher-fidelity (T axis): T = teacher accuracy on same holdout; reported as A/T ratio.</li>
+<li>seeds.jsonl train/holdout deterministic split. Verifier rebuilds split and confirms disjointness; tautological-eval artifacts rejected pre-signature.</li>
+<li>Canonical-JSON serialization frozen across JavaScript, Python, Rust reference verifiers; interop test suite enforces byte-identical CIDs.</li>
+<li>Breaking against v1.x: v1.x manifests claiming the v2.x schema string are rejected. New artifacts must declare <code>version: "2.0"</code> and ship a four-class artifact_class.</li>
+</ul>
+<p class="links"><a href="https://github.com/sneaky-hippo/kolmogorov-stack/compare/spec-v1.1...spec-v2.0">view diff: v1.1 to v2.0</a><a href="/spec/rs-1">read spec</a></p>
+</div>
+
+<div class="entry" id="v1-1">
+<div class="ver"><h3>v1.1</h3><span class="date">2026-02-28</span><span class="badge">frozen</span></div>
+<p class="summary"><b>drift block.</b> Minor revision. Adds an optional drift block to the manifest so an artifact can declare its drift posture (tolerances + detection cadence) at build time, paving the way for the v2.0 supersession chain.</p>
+<ul>
+<li>Drift block in manifest with <code>tolerances</code>, <code>detection_cadence</code>, and <code>snapshot_corpus_hash</code> fields.</li>
+<li>Default tolerances frozen: <code>eval_score</code> &plusmn;0.02 (warn) / &plusmn;0.05 (breach), <code>k_score.composite</code> &plusmn;0.03 / &plusmn;0.08, <code>k_score.&lt;axis&gt;</code> &plusmn;0.05 / &plusmn;0.10.</li>
+<li>Verifier check #14 added: drift block schema validation when present.</li>
+<li>Backward compatible: v1.0 verifiers accept v1.1 manifests by ignoring the drift block.</li>
+</ul>
+<p class="links"><a href="https://github.com/sneaky-hippo/kolmogorov-stack/compare/spec-v1.0...spec-v1.1">view diff: v1.0 to v1.1</a></p>
+</div>
+
+<div class="entry" id="v1-0">
+<div class="ver"><h3>v1.0</h3><span class="date">2026-01-15</span><span class="badge">frozen</span></div>
+<p class="summary"><b>initial RS-1 spec.</b> First public freeze of the Reproducible Signed-artifact format. Defines the <code>.kolm</code> ZIP layout, the canonical-JSON manifest, the K-score formula (A/S/L/C/V), HMAC-SHA256 signature, and the runtime inference receipt.</p>
+<ul>
+<li><code>.kolm</code> ZIP layout: manifest.json, spec.json, recipes.json, evals.json, seeds.jsonl, receipt.json plus class-dependent payload.</li>
+<li>Canonical-JSON: sorted keys, no whitespace, UTF-8, integers as integers.</li>
+<li>K-score v1 composite: K = 0.40A + 0.15S + 0.15L + 0.15C + 0.15V. Compile gated by recipe-declared <code>min_k</code>.</li>
+<li>HMAC-SHA256 signature over canonical-JSON(body).</li>
+<li>Runtime receipt: <code>{manifest_cid, input_sha, output_sha, ts, k_score, signature}</code>.</li>
+<li>Reference verifier in JavaScript (Node 20+), pure stdlib.</li>
+</ul>
+<p class="links"><a href="https://github.com/sneaky-hippo/kolmogorov-stack/compare/initial...spec-v1.0">view diff: initial to v1.0</a></p>
+</div>
+
+<h2>Compatibility policy</h2>
+
+<p>Minor versions (v2.0 to v2.1) are additive and backward-compatible at the verifier level; older verifiers ignore unknown fields. Major versions (v1.x to v2.x) require a supersession block in the new artifact pointing at the prior artifact's CID; the verifier rejects v1.x manifests whose schema string claims v2.x.</p>
+
+<p>The change-log entries above are the source of truth for what landed in each version. The corresponding diff link points at the spec PR that landed the change. All spec PRs go through the RFC process described at <a href="/spec/rs-1#section-10-1">RS-1 &sect;10.1 How to participate</a>.</p>
+
+<h2>How to propose a change</h2>
+
+<p>Any normative change to the spec goes through a numbered RFC pull request against <code>docs/rfcs/</code> in the kolmogorov-stack repo. The current RFC template lives at <code>docs/rfcs/0000-template.md</code>. RFCs land with a 14-day public comment window; the change log records the version bump on merge.</p>
+
+<div class="actions">
+  <a class="btn primary" href="/spec/rs-1">Read RS-1 v2.1 &rarr;</a>
+  <a class="btn" href="/verify-cli">Install kolm verify &rarr;</a>
+  <a class="btn" href="https://github.com/sneaky-hippo/kolmogorov-stack/tree/main/docs/rfcs">Browse RFCs &rarr;</a>
+</div>
+
+</div>
+</section>
+</main>
+<footer class="site">
+  <div class="wrap" style="max-width: 1180px;">
+    <div class="footer-grid">
+      <div>
+        <h4>Build</h4>
+        <a href="/quickstart">Quickstart</a>
+        <a href="/docs">Docs</a>
+        <a href="/spec/rs-1">RS-1 spec</a>
+        <a href="/spec/changelog">Spec change log</a>
+        <a href="/cli">CLI</a>
+      </div>
+      <div>
+        <h4>Verify</h4>
+        <a href="/verify-cli">kolm verify CLI</a>
+        <a href="/verify-prod">Verify a .kolm</a>
+        <a href="/badge">Embed badge</a>
+        <a href="/benchmarks">Benchmarks</a>
+        <a href="/compare">Compare</a>
+      </div>
+      <div>
+        <h4>Industries</h4>
+        <a href="/healthcare">Healthcare</a>
+        <a href="/finance">Finance</a>
+        <a href="/legal">Legal</a>
+        <a href="/compliance">Compliance</a>
+        <a href="/insure">Insurance</a>
+      </div>
+      <div>
+        <h4>Standards</h4>
+        <a href="/spec/rs-1">RS-1</a>
+        <a href="/spec/changelog">Changelog</a>
+        <a href="/spec/codebase">Codebase</a>
+        <a href="/spec/kolm-format-v1">kolm format</a>
+        <a href="/security">Security</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/pricing">Pricing</a>
+        <a href="/changelog">Product changelog</a>
+        <a href="/community">Community</a>
+        <a href="/contact">Contact</a>
+        <a href="/manifesto">Manifesto</a>
+      </div>
+    </div>
+    <div class="footer-tag">
+      <span>kolm.ai - RS-1 change log - Apache-2.0</span>
+      <span>Open standard. RFC-driven. Verifier free.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
